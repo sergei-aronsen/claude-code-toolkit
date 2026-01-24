@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "description": "Skill activation rules — Claude suggests relevant skills based on triggers",
+  "skills": {
+    "ai-models": {
+      "path": ".claude/skills/ai-models/SKILL.md",
+      "description": "Current versions of AI models (Claude, Gemini)",
+      "triggers": {
+        "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
+        "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
+      }
+    },
+    "laravel": {
+      "path": ".claude/skills/laravel/SKILL.md",
+      "description": "Laravel best practices (Eloquent, migrations, testing)",
+      "triggers": {
+        "keywords": ["eloquent", "migration", "artisan", "blade", "livewire", "inertia"],
+        "intentPatterns": ["create.*model", "add.*migration", "make.*controller"],
+        "filePatterns": ["app/**/*.php", "database/migrations/**", "routes/**"]
+      }
+    },
+    "tailwind": {
+      "path": ".claude/skills/tailwind/SKILL.md",
+      "description": "Tailwind CSS: utility classes, responsive, dark mode",
+      "triggers": {
+        "keywords": ["tailwind", "css", "styling", "dark mode", "responsive", "className"],
+        "intentPatterns": ["style.*", "add.*styles", "make.*responsive", "add.*dark mode"],
+        "filePatterns": ["resources/views/**/*.blade.php", "resources/css/**", "tailwind.config.js"]
+      }
+    },
+    "docker": {
+      "path": ".claude/skills/docker/SKILL.md",
+      "description": "Docker and container best practices",
+      "triggers": {
+        "keywords": ["docker", "container", "dockerfile", "compose", "sail"],
+        "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
+        "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
+      }
+    },
+    "testing": {
+      "path": ".claude/skills/testing/SKILL.md",
+      "description": "Testing patterns: TDD, mocking, coverage (Pest/PHPUnit)",
+      "triggers": {
+        "keywords": ["test", "testing", "tdd", "mock", "coverage", "pest", "phpunit"],
+        "intentPatterns": ["write.*test", "add.*test", "test.*"],
+        "filePatterns": ["tests/**/*.php", "**/Test.php"]
+      }
+    },
+    "api-design": {
+      "path": ".claude/skills/api-design/SKILL.md",
+      "description": "REST API design: naming, status codes, OpenAPI",
+      "triggers": {
+        "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
+        "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
+        "filePatterns": ["routes/api.php", "app/Http/Controllers/Api/**", "openapi.*"]
+      }
+    },
+    "database": {
+      "path": ".claude/skills/database/SKILL.md",
+      "description": "Database: migrations, indexes, N+1 (Eloquent)",
+      "triggers": {
+        "keywords": ["database", "migration", "index", "query", "eloquent"],
+        "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
+        "filePatterns": ["database/migrations/**", "app/Models/**"]
+      }
+    },
+    "observability": {
+      "path": ".claude/skills/observability/SKILL.md",
+      "description": "Logging, metrics, tracing (Laravel Log, Telescope)",
+      "triggers": {
+        "keywords": ["logging", "metrics", "tracing", "monitoring", "telescope"],
+        "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
+        "filePatterns": ["config/logging.php", "**/Logging/**"]
+      }
+    },
+    "llm-patterns": {
+      "path": ".claude/skills/llm-patterns/SKILL.md",
+      "description": "LLM integration: RAG, streaming, tool use",
+      "triggers": {
+        "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming"],
+        "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
+      }
+    }
+  }
+}

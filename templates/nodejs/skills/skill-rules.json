@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "description": "Skill activation rules - Claude suggests relevant skills based on triggers",
+  "skills": {
+    "ai-models": {
+      "path": ".claude/skills/ai-models/SKILL.md",
+      "description": "Current AI model versions (Claude, Gemini)",
+      "triggers": {
+        "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
+        "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
+      }
+    },
+    "nodejs": {
+      "path": ".claude/skills/nodejs/SKILL.md",
+      "description": "Node.js patterns: Express, Fastify, async, Zod, security",
+      "triggers": {
+        "keywords": ["express", "fastify", "middleware", "async", "zod", "validation", "node"],
+        "intentPatterns": ["create.*endpoint", "add.*route", "make.*api", "create.*middleware"],
+        "filePatterns": ["src/**/*.ts", "src/routes/**", "src/middleware/**", "src/controllers/**"]
+      }
+    },
+    "shadcn": {
+      "path": ".claude/skills/shadcn/SKILL.md",
+      "description": "shadcn/ui components: Button, Dialog, Form, Toast",
+      "triggers": {
+        "keywords": ["shadcn", "ui component", "radix", "dialog", "button", "form", "toast"],
+        "intentPatterns": ["add.*component", "create.*form", "make.*dialog", "add.*button"],
+        "filePatterns": ["**/components/ui/**", "**/components/**/*.tsx"]
+      }
+    },
+    "tailwind": {
+      "path": ".claude/skills/tailwind/SKILL.md",
+      "description": "Tailwind CSS: utility classes, responsive, dark mode",
+      "triggers": {
+        "keywords": ["tailwind", "css", "styling", "dark mode", "responsive"],
+        "intentPatterns": ["style.*", "add.*styles", "make.*responsive", "add.*dark mode"],
+        "filePatterns": ["**/*.tsx", "**/*.css", "tailwind.config.*"]
+      }
+    },
+    "docker": {
+      "path": ".claude/skills/docker/SKILL.md",
+      "description": "Docker and container best practices",
+      "triggers": {
+        "keywords": ["docker", "container", "dockerfile", "compose"],
+        "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
+        "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
+      }
+    },
+    "testing": {
+      "path": ".claude/skills/testing/SKILL.md",
+      "description": "Testing patterns: TDD, mocking, coverage (Vitest)",
+      "triggers": {
+        "keywords": ["test", "testing", "tdd", "mock", "coverage", "e2e", "vitest"],
+        "intentPatterns": ["write.*test", "add.*test", "test.*"],
+        "filePatterns": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**", "**/__tests__/**"]
+      }
+    },
+    "api-design": {
+      "path": ".claude/skills/api-design/SKILL.md",
+      "description": "REST API design: naming, status codes, OpenAPI",
+      "triggers": {
+        "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
+        "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
+        "filePatterns": ["**/api/**", "**/routes/**", "openapi.*", "swagger.*"]
+      }
+    },
+    "database": {
+      "path": ".claude/skills/database/SKILL.md",
+      "description": "Database: migrations, indexes, N+1 (Prisma/Drizzle)",
+      "triggers": {
+        "keywords": ["database", "migration", "index", "query", "prisma", "drizzle"],
+        "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
+        "filePatterns": ["**/migrations/**", "**/models/**", "schema.prisma", "drizzle/**"]
+      }
+    },
+    "observability": {
+      "path": ".claude/skills/observability/SKILL.md",
+      "description": "Logging, metrics, tracing (Pino, OpenTelemetry)",
+      "triggers": {
+        "keywords": ["logging", "metrics", "tracing", "monitoring", "pino", "opentelemetry"],
+        "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
+        "filePatterns": ["**/logging/**", "**/metrics/**", "prometheus.*"]
+      }
+    },
+    "llm-patterns": {
+      "path": ".claude/skills/llm-patterns/SKILL.md",
+      "description": "LLM integration: RAG, streaming, tool use",
+      "triggers": {
+        "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming"],
+        "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
+      }
+    }
+  }
+}

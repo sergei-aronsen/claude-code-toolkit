@@ -1,0 +1,87 @@
+{
+  "version": "1.0",
+  "description": "Skill activation rules — Claude suggests relevant skills based on triggers",
+  "skills": {
+    "ai-models": {
+      "path": ".claude/skills/ai-models/SKILL.md",
+      "description": "Current AI model versions (Claude, Gemini)",
+      "triggers": {
+        "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
+        "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
+      }
+    },
+    "python": {
+      "path": ".claude/skills/python/SKILL.md",
+      "description": "Python patterns: FastAPI, Django, Pydantic v2, SQLAlchemy 2.0",
+      "triggers": {
+        "keywords": ["fastapi", "django", "pydantic", "sqlalchemy", "pytest", "async", "uvicorn"],
+        "intentPatterns": ["create.*endpoint", "add.*route", "make.*api", "create.*model"],
+        "filePatterns": ["src/**/*.py", "app/**/*.py", "api/**/*.py", "**/models/*.py", "**/schemas/*.py"]
+      }
+    },
+    "tailwind": {
+      "path": ".claude/skills/tailwind/SKILL.md",
+      "description": "Tailwind CSS: utility classes, responsive, dark mode (for Jinja2/Django templates)",
+      "triggers": {
+        "keywords": ["tailwind", "css", "styling", "dark mode", "responsive"],
+        "intentPatterns": ["style.*", "add.*styles", "make.*responsive"],
+        "filePatterns": ["**/templates/**/*.html", "**/static/**/*.css", "tailwind.config.*"]
+      }
+    },
+    "docker": {
+      "path": ".claude/skills/docker/SKILL.md",
+      "description": "Docker and container best practices",
+      "triggers": {
+        "keywords": ["docker", "container", "dockerfile", "compose"],
+        "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
+        "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
+      }
+    },
+    "testing": {
+      "path": ".claude/skills/testing/SKILL.md",
+      "description": "Testing patterns: TDD, mocking, coverage (pytest)",
+      "triggers": {
+        "keywords": ["test", "testing", "tdd", "mock", "coverage", "pytest"],
+        "intentPatterns": ["write.*test", "add.*test", "test.*"],
+        "filePatterns": ["**/test_*.py", "**/*_test.py", "**/tests/**", "conftest.py"]
+      }
+    },
+    "api-design": {
+      "path": ".claude/skills/api-design/SKILL.md",
+      "description": "REST API design: naming, status codes, OpenAPI",
+      "triggers": {
+        "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
+        "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
+        "filePatterns": ["**/api/**", "**/routes/**", "openapi.*", "swagger.*"]
+      }
+    },
+    "database": {
+      "path": ".claude/skills/database/SKILL.md",
+      "description": "Database: migrations, indexes, N+1 (SQLAlchemy/Alembic)",
+      "triggers": {
+        "keywords": ["database", "migration", "index", "query", "sqlalchemy", "alembic"],
+        "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
+        "filePatterns": ["**/migrations/**", "**/models/**", "alembic/**"]
+      }
+    },
+    "observability": {
+      "path": ".claude/skills/observability/SKILL.md",
+      "description": "Logging, metrics, tracing (structlog, OpenTelemetry)",
+      "triggers": {
+        "keywords": ["logging", "metrics", "tracing", "monitoring", "structlog", "opentelemetry"],
+        "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
+        "filePatterns": ["**/logging/**", "**/metrics/**", "prometheus.*"]
+      }
+    },
+    "llm-patterns": {
+      "path": ".claude/skills/llm-patterns/SKILL.md",
+      "description": "LLM integration: RAG, streaming, tool use",
+      "triggers": {
+        "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming", "langchain"],
+        "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
+        "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
+      }
+    }
+  }
+}

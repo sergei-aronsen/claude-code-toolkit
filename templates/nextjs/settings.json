@@ -1,0 +1,87 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.json",
+  
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ \"$FILE_PATH\" == *.ts ]] || [[ \"$FILE_PATH\" == *.tsx ]] || [[ \"$FILE_PATH\" == *.js ]] || [[ \"$FILE_PATH\" == *.jsx ]]; then npx prettier --write \"$FILE_PATH\" --log-level error 2>/dev/null || true; fi"
+          },
+          {
+            "type": "command",
+            "command": "echo '[$(date +%H:%M:%S)] Modified: $FILE_PATH' >> .claude/activity.log"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] BASH: $COMMAND' >> .claude/audit.log"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended: $(pwd)' >> ~/.claude/sessions.log"
+          }
+        ]
+      }
+    ]
+  },
+  
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "Write(*)",
+      "Read(*)",
+      "Grep(*)",
+      "Glob(*)",
+      
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(bun *)",
+      
+      "Bash(node *)",
+      "Bash(tsx *)",
+      
+      "Bash(git *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(grep *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(cp *)",
+      "Bash(mv *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | bash)",
+      "Bash(dd if=*)",
+      "Bash(npx prisma migrate reset --force)"
+    ]
+  }
+}
