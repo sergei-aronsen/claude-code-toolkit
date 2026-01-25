@@ -118,6 +118,31 @@ cwebp screenshot.png -o screenshot.webp
 convert screenshot.png screenshot.webp
 ```
 
+**Hide cookie banners:**
+
+Use [idcac-playwright](https://www.npmjs.com/package/idcac-playwright) — "I Don't Care About Cookies" extension compiled for Playwright.
+
+```bash
+npm install idcac-playwright
+```
+
+```typescript
+import { chromium } from 'playwright';
+import { getInjectableScript } from 'idcac-playwright';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('https://example.com');
+
+// Inject script to hide cookie banners
+await page.evaluate(getInjectableScript());
+
+// Now take clean screenshot without cookie popups
+await page.screenshot({ path: 'clean-screenshot.png' });
+```
+
+Works with Chromium and Firefox. Maintained by [Apify](https://github.com/apify/idcac).
+
 ---
 
 ### 3. Memory Bank — Memory Between Sessions

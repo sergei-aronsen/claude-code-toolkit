@@ -149,6 +149,13 @@ test.describe('Critical Paths', () => {
 
 > **Note:** Playwright supports only `png` and `jpeg` formats for screenshots. WebP is not supported natively. To get WebP, take screenshot in PNG first, then convert using `cwebp` or ImageMagick.
 
+> **Tip:** Use [idcac-playwright](https://www.npmjs.com/package/idcac-playwright) to automatically hide cookie banners before taking screenshots:
+>
+> ```typescript
+> import { getInjectableScript } from 'idcac-playwright';
+> await page.evaluate(getInjectableScript());
+> ```
+
 ### For `/e2e visual /landing`
 
 ```typescript

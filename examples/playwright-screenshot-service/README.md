@@ -106,3 +106,25 @@ Playwright service is overloaded or crashed. Solution:
 docker rm -f firecrawl-playwright-service-1
 docker compose up -d playwright-service
 ```
+
+## Tips
+
+### Hide Cookie Banners
+
+Use [idcac-playwright](https://www.npmjs.com/package/idcac-playwright) to automatically dismiss cookie consent popups before taking screenshots:
+
+```typescript
+import { getInjectableScript } from 'idcac-playwright';
+
+// After page.goto()
+await page.evaluate(getInjectableScript());
+// Then take screenshot
+```
+
+### Screenshot Formats
+
+Playwright supports only `png` and `jpeg`. For WebP, convert after capture:
+
+```bash
+cwebp screenshot.png -o screenshot.webp
+```
