@@ -147,6 +147,8 @@ test.describe('Critical Paths', () => {
 
 ## Visual Regression
 
+> **Note:** Playwright supports only `png` and `jpeg` formats for screenshots. WebP is not supported natively. To get WebP, take screenshot in PNG first, then convert using `cwebp` or ImageMagick.
+
 ### For `/e2e visual /landing`
 
 ```typescript

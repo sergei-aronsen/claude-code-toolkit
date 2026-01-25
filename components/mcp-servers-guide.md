@@ -103,6 +103,21 @@ UI testing, screenshots, form filling.
 "Take screenshot of /dashboard page"
 ```
 
+**Screenshot formats:**
+
+- Supported: `png`, `jpeg`
+- **Not supported:** `webp`
+
+For WebP output, take screenshot in PNG first, then convert:
+
+```bash
+# Convert PNG to WebP
+cwebp screenshot.png -o screenshot.webp
+
+# Or with ImageMagick
+convert screenshot.png screenshot.webp
+```
+
 ---
 
 ### 3. Memory Bank — Memory Between Sessions
