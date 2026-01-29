@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Guides Initialization Script
-# Usage: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 # Or: curl -sSL ... | bash -s -- laravel
 # Or: curl -sSL ... | bash -s -- --dry-run
 
@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Config
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-guides/main"
+REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 DRY_RUN=false
 FRAMEWORK=""
@@ -123,6 +123,18 @@ declare -a FILES=(
     "commands/doc.md:commands/doc.md"
     "commands/fix.md:commands/fix.md"
     "commands/explain.md:commands/explain.md"
+    "commands/helpme.md:commands/helpme.md"
+
+    # Cheatsheets
+    "cheatsheets/en.md:cheatsheets/en.md"
+    "cheatsheets/ru.md:cheatsheets/ru.md"
+    "cheatsheets/es.md:cheatsheets/es.md"
+    "cheatsheets/de.md:cheatsheets/de.md"
+    "cheatsheets/fr.md:cheatsheets/fr.md"
+    "cheatsheets/zh.md:cheatsheets/zh.md"
+    "cheatsheets/ja.md:cheatsheets/ja.md"
+    "cheatsheets/pt.md:cheatsheets/pt.md"
+    "cheatsheets/ko.md:cheatsheets/ko.md"
 )
 
 # Add framework-specific files
@@ -170,6 +182,7 @@ create_structure() {
         "$CLAUDE_DIR/skills"
         "$CLAUDE_DIR/skills/ai-models"
         "$CLAUDE_DIR/memory"
+        "$CLAUDE_DIR/cheatsheets"
         "$CLAUDE_DIR/scratchpad"
     )
     
@@ -286,6 +299,7 @@ main() {
     echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
     echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
     echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
+    echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
     echo ""
 }
 

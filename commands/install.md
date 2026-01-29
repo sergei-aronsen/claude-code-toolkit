@@ -28,7 +28,7 @@ ls -la
 ### 2. Run initialization
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash -s -- [framework]
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- [framework]
 ```
 
 ### 3. Adapt CLAUDE.md

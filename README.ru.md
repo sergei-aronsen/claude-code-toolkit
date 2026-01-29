@@ -2,7 +2,7 @@
 
 Исчерпывающий набор инструкций для AI-assisted разработки с Claude Code.
 
-[![Quality Check](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](README.md)** | **Русский** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
@@ -36,13 +36,13 @@
 Скажи Claude Code:
 
 ```text
-Скачай инструкции из https://github.com/digitalplanetno/claude-guides
+Скачай инструкции из https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Или выполни в терминале:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 Скрипт автоматически определяет фреймворк (Laravel, Next.js) и копирует соответствующий шаблон.
@@ -64,7 +64,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/s
 Или через терминал:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 ---

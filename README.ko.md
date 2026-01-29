@@ -2,7 +2,7 @@
 
 Claude Code를 활용한 AI 기반 개발을 위한 종합 가이드입니다.
 
-[![Quality Check](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **한국어**
@@ -36,13 +36,13 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 가이드입니다.
 Claude Code에게 말하세요:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-guides
+Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 또는 터미널에서 실행:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 스크립트가 자동으로 프레임워크(Laravel, Next.js)를 감지하고 적절한 템플릿을 복사합니다.
@@ -64,7 +64,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/s
 ### 업데이트
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 ---

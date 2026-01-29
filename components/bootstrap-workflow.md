@@ -26,7 +26,7 @@ I want to create [project description].
 Stack: [Laravel + Vue / Next.js + TypeScript / etc.]
 
 1. Create project structure
-2. Download Claude Code instructions from https://github.com/digitalplanetno/claude-guides
+2. Download Claude Code instructions from https://github.com/digitalplanetno/claude-code-toolkit
    using init-claude.sh script for my stack
 3. Adapt CLAUDE.md for this project:
    - Update Project Overview (name, description, stack)
@@ -41,7 +41,7 @@ I want to create a SaaS platform for subscription management.
 Stack: Laravel 11 + Vue 3 + Inertia.js + Tailwind CSS + PostgreSQL
 
 1. Create Laravel project structure with Breeze (Inertia + Vue)
-2. Download instructions from https://github.com/digitalplanetno/claude-guides for Laravel
+2. Download instructions from https://github.com/digitalplanetno/claude-code-toolkit for Laravel
 3. Adapt CLAUDE.md:
    - Name: SubscriptionHub
    - Add commands for Stripe integration
@@ -55,7 +55,7 @@ I want to create an analytics dashboard for tracking metrics.
 Stack: Next.js 15 + TypeScript + Tailwind + Prisma + PostgreSQL
 
 1. Create Next.js project with App Router
-2. Download instructions from https://github.com/digitalplanetno/claude-guides for Next.js
+2. Download instructions from https://github.com/digitalplanetno/claude-code-toolkit for Next.js
 3. Adapt CLAUDE.md:
    - Name: MetricsDash
    - Add commands for working with charts (Recharts)
@@ -71,7 +71,7 @@ If project is already created and you want to add Claude Code instructions:
 ### Short Prompt
 
 ```text
-Initialize Claude Code from https://github.com/digitalplanetno/claude-guides
+Initialize Claude Code from https://github.com/digitalplanetno/claude-code-toolkit
 Project: [name] — [brief description]
 ```
 
@@ -79,7 +79,7 @@ Project: [name] — [brief description]
 
 ```bash
 cd your-project
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 The script automatically detects the stack:
@@ -164,7 +164,7 @@ This loads project context and prepares Claude for work.
 ### How to update instructions to new version?
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 The script updates common parts while preserving your customizations.
@@ -174,7 +174,7 @@ The script updates common parts while preserving your customizations.
 Use the base template — it's universal and works with any stack:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash -s -- base
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- base
 ```
 
 Then adapt it to your stack.

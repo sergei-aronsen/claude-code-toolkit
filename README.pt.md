@@ -2,7 +2,7 @@
 
 Instruções completas para desenvolvimento assistido por IA com Claude Code.
 
-[![Quality Check](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **Português** | **[한국어](README.ko.md)**
@@ -36,13 +36,13 @@ Sem uma equipe, voce nao tem revisao de codigo, ninguem para perguntar sobre arq
 Diga ao Claude Code:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-guides
+Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Ou execute no terminal:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 O script detecta automaticamente o framework (Laravel, Next.js) e copia o template apropriado.
@@ -64,7 +64,7 @@ Use o comando `/install` para reinstalacao ou atualizacoes:
 ### Atualizacao
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 ---

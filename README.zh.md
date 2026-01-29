@@ -2,7 +2,7 @@
 
 Claude Code AI 辅助开发的综合指南。
 
-[![Quality Check](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-guides/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **中文** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
@@ -36,13 +36,13 @@ Claude Code AI 辅助开发的综合指南。
 告诉 Claude Code：
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-guides
+Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 或在终端运行：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 脚本会自动检测框架（Laravel、Next.js）并复制相应模板。
@@ -64,7 +64,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/s
 或通过终端更新：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-guides/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 ---

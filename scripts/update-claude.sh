@@ -9,7 +9,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-guides/main"
+REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"

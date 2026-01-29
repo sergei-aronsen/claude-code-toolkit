@@ -138,6 +138,12 @@ if [ "$DRY_RUN" = true ]; then
             echo "  │   └── $(basename "$cmd")"
         fi
     done
+    echo "  ├── cheatsheets/"
+    for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
+        if [ -f "$cs" ]; then
+            echo "  │   └── $(basename "$cs")"
+        fi
+    done
     echo "  └── reports/"
     if [ ! -f "CLAUDE.md" ]; then
         echo "  CLAUDE.md"
@@ -189,6 +195,21 @@ if [ -d "$GUIDES_DIR/commands" ]; then
         if [ -f "$cmd" ]; then
             filename=$(basename "$cmd")
             cp "$cmd" "$CLAUDE_DIR/commands/$filename"
+            echo -e "  - $filename... ${GREEN}OK${NC}"
+        fi
+    done
+fi
+
+# Copy cheatsheets if they exist
+if [ -d "$GUIDES_DIR/cheatsheets" ]; then
+    echo ""
+    echo -e "${YELLOW}Copying cheatsheets...${NC}"
+    mkdir -p "$CLAUDE_DIR/cheatsheets"
+
+    for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
+        if [ -f "$cs" ]; then
+            filename=$(basename "$cs")
+            cp "$cs" "$CLAUDE_DIR/cheatsheets/$filename"
             echo -e "  - $filename... ${GREEN}OK${NC}"
         fi
     done
@@ -298,6 +319,10 @@ for template in "${TEMPLATES[@]}"; do
 done
 if [ -d "$CLAUDE_DIR/commands" ]; then
     echo "  ├── commands/"
+    echo "  │   └── ..."
+fi
+if [ -d "$CLAUDE_DIR/cheatsheets" ]; then
+    echo "  ├── cheatsheets/"
     echo "  │   └── ..."
 fi
 echo "  └── reports/"
