@@ -230,6 +230,60 @@ await queue.add('process', { siteId: site.id });
 - [ ] Read replicas (if needed)
 - [ ] Query monitoring
 
+### 6.3 Production Readiness
+
+Development settings in production degrade performance significantly.
+
+```bash
+# Check NODE_ENV
+echo $NODE_ENV  # Must be "production"
+
+# Check for debug packages in dependencies
+grep -E "nodemon|ts-node-dev|debug" package.json | grep -v devDependencies
+```
+
+- [ ] `NODE_ENV=production` in production
+- [ ] No development-only packages in production dependencies (move to devDependencies)
+- [ ] No `console.log` / `console.debug` in production code (use Pino/Winston)
+- [ ] Source maps not served to clients
+- [ ] Process manager used (PM2, Docker) — not `node server.js` directly
+
+**Cache/Session/Queue Drivers:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | In-memory | Redis / Memcached |
+| Sessions | MemoryStore | Redis (connect-redis) |
+| Queue | Sync (inline) | BullMQ / Bee-Queue / SQS |
+| Logging | console.log | Pino / Winston → aggregator |
+
+- [ ] Express `MemoryStore` is NOT used in production (leaks memory, no persistence)
+- [ ] Cache backend survives restarts (Redis, not in-process Map)
+- [ ] Background jobs use a proper queue (BullMQ), not inline execution
+
+### 6.4 Redis Health
+
+If using Redis (ioredis/redis) for cache/sessions/queues, monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
+- [ ] No excessive evictions
+- [ ] Connection pooling configured (ioredis default is fine)
+
 ---
 
 ## 7. MONITORING

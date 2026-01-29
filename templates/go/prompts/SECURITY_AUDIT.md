@@ -17,6 +17,9 @@ Comprehensive security audit of Go application (Gin/Chi). Act as a Senior Securi
 | 3 | Unchecked errors | `golangci-lint run --enable errcheck` | No errors |
 | 4 | gosec scan | `gosec ./...` | No high severity |
 | 5 | go mod audit | `go list -json -m all \| nancy sleuth` | No vulnerabilities |
+| 6 | Secret key | `echo $JWT_SECRET \| wc -c` | >= 32 characters |
+| 7 | Open redirect | `grep -rn "Redirect.*c.Query\|Redirect.*r.URL" . --include="*.go"` | Check validation |
+| 8 | .env public | Verify `.env` not in static/ directory | Not accessible |
 
 If all 5 = OK → Basic security level OK.
 
@@ -52,6 +55,22 @@ if command -v gosec &> /dev/null; then
 else
     echo "Gosec: Not installed (run: go install github.com/securego/gosec/v2/cmd/gosec@latest)"
 fi
+
+# 6. Secret key strength
+SECRET_LEN=$(echo -n "$JWT_SECRET" | wc -c)
+[ "$SECRET_LEN" -ge 32 ] && echo "Secret: JWT_SECRET is strong (${SECRET_LEN} chars)" || echo "Secret: JWT_SECRET too short (${SECRET_LEN} chars, need >= 32)"
+
+# 7. Open redirect
+REDIRECT=$(grep -rn "Redirect.*c.Query\|Redirect.*r.URL.Query\|Redirect.*r.FormValue" . --include="*.go" 2>/dev/null | grep -v "_test.go")
+[ -z "$REDIRECT" ] && echo "Redirect: No open redirect patterns" || echo "Redirect: Found redirect patterns (verify validation)"
+
+# 8. Dangerous functions
+DANGEROUS=$(grep -rn 'exec\.Command.*"-c"\|os\.Exec\|exec\.Command.*+' . --include="*.go" 2>/dev/null | grep -v "test\|vendor\|_test.go")
+[ -z "$DANGEROUS" ] && echo "Commands: No shell injection patterns" || echo "Commands: Found exec patterns (verify input)"
+
+# 9. .env exposure
+ENV_SERVE=$(grep -rn 'FileServer.*Dir(".")' . --include="*.go" 2>/dev/null | grep -v "test\|vendor")
+[ -z "$ENV_SERVE" ] && echo "Static: Not serving root dir" || echo "Static: Serving root directory (may expose .env)!"
 
 echo "Done!"
 ```
@@ -220,6 +239,24 @@ cmd := exec.Command("convert", filename, "output.pdf")
 - [ ] No exec.Command with shell (-c)
 - [ ] Filenames sanitized via filepath.Base()
 - [ ] User input never passed to shell
+
+### 3.2 Dangerous Functions
+
+Some Go functions allow arbitrary command execution.
+
+```go
+// ❌ Dangerous — shell injection via os/exec
+cmd := exec.Command("sh", "-c", userInput)
+cmd := exec.Command("bash", "-c", "echo " + userInput)
+
+// ✅ Safe — no shell, arguments as array
+cmd := exec.Command("echo", userInput)  // Direct exec, no shell
+```
+
+- [ ] No `exec.Command("sh", "-c", userInput)` — use direct command + args
+- [ ] No string concatenation in command arguments
+- [ ] No `os.Exec` with user-controlled paths
+- [ ] CGo calls validated if accepting user input
 
 ---
 
@@ -455,6 +492,61 @@ type Config struct {
 - [ ] Secrets from env variables
 - [ ] Using viper/envconfig
 
+### 8.2 Secret Key Validation
+
+```go
+// ❌ Weak secret
+var jwtSecret = []byte("secret")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET")) // No length check!
+
+// ✅ Strong secret with validation
+func init() {
+    secret := os.Getenv("JWT_SECRET")
+    if len(secret) < 32 {
+        log.Fatal("JWT_SECRET must be at least 32 characters")
+    }
+}
+```
+
+- [ ] JWT secret is at least 32 characters
+- [ ] Application validates secret length on startup
+- [ ] No weak fallback values
+- [ ] Different secrets per environment
+
+### 8.3 Session/Token Timeout
+
+```go
+// ❌ Bad — no expiration
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+    "user_id": userID,
+    // No "exp" claim!
+})
+
+// ✅ Good — short expiration
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+    Subject:   userID,
+    ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
+    IssuedAt:  jwt.NewNumericDate(time.Now()),
+})
+
+// ✅ Cookie-based sessions
+http.SetCookie(w, &http.Cookie{
+    Name:     "session",
+    Value:    sessionID,
+    MaxAge:   1800,     // 30 minutes
+    HttpOnly: true,
+    Secure:   true,
+    SameSite: http.SameSiteLaxMode,
+})
+```
+
+- [ ] Session/token expiry is configured (recommended: 15-30 minutes for sensitive apps)
+- [ ] JWT has `ExpiresAt` claim (recommended: 15-60 minutes)
+- [ ] Cookie `MaxAge` is set
+- [ ] `HttpOnly`, `Secure`, `SameSite` cookie flags set
+- [ ] Refresh token rotation is implemented
+- [ ] Session is invalidated on logout (server-side session store)
+
 ---
 
 ## 9. RATE LIMITING
@@ -533,7 +625,142 @@ go mod tidy
 
 ---
 
-## 12. REPORT FORMAT
+## 12. UNSAFE DESERIALIZATION
+
+Deserializing untrusted data can lead to unexpected behavior.
+
+```go
+// ❌ Risky — gob/encoding can instantiate arbitrary types
+gob.Register(MyType{})
+decoder := gob.NewDecoder(userInput)
+decoder.Decode(&target)
+
+// ✅ Safe — JSON is data-only
+json.NewDecoder(userInput).Decode(&target)
+```
+
+- [ ] No `encoding/gob` with untrusted input (gob can call methods during decode)
+- [ ] `encoding/xml` input is validated (XXE attacks possible)
+- [ ] YAML parsing uses safe defaults (no arbitrary type instantiation)
+- [ ] Prefer JSON for external data exchange
+
+---
+
+## 13. OPEN REDIRECTION
+
+```go
+// ❌ Dangerous — redirect to user-supplied URL
+func Callback(c *gin.Context) {
+    returnURL := c.Query("returnUrl")
+    c.Redirect(http.StatusFound, returnURL) // Open redirect!
+}
+
+// ✅ Safe — validate URL
+var allowedHosts = map[string]bool{
+    "myapp.com":     true,
+    "www.myapp.com": true,
+}
+
+func Callback(c *gin.Context) {
+    returnURL := c.Query("returnUrl")
+    parsed, err := url.Parse(returnURL)
+    if err != nil || (parsed.Host != "" && !allowedHosts[parsed.Host]) {
+        c.Redirect(http.StatusFound, "/")
+        return
+    }
+    c.Redirect(http.StatusFound, returnURL)
+}
+```
+
+- [ ] No `c.Redirect()` with raw user input
+- [ ] Redirect URLs validated against whitelist or restricted to relative paths
+
+### 13.2 Host Injection
+
+```go
+// ❌ Dangerous — trusting Host header
+func ForgotPassword(c *gin.Context) {
+    host := c.Request.Host
+    resetLink := fmt.Sprintf("https://%s/reset?token=%s", host, token) // Spoofable!
+}
+
+// ✅ Safe — use configured base URL
+var baseURL = os.Getenv("APP_URL")
+
+func ForgotPassword(c *gin.Context) {
+    resetLink := fmt.Sprintf("%s/reset?token=%s", baseURL, token)
+}
+```
+
+- [ ] Password reset links use configured `APP_URL`, not `c.Request.Host`
+- [ ] Email links use configured base URL
+
+### 13.3 HSTS (HTTP Strict Transport Security)
+
+```go
+// Middleware
+func HSTS() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+        c.Next()
+    }
+}
+
+r := gin.Default()
+r.Use(HSTS())
+```
+
+- [ ] HSTS header set in production
+- [ ] `max-age` >= 31536000
+
+### 13.4 .env Public Access
+
+`.env` files accessible via web expose all secrets.
+
+```go
+// ❌ Dangerous — serving entire directory including .env
+http.Handle("/", http.FileServer(http.Dir(".")))
+
+// ✅ Safe — serve only specific directory
+http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+```
+
+- [ ] `.env` is not served by the HTTP handler (not in static file directories)
+- [ ] `.env` is in `.gitignore`
+- [ ] Sensitive config loaded from environment variables, not `.env` in production
+- [ ] Web server/reverse proxy blocks access to dotfiles
+- [ ] `.env` file permissions: `600` or `640`
+- [ ] Application binary runs as non-root user
+- [ ] Log directory not world-writable
+- [ ] Config files not world-readable
+
+### 13.5 Open Redirection (net/http)
+
+Redirecting users to unvalidated URLs enables phishing attacks.
+
+```go
+// ❌ Dangerous — redirect to user-supplied URL
+http.Redirect(w, r, r.URL.Query().Get("redirect"), http.StatusFound)
+
+// ✅ Safe — validate redirect URL
+func safeRedirect(w http.ResponseWriter, r *http.Request, fallback string) {
+    target := r.URL.Query().Get("redirect")
+    u, err := url.Parse(target)
+    if err != nil || u.Host != "" { // Reject absolute URLs
+        http.Redirect(w, r, fallback, http.StatusFound)
+        return
+    }
+    http.Redirect(w, r, target, http.StatusFound)
+}
+```
+
+- [ ] No redirects using raw user input (`r.URL.Query()`, `r.FormValue()`)
+- [ ] Redirect URLs are validated (relative-only or domain whitelist)
+- [ ] External URLs require explicit allow-list
+
+---
+
+## 14. REPORT FORMAT
 
 ```markdown
 # Security Audit Report — [Project Name]
@@ -567,7 +794,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 13. ACTIONS
+## 15. ACTIONS
 
 1. **Quick Check** — go through 5 points
 2. **gosec scan** — `gosec ./...`

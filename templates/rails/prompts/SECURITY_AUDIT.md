@@ -19,6 +19,10 @@ Comprehensive security audit of a Laravel application. Act as a Senior Security 
 | 3 | $guarded = [] | `grep -rn 'guarded.*=.*\[\]' app/Models/` | Empty |
 | 4 | Raw SQL injection | `grep -rn 'DB::raw\|whereRaw' app/ --include="*.php"` | Check bindings |
 | 5 | composer audit | `composer audit` | No vulnerabilities |
+| 6 | Secret key | `rails credentials:show \| head -1` | Present and strong |
+| 7 | .env public | `ls public/.env 2>/dev/null` | Not found |
+| 8 | Open redirect | `grep -rn "redirect_to.*params" app/ --include="*.rb"` | Check validation |
+| 9 | Dangerous functions | `grep -rn "eval\|send(.*params\|constantize" app/ --include="*.rb"` | Minimal |
 
 If all 5 = OK → Basic security level OK.
 
@@ -58,6 +62,26 @@ composer audit 2>/dev/null | grep -q "No security" && echo "✅ Composer: No vul
 
 # 7. npm audit
 npm audit --production 2>/dev/null | grep -q "found 0" && echo "✅ NPM: No vulnerabilities" || echo "🟡 NPM: Run 'npm audit' for details"
+
+# 8. Secret key
+CREDS=$(EDITOR=cat rails credentials:show 2>/dev/null | head -1)
+[ -n "$CREDS" ] && echo "✅ Credentials: credentials.yml.enc exists" || echo "❌ Credentials: No credentials configured"
+
+# 9. Open redirect
+REDIRECT=$(grep -rn "redirect_to.*params\[" app/ --include="*.rb" 2>/dev/null)
+[ -z "$REDIRECT" ] && echo "✅ Redirect: No open redirect patterns" || echo "🟡 Redirect: Found redirect_to with params (verify validation)"
+
+# 10. Dangerous metaprogramming
+DANGEROUS=$(grep -rn "eval\|send(.*params\|constantize\|public_send(.*params" app/ --include="*.rb" 2>/dev/null | grep -v "test\|spec")
+[ -z "$DANGEROUS" ] && echo "✅ Meta: No dangerous metaprogramming" || echo "🟡 Meta: Found eval/send/constantize (verify input)"
+
+# 11. Dangerous functions
+DANGEROUS=$(grep -rn "eval(\|\.send(\|constantize\|system(\|IO\.popen\|Marshal\.load" app/ lib/ 2>/dev/null | grep -v "test\|spec\|vendor")
+[ -z "$DANGEROUS" ] && echo "✅ Functions: No dangerous patterns" || echo "🟡 Functions: Found dangerous function patterns (verify input)"
+
+# 12. .env / credentials exposure
+[ ! -f public/.env ] && echo "✅ .env: Not in public/" || echo "❌ .env: Exposed in public/!"
+grep -q "master.key" .gitignore 2>/dev/null && echo "✅ master.key: In .gitignore" || echo "❌ master.key: Not in .gitignore!"
 
 echo "Done!"
 ```
@@ -142,6 +166,21 @@ Site::orderBy($column)->get();
 
 - [ ] Column names validated via whitelist
 - [ ] Table names never from user input
+
+### 1.3 Permit Params Injection
+
+```ruby
+# ❌ Dangerous — user controls attribute used in unique validation
+params.require(:user).permit(:name, :email, :id)
+# Attacker sends id=1, bypassing unique validation
+
+# ✅ Safe — never permit :id or primary keys
+params.require(:user).permit(:name, :email)
+```
+
+- [ ] `permit()` does not include `:id` or primary key fields
+- [ ] `permit()` does not include `:role`, `:admin`, `:is_admin`
+- [ ] No `permit!` (permits everything)
 
 ---
 
@@ -305,7 +344,45 @@ return [
 - [ ] `http_only` = true
 - [ ] `same_site` = 'lax' or 'strict'
 
-### 5.3 Rate Limiting
+### 5.3 Cookie Security
+
+```ruby
+# config/application.rb or initializers
+# ✅ Ensure cookies are encrypted and signed
+Rails.application.config.action_dispatch.cookies_serializer = :json  # Safer than :marshal
+
+# ✅ Cookie settings
+Rails.application.config.session_store :cookie_store, {
+  key: '_myapp_session',
+  secure: Rails.env.production?,
+  httponly: true,
+  same_site: :lax,
+}
+```
+
+- [ ] Cookie serializer is `:json` (not `:marshal` — deserialization risk)
+- [ ] Session cookie has `secure: true` in production
+- [ ] `httponly: true` is set
+- [ ] `same_site: :lax` or `:strict`
+
+### 5.4 Session Timeout
+
+```ruby
+# config/initializers/session_store.rb
+Rails.application.config.session_store :cookie_store, {
+  expire_after: 30.minutes,  # ✅ Session timeout
+}
+
+# Or use Devise timeout
+# config/initializers/devise.rb
+config.timeout_in = 30.minutes
+```
+
+- [ ] Session `expire_after` is configured (not infinite)
+- [ ] Devise `timeout_in` is set if using Devise
+- [ ] Session invalidated on logout (reset_session)
+
+### 5.5 Rate Limiting
 
 ```php
 // ❌ Bad — no rate limiting on login
@@ -457,6 +534,67 @@ return back()->with('error', 'An error occurred. Please try again later.');
 - [ ] User doesn't see stack traces
 - [ ] User doesn't see SQL errors
 
+### 9.4 Credentials Security
+
+```ruby
+# ❌ Bad — hardcoded secret
+Rails.application.config.secret_key_base = "abc123"
+
+# ✅ Good — Rails credentials
+# Encrypted in config/credentials.yml.enc
+# Edit: rails credentials:edit
+
+# Verify secret is present:
+Rails.application.credentials.secret_key_base.present?
+```
+
+- [ ] `secret_key_base` is set via credentials or ENV
+- [ ] `credentials.yml.enc` exists and is used
+- [ ] `master.key` is in `.gitignore`
+- [ ] Different credentials per environment
+
+### 9.5 Dotfiles Public Access
+
+```ruby
+# ❌ Files in public/ are served by web server
+ls public/.env   # Should not exist!
+
+# ✅ Nginx — block dotfiles
+location ~ /\. {
+    deny all;
+}
+```
+
+- [ ] No `.env` in `public/` directory
+- [ ] Web server blocks access to dotfiles
+- [ ] `config/master.key` not committed to git
+
+### 9.6 File Permissions
+
+- [ ] `config/master.key` permissions: `600`
+- [ ] `config/credentials.yml.enc` permissions: `640`
+- [ ] Log directory not world-writable
+- [ ] Upload directory does not allow script execution
+- [ ] Application runs as non-root user
+
+### 9.7 .env Public Access
+
+`.env` files or credentials accessible via web expose all secrets.
+
+- [ ] `.env` is not in `public/` directory
+- [ ] `.env` is in `.gitignore`
+- [ ] `config/credentials.yml.enc` is used instead of plain `.env` for secrets
+- [ ] `config/master.key` is in `.gitignore` and not committed
+- [ ] Verify: `curl -s https://yoursite.com/.env` returns 403/404
+
+**Rails-specific:**
+
+```ruby
+# Prefer Rails encrypted credentials over .env
+Rails.application.credentials.secret_key_base
+Rails.application.credentials.dig(:aws, :access_key_id)
+```
+
 ---
 
 ## 10. SECURITY HEADERS
@@ -484,7 +622,23 @@ class SecurityHeaders
 - [ ] Security headers middleware added
 - [ ] X-Frame-Options = DENY
 
-### 10.2 HTTPS
+### 10.2 HSTS
+
+```ruby
+# config/environments/production.rb
+config.force_ssl = true  # ✅ Enables HSTS + redirect to HTTPS
+
+# Custom HSTS settings
+config.ssl_options = {
+  hsts: { subdomains: true, preload: true, expires: 1.year },
+}
+```
+
+- [ ] `config.force_ssl = true` in production
+- [ ] HSTS `expires` >= 1 year
+- [ ] `subdomains: true` if applicable
+
+### 10.3 HTTPS
 
 ```php
 // app/Providers/AppServiceProvider.php
@@ -515,7 +669,100 @@ npm audit
 
 ---
 
-## 12. SELF-CHECK
+## 12. INJECTION ATTACKS
+
+### 12.1 Open Redirection
+
+```ruby
+# ❌ Dangerous — redirect to user-supplied URL
+def callback
+  redirect_to params[:return_url]  # Open redirect!
+end
+
+# ✅ Safe — validate URL
+def callback
+  url = params[:return_url]
+  if url&.start_with?('/') # Relative URL only
+    redirect_to url
+  else
+    redirect_to root_path
+  end
+end
+```
+
+- [ ] No `redirect_to params[...]` without validation
+- [ ] Redirect URLs restricted to relative paths or whitelist
+- [ ] Devise `after_sign_in_path_for` validates return URL
+
+### 12.2 Host Injection
+
+```ruby
+# ❌ Dangerous — trusting Host header
+def forgot_password
+  host = request.host
+  reset_link = "https://#{host}/reset?token=#{token}"  # Spoofable!
+end
+
+# ✅ Safe — use configured host
+# config/environments/production.rb
+config.action_mailer.default_url_options = { host: 'myapp.com', protocol: 'https' }
+
+# ✅ Rails 6+ — HostAuthorization middleware
+config.hosts << 'myapp.com'
+config.hosts << '.myapp.com'  # Subdomains
+```
+
+- [ ] `config.hosts` is configured (Rails 6+)
+- [ ] Mailer `default_url_options` uses configured host
+- [ ] No `request.host` in password reset or email links
+
+### 12.3 Dangerous Metaprogramming
+
+```ruby
+# ❌ CRITICAL — Remote Code Execution
+eval(params[:code])
+send(params[:method])
+params[:class].constantize.new
+
+# ✅ Safe — whitelist
+ALLOWED_METHODS = %w[sort filter search].freeze
+method = params[:method]
+send(method) if ALLOWED_METHODS.include?(method)
+```
+
+- [ ] No `eval()` with user input
+- [ ] No `send()` / `public_send()` with user-controlled method names
+- [ ] No `.constantize` with user input
+- [ ] Whitelists used for dynamic dispatch
+
+### 12.4 Dangerous Functions
+
+Some Ruby/Rails methods allow arbitrary code execution.
+
+```ruby
+# ❌ Never use with user input
+eval(params[:code])                    # Arbitrary code execution
+send(params[:method])                  # Arbitrary method call
+constantize(params[:class])            # Arbitrary class instantiation
+system(params[:cmd])                   # Shell injection
+`#{params[:cmd]}`                      # Shell injection (backticks)
+IO.popen(params[:cmd])                 # Shell injection
+
+# ✅ Safe alternatives
+Kernel.public_send(:allowed_method)    # Only public methods
+ALLOWED_METHODS.include?(method) && send(method)  # Whitelist
+Shellwords.escape(arg)                 # Shell argument escaping
+```
+
+- [ ] No `eval()` with user-controlled input
+- [ ] No `send()` / `public_send()` with user-controlled method names without whitelist
+- [ ] No `constantize` / `safe_constantize` with user input without whitelist
+- [ ] No `system()` / backticks / `IO.popen()` / `Open3` with user input
+- [ ] No `Marshal.load()` with untrusted data (use JSON instead)
+
+---
+
+## 13. SELF-CHECK
 
 **Before adding a vulnerability to the report:**
 
@@ -528,7 +775,7 @@ npm audit
 
 ---
 
-## 13. REPORT FORMAT
+## 14. REPORT FORMAT
 
 Create file `.claude/reports/SECURITY_AUDIT_[DATE].md`:
 
@@ -570,7 +817,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 14. ACTIONS
+## 15. ACTIONS
 
 1. **Quick Check** — go through 5 points from section 0
 2. **Scan** — go through all sections

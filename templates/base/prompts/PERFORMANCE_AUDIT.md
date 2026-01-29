@@ -215,6 +215,50 @@ Good: Passing a reference (ID, cache key, file path) and loading data inside the
 - [ ] Read replicas (if needed)
 - [ ] Query monitoring
 
+### 6.3 Production Readiness
+
+Debug tools and development settings in production degrade performance significantly.
+
+- [ ] Debug mode is disabled in production
+- [ ] No development-only tools in production dependencies
+- [ ] Logging level is `warn` or `error`, not `debug` or `trace`
+- [ ] Source maps are not served to clients in production
+
+**Cache/Session/Queue Drivers:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | File / Memory | Redis / Memcached |
+| Sessions | File | Redis / Database |
+| Queue | Sync | Redis / RabbitMQ / SQS |
+| Logging | Single file | Aggregated (ELK, Datadog) |
+
+- [ ] Cache backend is not file-based in production
+- [ ] Session backend is not file-based in production
+- [ ] Queue is not synchronous in production
+
+### 6.4 Redis Health
+
+If using Redis for cache/sessions/queues, monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
+- [ ] No excessive evictions
+
 ---
 
 ## 7. MONITORING

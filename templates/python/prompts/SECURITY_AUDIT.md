@@ -17,8 +17,11 @@ Comprehensive security audit of a Python application (FastAPI/Django). Act as a 
 | 3 | SQL injection | `grep -rn "execute.*f[\"\']SELECT\|\.raw(" src/ --include="*.py"` | Check |
 | 4 | pip audit | `pip-audit` | No vulnerabilities |
 | 5 | Hardcoded keys | `grep -rn "API_KEY.*=.*['\"][a-zA-Z0-9]" src/ --include="*.py"` | Empty |
+| 6 | Secret key | `echo $SECRET_KEY \| wc -c` | >= 32 characters |
+| 7 | Open redirect | `grep -rn "redirect.*request\.\|RedirectResponse.*request" src/ --include="*.py"` | Check validation |
+| 8 | .env public | Verify `.env` not in static/ directory | Not accessible |
 
-If all 5 = OK → Basic security level OK.
+If all 8 = OK → Basic security level OK.
 
 ---
 
@@ -52,6 +55,25 @@ EXEC=$(grep -rn "eval(\|exec(" src/ --include="*.py" 2>/dev/null)
 # 6. Missing Pydantic validation
 ROUTES=$(grep -rn "@app\.\(get\|post\|put\|delete\)" src/ --include="*.py" 2>/dev/null | wc -l)
 echo "Found $ROUTES route definitions (verify Pydantic validation)"
+
+# 7. Secret key strength
+SECRET_LEN=$(echo -n "$SECRET_KEY" | wc -c)
+[ "$SECRET_LEN" -ge 32 ] && echo "✅ Secret: SECRET_KEY is strong (${SECRET_LEN} chars)" || echo "❌ Secret: SECRET_KEY too short (${SECRET_LEN} chars, need >= 32)"
+
+# 8. Open redirect
+REDIRECT=$(grep -rn "RedirectResponse.*request\|redirect.*request\.\|redirect(.*url" src/ --include="*.py" 2>/dev/null | grep -v "test\|spec")
+[ -z "$REDIRECT" ] && echo "✅ Redirect: No open redirect patterns" || echo "🟡 Redirect: Found redirect patterns (verify validation)"
+
+# 9. Dangerous functions
+DANGEROUS=$(grep -rn "pickle\.loads\|yaml\.load\b\|eval(\|exec(" src/ --include="*.py" 2>/dev/null | grep -v "test\|yaml\.safe_load")
+[ -z "$DANGEROUS" ] && echo "✅ Functions: No dangerous functions" || echo "🟡 Functions: Found dangerous functions (verify usage)"
+
+# 10. Dangerous functions (extended)
+DANGEROUS=$(grep -rn "eval(\|exec(\|os\.system(\|subprocess.*shell=True\|__import__(" src/ app/ 2>/dev/null | grep -v "test\|spec\|__pycache__\|\.pyc\|venv")
+[ -z "$DANGEROUS" ] && echo "✅ Functions: No dangerous patterns" || echo "🟡 Functions: Found dangerous function patterns (verify input)"
+
+# 11. .env exposure
+[ ! -f static/.env ] && [ ! -f public/.env ] && echo "✅ .env: Not in public dirs" || echo "❌ .env: Exposed in public directory!"
 
 echo "Done!"
 ```
@@ -375,6 +397,74 @@ settings = Settings()
 - [ ] Using pydantic-settings
 - [ ] .env in .gitignore
 
+### 7.2 Secret Key Validation
+
+```python
+# ❌ Weak secret
+SECRET_KEY = "secret"
+SECRET_KEY = os.environ.get("SECRET_KEY", "changeme")  # Weak fallback!
+
+# ✅ Strong secret with validation (FastAPI)
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    secret_key: str
+
+    @validator('secret_key')
+    def validate_secret_key(cls, v):
+        if len(v) < 32:
+            raise ValueError('SECRET_KEY must be at least 32 characters')
+        return v
+
+# ✅ Django — validate in settings
+SECRET_KEY = os.environ['SECRET_KEY']
+if len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured('SECRET_KEY too short')
+```
+
+- [ ] SECRET_KEY is at least 32 characters (Django default generates 50)
+- [ ] No weak fallback values in `os.environ.get()`
+- [ ] Secret validated on application startup
+- [ ] Different secrets per environment
+
+### 7.3 .env Public Access
+
+`.env` files accessible via web expose all secrets.
+
+- [ ] `.env` is not in static files directory (`static/`, `public/`, `www/`)
+- [ ] `.env` is in `.gitignore`
+- [ ] Web server blocks access to dotfiles (Nginx: `location ~ /\. { deny all; }`)
+- [ ] Verify: `curl -s https://yoursite.com/.env` returns 403/404
+- [ ] Sensitive settings are loaded from environment, not `.env` in production
+
+**Django-specific:**
+
+```python
+# settings.py — never read .env directly in production
+# Use environment variables or a secrets manager
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]  # Not from .env file
+```
+
+### 7.4 Session Timeout
+
+```python
+# FastAPI + JWT
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # ✅ 30 minutes
+
+def create_access_token(data: dict):
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode({**data, "exp": expire}, SECRET_KEY, algorithm="HS256")
+
+# Django
+SESSION_COOKIE_AGE = 1800        # ✅ 30 minutes
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True # Reset on activity
+```
+
+- [ ] JWT `exp` claim is set (recommended: 15-60 minutes)
+- [ ] Django `SESSION_COOKIE_AGE` is configured
+- [ ] Session expires on browser close for sensitive apps
+
 ---
 
 ## 8. RATE LIMITING
@@ -423,7 +513,162 @@ app = FastAPI(debug=DEBUG)
 
 ---
 
-## 10. DEPENDENCY SECURITY
+## 10. Open Redirection
+
+```python
+# ❌ Dangerous — redirect to user-supplied URL
+from fastapi.responses import RedirectResponse
+
+@app.get("/callback")
+async def callback(return_url: str):
+    return RedirectResponse(url=return_url)  # Open redirect!
+
+# Django
+def callback(request):
+    return redirect(request.GET['next'])  # Open redirect!
+
+# ✅ Safe — validate URL (FastAPI)
+from urllib.parse import urlparse
+
+ALLOWED_HOSTS = {"myapp.com", "www.myapp.com"}
+
+@app.get("/callback")
+async def callback(return_url: str):
+    parsed = urlparse(return_url)
+    if parsed.hostname and parsed.hostname not in ALLOWED_HOSTS:
+        return RedirectResponse(url="/")
+    return RedirectResponse(url=return_url)
+
+# ✅ Safe — Django has built-in url_has_allowed_host_and_scheme
+from django.utils.http import url_has_allowed_host_and_scheme
+
+def callback(request):
+    next_url = request.GET.get('next', '/')
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = '/'
+    return redirect(next_url)
+```
+
+- [ ] No `RedirectResponse` / `redirect()` with raw user input
+- [ ] Redirect URLs validated against whitelist
+- [ ] Django uses `url_has_allowed_host_and_scheme`
+
+### 10.2 Host Injection
+
+```python
+# ❌ Dangerous — trusting Host header
+@app.post("/forgot-password")
+async def forgot_password(request: Request, email: str):
+    host = request.headers.get("host")
+    reset_link = f"https://{host}/reset?token={token}"  # Spoofable!
+
+# ✅ Safe — use configured base URL
+BASE_URL = os.environ["APP_URL"]
+
+@app.post("/forgot-password")
+async def forgot_password(email: str):
+    reset_link = f"{BASE_URL}/reset?token={token}"
+
+# ✅ Django — ALLOWED_HOSTS validates Host header
+ALLOWED_HOSTS = ['myapp.com', 'www.myapp.com']  # settings.py
+```
+
+- [ ] Password reset links use configured `APP_URL`, not Host header
+- [ ] Django `ALLOWED_HOSTS` is set (not `['*']` in production)
+- [ ] FastAPI uses configured base URL for all generated links
+
+### 10.3 HSTS (HTTP Strict Transport Security)
+
+```python
+# FastAPI — middleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+app.add_middleware(HTTPSRedirectMiddleware)
+
+# Or custom HSTS header
+@app.middleware("http")
+async def add_hsts(request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    return response
+
+# Django
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = True
+```
+
+- [ ] HSTS header configured
+- [ ] `max-age` >= 31536000 (1 year)
+- [ ] Django: `SECURE_HSTS_SECONDS` and `SECURE_SSL_REDIRECT` set
+
+### 10.4 Dangerous Python Functions
+
+```python
+# ❌ CRITICAL — Remote Code Execution
+eval(user_input)
+exec(user_input)
+
+# ❌ CRITICAL — Deserialization attack
+import pickle
+data = pickle.loads(user_input)  # Arbitrary code execution!
+
+# ❌ CRITICAL — YAML injection
+import yaml
+data = yaml.load(user_input)     # Code execution via !!python/object
+
+# ✅ Safe alternatives
+import json
+data = json.loads(user_input)    # JSON is safe
+
+import yaml
+data = yaml.safe_load(user_input)  # safe_load blocks dangerous tags
+
+import ast
+value = ast.literal_eval(user_input)  # Only literals, no code
+```
+
+- [ ] No `eval()` / `exec()` with user input
+- [ ] No `pickle.loads()` with untrusted data
+- [ ] `yaml.safe_load()` instead of `yaml.load()`
+- [ ] No `os.system()` or `subprocess.run(shell=True)` with user input
+
+### 10.5 Dangerous Functions
+
+Some Python built-in functions allow arbitrary code execution.
+
+```python
+# ❌ Never use with user input
+eval(user_input)                    # Arbitrary code execution
+exec(user_input)                    # Arbitrary code execution
+os.system(user_input)               # Shell injection
+subprocess.call(user_input, shell=True)  # Shell injection
+__import__(user_input)              # Arbitrary module import
+compile(user_input, '<string>', 'exec')  # Code compilation
+
+# ✅ Safe alternatives
+import ast
+ast.literal_eval(user_input)        # Only literals (strings, numbers, lists)
+subprocess.run(["cmd", arg], shell=False)  # No shell injection
+```
+
+- [ ] No `eval()` / `exec()` with user-controlled input
+- [ ] No `os.system()` or `subprocess` with `shell=True` and user input
+- [ ] No `__import__()` with user-controlled module names
+- [ ] If dynamic evaluation needed, use `ast.literal_eval()` for data only
+
+### 10.6 File Permissions
+
+- [ ] `.env` file permissions: `600` or `640`
+- [ ] Log directory is not world-writable
+- [ ] Upload directory does not allow script execution
+- [ ] Application runs as non-root user
+- [ ] Django `SECRET_KEY` file (if used) has restricted permissions
+
+---
+
+## 11. DEPENDENCY SECURITY
 
 ```bash
 # pip-audit
@@ -438,7 +683,7 @@ safety check
 
 ---
 
-## 11. FILE UPLOAD
+## 12. FILE UPLOAD
 
 ```python
 # CRITICAL — no validation
@@ -469,7 +714,7 @@ async def upload(file: UploadFile):
 
 ---
 
-## 12. REPORT FORMAT
+## 13. REPORT FORMAT
 
 ```markdown
 # Security Audit Report — [Project Name]
@@ -503,7 +748,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 13. ACTIONS
+## 14. ACTIONS
 
 1. **Quick Check** — go through 5 points
 2. **Scan** — go through all sections

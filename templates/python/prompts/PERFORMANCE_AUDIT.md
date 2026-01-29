@@ -249,6 +249,87 @@ process_site.delay(site_id=site.id)
 - [ ] Read replicas (if needed)
 - [ ] Query monitoring
 
+### 6.3 Production Readiness
+
+Development settings in production degrade performance significantly.
+
+```bash
+# Check DEBUG setting (Django)
+python -c "from django.conf import settings; print('DEBUG:', settings.DEBUG)"
+# Must be False in production!
+
+# Check for debug tools in requirements
+grep -iE "django-debug-toolbar|ipdb|pdb|debugpy" requirements*.txt
+```
+
+- [ ] `DEBUG = False` in production (Django) / debug mode disabled (FastAPI)
+- [ ] No debug toolbar or profiling tools in production
+- [ ] No `pdb` / `ipdb` / `breakpoint()` left in production code
+- [ ] Logging level is `WARNING` or higher, not `DEBUG`
+- [ ] WSGI server used (Gunicorn/uWSGI), not `python manage.py runserver`
+
+**Cache/Session/Queue Drivers:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | LocMemCache / DummyCache | Redis (django-redis) |
+| Sessions | File / DB | Redis |
+| Queue | Sync (Celery eager) | Redis / RabbitMQ (Celery) |
+| Logging | Console DEBUG | Structured (JSON → aggregator) |
+
+**Django:**
+
+```python
+# settings/production.py
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ["REDIS_URL"],
+    }
+}
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+CELERY_TASK_ALWAYS_EAGER = False  # Must be False in production!
+```
+
+**FastAPI:**
+
+```python
+# Use lifespan to initialize Redis connection pool
+from redis.asyncio import Redis
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.redis = Redis.from_url(os.environ["REDIS_URL"])
+    yield
+    await app.state.redis.close()
+```
+
+- [ ] Django `CACHES` backend is not `LocMemCache` or `DummyCache` in production
+- [ ] `CELERY_TASK_ALWAYS_EAGER = False` in production
+- [ ] Session backend is not file-based in production
+
+### 6.4 Redis Health
+
+If using Redis for cache/sessions/queues (Celery), monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for Celery broker)
+- [ ] No excessive evictions
+
 ---
 
 ## 7. MONITORING

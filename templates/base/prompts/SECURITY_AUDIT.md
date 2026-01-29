@@ -57,15 +57,42 @@ Phase 1 (understanding) → Phase 2 (finding vulnerabilities) → Phase 3 (repor
 
 **Before full audit — go through these critical points:**
 
-| # | Check | Expected |
-| --- | ------- | ---------- |
-| 1 | Debug mode disabled | `false` in production |
-| 2 | No hardcoded secrets in code | All keys in env |
-| 3 | No SQL injection patterns | Parameterized queries |
-| 4 | Dependency audit | No critical vulnerabilities |
-| 5 | Auth on sensitive endpoints | All protected |
+| # | Check | How to verify | Expected |
+| --- | ------- | ------------- | ---------- |
+| 1 | Debug mode disabled | Check production config | `false` in production |
+| 2 | No hardcoded secrets in code | `grep -rn` for keys/passwords | All keys in env |
+| 3 | No SQL injection patterns | Review query construction | Parameterized queries |
+| 4 | Dependency audit | Run package audit | No critical vulnerabilities |
+| 5 | Auth on sensitive endpoints | Review route middleware | All protected |
+| 6 | .env public access | Verify `.env` is not web-accessible | Not accessible |
+| 7 | Secret key | Verify app secret key is set and strong | >= 32 characters |
+| 8 | Open redirect | `grep -rn "redirect.*request\|redirect.*params\|redirect.*url" src/` | Check validation |
 
-If all 5 = pass → Basic security level OK.
+If all checks pass → Basic security level OK.
+
+### Auto-Check Script
+
+```bash
+#!/bin/bash
+echo "=== Security Quick Check ==="
+
+# 8. .env exposure
+[ ! -f public/.env ] && echo "✅ .env: Not in public/" || echo "❌ .env: Exposed in public/!"
+
+# 9. Open redirect patterns
+REDIRECT=$(grep -rn "redirect.*req\.\|redirect.*params\.\|redirect.*url" src/ 2>/dev/null | grep -v "test\|spec")
+[ -z "$REDIRECT" ] && echo "✅ Redirect: No open redirect patterns" || echo "🟡 Redirect: Found redirect patterns (verify validation)"
+
+# 10. Command injection
+CMD=$(grep -rn "exec(\|system(\|spawn(" src/ 2>/dev/null | grep -v "node_modules\|test\|spec")
+[ -z "$CMD" ] && echo "✅ Commands: No dangerous exec/system" || echo "🟡 Commands: Found exec/system calls (verify input)"
+
+# 11. Deserialization patterns
+DESER=$(grep -rn "deserialize\|unserialize\|pickle\.load\|Marshal\.load\|yaml\.load\|eval(" src/ 2>/dev/null | grep -v "test\|spec\|node_modules")
+[ -z "$DESER" ] && echo "✅ Deserialization: No unsafe patterns" || echo "🟡 Deserialization: Found patterns (verify input source)"
+
+echo "Done!"
+```
 
 ---
 
@@ -199,6 +226,14 @@ If all 5 = pass → Basic security level OK.
 - [ ] Paths are sanitized
 - [ ] Check that path is in allowed directory
 
+### 5.3 Session Timeout
+
+Sessions that never expire increase the window for session hijacking.
+
+- [ ] Session timeout is configured (recommended: 15-30 minutes for sensitive apps)
+- [ ] Idle session timeout is configured
+- [ ] Session is invalidated on logout
+
 ---
 
 ## 6. API SECURITY
@@ -237,6 +272,18 @@ If all 5 = pass → Basic security level OK.
 - [ ] Referrer-Policy: strict-origin-when-cross-origin
 - [ ] Content-Security-Policy (if applicable)
 
+### 8.1 HSTS (HTTP Strict Transport Security)
+
+Without HSTS, users can be downgraded from HTTPS to HTTP via man-in-the-middle.
+
+```text
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+```
+
+- [ ] HSTS header is set in production
+- [ ] `max-age` >= 31536000 (1 year)
+- [ ] `includeSubDomains` is set if subdomains also use HTTPS
+
 ---
 
 ## 9. SHARP EDGES (API Footguns)
@@ -269,7 +316,33 @@ function verify_signature($sig, $data, $key) {
 }
 ```
 
-### 9.3 Configuration Cliffs
+### 9.3 Secret Key Validation
+
+Application secret key must be strong and unique per environment.
+
+- [ ] Secret key is at least 32 characters
+- [ ] Secret key is not a default value (`secret`, `changeme`, `password`)
+- [ ] Secret key is different across environments (dev/staging/production)
+- [ ] Secret key is loaded from environment variable, not hardcoded
+
+### 9.4 .env Public Access
+
+`.env` files accessible via web expose all secrets.
+
+- [ ] `.env` is not in web-accessible directory (public/, static/, www/)
+- [ ] Web server blocks access to dotfiles (`.env`, `.git/`)
+- [ ] Verify: `curl -s https://yoursite.com/.env` returns 403/404
+
+### 9.5 File Permissions
+
+Incorrect file permissions expose sensitive data or allow unauthorized modification.
+
+- [ ] Configuration files are not world-readable (`chmod 640` or stricter)
+- [ ] Log directory is not world-writable
+- [ ] Upload directory does not allow script execution
+- [ ] `.env` file permissions: `600` or `640`
+
+### 9.6 Configuration Cliffs
 
 - [ ] One wrong config doesn't break all security?
 - [ ] Typos in config values validated?
@@ -280,7 +353,7 @@ function verify_signature($sig, $data, $key) {
 verify_ssl: fasle  # Should be "false", but accepted as truthy?
 ```
 
-### 9.4 Stringly-Typed Security
+### 9.7 Stringly-Typed Security
 
 - [ ] Permissions not strings ("read,write,admin")?
 - [ ] Roles are enum, not arbitrary strings?
@@ -288,7 +361,62 @@ verify_ssl: fasle  # Should be "false", but accepted as truthy?
 
 ---
 
-## 10. SELF-CHECK
+## 10. INJECTION ATTACKS
+
+### 10.1 Open Redirection
+
+Redirecting users to unvalidated URLs enables phishing attacks.
+
+```text
+# ❌ Dangerous — redirect to user-supplied URL
+redirect(request.params.url)
+redirect(request.query.returnUrl)
+
+# ✅ Safe — whitelist or relative-only
+# Validate URL is relative or belongs to allowed domain
+```
+
+- [ ] No redirects using raw user input
+- [ ] Redirect URLs are validated against a whitelist or restricted to relative paths
+- [ ] External URLs require explicit allow-list
+
+### 10.2 Host Injection
+
+If the application trusts the HTTP Host header without validation, attackers can inject malicious hosts for password reset links, cache poisoning, etc.
+
+- [ ] Application validates or restricts allowed Host values
+- [ ] Password reset and email links use a configured base URL, not the Host header
+- [ ] Web server or proxy normalizes the Host header
+
+### 10.3 Unsafe Deserialization
+
+Deserializing untrusted data can lead to remote code execution.
+
+```text
+# ❌ Dangerous — deserializing user-controlled data
+deserialize(user_input)
+load(user_data)
+
+# ✅ Safe — use data-only formats
+JSON.parse(user_input)  # No code execution
+```
+
+- [ ] No deserialization of untrusted input (user data, cookies, queue payloads)
+- [ ] If deserialization is needed, use safe formats (JSON, MessagePack)
+- [ ] Deserialization libraries are updated to latest versions
+
+### 10.4 Dangerous Functions
+
+Some built-in functions allow arbitrary code execution and should never receive user input.
+
+- [ ] No `eval()` or equivalent with user input
+- [ ] No dynamic code execution (`exec`, `system`, `spawn`) with user-controlled arguments
+- [ ] If shell commands are needed, arguments are escaped/whitelisted
+- [ ] No dynamic method/function calls based on user input
+
+---
+
+## 11. SELF-CHECK
 
 **Before adding vulnerability to report:**
 
@@ -301,7 +429,7 @@ verify_ssl: fasle  # Should be "false", but accepted as truthy?
 
 ---
 
-## 11. REPORT FORMAT
+## 12. REPORT FORMAT
 
 Create file `.claude/reports/SECURITY_AUDIT_[DATE].md`:
 
@@ -336,7 +464,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 12. ACTIONS
+## 13. ACTIONS
 
 1. **Define strategy** — SMALL/MEDIUM/LARGE codebase
 2. **Quick Check** — go through 5 critical points

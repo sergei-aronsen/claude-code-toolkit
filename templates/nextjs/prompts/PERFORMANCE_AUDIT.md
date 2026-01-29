@@ -658,9 +658,65 @@ async function getProjects() {
 
 ---
 
-## 8. RUNTIME PERFORMANCE
+## 8. PRODUCTION INFRASTRUCTURE
 
-### 8.1 React Performance
+### 8.1 Production Readiness
+
+Development settings in production degrade performance significantly.
+
+```bash
+# Check NODE_ENV
+echo $NODE_ENV  # Must be "production"
+
+# Check for debug packages in production
+grep -E "console\.(log|debug)" src/ app/ -rn --include="*.ts" --include="*.tsx" | grep -v "test\|spec" | head -20
+```
+
+- [ ] `NODE_ENV=production` in production
+- [ ] No `console.log` / `console.debug` in production code (use proper logger)
+- [ ] No development-only packages in production bundle (React DevTools, debug, etc.)
+- [ ] Source maps not served to clients (or uploaded to error tracker only)
+
+**Cache/Session/Queue Drivers:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | In-memory | Redis / Memcached |
+| Sessions | In-memory / JWT only | Redis-backed sessions |
+| Queue | Sync (inline) | Redis / BullMQ / SQS |
+| Logging | console.log | Structured (Pino/Winston → aggregator) |
+
+- [ ] Cache backend is not in-memory only in production (won't survive restart)
+- [ ] Session store is persistent (not in-memory)
+- [ ] Background jobs use a proper queue, not inline execution
+
+### 8.2 Redis Health
+
+If using Redis for cache/sessions/queues, monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
+- [ ] No excessive evictions
+
+---
+
+## 9. RUNTIME PERFORMANCE
+
+### 9.1 React Performance
 
 ```tsx
 // ❌ Bad — unnecessary re-renders
@@ -698,7 +754,7 @@ const ProjectCard = memo(function ProjectCard({ project, onClick }) {
 - [ ] useMemo for expensive computations
 - [ ] memo for components with objects/functions in props
 
-### 8.2 List Virtualization
+### 9.2 List Virtualization
 
 ```tsx
 // ❌ Bad — rendering all elements
@@ -734,7 +790,7 @@ function FileList({ files }) {
 
 - [ ] Virtualization for lists > 100 items
 
-### 8.3 Debounce & Throttle
+### 9.3 Debounce & Throttle
 
 ```typescript
 // ❌ Bad — request on every keystroke
@@ -764,7 +820,7 @@ function Search() {
 - [ ] Search inputs debounced
 - [ ] AI prompts debounced
 
-### 8.4 Polling Analysis
+### 9.4 Polling Analysis
 
 Frequent polling from frontend can overwhelm API routes and database.
 
@@ -806,7 +862,7 @@ export async function GET() {
 
 ---
 
-## 9. SELF-CHECK
+## 10. SELF-CHECK
 
 **Before adding an issue to the report:**
 
@@ -827,7 +883,7 @@ export async function GET() {
 
 ---
 
-## 10. REPORT FORMAT
+## 11. REPORT FORMAT
 
 ```markdown
 # Performance Audit Report — [Project Name]
@@ -863,7 +919,7 @@ Date: [date]
 
 ---
 
-## 11. ACTIONS
+## 12. ACTIONS
 
 1. **Measure** — Web Vitals, bundle size, DB queries
 2. **Prioritize** — impact on UX

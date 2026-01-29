@@ -17,8 +17,11 @@ Comprehensive security audit of a Node.js application (Express/Fastify). Act as 
 | 3 | SQL injection | `grep -rn "SELECT.*\${\|query(.*\${" src/ --include="*.ts"` | Empty |
 | 4 | npm audit | `npm audit --production` | No critical/high |
 | 5 | Hardcoded keys | `grep -rn "API_KEY.*=.*['\"][a-zA-Z0-9]" src/ --include="*.ts"` | Empty |
+| 6 | Secret key | `echo $JWT_SECRET \| wc -c` | >= 32 characters |
+| 7 | Open redirect | `grep -rn "redirect.*req\.\|redirect.*query\." src/ --include="*.ts"` | Check validation |
+| 8 | .env public | Verify `.env` not in public/ or dist/ | Not accessible |
 
-If all 5 = OK → Basic security level OK.
+If all 8 = OK → Basic security level OK.
 
 ---
 
@@ -52,6 +55,22 @@ EXEC=$(grep -rn "eval(\|exec(\|execSync(" src/ --include="*.ts" 2>/dev/null)
 # 6. Missing Zod validation
 ZOD=$(grep -rn "req.body\|req.params\|req.query" src/ --include="*.ts" 2>/dev/null | grep -v "\.parse\|\.safeParse\|validate")
 [ -z "$ZOD" ] && echo "Validation: All inputs validated" || echo "Validation: Unvalidated inputs found"
+
+# 7. Secret key strength
+SECRET_LEN=$(echo -n "$JWT_SECRET" | wc -c)
+[ "$SECRET_LEN" -ge 32 ] && echo "✅ Secret: JWT_SECRET is strong (${SECRET_LEN} chars)" || echo "❌ Secret: JWT_SECRET too short (${SECRET_LEN} chars, need >= 32)"
+
+# 8. Open redirect
+REDIRECT=$(grep -rn "res.redirect.*req\.\|redirect.*req.query\|redirect.*req.params" src/ --include="*.ts" 2>/dev/null)
+[ -z "$REDIRECT" ] && echo "✅ Redirect: No open redirect patterns" || echo "🟡 Redirect: Found redirect patterns (verify validation)"
+
+# 9. Dangerous functions
+DANGEROUS=$(grep -rn "eval(\|new Function(\|child_process\.exec(\|require(.*req\.\|vm\.run" src/ 2>/dev/null | grep -v "node_modules\|test\|spec")
+[ -z "$DANGEROUS" ] && echo "✅ Functions: No dangerous patterns" || echo "🟡 Functions: Found dangerous function patterns (verify input)"
+
+# 10. Unsafe deserialization
+DESER=$(grep -rn "node-serialize\|unserialize\|yaml\.load" src/ 2>/dev/null | grep -v "node_modules\|test\|spec")
+[ -z "$DESER" ] && echo "✅ Deserialization: No unsafe patterns" || echo "🟡 Deserialization: Found patterns (verify safety)"
 
 echo "Done!"
 ```
@@ -223,6 +242,52 @@ app.post('/convert', async (req, res) => {
 - [ ] execFile() used instead of exec()
 - [ ] Filenames sanitized via path.basename()
 
+### 3.2 Unsafe Deserialization
+
+Deserializing untrusted data in Node.js can lead to remote code execution.
+
+```javascript
+// ❌ Dangerous — node-serialize, js-yaml with unsafe loader
+const serialize = require('node-serialize');
+serialize.unserialize(userInput);  // RCE!
+
+const yaml = require('js-yaml');
+yaml.load(userInput);  // Unsafe by default in older versions
+
+// ✅ Safe
+JSON.parse(userInput);                    // Data-only
+yaml.load(userInput, { schema: yaml.JSON_SCHEMA });  // Safe schema
+```
+
+- [ ] No `node-serialize` package (known RCE vulnerability)
+- [ ] `js-yaml` uses safe schema (`JSON_SCHEMA` or `FAILSAFE_SCHEMA`)
+- [ ] No `eval()` or `vm.runInContext()` with user data
+- [ ] Cookie data is not deserialized without signature verification
+
+### 3.3 Dangerous Functions
+
+Some Node.js functions allow arbitrary code execution.
+
+```javascript
+// ❌ Never use with user input
+eval(userInput)
+new Function(userInput)
+child_process.exec(userInput)        // Shell injection!
+setTimeout(userInput, 0)             // String form executes code
+require(userInput)                   // Arbitrary module load
+vm.runInContext(userInput, context)   // Sandbox escape possible
+
+// ✅ Safe alternatives
+child_process.execFile('cmd', [arg1, arg2])  // No shell
+child_process.spawn('cmd', [arg1], { shell: false })
+```
+
+- [ ] No `eval()` with user-controlled input
+- [ ] No `new Function()` with user input
+- [ ] No `child_process.exec()` with user input (use `execFile` or `spawn`)
+- [ ] No `require()` with dynamic user-controlled paths
+- [ ] No `vm` module with user-controlled code
+
 ---
 
 ## 4. AUTHENTICATION
@@ -359,6 +424,31 @@ app.use(helmet.contentSecurityPolicy({
 - [ ] helmet.js installed and configured
 - [ ] CSP configured
 
+### 6.3 HSTS (HTTP Strict Transport Security)
+
+helmet.js enables HSTS by default, but verify configuration.
+
+```typescript
+// ✅ Verify helmet HSTS settings
+app.use(helmet({
+  hsts: {
+    maxAge: 31536000,        // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+}));
+
+// Or manually
+app.use((req, res, next) => {
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  next();
+});
+```
+
+- [ ] HSTS enabled (helmet enables by default)
+- [ ] `max-age` >= 31536000
+- [ ] `includeSubDomains` set if applicable
+
 ---
 
 ## 7. RATE LIMITING
@@ -406,6 +496,49 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 - [ ] All keys through process.env
 - [ ] .env in .gitignore
 
+### 8.2 Secret Key Validation
+
+```typescript
+// ❌ Weak secret
+const JWT_SECRET = 'secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback'; // Fallback is weak!
+
+// ✅ Strong secret with validation
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters');
+}
+```
+
+- [ ] JWT/session secret is at least 32 characters
+- [ ] No weak fallback values
+- [ ] Secret validation on application startup
+- [ ] Different secrets per environment
+
+### 8.3 Session Timeout
+
+```typescript
+// express-session
+app.use(session({
+  cookie: {
+    maxAge: 30 * 60 * 1000,  // ✅ 30 minutes
+    secure: true,
+    httpOnly: true,
+    sameSite: 'lax',
+  },
+  rolling: true,  // ✅ Reset timeout on activity
+}));
+
+// JWT — set short expiration
+const token = jwt.sign(payload, secret, {
+  expiresIn: '30m',  // ✅ 30 minutes
+});
+```
+
+- [ ] Session/cookie `maxAge` is configured (not infinite)
+- [ ] JWT `expiresIn` is set (recommended: 15-60 minutes)
+- [ ] Refresh token mechanism for longer sessions
+
 ---
 
 ## 9. DEPENDENCY SECURITY
@@ -449,6 +582,78 @@ const upload = multer({
 - [ ] File size is limited
 - [ ] Filename is generated (not user input)
 
+### 10.1 Open Redirection
+
+```typescript
+// ❌ Dangerous — redirect to user-supplied URL
+app.get('/callback', (req, res) => {
+  res.redirect(req.query.returnUrl as string); // Open redirect!
+});
+
+// ✅ Safe — validate URL
+const ALLOWED_HOSTS = ['myapp.com', 'www.myapp.com'];
+
+app.get('/callback', (req, res) => {
+  const returnUrl = req.query.returnUrl as string;
+  try {
+    const url = new URL(returnUrl, 'https://myapp.com');
+    if (!ALLOWED_HOSTS.includes(url.hostname)) {
+      return res.redirect('/');
+    }
+    res.redirect(returnUrl);
+  } catch {
+    res.redirect('/');
+  }
+});
+```
+
+- [ ] No `res.redirect()` with raw user input
+- [ ] Redirect URLs validated against whitelist or restricted to relative paths
+
+### 10.2 Host Injection
+
+```typescript
+// ❌ Dangerous — trusting Host header
+app.post('/forgot-password', (req, res) => {
+  const host = req.headers.host;
+  const resetLink = `https://${host}/reset?token=${token}`; // Spoofable!
+  sendEmail(user.email, resetLink);
+});
+
+// ✅ Safe — use configured base URL
+const BASE_URL = process.env.APP_URL;
+
+app.post('/forgot-password', (req, res) => {
+  const resetLink = `${BASE_URL}/reset?token=${token}`;
+  sendEmail(user.email, resetLink);
+});
+```
+
+- [ ] Password reset links use configured `APP_URL`, not `req.headers.host`
+- [ ] Email links use configured base URL
+- [ ] Consider using a host validation middleware
+
+### 10.3 .env Public Access
+
+```typescript
+// ❌ Bad — serving static files from root
+app.use(express.static('.'));  // Exposes .env!
+
+// ✅ Good — serve only public/ directory
+app.use(express.static('public'));
+```
+
+- [ ] `.env` is not served by static file middleware
+- [ ] Static file serving restricted to specific directory (public/, dist/, static/)
+- [ ] `.env` in `.gitignore`
+
+### 10.4 File Permissions
+
+- [ ] `.env` file permissions: `600` or `640`
+- [ ] Log directory is not world-writable
+- [ ] Upload directory does not allow script execution
+- [ ] Node.js process runs as non-root user
+
 ---
 
 ## 11. REPORT FORMAT
@@ -487,7 +692,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ## 12. ACTIONS
 
-1. **Quick Check** — go through 5 points
+1. **Quick Check** — go through 8 points
 2. **Scan** — go through all sections
 3. **Classify** — Critical → Low
 4. **Document** — file, line, code

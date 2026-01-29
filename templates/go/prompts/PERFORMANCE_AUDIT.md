@@ -245,6 +245,57 @@ task := asynq.NewTask("process_site", payload)
 - [ ] Read replicas (if needed)
 - [ ] Query monitoring
 
+### 6.3 Production Readiness
+
+Debug settings in production degrade performance.
+
+```bash
+# Check for debug flags
+grep -rn "log\.SetFlags\|log\.SetOutput\|debug\|pprof" . --include="*.go" | grep -v "test\|vendor\|_test.go"
+```
+
+- [ ] Debug/verbose logging disabled in production (use structured logger: zerolog, zap)
+- [ ] `net/http/pprof` endpoint not exposed publicly (restrict to internal network)
+- [ ] Race detector not enabled in production binary (`-race` flag)
+- [ ] Build with optimizations (`go build` without `-gcflags="-N -l"`)
+- [ ] `GOMAXPROCS` set appropriately for container environment
+
+**Cache/Session/Queue Patterns:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | In-memory map | Redis (go-redis) |
+| Sessions | In-memory | Redis / Database |
+| Queue | Channel (in-process) | Redis / NATS / RabbitMQ |
+| Logging | fmt.Println | zerolog / zap to aggregator |
+
+- [ ] Cache survives restarts (not in-process `sync.Map` for persistent data)
+- [ ] Session store is persistent (Redis, not in-memory map)
+- [ ] Background jobs use proper queue, not just goroutines (which die on restart)
+
+### 6.4 Redis Health
+
+If using Redis (go-redis) for cache/sessions/queues, monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
+- [ ] No excessive evictions
+- [ ] Connection pool size configured (`PoolSize` in go-redis)
+
 ---
 
 ## 7. MONITORING

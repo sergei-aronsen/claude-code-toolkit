@@ -17,8 +17,11 @@ Comprehensive security audit of a Next.js application. Act as a Senior Security 
 | 3 | SQL injection | `grep -rn "SELECT.*\${" lib/ app/ --include="*.ts"` | Empty |
 | 4 | npm audit | `npm audit --production` | No critical/high |
 | 5 | Env exposure | `grep -rn "NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*SECRET" .env*` | Empty |
+| 6 | Secret key | `grep "NEXTAUTH_SECRET\|JWT_SECRET" .env*` | Strong, >= 32 chars |
+| 7 | Open redirect | `grep -rn "redirect.*searchParams\|redirect.*req.query" app/ lib/ --include="*.ts"` | Check validation |
+| 8 | .env public | `grep -rn "NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*PASSWORD" .env*` | Empty |
 
-If all 5 = OK → Basic security level OK.
+If all 8 = OK → Basic security level OK.
 
 ---
 
@@ -52,6 +55,26 @@ EXPOSED=$(grep -rn "NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*PASSW
 # 6. dangerouslySetInnerHTML
 DANGEROUS=$(grep -rn "dangerouslySetInnerHTML" app/ components/ --include="*.tsx" 2>/dev/null | wc -l)
 [ "$DANGEROUS" -eq 0 ] && echo "✅ XSS: No dangerouslySetInnerHTML" || echo "🟡 XSS: $DANGEROUS uses (verify sanitization)"
+
+# 7. NEXTAUTH_SECRET strength
+SECRET=$(grep "NEXTAUTH_SECRET=" .env* 2>/dev/null | head -1 | cut -d'=' -f2)
+[ ${#SECRET} -ge 32 ] && echo "✅ Secret: NEXTAUTH_SECRET is strong" || echo "❌ Secret: NEXTAUTH_SECRET too short (need >= 32 chars)"
+
+# 8. Public env with secrets
+PUB_SECRETS=$(grep -rn "NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*PASSWORD" .env* 2>/dev/null | grep -v "NEXT_PUBLIC_STRIPE_PUBLISHABLE\|NEXT_PUBLIC_.*_PUBLIC_KEY")
+[ -z "$PUB_SECRETS" ] && echo "✅ Env: No secrets in NEXT_PUBLIC_*" || echo "❌ Env: Secrets exposed in NEXT_PUBLIC_*!"
+
+# 9. Open redirect
+REDIRECT=$(grep -rn "redirect.*searchParams\|redirect.*req.query\|redirect.*url" app/ lib/ --include="*.ts" --include="*.tsx" 2>/dev/null | grep -v "node_modules\|test")
+[ -z "$REDIRECT" ] && echo "✅ Redirect: No open redirect patterns" || echo "🟡 Redirect: Found redirect patterns (verify validation)"
+
+# 10. Dangerous functions
+DANGEROUS_FN=$(grep -rn "eval(\|new Function(\|setTimeout.*request\|import(" src/ app/ 2>/dev/null | grep -v "node_modules\|test\|spec\|\.next")
+[ -z "$DANGEROUS_FN" ] && echo "✅ Functions: No dangerous patterns" || echo "🟡 Functions: Found eval/Function patterns (verify input)"
+
+# 11. .env exposure
+EXPOSED_ENV=$(grep -rn "NEXT_PUBLIC_" .env* 2>/dev/null | grep -iE "secret|password|key|token|private")
+[ -z "$EXPOSED_ENV" ] && echo "✅ Env: No secrets in NEXT_PUBLIC_" || echo "❌ Env: Secrets exposed via NEXT_PUBLIC_!"
 
 echo "Done!"
 ```
@@ -289,6 +312,24 @@ export async function POST(request: Request) {
 - [ ] No direct execution of user commands
 - [ ] Whitelist of allowed commands
 
+### 2.4 Dangerous Functions
+
+Some JavaScript constructs allow arbitrary code execution.
+
+```javascript
+// ❌ Dangerous — never use with user input
+eval(userInput)
+new Function(userInput)
+setTimeout(userInput, 0)  // string form
+import(userInput)          // dynamic import from user
+```
+
+- [ ] No `eval()` with user-controlled input
+- [ ] No `new Function()` with user input
+- [ ] No `setTimeout`/`setInterval` with string arguments from user
+- [ ] No dynamic `import()` with user-controlled paths
+- [ ] Server Actions do not expose internal logic through user-controlled function names
+
 ---
 
 ## 3. CROSS-SITE SCRIPTING (XSS)
@@ -411,6 +452,57 @@ export const config = {
 
 - [ ] middleware.ts protects needed routes
 - [ ] No access to others' data
+
+### 4.3 Secret Key Validation
+
+```typescript
+// ❌ Weak or missing secret
+// .env
+NEXTAUTH_SECRET=secret
+
+// ✅ Strong secret
+// Generate: openssl rand -base64 32
+NEXTAUTH_SECRET=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
+```
+
+- [ ] `NEXTAUTH_SECRET` is at least 32 characters
+- [ ] `NEXTAUTH_SECRET` is not a default value (`secret`, `changeme`)
+- [ ] JWT secrets are loaded from env, not hardcoded
+- [ ] Different secrets per environment (dev/staging/production)
+
+### 4.4 Session Timeout
+
+```typescript
+// next-auth options
+export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 60,        // ✅ 30 minutes
+    updateAge: 5 * 60,      // ✅ Refresh every 5 min
+  },
+};
+```
+
+- [ ] Session `maxAge` is configured (not infinite)
+- [ ] Recommended: 15-30 minutes for sensitive apps
+- [ ] Session is invalidated on logout
+
+### 4.5 .env Public Access
+
+`.env` files accessible via web expose all secrets. Next.js serves from `public/` directory.
+
+- [ ] `.env` files are not in `public/` directory
+- [ ] `.env` is in `.gitignore`
+- [ ] Only `NEXT_PUBLIC_*` variables are exposed to the client
+- [ ] Sensitive variables (API keys, DB credentials) do NOT have `NEXT_PUBLIC_` prefix
+- [ ] Verify: `curl -s https://yoursite.com/.env` returns 403/404
+
+**Next.js-specific:**
+
+```bash
+# Check for exposed secrets in client bundle
+grep -rn "NEXT_PUBLIC_" .env* | grep -iE "secret|password|key|token"
+```
 
 ---
 
@@ -588,6 +680,19 @@ NEXT_PUBLIC_ANALYTICS_ID=GA-xxxxx
 - [ ] Only safe variables have `NEXT_PUBLIC_`
 - [ ] API keys, database URLs — without `NEXT_PUBLIC_`
 
+### 6.3 Environment Variable Exposure
+
+Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Secrets must NOT use this prefix.
+
+```bash
+# Find potentially exposed secrets
+grep -rn "NEXT_PUBLIC_.*SECRET\|NEXT_PUBLIC_.*KEY\|NEXT_PUBLIC_.*PASSWORD" .env*
+```
+
+- [ ] No secrets in `NEXT_PUBLIC_*` variables
+- [ ] API keys that must be public use `NEXT_PUBLIC_` prefix (e.g., Stripe publishable key)
+- [ ] Server-side secrets are only in `process.env` (no `NEXT_PUBLIC_` prefix)
+
 ---
 
 ## 8. FILE HANDLING
@@ -698,6 +803,74 @@ const allowedOrigins = [
 ```
 
 - [ ] CORS not `*` for sensitive API
+
+### 8.3 HSTS (HTTP Strict Transport Security)
+
+```typescript
+// next.config.ts
+const nextConfig = {
+  async headers() {
+    return [{
+      source: '/(.*)',
+      headers: [
+        {
+          key: 'Strict-Transport-Security',
+          value: 'max-age=31536000; includeSubDomains; preload',
+        },
+      ],
+    }];
+  },
+};
+```
+
+- [ ] HSTS header configured in `next.config.ts` or web server
+- [ ] `max-age` >= 31536000 (1 year)
+
+### 8.4 Open Redirection
+
+```typescript
+// ❌ Dangerous — redirect to user-supplied URL
+import { redirect } from 'next/navigation';
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const returnUrl = url.searchParams.get('returnUrl');
+  redirect(returnUrl!); // Open redirect!
+}
+
+// ✅ Safe — validate URL
+const ALLOWED_HOSTS = ['myapp.com', 'www.myapp.com'];
+
+function isSafeRedirect(url: string): boolean {
+  try {
+    const parsed = new URL(url, 'https://myapp.com');
+    return ALLOWED_HOSTS.includes(parsed.hostname) || url.startsWith('/');
+  } catch {
+    return false;
+  }
+}
+```
+
+- [ ] No redirects using raw `searchParams` or query values
+- [ ] Redirect URLs validated against whitelist or restricted to relative paths
+- [ ] `callbackUrl` in NextAuth is validated
+
+### 8.5 Host Injection
+
+```typescript
+// ❌ Dangerous — trusting Host header
+export async function GET(request: Request) {
+  const host = request.headers.get('host');
+  const resetLink = `https://${host}/reset?token=${token}`; // Spoofable!
+}
+
+// ✅ Safe — use configured base URL
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL;
+const resetLink = `${BASE_URL}/reset?token=${token}`;
+```
+
+- [ ] Password reset and email links use configured `NEXT_PUBLIC_APP_URL`, not Host header
+- [ ] `next.config` has `allowedDevOrigins` or host validation configured
 
 ---
 

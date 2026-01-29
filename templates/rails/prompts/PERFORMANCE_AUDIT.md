@@ -458,7 +458,75 @@ grep -rn "setInterval\|turbo_stream_from\|polling" app/javascript/ app/views/
 
 ---
 
-## 6. SELF-CHECK
+## 6. PRODUCTION INFRASTRUCTURE
+
+### 6.1 Production Readiness
+
+Development settings in production degrade performance significantly.
+
+```bash
+# Check Rails environment
+echo $RAILS_ENV  # Must be "production"
+
+# Check for debug gems in production
+grep -E "byebug|pry|debug|better_errors|web-console" Gemfile | grep -v "group.*development\|group.*test"
+```
+
+- [ ] `RAILS_ENV=production` in production
+- [ ] No debug gems outside development/test groups (`byebug`, `pry`, `debug`, `better_errors`)
+- [ ] `config.cache_classes = true` in production
+- [ ] `config.eager_load = true` in production
+- [ ] `config.consider_all_requests_local = false` in production
+- [ ] App server used (Puma/Unicorn), not `rails server` with WEBrick
+
+**Cache/Session/Queue Drivers:**
+
+| Component | Bad (Dev) | Good (Prod) |
+|-----------|-----------|-------------|
+| Cache | `:memory_store` / `:file_store` | `:redis_cache_store` / Memcached |
+| Sessions | Cookie (default, OK for small) | Redis (`redis-session-store`) |
+| Queue | `:async` / `:inline` | `:sidekiq` / `:solid_queue` |
+| Logging | `:debug` level | `:warn` or `:info` + aggregator |
+
+**Rails config:**
+
+```ruby
+# config/environments/production.rb
+config.cache_store = :redis_cache_store, { url: ENV["REDIS_URL"] }
+config.active_job.queue_adapter = :sidekiq  # Not :async or :inline
+config.log_level = :warn
+```
+
+- [ ] `cache_store` is not `:file_store` or `:memory_store` in production
+- [ ] `queue_adapter` is not `:async` or `:inline` in production
+- [ ] Log level is `:warn` or `:info`, not `:debug`
+
+### 6.2 Redis Health
+
+If using Redis for cache/sessions/Sidekiq, monitor its health.
+
+```bash
+redis-cli INFO stats | grep -E "keyspace_hits|keyspace_misses|evicted_keys"
+redis-cli INFO memory | grep used_memory_human
+redis-cli CONFIG GET maxmemory-policy
+```
+
+**Hit Ratio:** `hits / (hits + misses)` — should be > 90%.
+
+| Metric | OK | Warning | Critical |
+|--------|----|---------|----------|
+| Hit ratio | > 90% | 70-90% | < 70% |
+| Evicted keys | 0 | Growing slowly | Growing fast |
+| Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+- [ ] Redis hit ratio > 90%
+- [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for Sidekiq)
+- [ ] No excessive evictions
+- [ ] Sidekiq dashboard accessible only to admins (authenticate in routes)
+
+---
+
+## 7. SELF-CHECK
 
 **Before adding an issue to the report:**
 
@@ -472,7 +540,7 @@ grep -rn "setInterval\|turbo_stream_from\|polling" app/javascript/ app/views/
 
 ---
 
-## 7. REPORT FORMAT
+## 8. REPORT FORMAT
 
 ```markdown
 # Performance Audit Report — [Project Name]
@@ -507,7 +575,7 @@ Date: [date]
 
 ---
 
-## 8. ACTIONS
+## 9. ACTIONS
 
 1. **Run Quick Check** — 5 minutes
 2. **Scan the project** — collect all issues
