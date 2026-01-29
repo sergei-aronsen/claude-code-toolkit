@@ -17,6 +17,9 @@ Comprehensive performance audit of a Laravel application. Act as a Senior Perfor
 | 3 | Model::all() | `grep -rn "::all()" app/Http/Controllers/` | Empty or with pagination |
 | 4 | Missing indexes | `grep -rn "where(" app/Http/Controllers/ \| grep -v "index"` | Check indexes |
 | 5 | Job timeouts | `grep -rn "ShouldQueue" app/Jobs/ \| xargs -I{} grep -L "timeout" {}` | Empty |
+| 6 | Model event N+1 | `grep -A5 "static::deleting" app/Models/ \| grep "each"` | Empty |
+| 7 | whereHas chains | `grep -rn "whereHas" app/Http/Controllers/` | < 10 |
+| 8 | Frontend polling | `grep -rn "setInterval\|usePoll" resources/js/` | Endpoints cached |
 
 ---
 
@@ -51,6 +54,19 @@ echo "ℹ️  Queries without with(): $MISSING_EAGER (check if needed)"
 # 6. Config cache status
 php artisan config:cache --dry-run 2>/dev/null
 [ $? -eq 0 ] && echo "✅ Config: Cacheable" || echo "❌ Config: env() outside config files"
+
+# 7. whereHas chains in controllers
+WHERE_HAS=$(grep -rn "whereHas" app/Http/Controllers/ 2>/dev/null | wc -l)
+[ "$WHERE_HAS" -gt 10 ] && echo "🟡 Eloquent: Found $WHERE_HAS whereHas calls in controllers (check for performance)" || echo "✅ whereHas: $WHERE_HAS (OK)"
+
+# 8. Unsafe model events (N+1 on delete/update)
+MODEL_EVENTS=$(grep -rn "static::deleting\|static::updating" app/Models/ 2>/dev/null | wc -l)
+MODEL_EACH=$(grep -A5 "static::deleting\|static::updating" app/Models/ 2>/dev/null | grep -c "each\|->map")
+[ "$MODEL_EACH" -gt 0 ] && echo "❌ Models: Found N+1 patterns in model events!" || echo "✅ Model events: $MODEL_EVENTS events, no N+1 patterns"
+
+# 9. Frontend polling
+POLLING=$(grep -rn "setInterval\|usePoll" resources/js/ 2>/dev/null | wc -l)
+[ "$POLLING" -gt 0 ] && echo "ℹ️  Frontend: Found $POLLING polling patterns. Verify backend endpoints are cached." || echo "✅ Polling: None found"
 
 echo "Done!"
 ```
@@ -164,6 +180,58 @@ $active = Site::where('status', 'active')->get();
 
 - [ ] All lists > 50 records use `->paginate()` or `->cursorPaginate()`
 - [ ] API endpoints return paginated data
+
+### 1.5 Model Events and Observers
+
+Model events (`deleting`, `updating`, `created`) are silent N+1 killers during bulk operations.
+
+```bash
+# Find all model events
+grep -rn "static::deleting\|static::updating\|static::created" app/Models/
+grep -rn "class .*Observer" app/Observers/
+```
+
+```php
+// ❌ CRITICAL — N+1 on delete (1 query per related record)
+static::deleting(function ($site) {
+    $site->checks->each->delete();
+});
+
+// ✅ Bulk query — single DELETE statement
+static::deleting(function ($site) {
+    $site->checks()->delete();
+});
+```
+
+- [ ] `deleting` events do not use `each()` or per-record loops
+- [ ] `created`/`updated` events do not make synchronous API calls or notifications
+- [ ] Observers do not trigger cascading queries
+
+### 1.6 Complex Eloquent Chains (whereHas)
+
+`whereHas` generates `EXISTS (SELECT ...)` subqueries. Multiple chained `whereHas` calls create exponentially heavier queries.
+
+```bash
+# Find complex chains
+grep -rn "whereHas\|whereDoesntHave" app/
+```
+
+```php
+// ❌ Heavy — 3 EXISTS subqueries
+Site::whereHas('lastCheck', fn($q) => $q->where('status', 'alive'))
+    ->whereHas('user', fn($q) => $q->where('active', true))
+    ->whereDoesntHave('labels')
+    ->get();
+
+// ✅ Better — JOIN for belongsTo/hasOne relations
+Site::join('site_checks', 'sites.last_check_id', '=', 'site_checks.id')
+    ->where('site_checks.status', 'alive')
+    ->get();
+```
+
+- [ ] Replace `whereHas` with `join` where possible (especially belongsTo/hasOne)
+- [ ] No `whereHas` inside loops or polling endpoints
+- [ ] Chains of 3+ `whereHas` are refactored or cached
 
 ---
 
@@ -293,6 +361,23 @@ class ParseSiteJob implements ShouldQueue
 
 - [ ] Jobs store only ID, not entire models
 
+### 3.4 Queue Payload Size
+
+Job arguments are serialized into the queue backend. Passing large data bloats Redis/DB and slows queue processing.
+
+```php
+// ❌ CRITICAL — raw HTML stored in Redis payload
+ParseSiteJob::dispatch($site, $htmlContent);
+
+// ✅ Store data externally, pass only a reference
+Cache::put("site_html:{$site->id}", $htmlContent, 300);
+ParseSiteJob::dispatch($site->id);
+```
+
+- [ ] Job constructors do not accept raw HTML, file content, or Base64 strings
+- [ ] Large data is stored in Cache/Storage, job receives ID or cache key
+- [ ] Check `failed_jobs` table for oversized payloads: `SELECT id, LENGTH(payload) FROM failed_jobs ORDER BY LENGTH(payload) DESC LIMIT 10`
+
 ---
 
 ## 4. HTTP & EXTERNAL API OPTIMIZATION
@@ -370,6 +455,20 @@ return Inertia::render('Sites/Show', [
 - [ ] CSS < 100KB gzipped
 - [ ] Code splitting is used
 - [ ] Heavy components are lazy loaded
+
+### 5.3 Frontend Polling
+
+Frequent polling from frontend can overwhelm the backend even with "simple" endpoints.
+
+```bash
+# Find polling intervals
+grep -rn "setInterval\|usePoll\|polling" resources/js/
+```
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use `Cache::remember()` or Redis, not raw DB aggregations
+- [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
+- [ ] Consider WebSockets/SSE for real-time data instead of polling
 
 ---
 

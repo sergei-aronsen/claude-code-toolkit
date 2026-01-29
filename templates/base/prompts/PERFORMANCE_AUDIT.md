@@ -72,6 +72,27 @@ Good: 1-2 queries with eager loading
 - [ ] EXPLAIN for complex queries
 - [ ] Pagination for large datasets
 
+### 1.4 ORM Lifecycle Events
+
+ORM events (before/after delete, update, create) can silently trigger N+1 during bulk operations.
+
+```text
+Bad:  on_delete hook iterates related records with individual queries
+Good: on_delete hook uses bulk query or DB-level cascade
+```
+
+- [ ] Delete/update hooks do not use per-record iteration
+- [ ] Create/update hooks do not make synchronous external API calls
+- [ ] Bulk operations bypass or batch-process lifecycle events
+
+### 1.5 Complex Query Patterns (Subqueries)
+
+Chaining multiple subquery conditions (e.g. `EXISTS (SELECT ...)`) can cause exponential query complexity even with proper indexes.
+
+- [ ] No more than 2 nested subquery conditions per query
+- [ ] Subqueries replaced with JOINs where possible (especially for sorting/filtering)
+- [ ] No subquery conditions inside loops or polling endpoints
+
 ---
 
 ## 2. CACHING
@@ -121,6 +142,14 @@ Good: 1-2 queries with eager loading
 - [ ] FID < 100ms
 - [ ] CLS < 0.1
 
+### 3.5 Polling and Repeated Requests
+
+Frequent frontend polling (setInterval, usePoll) can overwhelm the backend if endpoints are not optimized.
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use cache or in-memory storage, not heavy DB aggregations
+- [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
+
 ---
 
 ## 4. API PERFORMANCE
@@ -156,6 +185,19 @@ Good: 1-2 queries with eager loading
 - [ ] Timeout configured
 - [ ] Retry policy
 - [ ] Failed job handling
+
+### 5.3 Queue Payload Size
+
+Data passed to background jobs is serialized and stored in the queue backend (Redis, DB, etc.). Large payloads waste memory and slow down queue processing.
+
+```text
+Bad:  Passing raw HTML, file content, or Base64 blobs as job arguments
+Good: Passing a reference (ID, cache key, file path) and loading data inside the job
+```
+
+- [ ] Job constructors do not accept raw text/HTML/binary data
+- [ ] Large data is stored in cache or filesystem, job receives only a reference
+- [ ] Failed jobs table is not bloated with oversized payloads
 
 ---
 
