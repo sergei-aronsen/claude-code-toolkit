@@ -19,8 +19,12 @@ Comprehensive security audit of a Laravel application. Act as a Senior Security 
 | 3 | $guarded = [] | `grep -rn 'guarded.*=.*\[\]' app/Models/` | Empty |
 | 4 | Raw SQL injection | `grep -rn 'DB::raw\|whereRaw' app/ --include="*.php"` | Check bindings |
 | 5 | composer audit | `composer audit` | No vulnerabilities |
+| 6 | APP_KEY set | `grep "APP_KEY=base64:" .env` | Key present |
+| 7 | .env not public | `curl -s -o /dev/null -w "%{http_code}" http://yoursite.com/.env` | 403 or 404 |
+| 8 | Dangerous functions | `grep -rn 'eval(\|extract(\|unserialize(' app/ --include="*.php"` | Empty |
+| 9 | Command injection | `grep -rn 'exec(\|shell_exec(\|system(\|passthru(' app/ --include="*.php"` | Empty or escaped |
 
-If all 5 = OK → Basic security level OK.
+If all 9 = OK → Basic security level OK.
 
 ---
 
@@ -58,6 +62,22 @@ composer audit 2>/dev/null | grep -q "No security" && echo "✅ Composer: No vul
 
 # 7. npm audit
 npm audit --production 2>/dev/null | grep -q "found 0" && echo "✅ NPM: No vulnerabilities" || echo "🟡 NPM: Run 'npm audit' for details"
+
+# 8. APP_KEY
+KEY=$(grep "APP_KEY=base64:" .env 2>/dev/null)
+[ -n "$KEY" ] && echo "✅ APP_KEY: Set" || echo "❌ APP_KEY: Missing or not base64!"
+
+# 9. Dangerous PHP functions
+DANGEROUS=$(grep -rn 'eval(\|extract(\|unserialize(' app/ --include="*.php" 2>/dev/null | wc -l)
+[ "$DANGEROUS" -eq 0 ] && echo "✅ No eval/extract/unserialize" || echo "❌ Found $DANGEROUS dangerous function calls!"
+
+# 10. Command injection patterns
+CMD_INJ=$(grep -rn 'exec(\|shell_exec(\|system(\|passthru(\|proc_open(' app/ --include="*.php" 2>/dev/null | wc -l)
+[ "$CMD_INJ" -eq 0 ] && echo "✅ No shell execution" || echo "🟡 Found $CMD_INJ shell exec calls (verify escapeshellarg)"
+
+# 11. env() outside config (broken with config:cache)
+ENV_CALLS=$(grep -rn 'env(' app/ routes/ --include="*.php" 2>/dev/null | wc -l)
+[ "$ENV_CALLS" -eq 0 ] && echo "✅ No env() outside config/" || echo "🟡 Found $ENV_CALLS env() calls outside config/"
 
 echo "Done!"
 ```
@@ -142,6 +162,23 @@ Site::orderBy($column)->get();
 
 - [ ] Column names validated via whitelist
 - [ ] Table names never from user input
+
+---
+
+### 1.3 Validation Rule SQL Injection
+
+```php
+// ❌ CRITICAL — user input in ignore()
+Rule::unique('users')->ignore($request->input('id'));
+// Attacker sends: id=1) OR 1=1--
+
+// ✅ Safe — only auth user ID
+Rule::unique('users')->ignore(auth()->id());
+// Or validate ID is integer first
+```
+
+- [ ] `Rule::unique()->ignore()` never uses raw request input
+- [ ] `Rule::exists()->where()` doesn't accept unvalidated data
 
 ---
 
@@ -258,7 +295,33 @@ class Site extends Model
 - [ ] No `$guarded = []` in production models
 - [ ] `$fillable` doesn't contain sensitive fields (role, is_admin, etc.)
 
-### 4.2 Controller Validation
+### 4.2 Foreign Keys in $fillable
+
+```php
+// ❌ DANGEROUS — attacker can reassign ownership
+class Post extends Model
+{
+    protected $fillable = [
+        'title', 'body',
+        'user_id',      // FK! Attacker changes post owner
+        'category_id',  // FK! May access restricted categories
+    ];
+}
+
+// ✅ Good — set FK explicitly in controller
+class Post extends Model
+{
+    protected $fillable = ['title', 'body', 'category_id'];
+}
+
+// Controller:
+$post = auth()->user()->posts()->create($request->validated());
+```
+
+- [ ] Foreign keys (`*_id`) not in `$fillable` unless intentional
+- [ ] Owner relationships set via `auth()->user()->relation()->create()`
+
+### 4.3 Controller Validation
 
 ```php
 // ❌ Bad — passing entire request
@@ -305,7 +368,37 @@ return [
 - [ ] `http_only` = true
 - [ ] `same_site` = 'lax' or 'strict'
 
-### 5.3 Rate Limiting
+### 5.3 Cookie Encryption
+
+```php
+// Check EncryptCookies middleware
+// app/Http/Middleware/EncryptCookies.php
+protected $except = [
+    // ❌ Bad — sensitive cookies unencrypted
+    'session_token',
+    // ✅ OK — only analytics/tracking cookies
+    'ga_cookie',
+];
+```
+
+- [ ] `EncryptCookies::$except` contains only non-sensitive cookies
+- [ ] Session cookie is encrypted (never in $except)
+
+### 5.4 Session Timeout
+
+```php
+// config/session.php
+'lifetime' => 120,          // ✅ 2 hours — reasonable
+'expire_on_close' => false,
+
+// ❌ Bad — session lives forever
+'lifetime' => 525600,       // 1 year!
+```
+
+- [ ] `SESSION_LIFETIME` reasonable (< 480 minutes for web apps)
+- [ ] `idle_in_transaction_session_timeout` set for database sessions
+
+### 5.5 Rate Limiting
 
 ```php
 // ❌ Bad — no rate limiting on login
@@ -459,6 +552,57 @@ return back()->with('error', 'An error occurred. Please try again later.');
 
 ---
 
+### 9.4 APP_KEY Validation
+
+```bash
+# Must be set and base64 encoded
+grep "APP_KEY=base64:" .env
+```
+
+- [ ] `APP_KEY` is set (not empty)
+- [ ] `APP_KEY` is base64 encoded (`base64:...`)
+- [ ] Different keys for each environment (dev/staging/prod)
+
+### 9.5 .env Public Access
+
+```bash
+# Test from outside — must return 403/404
+curl -s -o /dev/null -w "%{http_code}" https://yoursite.com/.env
+```
+
+- [ ] `.env` returns 403 or 404 from web
+- [ ] Web server blocks dotfiles (`.env`, `.git`)
+
+### 9.6 PHP.ini Security
+
+```ini
+; php.ini — secure settings
+expose_php = Off              ; Don't reveal PHP version
+allow_url_fopen = Off         ; Prevent remote file inclusion
+allow_url_include = Off       ; CRITICAL — never On
+display_errors = Off          ; No errors to users
+display_startup_errors = Off
+log_errors = On               ; Log instead of display
+```
+
+- [ ] `expose_php = Off`
+- [ ] `allow_url_include = Off`
+- [ ] `display_errors = Off` in production
+
+### 9.7 File Permissions
+
+```bash
+# Check dangerous permissions
+find storage/ -perm -0002 -type f  # World-writable files
+stat -c "%a %n" .env               # .env should be 640 or 600
+```
+
+- [ ] `.env` is 640 or more restrictive
+- [ ] `storage/` not world-writable (no 777)
+- [ ] `bootstrap/cache/` writable only by web server
+
+---
+
 ## 10. SECURITY HEADERS
 
 ### 10.1 Middleware
@@ -484,7 +628,23 @@ class SecurityHeaders
 - [ ] Security headers middleware added
 - [ ] X-Frame-Options = DENY
 
-### 10.2 HTTPS
+### 10.2 HSTS (HTTP Strict Transport Security)
+
+```php
+// Add to SecurityHeaders middleware
+$response->headers->set(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains'
+);
+
+// Or via web server (nginx):
+// add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+- [ ] HSTS header present with `max-age >= 31536000`
+- [ ] `includeSubDomains` if applicable
+
+### 10.3 HTTPS
 
 ```php
 // app/Providers/AppServiceProvider.php
@@ -515,7 +675,115 @@ npm audit
 
 ---
 
-## 12. SELF-CHECK
+## 12. INJECTION ATTACKS
+
+### 12.1 Command Injection
+
+```bash
+grep -rn "exec(\|shell_exec(\|system(\|passthru(\|proc_open(\|popen(" app/ --include="*.php"
+```
+
+```php
+// ❌ CRITICAL — user input in shell command
+exec("ping " . $request->host);
+shell_exec("convert " . $request->file_path);
+
+// ✅ Safe — escapeshellarg/escapeshellcmd
+exec("ping " . escapeshellarg($request->host));
+
+// ✅ Better — use Laravel Process (10+)
+Process::run(['ping', $validatedHost]);
+```
+
+- [ ] No `exec()`, `shell_exec()`, `system()`, `passthru()` with user input
+- [ ] If shell execution necessary — `escapeshellarg()` used
+
+### 12.2 Object Injection
+
+```php
+// ❌ CRITICAL — unserialize user data
+$data = unserialize($request->input('data'));
+// Attacker crafts serialized object that executes code!
+
+// ✅ Safe — use JSON
+$data = json_decode($request->input('data'), true);
+
+// ✅ If unserialize needed — restrict classes
+$data = unserialize($input, ['allowed_classes' => [SafeClass::class]]);
+```
+
+- [ ] No `unserialize()` on user-controlled data
+- [ ] Prefer `json_decode()` over `unserialize()`
+
+### 12.3 Dangerous PHP Functions
+
+```bash
+grep -rn "eval(\|extract(\|assert(" app/ --include="*.php"
+```
+
+```php
+// ❌ CRITICAL — code execution
+eval($request->input('expression'));
+
+// ❌ DANGEROUS — variable injection
+extract($request->all());
+// Now $is_admin, $role etc. are local variables!
+
+// ✅ Safe — no eval, no extract
+// Use proper logic/validation instead
+```
+
+- [ ] No `eval()` in application code
+- [ ] No `extract()` with user data
+- [ ] No `assert()` with user input
+
+### 12.4 Open Redirection
+
+```php
+// ❌ CRITICAL — attacker controls redirect URL
+return redirect($request->input('redirect_url'));
+// Attacker sends: redirect_url=https://evil.com/phishing
+
+// ✅ Safe — whitelist or relative-only
+$url = $request->input('redirect_url', '/');
+if (! Str::startsWith($url, '/') || Str::startsWith($url, '//')) {
+    $url = '/';
+}
+return redirect($url);
+
+// ✅ Better — use intended()
+return redirect()->intended('/dashboard');
+```
+
+- [ ] `redirect()` never uses raw user input as URL
+- [ ] External redirects validated against whitelist
+
+### 12.5 Host Injection
+
+```php
+// ❌ DANGEROUS — attacker spoofs Host header
+$url = "https://" . request()->getHost() . "/reset-password?token=$token";
+// Attacker sets Host: evil.com → reset link points to evil.com
+
+// ✅ Safe — use APP_URL
+$url = config('app.url') . "/reset-password?token=$token";
+
+// ✅ Better — enable TrustHosts middleware
+// app/Http/Middleware/TrustHosts.php
+public function hosts(): array
+{
+    return [
+        $this->allSubdomainsOfApplicationUrl(),
+    ];
+}
+```
+
+- [ ] `TrustHosts` middleware enabled
+- [ ] URLs built from `config('app.url')`, not `request()->getHost()`
+
+---
+
+## 13. SELF-CHECK
 
 **Before adding a vulnerability to the report:**
 
@@ -528,7 +796,7 @@ npm audit
 
 ---
 
-## 13. REPORT FORMAT
+## 14. REPORT FORMAT
 
 Create file `.claude/reports/SECURITY_AUDIT_[DATE].md`:
 
@@ -570,7 +838,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 14. ACTIONS
+## 15. ACTIONS
 
 1. **Quick Check** — go through 5 points from section 0
 2. **Scan** — go through all sections

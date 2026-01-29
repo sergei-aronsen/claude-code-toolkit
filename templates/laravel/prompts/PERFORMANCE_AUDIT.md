@@ -279,6 +279,130 @@ composer dump-autoload -o  # Autoload optimization
 - [ ] Commands added to deploy script
 - [ ] No `env()` calls outside config files (breaks config:cache)
 
+### 2.4 env() Outside Config Files
+
+`env()` returns `null` when config is cached. This silently breaks features in production.
+
+```bash
+# Find env() calls outside config/
+grep -rn "env(" app/ routes/ --include="*.php"
+```
+
+```php
+// ❌ CRITICAL — returns null when config is cached
+class SomeService
+{
+    public function call()
+    {
+        $key = env('API_KEY'); // null in production!
+    }
+}
+
+// ✅ Always use config()
+// config/services.php:
+'api_key' => env('API_KEY'),
+
+// In code:
+$key = config('services.api_key');
+```
+
+- [ ] Zero `env()` calls in `app/`, `routes/`, `resources/`
+- [ ] All `env()` calls only in `config/*.php`
+
+### 2.5 Collection vs Query Builder
+
+Fetching all records then filtering in PHP wastes memory and DB bandwidth.
+
+```php
+// ❌ BAD — loads all users into memory, then filters
+$admins = User::all()->where('role', 'admin');
+$count = User::all()->count();
+$emails = User::all()->pluck('email')->unique();
+
+// ✅ GOOD — filtering at database level
+$admins = User::where('role', 'admin')->get();
+$count = User::count();
+$emails = User::distinct()->pluck('email');
+```
+
+- [ ] No `Model::all()->where()` — use `Model::where()->get()`
+- [ ] No `Model::all()->count()` — use `Model::count()`
+- [ ] No `->get()->filter()` — use `->where()->get()`
+- [ ] No `->get()->sortBy()` — use `->orderBy()->get()`
+
+---
+
+### 2.6 Production Infrastructure
+
+#### OPcache
+
+PHP without OPcache is 3-5x slower. Must be enabled in production.
+
+```bash
+php -m | grep -i opcache
+php -r "var_dump(opcache_get_status()['opcache_enabled']);"
+```
+
+```ini
+; php.ini
+opcache.enable=1
+opcache.memory_consumption=256
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=0     ; Production only! Requires restart on deploy
+```
+
+- [ ] OPcache enabled in production
+- [ ] `validate_timestamps=0` in production (restart/clear on deploy)
+
+#### Xdebug
+
+Xdebug in production slows everything 2-3x even when not actively debugging.
+
+```bash
+php -m | grep -i xdebug
+```
+
+- [ ] Xdebug NOT loaded in production (`php -m` should not list it)
+
+#### Drivers
+
+```bash
+php artisan tinker --execute="
+echo 'Cache: ' . config('cache.default') . PHP_EOL;
+echo 'Session: ' . config('session.driver') . PHP_EOL;
+echo 'Queue: ' . config('queue.default') . PHP_EOL;
+echo 'Log: ' . config('logging.default') . PHP_EOL;
+"
+```
+
+| Driver | Bad | Good |
+| ------ | --- | ---- |
+| Cache | `file`, `database` | `redis`, `memcached` |
+| Session | `file` | `redis`, `database` |
+| Queue | `sync` | `redis`, `database`, `sqs` |
+| Log level | `debug` | `warning` or `error` |
+
+- [ ] Cache driver is `redis` (not `file`)
+- [ ] Session driver is `redis` or `database` (not `file`)
+- [ ] Queue driver is `redis` (not `sync`)
+- [ ] `LOG_LEVEL` is `warning` or `error` in production (not `debug`)
+
+#### Redis Health
+
+```bash
+redis-cli info stats | grep -E "keyspace_hits|keyspace_misses"
+redis-cli info memory | grep -E "used_memory_human|maxmemory_policy"
+```
+
+| Metric | Warning | Action |
+| ------ | ------- | ------ |
+| Hit ratio < 80% | Keys expire too fast | Increase TTL or memory |
+| `maxmemory-policy` = `noeviction` | Redis crashes when full | Set `allkeys-lru` |
+| `used_memory` near `maxmemory` | Evictions starting | Increase maxmemory |
+
+- [ ] Redis cache hit ratio > 80%
+- [ ] `maxmemory-policy` = `allkeys-lru` (not `noeviction`)
+
 ---
 
 ## 3. QUEUE & JOBS OPTIMIZATION
@@ -377,6 +501,35 @@ ParseSiteJob::dispatch($site->id);
 - [ ] Job constructors do not accept raw HTML, file content, or Base64 strings
 - [ ] Large data is stored in Cache/Storage, job receives ID or cache key
 - [ ] Check `failed_jobs` table for oversized payloads: `SELECT id, LENGTH(payload) FROM failed_jobs ORDER BY LENGTH(payload) DESC LIMIT 10`
+
+---
+
+### 3.5 Non-Queued Notifications
+
+Synchronous mail/SMS blocks the HTTP request. User waits while SMTP connects.
+
+```bash
+# Find notifications not using ShouldQueue
+grep -rL "ShouldQueue" app/Notifications/ 2>/dev/null
+```
+
+```php
+// ❌ BAD — blocks request for 2-5 seconds
+class OrderConfirmation extends Notification
+{
+    // No ShouldQueue = synchronous!
+}
+
+// ✅ GOOD — queued
+class OrderConfirmation extends Notification implements ShouldQueue
+{
+    use Queueable;
+}
+```
+
+- [ ] All Notifications implement `ShouldQueue`
+- [ ] All Mailables implement `ShouldQueue` (or dispatched via queue)
+- [ ] Exception: only critical security notifications (password reset) may be synchronous
 
 ---
 
