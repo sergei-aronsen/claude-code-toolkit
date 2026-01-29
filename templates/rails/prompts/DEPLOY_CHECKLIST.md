@@ -1,10 +1,10 @@
-# Deploy Checklist — Laravel Template
+# Deploy Checklist — Rails Template
 
 ## Goal
 
-Comprehensive check before deploying a Laravel application. Act as a Senior DevOps Engineer.
+Comprehensive pre-deploy verification for a Ruby on Rails application. Act as a Senior DevOps Engineer.
 
-> **⚠️ Recommended model:** Use **Claude Opus 4.5** (`claude-opus-4-5-20251101`) for pre-deploy checks — works better with code analysis.
+> **Recommended model:** Use **Claude Opus 4.5** (`claude-opus-4-5-20251101`) for pre-deploy checks — works better with code analysis.
 
 ---
 
@@ -12,14 +12,15 @@ Comprehensive check before deploying a Laravel application. Act as a Senior DevO
 
 | # | Check | Command | Expected |
 | --- | ------- | --------- | ---------- |
-| 1 | PHP Syntax | `php artisan --version` | No errors |
-| 2 | Pint | `./vendor/bin/pint --test` | No changes |
-| 3 | PHPStan | `./vendor/bin/phpstan analyse` | Level passed |
-| 4 | Tests | `php artisan test` | Pass |
-| 5 | Build | `npm run build` | Success |
-| 6 | Migrations | `php artisan migrate --pretend` | Expected changes |
+| 1 | Rails Boot | `rails runner "puts Rails.version"` | No errors |
+| 2 | RuboCop | `bundle exec rubocop` | No offenses |
+| 3 | Brakeman | `bundle exec brakeman -q` | No warnings |
+| 4 | Tests | `bundle exec rspec` or `rails test` | Pass |
+| 5 | Assets | `rails assets:precompile` | Success |
+| 6 | Migrations | `rails db:migrate:status` | All up |
+| 7 | Bundle Audit | `bundle audit check --update` | No vulnerabilities |
 
-**If all 6 = OK → Ready to deploy!**
+**If all 7 = OK --> Ready to deploy!**
 
 ---
 
@@ -31,30 +32,33 @@ Comprehensive check before deploying a Laravel application. Act as a Senior DevO
 
 set -e
 
-echo "Pre-deploy Check for Laravel..."
+echo "Pre-deploy Check for Rails..."
 
-# 1. PHP Artisan
-php artisan --version > /dev/null 2>&1 && echo "✅ PHP Artisan" || { echo "❌ PHP Artisan"; exit 1; }
+# 1. Rails Boot
+rails runner "puts Rails.version" > /dev/null 2>&1 && echo "OK: Rails Boot" || { echo "FAIL: Rails Boot"; exit 1; }
 
-# 2. Pint
-./vendor/bin/pint --test > /dev/null 2>&1 && echo "✅ Pint" || echo "🟡 Pint has changes"
+# 2. RuboCop
+bundle exec rubocop --format simple > /dev/null 2>&1 && echo "OK: RuboCop" || echo "WARN: RuboCop offenses"
 
-# 3. PHPStan
-./vendor/bin/phpstan analyse 2>&1 | grep -q "error" && echo "🟡 PHPStan errors" || echo "✅ PHPStan"
+# 3. Brakeman
+bundle exec brakeman -q --no-pager 2>&1 | grep -q "No warnings found" && echo "OK: Brakeman" || echo "WARN: Brakeman warnings"
 
 # 4. Tests
-php artisan test --stop-on-failure > /dev/null 2>&1 && echo "✅ Tests" || echo "🟡 Tests failed"
+bundle exec rspec --format progress > /dev/null 2>&1 && echo "OK: Tests" || echo "WARN: Tests failed"
 
-# 5. NPM Build
-npm run build > /dev/null 2>&1 && echo "✅ Build" || { echo "❌ Build"; exit 1; }
+# 5. Asset Compilation
+RAILS_ENV=production SECRET_KEY_BASE=dummy rails assets:precompile > /dev/null 2>&1 && echo "OK: Assets" || { echo "FAIL: Assets"; exit 1; }
 
 # 6. Debug code check
-grep -rn "dd(" app/ routes/ | grep -v ".blade.php" && echo "🟡 dd() found" || echo "✅ No dd()"
-grep -rn "dump(" app/ routes/ && echo "🟡 dump() found" || echo "✅ No dump()"
+grep -rn "binding\.pry\|byebug\|debugger" app/ lib/ | grep -v "node_modules" && echo "WARN: debug statements found" || echo "OK: No debug statements"
+grep -rn "puts \|pp " app/ lib/ | grep -v "node_modules" && echo "WARN: puts/pp found" || echo "OK: No puts/pp"
+
+# 7. Bundle Audit
+bundle audit check --update > /dev/null 2>&1 && echo "OK: Bundle Audit" || echo "WARN: Vulnerable gems"
 
 echo ""
-echo "Ready to deploy!"
-```text
+echo "Pre-deploy check complete!"
+```
 
 ---
 
@@ -63,20 +67,24 @@ echo "Ready to deploy!"
 **Deployment target:**
 
 - **Server**: [IP/hostname]
-- **Path**: [/path/to/app]
+- **Path**: [/var/www/app or /home/deploy/app]
 - **URL**: [https://...]
-- **Process manager**: [PM2/Supervisor/systemd]
+- **Deploy tool**: [Capistrano/Kamal/custom]
+- **Process manager**: [systemd/Puma/Passenger]
 
 **Database:**
 
+- **Engine**: [PostgreSQL/MySQL]
 - **Name**: [db_name]
 - **User**: [db_user]
-- **Password**: see `.env` → `DB_PASSWORD`
+- **Password**: see credentials or ENV `DATABASE_URL`
 
 **Important files:**
 
-- `.env` — environment variables
-- `/etc/supervisor/conf.d/...` — Supervisor config (if exists)
+- `config/credentials/production.yml.enc` — encrypted credentials
+- `config/master.key` — decryption key (never committed)
+- `config/puma.rb` — Puma configuration
+- `Procfile` — process declarations
 
 ---
 
@@ -96,28 +104,37 @@ echo "Ready to deploy!"
 ### 1.1 Debug Code Removal
 
 ```bash
-grep -rn "dd(" app/ resources/ routes/
-grep -rn "dump(" app/ resources/ routes/
-grep -rn "var_dump" app/ resources/
-grep -rn "console.log" resources/js/
-```text
+grep -rn "binding\.pry" app/ lib/ config/ spec/
+grep -rn "byebug" app/ lib/ config/ spec/
+grep -rn "debugger" app/ lib/ config/ spec/
+grep -rn "puts " app/ lib/ | grep -v "\.keep"
+grep -rn "pp " app/ lib/
+grep -rn "Rails\.logger\.debug" app/ lib/
+grep -rn "console\.log" app/assets/ app/javascript/
+```
 
-- [ ] No `dd()`, `dump()`, `var_dump()`
-- [ ] No `console.log()` in production
-- [ ] No `Log::debug()` with sensitive data
+- [ ] No `binding.pry` statements
+- [ ] No `byebug` statements
+- [ ] No `debugger` calls
+- [ ] No stray `puts` or `pp` in application code
+- [ ] No `Rails.logger.debug` with sensitive data
+- [ ] No `console.log()` in production JavaScript
 
 ### 1.2 Commented Code
 
-- [ ] No commented out code
-- [ ] No `// TODO: remove` blocks
+- [ ] No commented-out code blocks
+- [ ] No `# TODO: remove` blocks
+- [ ] No `# FIXME` left unaddressed
 
 ### 1.3 Temporary Files
 
 ```bash
-find . -name "*.bak" -o -name "*.tmp" -o -name "*.old"
-```text
+find . -name "*.bak" -o -name "*.tmp" -o -name "*.old" -o -name "*.orig"
+find . -name "*.swp" -o -name "*~"
+```
 
-- [ ] No `.bak`, `.tmp`, `.old` files
+- [ ] No `.bak`, `.tmp`, `.old`, `.orig` files
+- [ ] No editor swap files
 
 ---
 
@@ -126,31 +143,38 @@ find . -name "*.bak" -o -name "*.tmp" -o -name "*.old"
 ### 2.1 Tests
 
 ```bash
-php artisan test
-php artisan test --coverage --min=80
-```text
+bundle exec rspec
+# or
+rails test
+
+# With coverage
+COVERAGE=true bundle exec rspec
+```
 
 - [ ] All tests pass
 - [ ] No skipped tests without reason
 - [ ] Critical functionality covered
+- [ ] No pending examples left without explanation
 
 ### 2.2 Static Analysis
 
 ```bash
-./vendor/bin/phpstan analyse --memory-limit=2G
-./vendor/bin/pint --test
-```text
+bundle exec rubocop
+bundle exec brakeman -q --no-pager
+```
 
-- [ ] PHPStan without errors
-- [ ] Code style OK
+- [ ] RuboCop without offenses (or only approved exceptions)
+- [ ] Brakeman without high/critical warnings
+- [ ] No new security warnings introduced
 
 ### 2.3 Build
 
 ```bash
-npm ci && npm run build
-```text
+RAILS_ENV=production SECRET_KEY_BASE=dummy rails assets:precompile
+```
 
-- [ ] Build passes without errors
+- [ ] Asset compilation passes without errors
+- [ ] No missing asset references
 
 ---
 
@@ -159,122 +183,158 @@ npm ci && npm run build
 ### 3.1 Migrations Review
 
 ```bash
-php artisan migrate:status
-php artisan migrate --pretend
-php artisan migrate:rollback --pretend
-```text
+rails db:migrate:status
+rails db:migrate
+rails db:rollback && rails db:migrate
+```
 
-```php
-// ✅ Good — safe changes
-Schema::table('sites', function (Blueprint $table) {
-    $table->string('new_column')->nullable();  // nullable for existing records
-});
+```ruby
+# Good — safe changes
+class AddBioToUsers < ActiveRecord::Migration[7.1]
+  def change
+    add_column :users, :bio, :text, default: nil  # nullable for existing records
+  end
+end
 
-// ❌ Dangerous — NOT NULL without default
-$table->string('required_column');  // Will break existing records!
-```text
+# Dangerous — NOT NULL without default on existing table
+class AddStatusToUsers < ActiveRecord::Migration[7.1]
+  def change
+    add_column :users, :status, :string, null: false  # Will fail on existing rows!
+  end
+end
 
-- [ ] All migrations have `down()` method
-- [ ] New NOT NULL columns have default or nullable
+# Safe pattern for NOT NULL columns
+class AddStatusToUsers < ActiveRecord::Migration[7.1]
+  def up
+    add_column :users, :status, :string, default: "active"
+    change_column_null :users, :status, false
+  end
+
+  def down
+    remove_column :users, :status
+  end
+end
+```
+
+- [ ] All migrations have reversible `change` or explicit `up`/`down`
+- [ ] New NOT NULL columns have a default value
 - [ ] Indexes added for new foreign keys
-- [ ] Rollback works
+- [ ] Rollback works (`rails db:rollback STEP=N`)
+- [ ] No destructive operations without safety checks
+- [ ] Large table migrations use `disable_ddl_transaction!` if needed
 
 ### 3.2 Seeders Check
 
-```php
-// ❌ CRITICAL — will delete production data!
-class DatabaseSeeder extends Seeder
-{
-    public function run(): void
-    {
-        Site::truncate();  // NEVER in production!
-    }
-}
+```ruby
+# CRITICAL — will delete production data!
+class SeedUsers
+  User.destroy_all  # NEVER in production!
+end
 
-// ✅ Safe — environment check
-if (app()->environment('production')) {
-    $this->command->error('Cannot seed in production!');
-    return;
-}
-```text
+# Safe — environment check
+unless Rails.env.production?
+  User.find_or_create_by!(email: "admin@example.com") do |user|
+    user.name = "Admin"
+    user.password = "password"
+  end
+end
+```
 
-- [ ] Seeders don't run in production
-- [ ] No `truncate()` without environment check
+- [ ] Seeds don't run destructive operations in production
+- [ ] No `destroy_all` or `delete_all` without `Rails.env.production?` guard
+- [ ] Seed data uses `find_or_create_by` to be idempotent
 
 ### 3.3 Backup
 
 ```bash
-# Backup before migrations
-mysqldump -u $DB_USERNAME -p$DB_PASSWORD $DB_DATABASE > backup_$(date +%Y%m%d_%H%M%S).sql
-```text
+# PostgreSQL backup before migrations
+pg_dump -U $DB_USER -h $DB_HOST $DB_NAME > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# MySQL backup before migrations
+mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > backup_$(date +%Y%m%d_%H%M%S).sql
+```
 
 - [ ] DB backup created before migrations
 - [ ] Backup verified for restorability
+- [ ] Backup stored in a safe location
 
 ---
 
 ## 4. ENVIRONMENT CONFIGURATION
 
-### 4.1 Production .env
+### 4.1 Production Environment
 
 ```ini
-# REQUIRED settings
-APP_NAME=[Name]
-APP_ENV=production          # NOT local!
-APP_DEBUG=false             # NOT true!
-APP_URL=https://[domain]
+# REQUIRED environment variables
+RAILS_ENV=production
+SECRET_KEY_BASE=[generated-secret]
+DATABASE_URL=postgres://user:pass@host:5432/dbname
+RAILS_LOG_LEVEL=warn
+RAILS_SERVE_STATIC_FILES=true
+RAILS_MAX_THREADS=5
+WEB_CONCURRENCY=2
 
-LOG_LEVEL=error             # Not debug in production
+# Redis (if using Sidekiq/Action Cable)
+REDIS_URL=redis://localhost:6379/0
 
-CACHE_DRIVER=redis          # Not file in production
-SESSION_DRIVER=redis        # Not file in production
-QUEUE_CONNECTION=redis      # Not sync in production
+# Mail
+SMTP_ADDRESS=[smtp-host]
+SMTP_PORT=587
+```
 
-SESSION_SECURE_COOKIE=true
-```text
+- [ ] `RAILS_ENV=production`
+- [ ] `SECRET_KEY_BASE` is set and unique
+- [ ] `DATABASE_URL` points to production database
+- [ ] `RAILS_LOG_LEVEL` is not `debug`
+- [ ] `REDIS_URL` is set (if using Sidekiq/Action Cable)
+- [ ] All third-party API keys are set
 
-- [ ] `APP_ENV=production`
-- [ ] `APP_DEBUG=false`
-- [ ] `APP_URL` — correct URL with HTTPS
-- [ ] `LOG_LEVEL` — not `debug`
-- [ ] `CACHE_DRIVER` — redis (not file)
-- [ ] `SESSION_DRIVER` — redis (not file)
-- [ ] `QUEUE_CONNECTION` — redis (not sync)
-
-### 4.2 Config Cache Compatibility
+### 4.2 Credentials Check
 
 ```bash
-# Find env() outside config/
-grep -rn "env(" app/ routes/ resources/ --include="*.php" | grep -v "config/"
-```text
+# View production credentials
+EDITOR=cat rails credentials:show --environment production
 
-- [ ] No `env()` calls outside `config/` directory
-- [ ] `php artisan config:cache` works
+# Verify credentials are accessible
+rails runner "puts Rails.application.credentials.secret_key_base.present?"
+
+# Ensure master key exists
+test -f config/credentials/production.key && echo "Production key exists" || echo "MISSING production key!"
+```
+
+- [ ] Production credentials file is encrypted and accessible
+- [ ] `config/master.key` or `config/credentials/production.key` is present on server
+- [ ] No plaintext secrets in source code
+- [ ] No secrets committed to version control
 
 ---
 
 ## 5. BUILD PROCESS
 
-### 5.1 Composer Production
+### 5.1 Bundle Production
 
 ```bash
-composer install --no-dev --optimize-autoloader --no-interaction
-```text
+bundle config set --local deployment true
+bundle config set --local without development:test
+bundle install
+```
 
-- [ ] `composer install --no-dev` successful
-- [ ] No missing dependencies
+- [ ] `bundle install` with production config succeeds
+- [ ] No missing native extension dependencies
+- [ ] `Gemfile.lock` is committed and up to date
 
-### 5.2 NPM Production Build
+### 5.2 Asset Compilation
 
 ```bash
-rm -rf node_modules
-npm ci
-npm run build
-```text
+RAILS_ENV=production SECRET_KEY_BASE=dummy rails assets:precompile
+RAILS_ENV=production rails assets:clean
+```
 
-- [ ] `npm ci` successful
-- [ ] `npm run build` successful
-- [ ] Bundle size reasonable (< 500KB gzipped)
+- [ ] `assets:precompile` succeeds in production mode
+- [ ] Compiled assets have fingerprinted filenames
+- [ ] JavaScript bundles are minified
+- [ ] CSS is compiled and minified
+- [ ] No missing image or font references
 
 ---
 
@@ -282,29 +342,37 @@ npm run build
 
 ### 6.1 Sensitive Files
 
-- [ ] `.env` not accessible via web
-- [ ] `.git/` not accessible via web
-- [ ] `storage/logs/` not accessible via web
+- [ ] `.env` files not accessible via web
+- [ ] `config/master.key` not committed to git
+- [ ] `.git/` directory not accessible via web
+- [ ] `log/` directory not accessible via web
+- [ ] `tmp/` directory not accessible via web
+- [ ] `config/credentials/*.key` not in repository
 
 ### 6.2 File Permissions
 
 ```bash
-chmod -R 755 storage bootstrap/cache
-chown -R www-data:www-data storage bootstrap/cache
-```text
+chmod -R 755 log tmp storage
+chown -R deploy:deploy log tmp storage
+chmod 600 config/master.key
+chmod 600 config/credentials/production.key
+```
 
-- [ ] `storage/` — 755, owner www-data
-- [ ] `bootstrap/cache/` — 755, owner www-data
+- [ ] `log/` — 755, owned by deploy user
+- [ ] `tmp/` — 755, owned by deploy user
+- [ ] `storage/` — 755, owned by deploy user (Active Storage)
+- [ ] Key files — 600, restricted access
 
 ### 6.3 Dependencies Audit
 
 ```bash
-composer audit
-npm audit
-```text
+bundle audit check --update
+bundle exec brakeman -q --no-pager
+```
 
-- [ ] `composer audit` — no critical/high vulnerabilities
-- [ ] `npm audit` — no critical/high vulnerabilities
+- [ ] `bundle audit` — no critical/high vulnerabilities
+- [ ] `brakeman` — no critical/high security warnings
+- [ ] All gems are from trusted sources (rubygems.org)
 
 ---
 
@@ -317,58 +385,77 @@ npm audit
 set -e
 
 APP_DIR="/var/www/[app]"
+SHARED_DIR="$APP_DIR/shared"
 BACKUP_DIR="/opt/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 
-cd $APP_DIR
+cd $APP_DIR/current
 
-# 1. Maintenance mode
-php artisan down --secret="deploy-$DATE"
+# 1. Enable maintenance mode
+cp public/maintenance.html public/system/maintenance.html
+echo "Maintenance mode enabled"
 
 # 2. Backup database
-source .env
-mysqldump -u $DB_USERNAME -p$DB_PASSWORD $DB_DATABASE > "$BACKUP_DIR/db_$DATE.sql"
+source_db_url=$(rails runner "puts ENV['DATABASE_URL']" 2>/dev/null || echo "")
+if [ -n "$source_db_url" ]; then
+  pg_dump "$source_db_url" > "$BACKUP_DIR/db_$DATE.sql"
+  echo "Database backup created"
+fi
 
-# 3. Pull code
-git pull origin main
+# 3. Pull latest code
+git fetch origin main
+git reset --hard origin/main
 
-# 4. Install PHP dependencies
-composer install --no-dev --optimize-autoloader --no-interaction
+# 4. Install Ruby dependencies
+bundle config set --local deployment true
+bundle config set --local without development:test
+bundle install --jobs 4
 
-# 5. Build assets
-npm ci && npm run build
+# 5. Compile assets
+RAILS_ENV=production rails assets:precompile
 
-# 6. Run migrations
-php artisan migrate --force
+# 6. Run database migrations
+RAILS_ENV=production rails db:migrate
 
-# 7. Clear and cache
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
+# 7. Clear Rails cache
+RAILS_ENV=production rails tmp:clear
+RAILS_ENV=production rails log:clear
 
-# 8. Restart queues
-php artisan queue:restart
-supervisorctl restart [worker-name]:  # if using Supervisor
+# 8. Restart Puma
+if systemctl is-active --quiet puma; then
+  sudo systemctl restart puma
+  echo "Puma restarted via systemd"
+elif [ -f tmp/pids/server.pid ]; then
+  bundle exec pumactl -P tmp/pids/server.pid phased-restart
+  echo "Puma phased-restart complete"
+fi
 
-# 9. Permissions
-chown -R www-data:www-data storage bootstrap/cache
-chmod -R 755 storage bootstrap/cache
+# 9. Restart Sidekiq (if used)
+if systemctl is-active --quiet sidekiq; then
+  sudo systemctl restart sidekiq
+  echo "Sidekiq restarted"
+fi
 
-# 10. Disable maintenance
-php artisan up
+# 10. Reload Nginx
+sudo nginx -t && sudo systemctl reload nginx
+echo "Nginx reloaded"
 
-echo "Deployment completed!"
+# 11. Disable maintenance mode
+rm -f public/system/maintenance.html
+echo "Maintenance mode disabled"
 
-# 11. Health check
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://[domain])
+echo "Deployment completed at $(date)!"
+
+# 12. Health check
+sleep 5
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://[domain]/health)
 if [ "$HTTP_CODE" -eq 200 ]; then
     echo "Health check passed!"
 else
     echo "Health check failed! HTTP: $HTTP_CODE"
     exit 1
 fi
-```text
+```
 
 ---
 
@@ -378,27 +465,39 @@ fi
 
 ```bash
 curl -I https://[domain]
-curl -I https://[domain]/login
-curl -I https://[domain]/api/health
-```text
+curl -I https://[domain]/health
+curl -I https://[domain]/users/sign_in
+curl -s https://[domain]/health | python3 -m json.tool
+```
 
-- [ ] Homepage loads
-- [ ] Login works
-- [ ] Dashboard displays
+- [ ] Homepage loads (HTTP 200)
+- [ ] Health check endpoint responds
+- [ ] Login page renders
 - [ ] Main functionality works
-- [ ] Queues are processing
+- [ ] Background jobs are processing
+- [ ] Action Cable connections work (if used)
 
 ### 8.2 Error Monitoring
 
 ```bash
-tail -f storage/logs/laravel.log
-grep -i "error\|exception\|fatal" storage/logs/laravel.log | tail -20
-php artisan queue:failed
-```text
+# Check production logs
+tail -f log/production.log
+grep -i "error\|exception\|fatal" log/production.log | tail -20
 
-- [ ] No new errors in logs
-- [ ] No failed jobs
-- [ ] Error rate didn't increase
+# Check Sidekiq (if used)
+# Visit /sidekiq dashboard or:
+rails runner "puts Sidekiq::Stats.new.failed"
+rails runner "puts Sidekiq::RetrySet.new.size"
+
+# Check Active Job queue
+rails runner "puts Sidekiq::Queue.all.map { |q| [q.name, q.size] }"
+```
+
+- [ ] No new errors in production log
+- [ ] No failed Sidekiq jobs
+- [ ] Error rate did not increase
+- [ ] Response times are normal
+- [ ] Memory usage is stable
 
 ---
 
@@ -410,35 +509,49 @@ php artisan queue:failed
 #!/bin/bash
 set -e
 
-cd /var/www/[app]
+APP_DIR="/var/www/[app]"
 
-php artisan down
+cd $APP_DIR/current
+
+# Option A: Capistrano rollback
+# cap production deploy:rollback
+
+# Option B: Git-based rollback
+cp public/maintenance.html public/system/maintenance.html
+
+git log --oneline -5  # Identify target commit
 git reset --hard HEAD~1
 
+bundle config set --local deployment true
+bundle config set --local without development:test
+bundle install --jobs 4
+
+RAILS_ENV=production rails assets:precompile
+
+# Rollback migrations if needed
+# RAILS_ENV=production rails db:rollback STEP=1
+
 # Restore database if needed
-# source .env
-# mysql -u $DB_USERNAME -p$DB_PASSWORD $DB_DATABASE < /opt/backups/db_YYYYMMDD_HHMMSS.sql
+# psql $DATABASE_URL < /opt/backups/db_YYYYMMDD_HHMMSS.sql
 
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
+# Restart services
+sudo systemctl restart puma
+sudo systemctl restart sidekiq  # if used
 
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-php artisan queue:restart
-php artisan up
+rm -f public/system/maintenance.html
 
 echo "Rollback completed!"
-```text
+```
 
 ### 9.2 Rollback Triggers
 
 Rollback if:
 
 - Error rate > 5% after deploy
-- Critical functionality doesn't work
-- Database corruption
+- Critical functionality does not work
+- Database corruption detected
+- Response times degraded by more than 50%
+- Memory leaks or runaway processes
 
 ---
 
@@ -448,19 +561,20 @@ Rollback if:
 
 | Seems like blocker | Why not a blocker |
 | ------------------ | ------------------ |
-| "PHPStan warnings" | If code works — OK |
-| "Deprecated package" | If works — update later |
-| "No tests" | If functionality works — OK |
-| "console.log in code" | Doesn't affect users |
-| "Pint shows changes" | Code style is not a blocker |
+| "RuboCop warnings" | If code works — fix later |
+| "Deprecated gems" | If working — update after deploy |
+| "No tests for this change" | If functionality works — OK |
+| "console.log in JS" | Does not affect server users |
+| "Brakeman info-level" | Informational, not exploitable |
+| "Bundle audit low severity" | Low risk — patch in next cycle |
 
 **Readiness levels:**
 
 ```text
 READY (95-100%) — Deploy now
-ACCEPTABLE (70-94%) — Deploy possible
-NOT READY (<70%) — Block
-```text
+ACCEPTABLE (70-94%) — Deploy possible with known issues
+NOT READY (<70%) — Block deploy and fix issues
+```
 
 ---
 
@@ -470,37 +584,44 @@ NOT READY (<70%) — Block
 # Deploy Checklist Report — [Project Name]
 Date: [date]
 Version: [git commit hash]
+Rails: [rails version]
+Ruby: [ruby version]
 
 ## Summary
 
 | Step | Status |
 |------|--------|
-| Pre-checks | ✅/❌ |
-| Backup | ✅/❌ |
-| Deploy | ✅/❌ |
-| Verify | ✅/❌ |
+| Pre-checks | OK/FAIL |
+| Backup | OK/FAIL |
+| Deploy | OK/FAIL |
+| Verify | OK/FAIL |
 
 **Readiness**: XX% — [READY/ACCEPTABLE/NOT READY]
 
 ## Blockers
+
 - [If any]
 
 ## Warnings
+
 - [If any]
 
 ## Post-Deploy
-- [ ] Monitor for 24h
-- [ ] Check queues
-```text
+
+- [ ] Monitor logs for 24h
+- [ ] Check Sidekiq dashboard
+- [ ] Verify background jobs complete
+- [ ] Check error tracking (Sentry/Honeybadger/Rollbar)
+```
 
 ---
 
 ## 12. ACTIONS
 
 1. **Check** — go through checklist
-2. **Backup** — create backup
+2. **Backup** — create database backup
 3. **Deploy** — execute deployment
-4. **Verify** — check that it works
-5. **Monitor** — watch logs
+4. **Verify** — confirm everything works
+5. **Monitor** — watch logs and error tracking
 
 Reply: "OK: Ready to deploy (XX%)" or "FAIL: Issues: [list]"
