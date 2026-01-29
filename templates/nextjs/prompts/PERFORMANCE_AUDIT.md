@@ -712,6 +712,39 @@ redis-cli CONFIG GET maxmemory-policy
 - [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
 - [ ] No excessive evictions
 
+### 8.3 Job Idempotency
+
+If using background jobs (BullMQ, Inngest, trigger.dev), jobs may be retried on failure. A non-idempotent job can corrupt data.
+
+```typescript
+// ❌ Dangerous — not idempotent
+async function processOrder(job: Job) {
+  const order = await prisma.order.findUnique({ where: { id: job.data.orderId } });
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { total: order.total + job.data.amount }, // Double-counted on retry!
+  });
+}
+
+// ✅ Safe — idempotent with state check
+async function processOrder(job: Job) {
+  await prisma.order.updateMany({
+    where: { id: job.data.orderId, status: { not: 'processed' } },
+    data: { status: 'processed', total: job.data.amount },
+  });
+}
+
+// BullMQ: use jobId for deduplication
+await queue.add('process', { orderId: 123 }, {
+  jobId: `process-order-${orderId}`,
+});
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use transactions or unique constraints to prevent duplicates
+
 ---
 
 ## 9. RUNTIME PERFORMANCE

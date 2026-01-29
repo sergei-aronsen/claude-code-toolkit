@@ -522,3 +522,51 @@ effective_io_concurrency = 200    # For SSD
 - [pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html)
 - [PgBouncer](https://www.pgbouncer.org/)
 - [pgBadger](https://pgbadger.darold.net/) — log analyzer
+
+---
+
+## 11. Migration Safety
+
+Unsafe migrations on large tables can lock the table for minutes, blocking all reads and writes.
+
+### 11.1 Dangerous Patterns
+
+```sql
+-- ❌ Locks table until all rows are updated (PG < 11)
+ALTER TABLE large_table ADD COLUMN status TEXT NOT NULL;
+
+-- ✅ Safe — add nullable first, backfill, then add constraint
+ALTER TABLE large_table ADD COLUMN status TEXT;
+UPDATE large_table SET status = 'active' WHERE status IS NULL;
+ALTER TABLE large_table ALTER COLUMN status SET NOT NULL;
+
+-- ❌ Blocks writes during index build
+CREATE INDEX idx_users_email ON users(email);
+
+-- ✅ Safe — concurrent index (does not block writes)
+CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+```
+
+### 11.2 Laravel-Specific
+
+```php
+// ❌ Dangerous on large tables
+Schema::table('sites', function (Blueprint $table) {
+    $table->string('status')->nullable(false); // Locks table!
+    $table->index('status'); // Blocks writes!
+});
+
+// ✅ Safe — use raw SQL for large tables
+DB::statement('ALTER TABLE sites ADD COLUMN status VARCHAR(255)');
+DB::statement('CREATE INDEX CONCURRENTLY idx_sites_status ON sites(status)');
+// Then backfill in batches
+```
+
+### 11.3 Checklist
+
+- [ ] `NOT NULL` columns added with `DEFAULT` value (instant in PG 11+)
+- [ ] Indexes created with `CONCURRENTLY` (use raw SQL in Laravel)
+- [ ] No `DROP COLUMN` on large tables without prior assessment
+- [ ] `ALTER TYPE` avoided on large tables (rewrites entire table)
+- [ ] Lock timeout set: `SET lock_timeout = '5s'`
+- [ ] Migrations tested on production-size dataset first

@@ -214,6 +214,41 @@ await queue.add('process', { siteId: site.id });
 - [ ] Large data is stored in Redis/S3, job receives only a key or ID
 - [ ] Failed jobs are not bloated with oversized payloads
 
+### 5.4 Job Idempotency
+
+Jobs may be retried on failure. A non-idempotent job can corrupt data when executed more than once.
+
+```javascript
+// ❌ Dangerous — not idempotent
+async function processOrder(jobData) {
+  const order = await Order.findById(jobData.orderId);
+  order.total += jobData.amount; // Double-counted on retry!
+  await order.save();
+}
+
+// ✅ Safe — idempotent with state check
+async function processOrder(jobData) {
+  const order = await Order.findById(jobData.orderId);
+  if (order.status === 'processed') return; // Already done
+
+  await Order.updateOne(
+    { _id: jobData.orderId, status: { $ne: 'processed' } },
+    { $set: { status: 'processed', total: jobData.amount } }
+  );
+}
+
+// BullMQ: use jobId for deduplication
+await queue.add('process', { orderId: 123 }, {
+  jobId: `process-order-${orderId}`, // Same ID = same job, no duplicates
+});
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] BullMQ `jobId` used for deduplication where appropriate
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use transactions or unique constraints to prevent duplicates
+
 ---
 
 ## 6. INFRASTRUCTURE

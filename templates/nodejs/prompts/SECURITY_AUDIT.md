@@ -656,7 +656,58 @@ app.use(express.static('public'));
 
 ---
 
-## 11. REPORT FORMAT
+## 11. SSRF (Server-Side Request Forgery)
+
+If the application fetches URLs provided by users, attackers can target internal services or cloud metadata endpoints.
+
+```javascript
+// ❌ Dangerous — SSRF
+app.post('/fetch', async (req, res) => {
+  const response = await fetch(req.body.url); // Can access internal services!
+  res.json(await response.json());
+});
+
+// ✅ Safe — validate URL
+const BLOCKED_HOSTS = [
+  'localhost', '127.0.0.1', '[::1]', '0.0.0.0',
+  '169.254.169.254', // AWS/GCP metadata
+];
+const BLOCKED_PREFIXES = ['10.', '172.16.', '172.17.', '172.18.', '172.19.',
+  '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.',
+  '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.',
+  '192.168.', 'fc00:', 'fe80:'];
+
+function isUrlSafe(urlString) {
+  try {
+    const url = new URL(urlString);
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+    const host = url.hostname.toLowerCase();
+    if (BLOCKED_HOSTS.includes(host)) return false;
+    if (BLOCKED_PREFIXES.some(p => host.startsWith(p))) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+app.post('/fetch', async (req, res) => {
+  if (!isUrlSafe(req.body.url)) {
+    return res.status(400).json({ error: 'URL not allowed' });
+  }
+  const response = await fetch(req.body.url, { signal: AbortSignal.timeout(10000) });
+  res.json(await response.json());
+});
+```
+
+- [ ] URLs from user input are validated before `fetch()` / `axios` / `got` calls
+- [ ] Internal/private IP ranges are blocked
+- [ ] Only http/https protocols allowed
+- [ ] Cloud metadata endpoints blocked (169.254.169.254)
+- [ ] Request timeouts are set
+
+---
+
+## 12. REPORT FORMAT
 
 ```markdown
 # Security Audit Report — [Project Name]
@@ -690,7 +741,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 12. ACTIONS
+## 13. ACTIONS
 
 1. **Quick Check** — go through 8 points
 2. **Scan** — go through all sections

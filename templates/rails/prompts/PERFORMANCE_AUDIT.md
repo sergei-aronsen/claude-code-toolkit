@@ -365,6 +365,40 @@ ProcessSiteWorker.perform_async(site.id)
 - [ ] Large data is stored in Rails.cache/S3, worker receives only an ID or cache key
 - [ ] Monitor Sidekiq dashboard for oversized job payloads
 
+### 3.5 Job Idempotency
+
+Jobs may be retried on failure. A non-idempotent job can corrupt data when executed more than once.
+
+```ruby
+# ❌ Dangerous — not idempotent
+class IncrementViewsJob < ApplicationJob
+  def perform(site_id)
+    site = Site.find(site_id)
+    site.increment!(:views) # Double-counted on retry!
+  end
+end
+
+# ✅ Safe — idempotent with state check
+class ProcessSiteJob < ApplicationJob
+  def perform(site_id)
+    site = Site.find(site_id)
+    return if site.status == 'processed' # Already done
+
+    Site.transaction do
+      site.lock!
+      return if site.status == 'processed' # Double-check after lock
+      site.update!(status: 'processed')
+    end
+  end
+end
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] Sidekiq unique jobs used for deduplication where appropriate (`sidekiq-unique-jobs` gem)
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use transactions or row-level locks to prevent duplicates
+
 ---
 
 ## 4. HTTP & EXTERNAL API OPTIMIZATION

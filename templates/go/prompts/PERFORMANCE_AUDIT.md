@@ -229,6 +229,38 @@ task := asynq.NewTask("process_site", payload)
 - [ ] Large data is stored in Redis/S3, task receives only a key or ID
 - [ ] Monitor Redis memory usage for payload bloat
 
+### 5.4 Job Idempotency
+
+Jobs may be retried on failure. A non-idempotent job can corrupt data when executed more than once.
+
+```go
+// ❌ Dangerous — not idempotent
+func (w *Worker) ProcessTask(ctx context.Context, task Task) error {
+    site, _ := w.repo.FindByID(ctx, task.SiteID)
+    site.Views++ // Double-counted on retry!
+    return w.repo.Save(ctx, site)
+}
+
+// ✅ Safe — idempotent with state check
+func (w *Worker) ProcessTask(ctx context.Context, task Task) error {
+    site, _ := w.repo.FindByID(ctx, task.SiteID)
+    if site.Status == "processed" {
+        return nil // Already done
+    }
+    return w.repo.UpdateInTx(ctx, func(tx *sql.Tx) error {
+        _, err := tx.ExecContext(ctx,
+            "UPDATE sites SET status = 'processed' WHERE id = $1 AND status != 'processed'",
+            task.SiteID)
+        return err
+    })
+}
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use transactions or unique constraints to prevent duplicates
+
 ---
 
 ## 6. INFRASTRUCTURE

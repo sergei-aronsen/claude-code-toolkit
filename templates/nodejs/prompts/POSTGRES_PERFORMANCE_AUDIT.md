@@ -522,3 +522,53 @@ effective_io_concurrency = 200    # For SSD
 - [pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html)
 - [PgBouncer](https://www.pgbouncer.org/)
 - [pgBadger](https://pgbadger.darold.net/) — log analyzer
+
+---
+
+## 11. Migration Safety
+
+Unsafe migrations on large tables can lock the table for minutes, blocking all reads and writes.
+
+### 11.1 Dangerous Patterns
+
+```sql
+-- ❌ Locks table until all rows are updated (PG < 11)
+ALTER TABLE large_table ADD COLUMN status TEXT NOT NULL;
+
+-- ✅ Safe — add nullable first, backfill, then add constraint
+ALTER TABLE large_table ADD COLUMN status TEXT;
+UPDATE large_table SET status = 'active' WHERE status IS NULL;
+ALTER TABLE large_table ALTER COLUMN status SET NOT NULL;
+
+-- ❌ Blocks writes during index build
+CREATE INDEX idx_users_email ON users(email);
+
+-- ✅ Safe — concurrent index (does not block writes)
+CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+```
+
+### 11.2 Knex/Prisma-Specific
+
+```javascript
+// ❌ Dangerous in Knex migration
+exports.up = function(knex) {
+  return knex.schema.table('sites', (table) => {
+    table.string('status').notNullable(); // Locks table!
+  });
+};
+
+// ✅ Safe — use raw SQL for large tables
+exports.up = function(knex) {
+  return knex.raw('ALTER TABLE sites ADD COLUMN status VARCHAR(255)');
+  // Then backfill in batches, then add NOT NULL constraint
+};
+```
+
+### 11.3 Checklist
+
+- [ ] `NOT NULL` columns added with `DEFAULT` value (instant in PG 11+)
+- [ ] Indexes created with `CONCURRENTLY` (use raw SQL in Knex/Prisma)
+- [ ] No `DROP COLUMN` on large tables without prior assessment
+- [ ] `ALTER TYPE` avoided on large tables (rewrites entire table)
+- [ ] Lock timeout set: `SET lock_timeout = '5s'`
+- [ ] Migrations tested on production-size dataset first

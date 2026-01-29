@@ -760,6 +760,42 @@ Shellwords.escape(arg)                 # Shell argument escaping
 - [ ] No `system()` / backticks / `IO.popen()` / `Open3` with user input
 - [ ] No `Marshal.load()` with untrusted data (use JSON instead)
 
+### 12.5 SSRF (Server-Side Request Forgery)
+
+If the application fetches URLs provided by users via `Net::HTTP`, `Faraday`, or `HTTParty`, attackers can target internal services or cloud metadata.
+
+```ruby
+# ❌ Dangerous — SSRF
+url = params[:url]
+response = Net::HTTP.get(URI(url))
+
+# ✅ Safe — validate URL
+BLOCKED_HOSTS = %w[localhost 127.0.0.1 169.254.169.254 0.0.0.0 [::1]].freeze
+BLOCKED_PREFIXES = %w[10. 172.16. 172.17. 172.18. 172.19. 172.20.
+  172.21. 172.22. 172.23. 172.24. 172.25. 172.26.
+  172.27. 172.28. 172.29. 172.30. 172.31. 192.168.
+  fc00: fe80:].freeze
+
+def url_safe?(url_string)
+  uri = URI.parse(url_string)
+  return false unless %w[http https].include?(uri.scheme)
+
+  host = uri.host&.downcase
+  return false if BLOCKED_HOSTS.include?(host)
+  return false if BLOCKED_PREFIXES.any? { |p| host&.start_with?(p) }
+
+  true
+rescue URI::InvalidURIError
+  false
+end
+```
+
+- [ ] URLs from user input are validated before `Net::HTTP` / `Faraday` / `HTTParty` calls
+- [ ] Internal/private IP ranges are blocked
+- [ ] Only http/https schemes allowed
+- [ ] Cloud metadata endpoints blocked (169.254.169.254)
+- [ ] Request timeouts are set (`open_timeout`, `read_timeout`)
+
 ---
 
 ## 13. SELF-CHECK

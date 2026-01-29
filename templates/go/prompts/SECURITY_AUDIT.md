@@ -760,7 +760,62 @@ func safeRedirect(w http.ResponseWriter, r *http.Request, fallback string) {
 
 ---
 
-## 14. REPORT FORMAT
+## 14. SSRF (Server-Side Request Forgery)
+
+If the application fetches URLs provided by users via `net/http`, attackers can target internal services or cloud metadata.
+
+```go
+// ❌ Dangerous — SSRF
+url := r.URL.Query().Get("url")
+resp, _ := http.Get(url) // Can access internal services!
+
+// ✅ Safe — validate URL before fetching
+func isURLSafe(rawURL string) bool {
+    u, err := url.Parse(rawURL)
+    if err != nil {
+        return false
+    }
+    if u.Scheme != "http" && u.Scheme != "https" {
+        return false
+    }
+    blocked := []string{"127.0.0.1", "localhost", "169.254.169.254",
+        "0.0.0.0", "[::1]"}
+    blockedPrefixes := []string{"10.", "172.16.", "172.17.", "172.18.",
+        "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+        "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.",
+        "172.31.", "192.168.", "fc00:", "fe80:"}
+    host := strings.ToLower(u.Hostname())
+    for _, b := range blocked {
+        if host == b {
+            return false
+        }
+    }
+    for _, p := range blockedPrefixes {
+        if strings.HasPrefix(host, p) {
+            return false
+        }
+    }
+    return true
+}
+
+// Usage
+client := &http.Client{Timeout: 10 * time.Second}
+if !isURLSafe(userURL) {
+    http.Error(w, "URL not allowed", http.StatusBadRequest)
+    return
+}
+resp, err := client.Get(userURL)
+```
+
+- [ ] URLs from user input are validated before `http.Get()` / `http.Client.Do()`
+- [ ] Internal/private IP ranges are blocked
+- [ ] Only http/https schemes allowed
+- [ ] Cloud metadata endpoints blocked (169.254.169.254)
+- [ ] `http.Client` has `Timeout` configured
+
+---
+
+## 15. REPORT FORMAT
 
 ```markdown
 # Security Audit Report — [Project Name]
@@ -794,7 +849,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## 15. ACTIONS
+## 16. ACTIONS
 
 1. **Quick Check** — go through 5 points
 2. **gosec scan** — `gosec ./...`

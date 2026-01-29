@@ -414,6 +414,27 @@ Some built-in functions allow arbitrary code execution and should never receive 
 - [ ] If shell commands are needed, arguments are escaped/whitelisted
 - [ ] No dynamic method/function calls based on user input
 
+### 10.5 SSRF (Server-Side Request Forgery)
+
+If the application fetches URLs provided by users, attackers can target internal services, cloud metadata endpoints, or private networks.
+
+```text
+# ❌ Dangerous — fetching user-provided URL without validation
+fetch(userUrl)
+httpClient.get(userUrl)
+
+# ✅ Safe — validate URL before fetching
+# Check protocol (http/https only)
+# Block internal IPs (127.0.0.1, 10.*, 172.16.*, 192.168.*, 169.254.169.254)
+# Set request timeouts
+```
+
+- [ ] URLs from user input are validated before fetching
+- [ ] Internal/private IP ranges are blocked (127.0.0.1, 10.*, 172.16-31.*, 192.168.*)
+- [ ] Only http/https protocols allowed
+- [ ] Cloud metadata endpoints blocked (169.254.169.254, fd00:ec2::254)
+- [ ] Request timeouts are set
+
 ---
 
 ## 11. SELF-CHECK

@@ -781,6 +781,42 @@ public function hosts(): array
 - [ ] `TrustHosts` middleware enabled
 - [ ] URLs built from `config('app.url')`, not `request()->getHost()`
 
+### 12.6 SSRF (Server-Side Request Forgery)
+
+If the application uses `Http::get()` or Guzzle with user-provided URLs, attackers can target internal services or cloud metadata.
+
+```php
+// ❌ Dangerous — SSRF
+$response = Http::get($request->input('url'));
+
+// ✅ Safe — validate URL
+use Illuminate\Support\Str;
+
+$url = $request->input('url');
+$parsed = parse_url($url);
+$host = strtolower($parsed['host'] ?? '');
+
+$blocked = ['127.0.0.1', 'localhost', '169.254.169.254', '0.0.0.0', '[::1]'];
+$blockedPrefixes = ['10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.',
+    '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.',
+    '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '192.168.'];
+
+if (in_array($host, $blocked) || Str::startsWith($host, $blockedPrefixes)) {
+    abort(400, 'URL not allowed');
+}
+if (!in_array($parsed['scheme'] ?? '', ['http', 'https'])) {
+    abort(400, 'Invalid protocol');
+}
+
+$response = Http::timeout(10)->get($url);
+```
+
+- [ ] URLs from user input are validated before `Http::get()` / Guzzle calls
+- [ ] Internal/private IP ranges are blocked
+- [ ] Only http/https protocols allowed
+- [ ] Cloud metadata endpoints blocked (169.254.169.254)
+- [ ] Request timeouts are set
+
 ---
 
 ## 13. SELF-CHECK

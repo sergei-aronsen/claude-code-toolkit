@@ -522,3 +522,67 @@ effective_io_concurrency = 200    # For SSD
 - [pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html)
 - [PgBouncer](https://www.pgbouncer.org/)
 - [pgBadger](https://pgbadger.darold.net/) — log analyzer
+
+---
+
+## 11. Migration Safety
+
+Unsafe migrations on large tables can lock the table for minutes, blocking all reads and writes.
+
+### 11.1 Dangerous Patterns
+
+```sql
+-- ❌ Locks table until all rows are updated (PG < 11)
+ALTER TABLE large_table ADD COLUMN status TEXT NOT NULL;
+
+-- ✅ Safe — add nullable first, backfill, then add constraint
+ALTER TABLE large_table ADD COLUMN status TEXT;
+UPDATE large_table SET status = 'active' WHERE status IS NULL;
+ALTER TABLE large_table ALTER COLUMN status SET NOT NULL;
+
+-- ❌ Blocks writes during index build
+CREATE INDEX idx_users_email ON users(email);
+
+-- ✅ Safe — concurrent index (does not block writes)
+CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+```
+
+### 11.2 Django / Alembic-Specific
+
+```python
+# Django — ❌ Dangerous on large tables
+class Migration(migrations.Migration):
+    operations = [
+        migrations.AddField('site', 'status',
+            models.CharField(max_length=50, null=False)),  # Locks table!
+    ]
+
+# Django — ✅ Safe
+from django.contrib.postgres.operations import AddIndexConcurrently
+
+class Migration(migrations.Migration):
+    atomic = False  # Required for CONCURRENTLY
+
+    operations = [
+        migrations.AddField('site', 'status',
+            models.CharField(max_length=50, null=True)),
+        AddIndexConcurrently('site', ['status'], name='idx_site_status'),
+        # Backfill in management command, then add NOT NULL
+    ]
+
+# Alembic — ✅ Safe
+def upgrade():
+    op.add_column('sites', sa.Column('status', sa.String(50), nullable=True))
+    op.create_index('idx_sites_status', 'sites', ['status'],
+                    postgresql_concurrently=True)
+```
+
+### 11.3 Checklist
+
+- [ ] `NOT NULL` columns added with `DEFAULT` value (instant in PG 11+)
+- [ ] Indexes created with `CONCURRENTLY` (`AddIndexConcurrently` in Django, `postgresql_concurrently` in Alembic)
+- [ ] Django migrations with `CONCURRENTLY` use `atomic = False`
+- [ ] No `DROP COLUMN` on large tables without prior assessment
+- [ ] `ALTER TYPE` avoided on large tables (rewrites entire table)
+- [ ] Lock timeout set: `SET lock_timeout = '5s'`
+- [ ] Migrations tested on production-size dataset first

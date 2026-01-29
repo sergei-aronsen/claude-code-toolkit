@@ -199,6 +199,23 @@ Good: Passing a reference (ID, cache key, file path) and loading data inside the
 - [ ] Large data is stored in cache or filesystem, job receives only a reference
 - [ ] Failed jobs table is not bloated with oversized payloads
 
+### 5.4 Job Idempotency
+
+Jobs may be retried on failure. A non-idempotent job can corrupt data when executed more than once.
+
+```text
+Bad:  IncrementCounter job adds +1 each run → double-counted on retry
+Good: SetCounter job sets absolute value → safe to retry
+
+Bad:  SendEmail job sends on each run → duplicate emails on retry
+Good: SendEmail job checks "already_sent" flag before sending
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use transactions or unique constraints to prevent duplicates
+
 ---
 
 ## 6. INFRASTRUCTURE

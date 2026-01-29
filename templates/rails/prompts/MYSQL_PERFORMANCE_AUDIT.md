@@ -463,3 +463,53 @@ SQL
 - [MySQL Performance Schema](https://dev.mysql.com/doc/refman/8.0/en/performance-schema.html)
 - [Percona Toolkit](https://www.percona.com/software/database-tools/percona-toolkit) - pt-query-digest
 - [MySQLTuner](https://github.com/major/MySQLTuner-perl)
+
+---
+
+## 9. Migration Safety
+
+Unsafe migrations on large tables (100k+ rows) can lock the table, blocking all operations.
+
+### 9.1 Dangerous Patterns
+
+```sql
+-- ❌ May lock table depending on MySQL version
+ALTER TABLE large_table ADD COLUMN status VARCHAR(50) NOT NULL;
+
+-- ✅ Safe — add with DEFAULT (instant in MySQL 8.0.12+ for InnoDB)
+ALTER TABLE large_table ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active';
+
+-- ❌ Changes column type — copies entire table
+ALTER TABLE large_table MODIFY COLUMN name VARCHAR(500);
+
+-- ✅ For very large tables — use pt-online-schema-change or gh-ost
+pt-online-schema-change --alter "ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active'" D=mydb,t=large_table
+```
+
+### 9.2 Rails-Specific
+
+```ruby
+# ❌ Dangerous on large tables
+class AddStatusToSites < ActiveRecord::Migration[7.1]
+  def change
+    add_column :sites, :status, :string, null: false
+  end
+end
+
+# ✅ Safe with strong_migrations gem
+# Gemfile: gem 'strong_migrations'
+class AddStatusToSites < ActiveRecord::Migration[7.1]
+  def change
+    add_column :sites, :status, :string, null: false, default: 'active'
+  end
+end
+```
+
+### 9.3 Checklist
+
+- [ ] `NOT NULL` columns added with `DEFAULT` value
+- [ ] Use `strong_migrations` gem for automatic safety checks
+- [ ] Column type changes avoided on large tables (or use pt-osc/gh-ost)
+- [ ] `ALGORITHM=INPLACE` or `ALGORITHM=INSTANT` used where possible
+- [ ] Large data migrations run in batches, not single UPDATE
+- [ ] Migrations tested on production-size dataset first

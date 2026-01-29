@@ -531,6 +531,49 @@ class OrderConfirmation extends Notification implements ShouldQueue
 - [ ] All Mailables implement `ShouldQueue` (or dispatched via queue)
 - [ ] Exception: only critical security notifications (password reset) may be synchronous
 
+### 3.6 Job Idempotency
+
+Jobs may be retried on failure. A non-idempotent job can corrupt data when executed more than once.
+
+```php
+// ❌ Dangerous — not idempotent
+class IncrementViewsJob implements ShouldQueue
+{
+    public function handle(): void
+    {
+        $site = Site::find($this->siteId);
+        $site->increment('views'); // Double-counted on retry!
+    }
+}
+
+// ✅ Safe — idempotent with ShouldBeUnique + state check
+class ProcessSiteJob implements ShouldQueue, ShouldBeUnique
+{
+    public function handle(): void
+    {
+        $site = Site::find($this->siteId);
+        if ($site->status === 'processed') {
+            return; // Already done
+        }
+        DB::transaction(function () use ($site) {
+            $site->update(['status' => 'processed']);
+            // ... other operations
+        });
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->siteId;
+    }
+}
+```
+
+- [ ] Jobs produce the same result when executed multiple times
+- [ ] State-changing jobs check current state before modifying
+- [ ] Long-running jobs implement `ShouldBeUnique`
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations wrapped in transactions
+
 ---
 
 ## 4. HTTP & EXTERNAL API OPTIMIZATION

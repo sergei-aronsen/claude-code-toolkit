@@ -233,6 +233,34 @@ process_site.delay(site_id=site.id)
 - [ ] Large data is stored in Redis/S3, task receives only a key or ID
 - [ ] Monitor broker memory usage for payload bloat
 
+### 5.4 Job Idempotency
+
+Jobs may be retried on failure (Celery `acks_late`, RQ retry). A non-idempotent task can corrupt data when executed more than once.
+
+```python
+# ❌ Dangerous — not idempotent
+@app.task(bind=True, max_retries=3)
+def process_order(self, order_id: int):
+    order = Order.objects.get(id=order_id)
+    order.total += calculate_fee()  # Double-counted on retry!
+    order.save()
+
+# ✅ Safe — idempotent with state check
+@app.task(bind=True, max_retries=3, acks_late=True)
+def process_order(self, order_id: int):
+    updated = Order.objects.filter(
+        id=order_id, status__ne='processed'
+    ).update(status='processed', total=calculate_fee())
+    if updated == 0:
+        return  # Already processed
+```
+
+- [ ] Tasks produce the same result when executed multiple times
+- [ ] State-changing tasks check current state before modifying
+- [ ] Celery tasks with `acks_late=True` are idempotent
+- [ ] External API calls use idempotency keys where supported
+- [ ] Database operations use `select_for_update()` or atomic filters to prevent duplicates
+
 ---
 
 ## 6. INFRASTRUCTURE
