@@ -165,6 +165,61 @@ $active = Site::where('status', 'active')->get();
 - [ ] All lists > 50 records use `->paginate()` or `->cursorPaginate()`
 - [ ] API endpoints return paginated data
 
+### 1.5 ActiveRecord Callbacks
+
+Callbacks (`before_destroy`, `after_create`, `after_update`) can silently trigger N+1 during bulk operations.
+
+```bash
+# Find all callbacks
+grep -rn "before_destroy\|after_create\|after_update\|after_save" app/models/
+```
+
+```ruby
+# ❌ N+1 on destroy — deletes one by one
+before_destroy :cleanup_checks
+
+def cleanup_checks
+  checks.each(&:destroy)  # 1 query per check!
+end
+
+# ✅ Bulk delete
+has_many :checks, dependent: :delete_all  # 1 query, no callbacks
+
+# ✅ Or if callbacks are needed on children
+has_many :checks, dependent: :destroy  # slower but runs child callbacks
+```
+
+- [ ] `before_destroy` callbacks do not use `.each(&:destroy)` or per-record loops
+- [ ] `after_create`/`after_update` callbacks do not make synchronous API calls
+- [ ] Use `dependent: :delete_all` over `dependent: :destroy` when child callbacks are not needed
+
+### 1.6 Complex Scopes and Subqueries
+
+`.where` with subqueries and `.merge` can generate heavy queries. Multiple chained scopes compound the problem.
+
+```bash
+# Find complex scope chains
+grep -rn "\.joins\|\.where\.not\|\.merge\|\.where\.associated" app/
+```
+
+```ruby
+# ❌ Heavy — multiple subqueries
+Site.where.associated(:last_check)
+    .where(site_checks: { status: 'alive' })
+    .where.associated(:user)
+    .where(users: { active: true })
+    .where.missing(:labels)
+
+# ✅ Better — explicit JOIN
+Site.joins(:last_check)
+    .where(site_checks: { status: 'alive' })
+    .select('sites.*')
+```
+
+- [ ] Replace `.where.associated` with `.joins` where possible
+- [ ] No complex scope chains inside loops or polling endpoints
+- [ ] Chains of 3+ scopes with subqueries are refactored or cached
+
 ---
 
 ## 2. LARAVEL OPTIMIZATION
@@ -293,6 +348,23 @@ class ParseSiteJob implements ShouldQueue
 
 - [ ] Jobs store only ID, not entire models
 
+### 3.4 Queue Payload Size
+
+Job arguments are serialized into Redis (Sidekiq) or the database (GoodJob/Delayed Job). Large payloads waste memory and slow queue processing.
+
+```ruby
+# ❌ Raw HTML stored in Sidekiq payload
+ProcessSiteWorker.perform_async(site.id, html_content)
+
+# ✅ Store data externally, pass only a reference
+Rails.cache.write("site_html:#{site.id}", html_content, expires_in: 5.minutes)
+ProcessSiteWorker.perform_async(site.id)
+```
+
+- [ ] Worker arguments do not contain raw HTML, file content, or Base64 strings
+- [ ] Large data is stored in Rails.cache/S3, worker receives only an ID or cache key
+- [ ] Monitor Sidekiq dashboard for oversized job payloads
+
 ---
 
 ## 4. HTTP & EXTERNAL API OPTIMIZATION
@@ -370,6 +442,19 @@ return Inertia::render('Sites/Show', [
 - [ ] CSS < 100KB gzipped
 - [ ] Code splitting is used
 - [ ] Heavy components are lazy loaded
+
+### 5.3 Frontend Polling
+
+Frequent polling from frontend (Turbo Streams polling, setInterval) can overwhelm the backend.
+
+```bash
+# Find polling patterns
+grep -rn "setInterval\|turbo_stream_from\|polling" app/javascript/ app/views/
+```
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use `Rails.cache.fetch`, not raw DB aggregations
+- [ ] Consider Turbo Streams over WebSocket or Action Cable for real-time data
 
 ---
 

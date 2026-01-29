@@ -72,6 +72,56 @@ Good: 1-2 queries with eager loading
 - [ ] EXPLAIN for complex queries
 - [ ] Pagination for large datasets
 
+### 1.4 ORM Lifecycle Events
+
+SQLAlchemy events and Django signals can silently trigger N+1 during bulk operations.
+
+```python
+# ❌ N+1 in Django signal — deletes one by one
+@receiver(pre_delete, sender=Site)
+def delete_related(sender, instance, **kwargs):
+    for check in instance.checks.all():
+        check.delete()  # N queries!
+
+# ✅ Bulk delete
+@receiver(pre_delete, sender=Site)
+def delete_related(sender, instance, **kwargs):
+    instance.checks.all().delete()  # 1 query
+
+# ✅ Or use on_delete=CASCADE in model definition
+checks = models.ForeignKey(Site, on_delete=models.CASCADE)
+```
+
+```python
+# SQLAlchemy — use cascade in relationship
+checks = relationship("Check", cascade="all, delete-orphan")
+```
+
+- [ ] Delete/update signals do not use per-record iteration
+- [ ] Signals do not make synchronous external API calls
+- [ ] Use DB-level cascades or ORM cascade options where possible
+
+### 1.5 Complex Query Patterns (Subqueries)
+
+Chaining multiple subquery conditions can cause exponential query complexity even with proper indexes.
+
+```python
+# ❌ Heavy — multiple .filter() with subqueries
+Site.objects.filter(
+    checks__status='alive',
+    user__is_active=True,
+).exclude(labels__isnull=False)
+
+# ✅ Better — use select_related/prefetch or raw JOIN
+Site.objects.select_related('user').filter(
+    user__is_active=True,
+).only('id', 'url', 'user__id')
+```
+
+- [ ] No more than 2 nested subquery conditions per query
+- [ ] Subqueries replaced with JOINs where possible
+- [ ] No subquery conditions inside loops or polling endpoints
+
 ---
 
 ## 2. CACHING
@@ -121,6 +171,15 @@ Good: 1-2 queries with eager loading
 - [ ] FID < 100ms
 - [ ] CLS < 0.1
 
+### 3.5 Polling and Repeated Requests
+
+Frequent frontend polling can overwhelm the backend if endpoints are not optimized.
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use cache (Redis/memcached), not heavy DB aggregations
+- [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
+- [ ] Consider WebSockets/SSE (channels, socket.io) for real-time data
+
 ---
 
 ## 4. API PERFORMANCE
@@ -156,6 +215,23 @@ Good: 1-2 queries with eager loading
 - [ ] Timeout is configured
 - [ ] Retry policy
 - [ ] Failed job handling
+
+### 5.3 Queue Payload Size
+
+Data passed to Celery/RQ/Dramatiq tasks is serialized (pickle/JSON). Large payloads waste broker memory and slow processing.
+
+```python
+# ❌ Raw HTML/file content in task args
+process_site.delay(site_id=site.id, html=html_content)
+
+# ✅ Store data externally, pass only a reference
+cache.set(f"site_html:{site.id}", html_content, timeout=300)
+process_site.delay(site_id=site.id)
+```
+
+- [ ] Task arguments do not contain raw HTML, file content, or binary data
+- [ ] Large data is stored in Redis/S3, task receives only a key or ID
+- [ ] Monitor broker memory usage for payload bloat
 
 ---
 

@@ -72,6 +72,37 @@ Good: 1-2 queries with eager loading
 - [ ] EXPLAIN for complex queries
 - [ ] Pagination for large datasets
 
+### 1.4 ORM Lifecycle Events
+
+ORM hooks and middleware (Prisma middleware, Sequelize hooks, TypeORM subscribers) can silently trigger N+1 during bulk operations.
+
+```typescript
+// ❌ N+1 in hook — deletes one by one
+beforeDestroy: async (project) => {
+  const files = await File.findAll({ where: { projectId: project.id } });
+  for (const file of files) {
+    await file.destroy(); // N queries!
+  }
+}
+
+// ✅ Bulk delete
+beforeDestroy: async (project) => {
+  await File.destroy({ where: { projectId: project.id } }); // 1 query
+}
+```
+
+- [ ] Delete/update hooks do not use per-record iteration
+- [ ] Hooks do not make synchronous external API calls
+- [ ] Use DB-level cascades where possible
+
+### 1.5 Complex Query Patterns (Subqueries)
+
+Chaining multiple subquery conditions can cause exponential query complexity even with proper indexes.
+
+- [ ] No more than 2 nested subquery conditions per query
+- [ ] Subqueries replaced with JOINs where possible
+- [ ] No subquery conditions inside loops or polling endpoints
+
 ---
 
 ## 2. CACHING
@@ -121,6 +152,15 @@ Good: 1-2 queries with eager loading
 - [ ] FID < 100ms
 - [ ] CLS < 0.1
 
+### 3.5 Polling and Repeated Requests
+
+Frequent frontend polling can overwhelm the backend if endpoints are not optimized.
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use cache or in-memory storage, not heavy DB aggregations
+- [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
+- [ ] Consider WebSockets/SSE for real-time data instead of polling
+
 ---
 
 ## 4. API PERFORMANCE
@@ -156,6 +196,23 @@ Good: 1-2 queries with eager loading
 - [ ] Timeout configured
 - [ ] Retry policy
 - [ ] Failed job handling
+
+### 5.3 Queue Payload Size
+
+Data passed to background jobs (Bull, BullMQ, Agenda) is serialized into Redis/DB. Large payloads waste memory and slow queue processing.
+
+```typescript
+// ❌ Raw HTML/file content in job data
+await queue.add('process', { siteId: site.id, html: htmlContent });
+
+// ✅ Store data externally, pass only a reference
+await redis.setex(`site_html:${site.id}`, 300, htmlContent);
+await queue.add('process', { siteId: site.id });
+```
+
+- [ ] Job data does not contain raw HTML, file content, or Base64 strings
+- [ ] Large data is stored in Redis/S3, job receives only a key or ID
+- [ ] Failed jobs are not bloated with oversized payloads
 
 ---
 

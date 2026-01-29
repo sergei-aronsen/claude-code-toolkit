@@ -328,6 +328,62 @@ const [user, projects, settings] = await Promise.all([
 - [ ] Independent queries through Promise.all
 - [ ] No waterfall queries
 
+### 3.5 ORM Lifecycle Events (Prisma Middleware)
+
+ORM middleware and hooks can silently trigger N+1 during bulk operations.
+
+```typescript
+// ❌ N+1 in Prisma middleware — deletes one by one
+prisma.$use(async (params, next) => {
+  if (params.action === 'delete' && params.model === 'Project') {
+    const files = await prisma.file.findMany({
+      where: { projectId: params.args.where.id },
+    });
+    for (const file of files) {
+      await prisma.file.delete({ where: { id: file.id } }); // N queries!
+    }
+  }
+  return next(params);
+});
+
+// ✅ Use onDelete: Cascade in schema.prisma
+// model File {
+//   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+// }
+```
+
+- [ ] No per-record iteration in Prisma middleware
+- [ ] Use `onDelete: Cascade` in schema for related record cleanup
+- [ ] Middleware does not make synchronous external API calls
+
+### 3.6 Complex Query Patterns (Nested Filters)
+
+Deeply nested `where` conditions with relations generate heavy subqueries.
+
+```typescript
+// ❌ Heavy — multiple nested relation filters
+const projects = await prisma.project.findMany({
+  where: {
+    user: { isActive: true },
+    files: { some: { type: 'component' } },
+    deployments: { none: { status: 'failed' } },
+  },
+});
+
+// ✅ Better — split into indexed queries or use raw SQL for complex filters
+const activeUserIds = await prisma.user.findMany({
+  where: { isActive: true },
+  select: { id: true },
+});
+const projects = await prisma.project.findMany({
+  where: { userId: { in: activeUserIds.map(u => u.id) } },
+});
+```
+
+- [ ] No more than 2 nested relation filters per query
+- [ ] Complex filters split into simpler indexed queries
+- [ ] No nested relation filters inside polling endpoints
+
 ---
 
 ## 4. AI API OPTIMIZATION (if used)
@@ -707,6 +763,46 @@ function Search() {
 
 - [ ] Search inputs debounced
 - [ ] AI prompts debounced
+
+### 8.4 Polling Analysis
+
+Frequent polling from frontend can overwhelm API routes and database.
+
+```bash
+# Find polling patterns
+grep -rn "setInterval\|refreshInterval\|refetchInterval\|usePoll" app/ components/ lib/ --include="*.ts" --include="*.tsx"
+```
+
+```typescript
+// ❌ Heavy endpoint called every 5 seconds
+useEffect(() => {
+  const interval = setInterval(async () => {
+    const stats = await fetch('/api/stats'); // Heavy DB query!
+    setStats(await stats.json());
+  }, 5000);
+  return () => clearInterval(interval);
+}, []);
+
+// ✅ Cached endpoint with SWR
+import useSWR from 'swr';
+
+const { data } = useSWR('/api/stats', fetcher, {
+  refreshInterval: 30000, // 30s is reasonable
+  dedupingInterval: 10000,
+});
+
+// ✅ Backend: cache the response
+export async function GET() {
+  const stats = await getCachedStats(); // Redis/in-memory cache
+  return Response.json(stats, {
+    headers: { 'Cache-Control': 'private, max-age=10' },
+  });
+}
+```
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints return cached data, not raw DB aggregations
+- [ ] Consider Server-Sent Events for real-time data instead of polling
 
 ---
 

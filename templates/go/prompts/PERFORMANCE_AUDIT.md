@@ -72,6 +72,51 @@ Comprehensive performance audit of a web application. Act as a Senior Performanc
 - [ ] EXPLAIN for complex queries
 - [ ] Pagination for large datasets
 
+### 1.4 ORM Hooks (GORM/Ent)
+
+ORM hooks (BeforeDelete, AfterCreate) can silently trigger N+1 during bulk operations.
+
+```go
+// ❌ N+1 in hook — deletes one by one
+func (s *Site) BeforeDelete(tx *gorm.DB) error {
+    var checks []Check
+    tx.Where("site_id = ?", s.ID).Find(&checks)
+    for _, c := range checks {
+        tx.Delete(&c) // N queries!
+    }
+    return nil
+}
+
+// ✅ Bulk delete — single query
+func (s *Site) BeforeDelete(tx *gorm.DB) error {
+    return tx.Where("site_id = ?", s.ID).Delete(&Check{}).Error
+}
+```
+
+- [ ] Delete/update hooks do not use per-record iteration
+- [ ] Hooks do not make synchronous external HTTP calls
+- [ ] Use DB-level cascades (`ON DELETE CASCADE`) where possible
+
+### 1.5 Complex Query Patterns (Subqueries)
+
+Chaining multiple subquery conditions can cause exponential query complexity even with proper indexes.
+
+```go
+// ❌ Heavy — multiple subqueries
+db.Where("id IN (?)", db.Table("checks").Select("site_id").Where("status = ?", "alive")).
+   Where("user_id IN (?)", db.Table("users").Select("id").Where("active = ?", true)).
+   Find(&sites)
+
+// ✅ Better — explicit JOIN
+db.Joins("JOIN checks ON checks.site_id = sites.id").
+   Where("checks.status = ?", "alive").
+   Find(&sites)
+```
+
+- [ ] No more than 2 nested subquery conditions per query
+- [ ] Subqueries replaced with JOINs where possible
+- [ ] No subquery conditions inside loops or polling endpoints
+
 ---
 
 ## 2. CACHING
@@ -121,6 +166,15 @@ Comprehensive performance audit of a web application. Act as a Senior Performanc
 - [ ] FID < 100ms
 - [ ] CLS < 0.1
 
+### 3.5 Polling and Repeated Requests
+
+Frequent frontend polling can overwhelm the backend if endpoints are not optimized.
+
+- [ ] Endpoints called at intervals < 30s respond in < 50ms
+- [ ] Polling endpoints use cache (Redis/in-memory), not heavy DB aggregations
+- [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
+- [ ] Consider WebSockets/SSE for real-time data instead of polling
+
 ---
 
 ## 4. API PERFORMANCE
@@ -156,6 +210,24 @@ Comprehensive performance audit of a web application. Act as a Senior Performanc
 - [ ] Timeout configured
 - [ ] Retry policy
 - [ ] Failed job handling
+
+### 5.3 Queue Payload Size
+
+Data passed to background workers (Asynq, Machinery, custom goroutine pools) is serialized into Redis/DB. Large payloads waste memory and slow processing.
+
+```go
+// ❌ Raw HTML in task payload
+task := asynq.NewTask("process_site", []byte(htmlContent))
+
+// ✅ Store data externally, pass only a reference
+rdb.Set(ctx, fmt.Sprintf("site_html:%d", siteID), htmlContent, 5*time.Minute)
+payload, _ := json.Marshal(map[string]int{"site_id": siteID})
+task := asynq.NewTask("process_site", payload)
+```
+
+- [ ] Task payloads do not contain raw HTML, file content, or binary data
+- [ ] Large data is stored in Redis/S3, task receives only a key or ID
+- [ ] Monitor Redis memory usage for payload bloat
 
 ---
 
