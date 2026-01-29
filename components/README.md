@@ -38,6 +38,7 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 | Component | Description |
 |-----------|-------------|
+| [playwright-self-testing.md](./playwright-self-testing.md) | Visual self-testing after UI changes. Playwright MCP workflow, tips, troubleshooting. |
 | [smoke-tests-guide.md](./smoke-tests-guide.md) | Minimal tests for API. Examples for Laravel, Next.js, Node.js. |
 | [quick-check-scripts.md](./quick-check-scripts.md) | Bash scripts: find secrets, debug code, TODO/FIXME, large files. |
 | [markdown-lint-rules.md](./markdown-lint-rules.md) | Markdownlint rules: MD040, MD031/32, MD026. Config reference. |

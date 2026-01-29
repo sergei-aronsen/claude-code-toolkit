@@ -128,6 +128,16 @@ php artisan migrate:fresh --seed  # Fresh DB with seeds
 
 ---
 
+## Visual Self-Testing (Playwright MCP)
+
+**After ANY visual/UI change, self-test using Playwright MCP before reporting completion.**
+
+Workflow: navigate to page, check for console errors, interact with changed elements, take screenshots, report findings. If bug found — fix, redeploy, re-test.
+
+Requires Playwright MCP server. Full guide: `components/playwright-self-testing.md`
+
+---
+
 ## 🏗️ Architecture Guidelines (STRICT!)
 
 1. **KISS Principle:** Simplest working solution. No premature optimization.
