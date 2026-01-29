@@ -149,6 +149,8 @@ Update documentation if changes affect:
 
 ### 3. MCP Memory — for persistence between sessions
 
+> **IMPORTANT:** All memory entries must be written in English, regardless of conversation language.
+
 **Knowledge Graph (memory)** — for relationships and architecture:
 
 ```text

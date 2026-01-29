@@ -340,7 +340,7 @@ When making **significant changes** — save knowledge to THREE places:
 
 1. **CLAUDE.md** — update this file
 2. **Documentation** — update /docs or README
-3. **MCP Memory** — save for future sessions
+3. **MCP Memory** — save for future sessions (always in English, regardless of conversation language)
 
 ---
 

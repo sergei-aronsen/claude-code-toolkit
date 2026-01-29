@@ -259,6 +259,8 @@ On **significant changes** — save knowledge to THREE places + sync:
 
 ### 3. MCP Memory — save for future sessions
 
+> **IMPORTANT:** All memory entries must be written in English, regardless of conversation language.
+
 **Knowledge Graph** (relationships and architecture):
 
 ```text

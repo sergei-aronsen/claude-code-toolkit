@@ -222,3 +222,4 @@ See templates in `templates/*/CLAUDE.md` for ready examples.
 3. **Check at session start** — to avoid working with stale memory
 4. **Document decisions** — write "why", not just "what"
 5. **Commit memory** — together with code, not separately
+6. **Write in English** — all memory entries (entities, observations, decisions, notes) must be written in English, regardless of the conversation language
