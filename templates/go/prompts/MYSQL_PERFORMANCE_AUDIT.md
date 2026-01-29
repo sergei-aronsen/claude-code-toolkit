@@ -119,6 +119,73 @@ innodb_buffer_pool_instances = 4          # For parallelism (1 per GB)
 
 ---
 
+## 3.5 Write Performance (Redo Log & IO Latency)
+
+### Redo Log
+
+If Redo Log is too small, MySQL flushes to disk aggressively ("furious flushing"), killing write performance.
+
+```sql
+-- Redo Log write intensity
+SELECT
+    ROUND(VARIABLE_VALUE / 1024 / 1024) as redo_written_mb
+FROM performance_schema.global_status
+WHERE VARIABLE_NAME = 'Innodb_os_log_written';
+```
+
+**Measure delta over 60 seconds to get MB/s.**
+
+**Rule:** Redo Log should hold at least 1 hour of writes.
+
+**Config:**
+
+```ini
+# MySQL 8.0.30+
+innodb_redo_log_capacity = 2G
+
+# Before 8.0.30
+innodb_log_file_size = 1G    # x2 files = 2GB total
+```
+
+### IO Latency
+
+MySQL may be slow due to disk, not CPU. Check with `sys` schema:
+
+```sql
+-- Slowest files by IO latency
+SELECT
+    file,
+    total_latency,
+    avg_read_latency,
+    avg_write_latency
+FROM sys.io_global_by_file_by_latency
+WHERE file LIKE '%/data/%'
+LIMIT 5;
+```
+
+| Latency | Status | Action |
+| ------- | ------ | ------ |
+| < 5ms | Excellent (SSD) | - |
+| 5-10ms | OK | Monitor |
+| 10-20ms | Warning | Check disk |
+| > 20ms | Critical | Disk bottleneck |
+
+### Temp Tables on Disk
+
+Complex queries (GROUP BY, UNION) create temp tables. If they don't fit in memory, they spill to disk.
+
+```sql
+SELECT
+    (SELECT VARIABLE_VALUE FROM performance_schema.global_status
+     WHERE VARIABLE_NAME = 'Created_tmp_disk_tables') as disk_tmp_tables,
+    (SELECT VARIABLE_VALUE FROM performance_schema.global_status
+     WHERE VARIABLE_NAME = 'Created_tmp_tables') as total_tmp_tables;
+```
+
+**Rule:** `disk / total` > 10% → increase `tmp_table_size` / `max_heap_table_size` or optimize queries.
+
+---
+
 ## 4. Top Heavy Queries (Full Table Scans)
 
 ```sql
@@ -152,6 +219,7 @@ LIMIT 15;
 - `WHERE column IS NOT NULL` → caching
 - `LIKE '%search%'` → Full-text search
 - `ORDER BY` without index → Composite index
+- `JSON_EXTRACT(col, '$.key')` in WHERE → Create Virtual Generated Column + Index
 
 ---
 
@@ -265,11 +333,36 @@ ORDER BY (DATA_LENGTH + INDEX_LENGTH) DESC
 LIMIT 10;
 ```
 
+### Fragmentation (UUID v4 problem)
+
+UUID v4 as primary key causes random inserts → heavy index fragmentation.
+
+```sql
+SELECT
+    TABLE_NAME as tbl,
+    ROUND(DATA_LENGTH / 1024 / 1024) as data_mb,
+    ROUND(DATA_FREE / 1024 / 1024) as free_mb,
+    ROUND(DATA_FREE / NULLIF(DATA_LENGTH, 0) * 100) as frag_pct
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
+    AND DATA_FREE > 50 * 1024 * 1024
+ORDER BY DATA_FREE DESC;
+```
+
+| frag_pct | Status | Action |
+| -------- | ------ | ------ |
+| < 10% | OK | - |
+| 10-30% | Warning | Schedule `OPTIMIZE TABLE` |
+| > 30% | Critical | Migrate to ULID/UUIDv7 or `OPTIMIZE TABLE` |
+
+**Note:** `OPTIMIZE TABLE` locks the table. Run during maintenance windows.
+
 **Problem indicators:**
 
 - `index_mb` > `data_mb` → too many indexes
 - Table > 1GB → plan archiving/partitioning
 - `jobs` table bloated → worker problem
+- High `frag_pct` → UUID v4 fragmentation or frequent deletes
 
 ---
 
@@ -357,6 +450,11 @@ SQL
 - [ ] Deadlocks = 0
 - [ ] No tables > 1GB without archiving plan
 - [ ] N+1 issues fixed
+- [ ] Redo Log sized for 1+ hour of writes
+- [ ] IO latency < 10ms (SSD)
+- [ ] Disk temp tables < 10% of total
+- [ ] No tables with > 30% fragmentation
+- [ ] JSON columns used in WHERE have Virtual Column + Index
 
 ---
 

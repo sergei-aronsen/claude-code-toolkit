@@ -86,6 +86,24 @@ FROM pg_stat_activity;
 
 **Idle in transaction** > 5 — problem with unclosed transactions!
 
+### Long Running Transactions
+
+Any long transaction (even active) blocks VACUUM from cleaning dead tuples. One 24-hour transaction can double table sizes.
+
+```sql
+SELECT
+    pid,
+    usename,
+    state,
+    now() - xact_start as duration,
+    LEFT(query, 80) as query
+FROM pg_stat_activity
+WHERE (now() - xact_start) > interval '5 minutes'
+ORDER BY duration DESC;
+```
+
+**Rule:** No transactions longer than 10 minutes in production. Set `idle_in_transaction_session_timeout` as a safety net.
+
 ---
 
 ## 3. Shared Buffers & Cache Hit Ratio
@@ -110,6 +128,63 @@ WHERE datname = current_database();
 | < 95% | Poor | Increase shared_buffers |
 
 **Rule:** `shared_buffers = 25% RAM` (but no more than 8GB on Linux)
+
+---
+
+## 3.5 Write Health (Checkpoints & BgWriter)
+
+PostgreSQL writes dirty pages via background processes. If settings are wrong, regular backends start writing to disk themselves, causing latency spikes.
+
+```sql
+SELECT
+    checkpoints_timed,
+    checkpoints_req,
+    ROUND(checkpoint_write_time / 1000) as write_time_sec,
+    ROUND(checkpoint_sync_time / 1000) as sync_time_sec,
+    buffers_checkpoint,
+    buffers_clean,
+    buffers_backend
+FROM pg_stat_bgwriter;
+```
+
+**Key indicators:**
+
+| Metric | Problem | Fix |
+| ------ | ------- | --- |
+| `buffers_backend` high relative to `buffers_checkpoint + buffers_clean` | Backends forced to write to disk | Increase `bgwriter_lru_maxpages`, `bgwriter_lru_multiplier` |
+| `checkpoints_req` > `checkpoints_timed` | WAL fills faster than timer | Increase `max_wal_size` |
+
+---
+
+## 3.6 Temp Files (Disk Spills)
+
+When `work_mem` is too small for sorts/hashes, PostgreSQL writes temp files to disk — kills IO performance.
+
+```sql
+SELECT
+    datname,
+    temp_files,
+    pg_size_pretty(temp_bytes) as temp_size
+FROM pg_stat_database
+WHERE datname = current_database();
+```
+
+**If `temp_files` grows rapidly** → increase `work_mem` or optimize queries with `ORDER BY` / `DISTINCT` / `GROUP BY`.
+
+**Check per-query temp usage:**
+
+```sql
+SELECT
+    LEFT(query, 80) as query,
+    calls,
+    ROUND(mean_exec_time::numeric, 2) as avg_ms,
+    temp_blks_written
+FROM pg_stat_statements
+WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+    AND temp_blks_written > 0
+ORDER BY temp_blks_written DESC
+LIMIT 10;
+```
 
 ---
 
@@ -306,12 +381,17 @@ LIMIT 15;
 
 **dead_pct > 20%** — needs VACUUM.
 
+> **Note:** High dead tuples also bloat indexes. Standard `VACUUM` does not always reclaim index space efficiently. Consider `REINDEX INDEX CONCURRENTLY` for bloated indexes.
+
 ```sql
 -- Manual vacuum
 VACUUM ANALYZE table_name;
 
--- Aggressive (releases disk space)
+-- Aggressive (frees disk space)
 VACUUM FULL table_name; -- LOCKS TABLE!
+
+-- Rebuild bloated index without locking
+REINDEX INDEX CONCURRENTLY index_name;
 ```
 
 ---
@@ -329,6 +409,30 @@ FROM pg_stat_user_tables
 ORDER BY pg_total_relation_size(relid) DESC
 LIMIT 15;
 ```
+
+---
+
+## 10. Sequence Exhaustion
+
+`SERIAL` (int4) columns max out at ~2.1 billion. When exhausted, inserts fail silently. Check proactively.
+
+```sql
+SELECT
+    sequencename as sequence,
+    last_value,
+    (2147483647 - last_value) as remaining,
+    ROUND((last_value / 2147483647.0) * 100, 1) as percent_used
+FROM pg_sequences
+WHERE data_type = 'integer'
+ORDER BY percent_used DESC
+LIMIT 5;
+```
+
+| percent_used | Status | Action |
+| ------------ | ------ | ------ |
+| < 50% | OK | - |
+| 50-80% | Warning | Plan migration to `BIGINT` |
+| > 80% | Critical | Migrate to `BIGINT` ASAP |
 
 ---
 
@@ -403,6 +507,11 @@ effective_io_concurrency = 200    # For SSD
 - [ ] Dead tuples < 20% on all tables
 - [ ] No active locks/deadlocks
 - [ ] N+1 problems fixed
+- [ ] `buffers_backend` low relative to checkpoint/clean buffers
+- [ ] `checkpoints_req` < `checkpoints_timed`
+- [ ] No excessive temp files (check `work_mem`)
+- [ ] No transactions running > 10 minutes
+- [ ] No integer sequences > 80% exhausted
 - [ ] pg_stat_statements enabled
 
 ---
