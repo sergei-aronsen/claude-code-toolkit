@@ -123,9 +123,9 @@ your-project/
 
 | 框架 | 模板 | 技能 | 自动检测 |
 |-----------|----------|--------|----------------|
-| Laravel | ✅ | ✅ | `artisan` file |
+| Laravel | ✅ | ✅ | `artisan` 文件 |
 | Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
 | Next.js | ✅ | ✅ | `next.config.*` |
-| Node.js | ✅ | ✅ | `package.json` (without next.config) |
+| Node.js | ✅ | ✅ | `package.json`（不含 next.config） |
 | Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
 | Go | ✅ | ✅ | `go.mod` |

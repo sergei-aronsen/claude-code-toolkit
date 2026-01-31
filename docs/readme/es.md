@@ -17,7 +17,7 @@ Instrucciones completas para el desarrollo asistido por IA con Claude Code.
 
 Stacks soportados: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
 
-**7 plantillas** (base, Laravel, Rails, Next.js, Node.js, Python, Go)
+**7 plantillas** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
 **24 slash commands** | **7 auditorias** | **23+ guias** | Ver la [lista completa de comandos, plantillas, auditorias y componentes](../features.md#slash-commands-24-total).
 
