@@ -1,4 +1,4 @@
-# Claude Guides
+# Claude Toolkit
 
 Comprehensive instructions for AI-assisted development with Claude Code.
 
@@ -7,7 +7,7 @@ Comprehensive instructions for AI-assisted development with Claude Code.
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
 
-> **New to Claude Code?** Read the [step-by-step installation guide](howto/en.md) first.
+> Read full [step-by-step installation guide](howto/en.md) first.
 
 ---
 
@@ -33,15 +33,9 @@ Without a team, you have no code review, no one to ask about architecture, no on
 
 ## Quick Start
 
-### First Installation
+### Installation
 
-Tell Claude Code:
-
-```text
-Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
-```
-
-Or run in terminal:
+Run in the project's folder:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
@@ -49,25 +43,47 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 
 The script automatically detects framework (Laravel, Next.js) and copies the appropriate template.
 
-### After Installation / Updating
+### Updating
 
-Use `/install` command for reinstallation or updates:
-
-```text
-/install          # auto-detect framework
-/install laravel  # force Laravel
-/install rails    # force Ruby on Rails
-/install nextjs   # force Next.js
-/install nodejs   # force Node.js
-/install python   # force Python
-/install go       # force Go
-```
-
+Use `/install` command for reinstallation or updates.
 Or via terminal:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
+
+---
+
+## Security
+
+LLMs introduce [9x more vulnerabilities](https://arxiv.org/abs/2507.02976) than human developers. This toolkit includes a defense-in-depth security setup.
+
+### Quick Setup
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+```
+
+### What It Installs
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Rules** | `~/.claude/CLAUDE.md` | 14 sections of security rules applied to ALL projects |
+| **Blocker** | `cc-safety-net` | Blocks destructive commands (`rm -rf`, `git push --force`, etc.) |
+| **Hook** | `~/.claude/settings.json` | Every Bash command goes through safety-net before execution |
+
+### Defense Layers
+
+```text
+Layer 1: Global security rules (prompt-based)
+Layer 2: safety-net plugin (command analysis)
+Layer 3: /security-review command (pre-commit)
+Layer 4: Semgrep / SonarQube (CI/CD SAST)
+Layer 5: claude-code-security-review (AI PR review)
+Layer 6: Human review (final check)
+```
+
+See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 ---
 
@@ -453,36 +469,3 @@ SECURITY AUDIT REPORT
 | Node.js | ✅ Dedicated | ✅ | `package.json` (without next.config) |
 | Python | ✅ Dedicated | ✅ | `pyproject.toml` / `requirements.txt` |
 | Go | ✅ Dedicated | ✅ | `go.mod` |
-
----
-
-## Security
-
-LLMs introduce [9x more vulnerabilities](https://arxiv.org/abs/2507.02976) than human developers. This toolkit includes a defense-in-depth security setup.
-
-### Quick Setup
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
-```
-
-### What It Installs
-
-| Layer | Tool | Purpose |
-|-------|------|---------|
-| **Rules** | `~/.claude/CLAUDE.md` | 14 sections of security rules applied to ALL projects |
-| **Blocker** | `cc-safety-net` | Blocks destructive commands (`rm -rf`, `git push --force`, etc.) |
-| **Hook** | `~/.claude/settings.json` | Every Bash command goes through safety-net before execution |
-
-### Defense Layers
-
-```text
-Layer 1: Global security rules (prompt-based)
-Layer 2: safety-net plugin (command analysis)
-Layer 3: /security-review command (pre-commit)
-Layer 4: Semgrep / SonarQube (CI/CD SAST)
-Layer 5: claude-code-security-review (AI PR review)
-Layer 6: Human review (final check)
-```
-
-See [components/security-hardening.md](components/security-hardening.md) for the full guide.
