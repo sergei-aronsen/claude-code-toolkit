@@ -32,13 +32,12 @@
 - **Never** use `unserialize()` (PHP), `pickle.loads()` (Python), `yaml.load()` (unsafe YAML) with user-controlled data
 - **Never** use `new Function(userInput)`, `setTimeout(stringFromUser)` in JavaScript
 - **Never** use `innerHTML`, `v-html`, `dangerouslySetInnerHTML` with unsanitized input
-- **Never** use `preg_replace` with the `/e` modifier (PHP)
 - **Prefer** library APIs over shell calls: use `mkdir()` not `system("mkdir ...")`, use `file_put_contents()` not `exec("echo > file")`
 
 ### File Operations
 
 - **Never** construct file paths from user input without sanitization (path traversal: `../../etc/passwd`)
-- **Never** use `file_get_contents()`, `fetch()`, `requests.get()` with user-controlled URLs without allowlist (SSRF) — restrict scheme (https only), port, and host
+- **Never** use `file_get_contents()`, `fetch()`, `requests.get()` with user-controlled URLs without allowlist (SSRF) — restrict scheme (https only), port, host, AND block private/internal IPs (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.169.254 cloud metadata)
 - **Never** trust file extensions alone — validate content type and file signatures (magic bytes) server-side
 - **Never** store uploaded files with original user-provided names — rename to UUID
 - **Never** store uploads inside the web-accessible root — use a private storage path and serve via controller
@@ -49,6 +48,8 @@
 - **Never** send credentials or tokens in GET parameters (logged in URLs, referrer headers)
 - **Never** implement custom auth/session when the framework provides one
 - **Never** skip authorization checks on any endpoint that modifies data
+- **Never** redirect to user-controlled URLs without validating against an allowlist (open redirect)
+- **Never** pass unsanitized user input directly to model create/update — use explicit field allowlists (mass assignment: `User::create($request->all())` is a vulnerability)
 - **Never** compare secrets with `==` — use constant-time comparison (`hash_equals`, `hmac.compare_digest`)
 
 ### Information Disclosure
@@ -69,7 +70,7 @@
 - **Always** use HTTPS for external API calls
 - **Always** use the framework's built-in authentication and authorization mechanisms
 - **Always** validate file uploads: check size limits, content type + magic bytes, rename to UUID
-- **Always** set HTTP security headers: `Content-Security-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`
+- **Always** set HTTP security headers: `Content-Security-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`
 - **Always** use environment variables or secret managers for credentials
 - **Always** apply rate limiting to ALL authentication endpoints (login, register, password reset, API key generation)
 - **Always** check authorization on both the route AND the data being accessed — "deny by default" (no access unless explicitly granted)
@@ -144,6 +145,8 @@ After writing code, mentally verify:
 - Check if the framework already provides the needed functionality before adding dependencies
 - Be cautious with packages that request broad permissions or post-install scripts
 - When updating dependencies, note any major version changes that might alter security behavior
+- **Always** run dependency audit before deploying (`npm audit`, `pip-audit`, `composer audit`, `go vuln check`) — check for known CVEs
+- **Always** commit lock files (`package-lock.json`, `composer.lock`, `poetry.lock`, `go.sum`) — prevents dependency confusion attacks
 - For critical security packages (crypto, auth), prefer packages backed by known organizations
 
 ---
@@ -184,6 +187,7 @@ These tools provide defense layers beyond prompt-based rules:
 - **Always** scan images for vulnerabilities (`docker scout`, `trivy`, `grype`) before deployment
 - **Prefer** distroless or Alpine-based images to minimize attack surface
 - **Never** expose database ports (3306, 5432, 6379) to the host in production — use internal Docker networks
+- **Never** use `--privileged` flag unless absolutely necessary — it gives the container full host access
 
 ---
 
@@ -222,6 +226,7 @@ These tools provide defense layers beyond prompt-based rules:
 - **Always** set idle timeouts — close inactive connections to prevent resource leaks
 - **Never** trust message content — validate and sanitize all incoming WebSocket data same as HTTP input
 - **Never** broadcast sensitive data to all connections — verify each recipient's authorization
+- **Always** use WSS (WebSocket Secure) in production — never unencrypted WS
 
 ---
 
