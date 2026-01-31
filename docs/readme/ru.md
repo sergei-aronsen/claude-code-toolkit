@@ -25,25 +25,25 @@
 
 ## Быстрый старт
 
-### 1. Установка
-
-Скрипт автоматически определяет фреймворк и копирует соответствующий шаблон.
-
-Просто выполните в терминале в папке проекта:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
-```
-
-**Перезапустите Claude!** Для будущих обновлений используйте команду `/update-toolkit` для переустановки или обновления.
-
-### 2. Security Pack
+### 1. Security Pack (глобально, один раз)
 
 Включает многоуровневую защиту. Смотрите [components/security-hardening.md](../../components/security-hardening.md) для полного руководства.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
+
+### 2. Установка (для каждого проекта)
+
+Скрипт автоматически определяет фреймворк и копирует соответствующий шаблон.
+
+Выполните в терминале в папке проекта:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+```
+
+**Перезапустите Claude!** Для будущих обновлений используйте команду `/update-toolkit` для переустановки или обновления.
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 

@@ -25,7 +25,15 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 
 ## 빠른 시작
 
-### 1. 설치
+### 1. Security Pack (전역, 한 번만)
+
+심층 방어 보안 설정을 포함합니다. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+```
+
+### 2. 설치 (프로젝트별)
 
 스크립트가 자동으로 프레임워크를 감지하고 적절한 템플릿을 복사합니다.
 
@@ -36,14 +44,6 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 ```
 
 **Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하여 재설치 또는 업데이트하세요.
-
-### 2. Security Pack
-
-심층 방어 보안 설정을 포함합니다. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
-```
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 

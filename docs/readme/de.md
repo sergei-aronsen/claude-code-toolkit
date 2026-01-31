@@ -25,25 +25,25 @@ Unterstuetzte Stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js
 
 ## Schnellstart
 
-### 1. Installation
-
-Das Skript erkennt automatisch das Framework und kopiert das entsprechende Template.
-
-Fuehre einfach im Terminal im Projektordner aus:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
-```
-
-**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl fuer Neuinstallation oder Updates.
-
-### 2. Security Pack
+### 1. Security Pack (global, einmalig)
 
 Enthaelt ein Defense-in-Depth Sicherheits-Setup. Siehe [components/security-hardening.md](../../components/security-hardening.md) fuer die vollstaendige Anleitung.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
+
+### 2. Installation (pro Projekt)
+
+Das Skript erkennt automatisch das Framework und kopiert das entsprechende Template.
+
+Fuehre im Terminal im Projektordner aus:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+```
+
+**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl fuer Neuinstallation oder Updates.
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 

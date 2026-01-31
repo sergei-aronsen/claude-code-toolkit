@@ -25,25 +25,25 @@
 
 ## 快速开始
 
-### 1. 安装
-
-脚本会自动检测框架并复制相应模板。
-
-只需在项目文件夹的终端中运行：
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
-```
-
-**重启 Claude！** 后续更新请使用 `/update-toolkit` 命令进行重新安装或更新。
-
-### 2. Security Pack
+### 1. Security Pack（全局，仅需一次）
 
 包含纵深防御安全设置。完整指南请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
+
+### 2. 安装（每个项目）
+
+脚本会自动检测框架并复制相应模板。
+
+在项目文件夹的终端中运行：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+```
+
+**重启 Claude！** 后续更新请使用 `/update-toolkit` 命令进行重新安装或更新。
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 
