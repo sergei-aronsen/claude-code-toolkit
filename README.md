@@ -19,7 +19,7 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go) 
 
-**24 slash commands** | **7 audits** | **23+ guides** See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-24-total).
+**24 slash commands** | **7 audits** | **23+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-24-total).
 
 ---
 
@@ -27,9 +27,9 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 
 ### 1. Installation
 
-The script automatically detects framework (Laravel, Next.js) and copies the appropriate template.
+The script automatically detects framework and copies the appropriate template.
 
-So just run in terminal in the project folder:
+Just run in terminal in the project folder:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash

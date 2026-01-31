@@ -82,9 +82,9 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @anthropic/memory-bank-mcp
-claude mcp add sequential-thinking -- npx -y @anthropic/sequential-thinking-mcp
-claude mcp add memory -- npx -y @anthropic/memory-mcp
+claude mcp add memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
+claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---
