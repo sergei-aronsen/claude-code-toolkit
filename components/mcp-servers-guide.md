@@ -217,6 +217,8 @@ Smart code search (WarpGrep) and fast file editing.
 
 ### 6. Knowledge Graph Memory — Knowledge Graph (for Opus)
 
+> **WARNING:** Knowledge Graph MCP server is **in-memory only** — all data is lost on every restart of Claude Code or the MCP server. You must import it from `.claude/memory/knowledge-graph.json` at the start of **every session**. See [memory-persistence.md](memory-persistence.md) for details.
+
 Advanced memory that builds a graph of relationships between project entities.
 
 ```json

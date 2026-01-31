@@ -28,25 +28,31 @@ Export Knowledge Graph to .claude/memory/knowledge-graph.json
 (only entities of this project)
 ```
 
-## Import (on new computer)
+## Import
 
-### 1. Make sure MCP servers are configured
+### Memory Bank (new computer only)
 
-```bash
-claude mcp list
-```
-
-### 2. Import memory
-
-Ask Claude:
+Memory Bank is file-based and persists automatically. Import only when MCP files are missing.
 
 ```text
-Import project memory from .claude/memory/:
-1. Memory Bank: read .md files → mcp__memory-bank__memory_bank_write
-2. Knowledge Graph: read JSON → mcp__memory__create_entities/relations
+Read .md files from .claude/memory/ → mcp__memory-bank__memory_bank_write
+```
+
+### Knowledge Graph (EVERY session)
+
+> **Knowledge Graph is in-memory only — data is lost on every restart of Claude Code.**
+
+```text
+# 1. Check if graph is empty
+mcp__memory__read_graph()
+
+# 2. If empty — import from knowledge-graph.json:
+mcp__memory__create_entities(entities: [...from JSON...])
+mcp__memory__create_relations(relations: [...from JSON...])
 ```
 
 ## When to sync
 
 - **Export:** before commits, after adding architectural decisions
-- **Import:** when cloning, after pull with memory changes
+- **Import Memory Bank:** when cloning, after pull with memory changes
+- **Import Knowledge Graph:** at the start of every session (always starts empty)

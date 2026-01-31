@@ -6,10 +6,12 @@ System for saving MCP memory (Memory Bank + Knowledge Graph) to repository for t
 
 MCP servers store data **locally**:
 
-- Memory Bank → `~/.claude/memory-bank/`
-- Knowledge Graph → MCP internal storage
+- Memory Bank → `~/.claude/memory-bank/` (file-based, persists between sessions)
+- Knowledge Graph → **in-memory only** (lost on every restart of Claude Code or MCP server)
 
-When transferring project to another computer or working in a team — memory is lost.
+When transferring project to another computer or working in a team — Memory Bank files are lost.
+
+**Knowledge Graph has an additional problem:** since it is in-memory only, data is lost not just on a new computer, but on **every restart** of Claude Code. It must be imported from `knowledge-graph.json` at the start of **every session**.
 
 ## Solution
 
@@ -74,30 +76,44 @@ Export of project entities and relations:
 
 ### At session start — check sync status
 
+#### Memory Bank (file-based, persists automatically)
+
 ```bash
 # Compare file dates MCP vs git
 ls -la ~/.claude/memory-bank/[project]/*.md
 ls -la .claude/memory/*.md
 ```
 
-**If MCP is newer than git** → memory was not synced before commit:
+- **MCP newer than git** → copy: `cp ~/.claude/memory-bank/[project]/*.md .claude/memory/`
+- **git newer than MCP** (new computer) → import into MCP via `mcp__memory-bank__memory_bank_write`
 
-```bash
-cp ~/.claude/memory-bank/[project]/*.md .claude/memory/
+#### Knowledge Graph (in-memory, MUST import every session)
+
+```text
+# Step 1: Check if graph has data
+mcp__memory__read_graph()
+
+# Step 2: If empty — import from file
+# Read .claude/memory/knowledge-graph.json, then:
+mcp__memory__create_entities(entities: [...all entities from JSON...])
+mcp__memory__create_relations(relations: [...all relations from JSON...])
+
+# Step 3: Verify import
+mcp__memory__read_graph()
 ```
 
-**If git is newer than MCP** (new computer or after pull) → import memory into MCP.
+> **Note:** Knowledge Graph import is needed at the start of **every session**, not just on a new computer. Memory Bank does not require import — it is file-based and persists automatically.
 
 ### After changes in MCP — sync immediately
 
 ```bash
-# Copy Memory Bank
+# Memory Bank — copy files
 cp ~/.claude/memory-bank/[project]/*.md .claude/memory/
 ```
 
-For Knowledge Graph — ask Claude:
-
 ```text
+# Knowledge Graph — export via Claude
+# Claude reads mcp__memory__read_graph() and writes to .claude/memory/knowledge-graph.json
 Export Knowledge Graph to .claude/memory/knowledge-graph.json
 (only entities from this project)
 ```
@@ -110,7 +126,14 @@ Export Knowledge Graph to .claude/memory/knowledge-graph.json
 
 ---
 
-## Import on New Computer
+## Import
+
+### When import is needed
+
+| Server | When to import |
+|--------|---------------|
+| Memory Bank | Only on new computer / after `git pull` with memory changes |
+| Knowledge Graph | **Every session** (in-memory only, always starts empty) |
 
 ### 1. Ensure MCP servers are configured
 
@@ -119,7 +142,9 @@ claude mcp list
 # Should have: memory-bank, memory
 ```
 
-### 2. Import Memory Bank
+### 2. Import Memory Bank (new computer only)
+
+Memory Bank is file-based and persists automatically. Import is only needed when MCP files are missing or outdated compared to git.
 
 Ask Claude:
 
@@ -129,7 +154,9 @@ Import memory from .claude/memory/ into Memory Bank:
 - Write via mcp__memory-bank__memory_bank_write (projectName: "[project]")
 ```
 
-### 3. Import Knowledge Graph
+### 3. Import Knowledge Graph (every session)
+
+> **Knowledge Graph is in-memory only.** It starts empty on every session. Always import.
 
 Ask Claude:
 
@@ -138,6 +165,7 @@ Import Knowledge Graph from .claude/memory/knowledge-graph.json:
 - Read JSON
 - Create entities via mcp__memory__create_entities
 - Create relations via mcp__memory__create_relations
+- Verify with mcp__memory__read_graph()
 ```
 
 ---
@@ -177,19 +205,24 @@ Add the following sections to your `CLAUDE.md`:
 
 ### Section "AT THE START OF EACH SESSION"
 
-1. Check memory sync:
+1. Check Memory Bank sync:
    - `ls -la ~/.claude/memory-bank/[project]/*.md`
    - `ls -la .claude/memory/*.md`
    - MCP newer than git → copy to `.claude/memory/`
    - git newer than MCP → import into MCP
 
-2. Read project memory:
+2. Read Memory Bank:
    - `mcp__memory-bank__memory_bank_read(projectName, fileName)`
-   - `mcp__memory__read_graph()`
+
+3. Import Knowledge Graph (required **every session** — in-memory only):
+   - `mcp__memory__read_graph()` — check if empty
+   - If empty → read `.claude/memory/knowledge-graph.json`
+   - `mcp__memory__create_entities(entities)` + `mcp__memory__create_relations(relations)`
+   - `mcp__memory__read_graph()` — verify import
 
 ### Section "BEFORE COMMIT"
 
-1. Sync memory: `cp ~/.claude/memory-bank/[project]/*.md .claude/memory/`
+1. Sync Memory Bank: `cp ~/.claude/memory-bank/[project]/*.md .claude/memory/`
 2. Export Knowledge Graph to `.claude/memory/knowledge-graph.json`
 
 See templates in `templates/*/CLAUDE.md` for ready examples.

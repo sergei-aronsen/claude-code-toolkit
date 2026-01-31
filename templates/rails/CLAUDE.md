@@ -33,11 +33,23 @@ ls -la .claude/memory/*.md
 - **MCP newer than git** → copy: `cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/`
 - **git newer than MCP** (new computer) → import memory into MCP
 
-### 2. Read project memory
+### 2. Read project memory (Memory Bank)
 
 ```text
 mcp__memory-bank__memory_bank_read (projectName: "[PROJECT_NAME]", fileName: "project-context.md")
+```
+
+### 3. Import Knowledge Graph (required every session)
+
+> **Knowledge Graph is in-memory only — data is lost on every restart of Claude Code.**
+
+```text
+# Check if graph has data
 mcp__memory__read_graph()
+
+# If empty — import from .claude/memory/knowledge-graph.json:
+mcp__memory__create_entities(entities: [...entities from JSON...])
+mcp__memory__create_relations(relations: [...relations from JSON...])
 ```
 
 ---
