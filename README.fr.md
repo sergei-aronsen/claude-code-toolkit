@@ -355,6 +355,36 @@ claude mcp add playwright -- npx @playwright/mcp@latest
 
 ---
 
+## Rate Limit Statusline (Claude Max / Pro)
+
+Surveillez vos limites d'utilisation API directement dans la barre d'etat de Claude Code.
+
+```text
+25% | 5h:23% (2h57m) | 7d:80% (1d18h)
+ │      │      │          │       │
+ │      │      │          │       └─ temps avant reinitialisation hebdomadaire
+ │      │      │          └─ utilisation hebdomadaire (fenetre de 7 jours)
+ │      │      └─ temps avant reinitialisation de session
+ │      └─ utilisation de session (fenetre de 5 heures)
+ └─ utilisation de la fenetre de contexte
+```
+
+**Couleurs :** sans couleur (<60%), jaune (60-79%), rouge (80-89%), rouge vif (90-100%)
+
+**Prerequis :** macOS, `jq`, Claude Code avec OAuth (abonnement Max ou Pro)
+
+### Installation
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
+L'installateur verifie les prerequis, telecharge les scripts dans `~/.claude/`, configure `settings.json` et execute un test initial.
+
+Details et personnalisation : [components/rate-limit-statusline.md](components/rate-limit-statusline.md).
+
+---
+
 ## Exemples d'utilisation
 
 ### /verify — verification pre-commit

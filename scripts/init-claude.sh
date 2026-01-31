@@ -328,6 +328,19 @@ main() {
     echo -e "${BLUE}║${NC}  - safety-net plugin (destructive cmd blocker) ${BLUE}║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
     echo ""
+    echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║  Rate Limit Statusline (macOS)                 ║${NC}"
+    echo -e "${BLUE}╠════════════════════════════════════════════════╣${NC}"
+    echo -e "${BLUE}║${NC}  See session/weekly usage in the status bar:   ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}digitalplanetno/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}scripts/install-statusline.sh | bash${NC}          ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  Shows: 25% | 5h:23% (2h57m) | 7d:16% (5d3h) ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  Requires: macOS, jq, Claude Max/Pro           ${BLUE}║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
+    echo ""
 }
 
 main

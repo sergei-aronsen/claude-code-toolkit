@@ -355,6 +355,36 @@ claude mcp add playwright -- npx @playwright/mcp@latest
 
 ---
 
+## Rate Limit Statusline (Claude Max / Pro)
+
+直接在 Claude Code 状态栏中监控 API 使用限额。
+
+```text
+25% | 5h:23% (2h57m) | 7d:80% (1d18h)
+ │      │      │          │       │
+ │      │      │          │       └─ 周限额重置倒计时
+ │      │      │          └─ 周使用量（7天窗口）
+ │      │      └─ 会话重置倒计时
+ │      └─ 会话使用量（5小时窗口）
+ └─ 上下文窗口使用量
+```
+
+**颜色编码：** 无色（<60%）、黄色（60-79%）、红色（80-89%）、亮红色（90-100%）
+
+**要求：** macOS、`jq`、带 OAuth 的 Claude Code（Max 或 Pro 订阅）
+
+### 安装
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
+安装器会检查依赖、下载脚本到 `~/.claude/`、配置 `settings.json` 并运行初始检测。
+
+详情和自定义：[components/rate-limit-statusline.md](components/rate-limit-statusline.md)。
+
+---
+
 ## 使用示例
 
 ### /verify — 提交前检查

@@ -355,6 +355,36 @@ claude mcp add playwright -- npx @playwright/mcp@latest
 
 ---
 
+## Rate Limit Statusline (Claude Max / Pro)
+
+Claude Code のステータスバーで API 使用制限を直接監視できます。
+
+```text
+25% | 5h:23% (2h57m) | 7d:80% (1d18h)
+ │      │      │          │       │
+ │      │      │          │       └─ 週間リセットまでの時間
+ │      │      │          └─ 週間使用量（7日間ウィンドウ）
+ │      │      └─ セッションリセットまでの時間
+ │      └─ セッション使用量（5時間ウィンドウ）
+ └─ コンテキストウィンドウ使用量
+```
+
+**色分け：** 色なし（<60%）、黄色（60-79%）、赤（80-89%）、明るい赤（90-100%）
+
+**要件：** macOS、`jq`、OAuth 認証済みの Claude Code（Max または Pro サブスクリプション）
+
+### インストール
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
+インストーラーは前提条件を確認し、スクリプトを `~/.claude/` にダウンロードし、`settings.json` を設定して初期テストを実行します。
+
+詳細とカスタマイズ：[components/rate-limit-statusline.md](components/rate-limit-statusline.md)。
+
+---
+
 ## 使用例
 
 ### /verify — コミット前チェック
