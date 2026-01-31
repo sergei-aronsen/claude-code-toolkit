@@ -5,9 +5,9 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 가이드입니다.
 [![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **한국어**
+**[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **[Português](pt.md)** | **한국어**
 
-> **Claude Code가 처음이신가요?** 먼저 [단계별 설치 가이드](howto/ko.md)를 읽어보세요.
+> **Claude Code가 처음이신가요?** 먼저 [단계별 설치 가이드](../howto/ko.md)를 읽어보세요.
 
 ---
 

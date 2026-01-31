@@ -5,9 +5,9 @@ Instruções completas para desenvolvimento assistido por IA com Claude Code.
 [![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **Português** | **[한국어](README.ko.md)**
+**[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **Português** | **[한국어](ko.md)**
 
-> **Novo no Claude Code?** Leia primeiro o [guia de instalacao passo a passo](howto/pt.md).
+> **Novo no Claude Code?** Leia primeiro o [guia de instalacao passo a passo](../howto/pt.md).
 
 ---
 
