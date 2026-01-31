@@ -85,7 +85,7 @@ else
                     echo ""
                     echo "$SECTION_BODY"
                 } >> "$CLAUDE_MD"
-                SECTION_TITLE=$(echo "$HEADER" | sed 's/^## //')
+                SECTION_TITLE="${HEADER//## /}"
                 echo -e "  ${GREEN}+${NC} Added: $SECTION_TITLE"
                 ADDED=$((ADDED + 1))
             fi
