@@ -43,13 +43,26 @@ After initialization, open `.claude/CLAUDE.md` and update:
 ### 4. Report completion
 
 ```text
-✅ Claude Code initialized!
+✅ Claude Code Toolkit installed!
 
 Created:
 - .claude/CLAUDE.md — main instructions
 - .claude/prompts/ — audits
 - .claude/agents/ — subagents
-- .claude/commands/ — commands
+- .claude/commands/ — slash commands (/plan, /tdd, /audit, /debug, /verify, /helpme, etc.)
+- .claude/skills/ — skill accumulation
+- .claude/memory/ — knowledge persistence
+
+⚠️ Restart Claude Code (exit and reopen in this project directory) for slash commands to become available.
+
+🔒 Strongly recommended: Global Security Setup
+   Adds security rules to ~/.claude/CLAUDE.md + safety-net plugin (blocks destructive commands).
+   Safe to re-run — merges only new sections, preserves your customizations.
+   Install: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+
+📊 Optional: Rate Limit Statusline — see session/weekly usage in the status bar.
+   Install: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+   Requires: macOS, jq, Claude Max/Pro
 
 Next step: review and adapt .claude/CLAUDE.md for your project.
 ```

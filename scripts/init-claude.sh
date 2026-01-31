@@ -291,66 +291,21 @@ SCRATCHPAD
     fi
 }
 
-# Install security setup automatically
-install_security() {
-    if [[ "$DRY_RUN" == true ]]; then
-        echo ""
-        echo -e "${BLUE}🔒 Would install security setup...${NC}"
-        return
-    fi
-
+# Show security setup recommendation
+recommend_security() {
     echo ""
-    echo -e "${BLUE}🔒 Installing security setup...${NC}"
-
-    if curl -sSL "$REPO_URL/scripts/setup-security.sh" | bash 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} Security setup complete"
-    else
-        echo -e "  ${YELLOW}⚠${NC} Security auto-install failed. Run manually:"
-        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-security.sh | bash${NC}"
-    fi
+    echo -e "${YELLOW}🔒 Strongly recommended: Global Security Setup${NC}"
+    echo -e "  Adds security rules to ~/.claude/CLAUDE.md + safety-net plugin."
+    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-security.sh | bash${NC}"
 }
 
-# Install rate limit statusline (macOS only)
-install_statusline() {
-    if [[ "$DRY_RUN" == true ]]; then
-        echo ""
-        echo -e "${BLUE}📊 Would install rate limit statusline...${NC}"
-        return
-    fi
-
-    # Only on macOS
-    if [[ "$(uname)" != "Darwin" ]]; then
-        return
-    fi
-
-    # Check jq
-    if ! command -v jq &>/dev/null; then
-        echo ""
-        echo -e "${YELLOW}📊 Rate Limit Statusline skipped (jq not installed).${NC}"
-        echo -e "  Install jq and run: ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
-        return
-    fi
-
-    # Check OAuth token
-    local token
-    token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
-    if [[ -z "$token" ]]; then
-        echo ""
-        echo -e "${YELLOW}📊 Rate Limit Statusline skipped (no OAuth token).${NC}"
-        echo -e "  Sign into Claude Code first, then run:"
-        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
-        return
-    fi
-
+# Show rate limit statusline recommendation
+recommend_statusline() {
     echo ""
-    echo -e "${BLUE}📊 Installing rate limit statusline...${NC}"
-
-    if curl -sSL "$REPO_URL/scripts/install-statusline.sh" | bash 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} Statusline installed"
-    else
-        echo -e "  ${YELLOW}⚠${NC} Statusline auto-install failed. Run manually:"
-        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
-    fi
+    echo -e "${BLUE}📊 Rate Limit Statusline (optional):${NC}"
+    echo -e "  See session/weekly usage in the status bar."
+    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
+    echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
 # Main
@@ -359,8 +314,6 @@ main() {
     download_files
     create_gitignore
     create_scratchpad
-    install_security
-    install_statusline
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
@@ -371,19 +324,20 @@ main() {
     echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
     echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
     echo -e ""
-    echo -e "Installed extras:"
-    echo -e "  ${GREEN}✓${NC} Security — global rules + safety-net plugin (~/.claude/CLAUDE.md)"
-    if [[ "$(uname)" == "Darwin" ]] && command -v jq &>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} Statusline — rate limits in status bar (~/.claude/statusline.sh)"
-    else
-        echo -e "  ${YELLOW}—${NC} Statusline — run install-statusline.sh when ready (macOS + jq)"
-    fi
+    echo -e "Installed:"
+    echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, memory"
     echo ""
     echo -e "Available commands:"
     echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
     echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
     echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
     echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
+
+    recommend_security
+    recommend_statusline
+
+    echo ""
+    echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
     echo ""
 }
 

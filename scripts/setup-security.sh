@@ -35,15 +35,19 @@ echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
 
 mkdir -p "$CLAUDE_DIR"
 
-if [[ -f "$CLAUDE_MD" ]] && grep -q "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
-    echo -e "  ${GREEN}✓${NC} Security rules already present — skipping"
-elif [[ -f "$CLAUDE_MD" ]]; then
-    echo -e "  ${YELLOW}⚠${NC} ~/.claude/CLAUDE.md exists but lacks security rules"
-    echo -e "  Appending security rules..."
-
-    # Download and append
-    SECURITY_CONTENT=$(curl -sSL "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
-    if [[ -n "$SECURITY_CONTENT" ]]; then
+# Download latest security rules
+SECURITY_CONTENT=$(curl -sSL "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+if [[ -z "$SECURITY_CONTENT" ]]; then
+    echo -e "  ${RED}✗${NC} Failed to download security rules"
+    echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"
+else
+    if [[ ! -f "$CLAUDE_MD" ]]; then
+        # No file — create from scratch
+        echo "$SECURITY_CONTENT" > "$CLAUDE_MD"
+        echo -e "  ${GREEN}✓${NC} Created ~/.claude/CLAUDE.md with security rules"
+    elif ! grep -q "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
+        # File exists but no security rules — append all
+        echo -e "  ${YELLOW}⚠${NC} ~/.claude/CLAUDE.md exists but lacks security rules"
         {
             echo ""
             echo "---"
@@ -52,16 +56,46 @@ elif [[ -f "$CLAUDE_MD" ]]; then
         } >> "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Security rules appended to existing CLAUDE.md"
     else
-        echo -e "  ${RED}✗${NC} Failed to download security rules"
-        echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"
-    fi
-else
-    echo -e "  Downloading security rules..."
-    if curl -sSL "$REPO_URL/templates/global/CLAUDE.md" -o "$CLAUDE_MD" 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} Created ~/.claude/CLAUDE.md with security rules"
-    else
-        echo -e "  ${RED}✗${NC} Failed to download security rules"
-        exit 1
+        # File exists with security rules — merge missing sections
+        echo -e "  Checking for new sections..."
+        ADDED=0
+
+        # Extract section headers from the latest template (## N. TITLE)
+        SECTIONS=$(echo "$SECURITY_CONTENT" | grep -n '^## [0-9]\+\.' || true)
+
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            LINE_NUM=$(echo "$line" | cut -d: -f1)
+            HEADER=$(echo "$line" | cut -d: -f2-)
+            # Extract section number for matching (e.g., "## 12." from "## 12. API SECURITY")
+            SECTION_NUM=$(echo "$HEADER" | grep -o '## [0-9]\+\.' || true)
+
+            if [[ -n "$SECTION_NUM" ]] && ! grep -q "$SECTION_NUM" "$CLAUDE_MD" 2>/dev/null; then
+                # This section is missing — extract it from the template
+                # Find the next section header or end of file
+                NEXT_LINE=$(echo "$SECURITY_CONTENT" | tail -n +"$((LINE_NUM + 1))" | grep -n '^## [0-9]\+\.' | head -1 | cut -d: -f1)
+
+                if [[ -n "$NEXT_LINE" ]]; then
+                    SECTION_BODY=$(echo "$SECURITY_CONTENT" | sed -n "${LINE_NUM},$((LINE_NUM + NEXT_LINE - 2))p")
+                else
+                    SECTION_BODY=$(echo "$SECURITY_CONTENT" | tail -n +"$LINE_NUM")
+                fi
+
+                {
+                    echo ""
+                    echo "$SECTION_BODY"
+                } >> "$CLAUDE_MD"
+                SECTION_TITLE=$(echo "$HEADER" | sed 's/^## //')
+                echo -e "  ${GREEN}+${NC} Added: $SECTION_TITLE"
+                ADDED=$((ADDED + 1))
+            fi
+        done <<< "$SECTIONS"
+
+        if [[ $ADDED -eq 0 ]]; then
+            echo -e "  ${GREEN}✓${NC} All sections up to date"
+        else
+            echo -e "  ${GREEN}✓${NC} Added $ADDED new section(s), existing sections preserved"
+        fi
     fi
 fi
 
