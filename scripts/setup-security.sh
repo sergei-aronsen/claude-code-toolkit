@@ -1,0 +1,270 @@
+#!/bin/bash
+
+# Security Setup Script for Claude Code
+# Installs global security rules and safety-net plugin
+#
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
+CLAUDE_DIR="$HOME/.claude"
+CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+SETTINGS_JSON="$CLAUDE_DIR/settings.json"
+MARKER="# Global Security Rules"
+
+echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║     Claude Code Security Setup                ║${NC}"
+echo -e "${BLUE}╚═══════════════════════════════════════════════╝${NC}"
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 1: Install global security rules
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
+
+mkdir -p "$CLAUDE_DIR"
+
+if [[ -f "$CLAUDE_MD" ]] && grep -q "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} Security rules already present — skipping"
+elif [[ -f "$CLAUDE_MD" ]]; then
+    echo -e "  ${YELLOW}⚠${NC} ~/.claude/CLAUDE.md exists but lacks security rules"
+    echo -e "  Appending security rules..."
+
+    # Download and append
+    SECURITY_CONTENT=$(curl -sSL "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+    if [[ -n "$SECURITY_CONTENT" ]]; then
+        {
+            echo ""
+            echo "---"
+            echo ""
+            echo "$SECURITY_CONTENT"
+        } >> "$CLAUDE_MD"
+        echo -e "  ${GREEN}✓${NC} Security rules appended to existing CLAUDE.md"
+    else
+        echo -e "  ${RED}✗${NC} Failed to download security rules"
+        echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"
+    fi
+else
+    echo -e "  Downloading security rules..."
+    if curl -sSL "$REPO_URL/templates/global/CLAUDE.md" -o "$CLAUDE_MD" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Created ~/.claude/CLAUDE.md with security rules"
+    else
+        echo -e "  ${RED}✗${NC} Failed to download security rules"
+        exit 1
+    fi
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 2: Install safety-net plugin
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 2: safety-net plugin (destructive command blocker)${NC}"
+
+# Check if npm/npx available
+if ! command -v npm &>/dev/null; then
+    echo -e "  ${YELLOW}⚠${NC} npm not found — skipping safety-net installation"
+    echo -e "  Install Node.js first, then run:"
+    echo -e "    npm install -g cc-safety-net"
+    echo ""
+else
+    # Check if already installed
+    if command -v cc-safety-net &>/dev/null; then
+        CURRENT_VERSION=$(cc-safety-net --version 2>/dev/null || echo "unknown")
+        echo -e "  ${GREEN}✓${NC} cc-safety-net already installed (v$CURRENT_VERSION)"
+    else
+        echo -e "  Installing cc-safety-net..."
+        if npm install -g cc-safety-net 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} cc-safety-net installed globally"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Global install failed, trying npx..."
+            echo -e "  safety-net will work via npx (slower startup)"
+        fi
+    fi
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 3: Configure PreToolUse hook in settings.json
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 3: Configuring PreToolUse hook${NC}"
+
+HOOK_COMMAND="cc-safety-net --claude-code"
+
+if [[ -f "$SETTINGS_JSON" ]]; then
+    # Check if hook already configured
+    if grep -q "cc-safety-net" "$SETTINGS_JSON" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} safety-net hook already configured"
+    else
+        echo -e "  ${YELLOW}⚠${NC} settings.json exists but lacks safety-net hook"
+        echo -e "  Merging hook configuration..."
+
+        # Use a temporary file for safe JSON merging
+        # We need to add hooks.PreToolUse to existing config
+        if command -v python3 &>/dev/null; then
+            if python3 -c "
+import json, sys
+
+with open('$SETTINGS_JSON', 'r') as f:
+    config = json.load(f)
+
+hook_entry = {
+    'matcher': 'Bash',
+    'hooks': [{
+        'type': 'command',
+        'command': '$HOOK_COMMAND'
+    }]
+}
+
+if 'hooks' not in config:
+    config['hooks'] = {}
+if 'PreToolUse' not in config['hooks']:
+    config['hooks']['PreToolUse'] = []
+
+# Check if already present
+already = any(
+    any(h.get('command', '').startswith('cc-safety-net') for h in entry.get('hooks', []))
+    for entry in config['hooks']['PreToolUse']
+)
+
+if not already:
+    config['hooks']['PreToolUse'].append(hook_entry)
+
+with open('$SETTINGS_JSON', 'w') as f:
+    json.dump(config, f, indent=2)
+    f.write('\n')
+" 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} Hook merged into settings.json"
+            else
+                echo -e "  ${RED}✗${NC} Failed to merge — add manually:"
+                echo -e "  See instructions below"
+            fi
+        else
+            echo -e "  ${YELLOW}⚠${NC} python3 not found for JSON merge"
+            echo -e "  Add the hook manually to ~/.claude/settings.json"
+        fi
+    fi
+else
+    echo -e "  Creating settings.json with hook..."
+    cat > "$SETTINGS_JSON" << 'SETTINGS'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cc-safety-net --claude-code"
+          }
+        ]
+      }
+    ]
+  }
+}
+SETTINGS
+    echo -e "  ${GREEN}✓${NC} Created settings.json with safety-net hook"
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 4: Verify
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 4: Verification${NC}"
+
+PASS=0
+FAIL=0
+
+# Check CLAUDE.md
+if [[ -f "$CLAUDE_MD" ]] && grep -q "$MARKER" "$CLAUDE_MD"; then
+    echo -e "  ${GREEN}✓${NC} Security rules present in ~/.claude/CLAUDE.md"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${RED}✗${NC} Security rules missing from ~/.claude/CLAUDE.md"
+    FAIL=$((FAIL + 1))
+fi
+
+# Check safety-net
+if command -v cc-safety-net &>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} cc-safety-net is installed"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${YELLOW}~${NC} cc-safety-net not globally installed (will use npx)"
+    PASS=$((PASS + 1))
+fi
+
+# Check hook
+if [[ -f "$SETTINGS_JSON" ]] && grep -q "cc-safety-net" "$SETTINGS_JSON"; then
+    echo -e "  ${GREEN}✓${NC} PreToolUse hook configured"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${RED}✗${NC} PreToolUse hook not configured"
+    FAIL=$((FAIL + 1))
+fi
+
+# Test safety-net blocking
+if command -v cc-safety-net &>/dev/null; then
+    TEST_RESULT=$(echo '{"tool_name":"Bash","tool_input":{"command":"rm -rf /"}}' | cc-safety-net --claude-code 2>/dev/null)
+    if echo "$TEST_RESULT" | grep -q "deny"; then
+        echo -e "  ${GREEN}✓${NC} safety-net blocks destructive commands"
+        PASS=$((PASS + 1))
+    else
+        echo -e "  ${RED}✗${NC} safety-net did not block test command"
+        FAIL=$((FAIL + 1))
+    fi
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Summary
+# ─────────────────────────────────────────────────
+
+if [[ $FAIL -eq 0 ]]; then
+    echo -e "${GREEN}╔═══════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║     Security setup complete ($PASS/$PASS checks passed)  ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════╝${NC}"
+else
+    echo -e "${YELLOW}╔═══════════════════════════════════════════════╗${NC}"
+    echo -e "${YELLOW}║     Setup partially complete ($PASS passed, $FAIL failed)  ║${NC}"
+    echo -e "${YELLOW}╚═══════════════════════════════════════════════╝${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}What was installed:${NC}"
+echo -e "  1. ${GREEN}Global security rules${NC} — ~/.claude/CLAUDE.md"
+echo -e "     10 sections: forbidden patterns, required patterns, doubt protocol,"
+echo -e "     self-review checklist, anti-pattern learning, prompt injection defense,"
+echo -e "     dependency security, security review protocol, recommended tooling,"
+echo -e "     framework-specific notes (PHP, JS, Python, Go)"
+echo ""
+echo -e "  2. ${GREEN}safety-net plugin${NC} — blocks destructive commands"
+echo -e "     Semantic analysis (not pattern matching) of shell commands"
+echo -e "     Blocks: rm -rf, git push --force, git reset --hard, etc."
+echo ""
+echo -e "  3. ${GREEN}PreToolUse hook${NC} — ~/.claude/settings.json"
+echo -e "     Every Bash command goes through safety-net before execution"
+echo ""
+echo -e "${BLUE}Recommended next steps:${NC}"
+echo -e "  1. Add ${CYAN}claude-code-security-review${NC} GitHub Action to your repos"
+echo -e "     https://github.com/anthropics/claude-code-security-review"
+echo -e "  2. Add ${CYAN}Semgrep${NC} to your CI pipeline for SAST analysis"
+echo -e "     https://semgrep.dev"
+echo -e "  3. Review and customize rules in ~/.claude/CLAUDE.md"
+echo ""

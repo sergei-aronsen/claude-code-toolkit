@@ -421,3 +421,36 @@ SECURITY AUDIT REPORT
 | Node.js | ✅ Dedicated | ✅ | `package.json` (without next.config) |
 | Python | ✅ Dedicated | ✅ | `pyproject.toml` / `requirements.txt` |
 | Go | ✅ Dedicated | ✅ | `go.mod` |
+
+---
+
+## Security
+
+LLMs introduce [9x more vulnerabilities](https://arxiv.org/abs/2507.02976) than human developers. This toolkit includes a defense-in-depth security setup.
+
+### Quick Setup
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+```
+
+### What It Installs
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| **Rules** | `~/.claude/CLAUDE.md` | 10 sections of security rules applied to ALL projects |
+| **Blocker** | `cc-safety-net` | Blocks destructive commands (`rm -rf`, `git push --force`, etc.) |
+| **Hook** | `~/.claude/settings.json` | Every Bash command goes through safety-net before execution |
+
+### Defense Layers
+
+```text
+Layer 1: Global security rules (prompt-based)
+Layer 2: safety-net plugin (command analysis)
+Layer 3: /security-review command (pre-commit)
+Layer 4: Semgrep / SonarQube (CI/CD SAST)
+Layer 5: claude-code-security-review (AI PR review)
+Layer 6: Human review (final check)
+```
+
+See [components/security-hardening.md](components/security-hardening.md) for the full guide.

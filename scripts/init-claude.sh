@@ -314,6 +314,20 @@ main() {
     echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
     echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
     echo ""
+    echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║  Security Recommendation                       ║${NC}"
+    echo -e "${BLUE}╠════════════════════════════════════════════════╣${NC}"
+    echo -e "${BLUE}║${NC}  Run the security setup for global protection: ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}digitalplanetno/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  ${YELLOW}scripts/setup-security.sh | bash${NC}              ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  This installs:                                ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  - Global security rules (~/.claude/CLAUDE.md) ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}  - safety-net plugin (destructive cmd blocker) ${BLUE}║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
+    echo ""
 }
 
 main
