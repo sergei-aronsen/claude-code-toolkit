@@ -71,6 +71,26 @@ See [detailed descriptions and examples](docs/features.md).
 
 ---
 
+## MCP Servers (recommended!)
+
+| Server | Purpose |
+|--------|---------|
+| `context7` | Library documentation |
+| `playwright` | Browser automation, UI testing |
+| `memory-bank` | Memory between sessions |
+| `sequential-thinking` | Step-by-step problem solving |
+| `memory` | Knowledge Graph (relationship graph) |
+
+```bash
+claude mcp add context7 -- npx -y @upstash/context7-mcp
+claude mcp add playwright -- npx @playwright/mcp@latest
+claude mcp add memory-bank -- npx -y @anthropic/memory-bank-mcp
+claude mcp add sequential-thinking -- npx -y @anthropic/sequential-thinking-mcp
+claude mcp add memory -- npx -y @anthropic/memory-mcp
+```
+
+---
+
 ## Structure After Installation
 
 ```text
@@ -101,33 +121,13 @@ your-project/
 
 ---
 
-## MCP Servers (recommended!)
-
-| Server | Purpose |
-|--------|---------|
-| `context7` | Library documentation |
-| `playwright` | Browser automation, UI testing |
-| `memory-bank` | Memory between sessions |
-| `sequential-thinking` | Step-by-step problem solving |
-| `memory` | Knowledge Graph (relationship graph) |
-
-```bash
-claude mcp add context7 -- npx -y @upstash/context7-mcp
-claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @anthropic/memory-bank-mcp
-claude mcp add sequential-thinking -- npx -y @anthropic/sequential-thinking-mcp
-claude mcp add memory -- npx -y @anthropic/memory-mcp
-```
-
----
-
 ## Supported Frameworks
 
 | Framework | Template | Skills | Auto-detection |
 |-----------|----------|--------|----------------|
-| Laravel | ✅ Dedicated | ✅ | `artisan` file |
-| Ruby on Rails | ✅ Dedicated | ✅ | `bin/rails` / `config/application.rb` |
-| Next.js | ✅ Dedicated | ✅ | `next.config.*` |
-| Node.js | ✅ Dedicated | ✅ | `package.json` (without next.config) |
-| Python | ✅ Dedicated | ✅ | `pyproject.toml` / `requirements.txt` |
-| Go | ✅ Dedicated | ✅ | `go.mod` |
+| Laravel | ✅ | ✅ | `artisan` file |
+| Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
+| Next.js | ✅ | ✅ | `next.config.*` |
+| Node.js | ✅ | ✅ | `package.json` (without next.config) |
+| Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
+| Go | ✅ | ✅ | `go.mod` |
