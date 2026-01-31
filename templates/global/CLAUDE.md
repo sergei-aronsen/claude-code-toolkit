@@ -174,7 +174,58 @@ These tools provide defense layers beyond prompt-based rules:
 
 ---
 
-## 10. FRAMEWORK-SPECIFIC NOTES
+## 10. DOCKER / CONTAINER SECURITY
+
+- **Never** run containers as root — use `USER nonroot` in Dockerfile
+- **Never** put secrets (API keys, passwords, tokens) in Dockerfile, docker-compose.yml, or build args — use runtime environment variables or secret managers
+- **Never** use `:latest` tag in production — pin specific versions for reproducibility and security
+- **Never** copy `.env`, `.git`, or `node_modules` into images — use `.dockerignore`
+- **Always** use multi-stage builds to exclude build tools from production image
+- **Always** scan images for vulnerabilities (`docker scout`, `trivy`, `grype`) before deployment
+- **Prefer** distroless or Alpine-based images to minimize attack surface
+- **Never** expose database ports (3306, 5432, 6379) to the host in production — use internal Docker networks
+
+---
+
+## 11. CI/CD SECURITY
+
+- **Never** echo, print, or log secrets in CI pipeline output — even masked variables can leak via debug mode
+- **Never** store secrets in repository files (`.env`, `config.json`, YAML) — use CI secret managers (GitHub Secrets, Vault, etc.)
+- **Never** use `pull_request_target` trigger with code checkout in GitHub Actions — allows arbitrary code execution from forks
+- **Always** pin GitHub Actions to full SHA, not tags (`uses: actions/checkout@a1b2c3d` not `@v4`) — tags can be force-pushed
+- **Always** set minimal permissions in CI workflows (`permissions: contents: read`)
+- **Always** validate artifacts before deployment — check checksums, signatures
+- **Never** use self-hosted runners for public repos without isolation — any PR can execute code on your infrastructure
+
+---
+
+## 12. API SECURITY
+
+- **Always** validate JWT on every endpoint — check signature, expiration, issuer, and audience
+- **Always** limit request body size — prevent DoS via large payloads (e.g., 1MB max)
+- **Always** validate `Content-Type` header — reject unexpected formats
+- **Always** use specific CORS origins — never `Access-Control-Allow-Origin: *` with credentials
+- **Always** implement pagination with maximum page size — never return unbounded result sets
+- **Always** use API versioning — breaking changes should not affect existing clients
+- **Never** expose internal IDs (auto-increment) in public APIs — use UUIDs or slugs
+- **Never** return more fields than the client needs — use explicit field selection or DTOs
+- **Always** log API access with request ID for traceability — but never log request bodies containing credentials
+
+---
+
+## 13. WEBSOCKET SECURITY
+
+- **Always** validate Origin header on WebSocket handshake — reject connections from unknown origins
+- **Always** authenticate at connection time — don't rely solely on initial HTTP auth
+- **Always** limit message size — prevent memory exhaustion from oversized messages
+- **Always** implement rate limiting per connection — prevent message flooding
+- **Always** set idle timeouts — close inactive connections to prevent resource leaks
+- **Never** trust message content — validate and sanitize all incoming WebSocket data same as HTTP input
+- **Never** broadcast sensitive data to all connections — verify each recipient's authorization
+
+---
+
+## 14. FRAMEWORK-SPECIFIC NOTES
 
 > These are common patterns. Project-level CLAUDE.md should extend with specific rules.
 
