@@ -17,17 +17,9 @@ Comprehensive instructions for AI-assisted development with Claude Code.
 
 Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
 
-Without a team, you have no code review, no one to ask about architecture, no one to check security. This repository fills these gaps:
+**7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go) 
 
-| Problem | Solution |
-|---------|----------|
-| Claude forgets rules every time | `CLAUDE.md` — instructions it reads at session start |
-| No one to ask | `/debug` — systematic debugging instead of guessing |
-| No code review | `/audit code` — Claude reviews against checklist |
-| No security review | `/audit security` — SQL injection, XSS, CSRF, auth |
-| Forget to check before deploy | `/verify` — build, types, lint, tests in one command |
-
-**What's inside:** 24 commands, 7 audits, 23+ guides, templates for all major stacks.
+**24 slash commands** | **7 audits** | **23+ guides** See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-24-total).
 
 ---
 
@@ -43,29 +35,25 @@ So just run in terminal in the project folder:
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
-For future updates use `/update-toolkit` command for reinstallation or updates.
+**Restart Claude!** For future updates use `/update-toolkit` command for reinstallation or updates.
+
 
 ### 2. Security Pack
 
-This toolkit includes a defense-in-depth security setup.
+This toolkit includes a defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
-See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 
-Monitor your API usage limits directly in the Claude Code status bar.
-
-**Requirements:** macOS, `jq`, Claude Code with OAuth (Max or Pro subscription)
+Monitor your session/weekly usage limits directly in the Claude Code status bar. See [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
-
-See [components/rate-limit-statusline.md](components/rate-limit-statusline.md) for customization and details.
 
 ---
 
@@ -110,14 +98,6 @@ your-project/
     ├── scratchpad/            # Working notes
     └── memory/                # MCP memory export
 ```
-
----
-
-## What's Inside
-
-**7 templates** (base, Laravel, Rails, Next.js, Node.js, Python, Go) | **24 slash commands** | **7 audits** | **23+ guides**
-
-See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-24-total).
 
 ---
 
