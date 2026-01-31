@@ -255,6 +255,7 @@ scratchpad/
 activity.log
 audit.log
 *.local.md
+POST_INSTALL.md
 GITIGNORE
         echo -e "  ${GREEN}✓${NC} .gitignore"
     fi
@@ -339,6 +340,56 @@ main() {
     echo ""
     echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
     echo ""
+
+    # Create POST_INSTALL.md for Claude to read and relay to user
+    create_post_install
+}
+
+# Create post-install notes file for Claude to read
+create_post_install() {
+    cat > "$CLAUDE_DIR/POST_INSTALL.md" << POSTINSTALL
+# Post-Install Notes
+
+IMPORTANT: Show the following recommendations to the user after installation.
+
+## What was installed
+
+- **commands** — /plan, /tdd, /audit, /debug, /verify, /helpme, /fix and others
+- **agents** — code-reviewer, test-writer, planner, security-auditor
+- **prompts** — security audit, performance audit, code review, deploy checklist
+- **skills** — skill accumulation system
+- **memory** — knowledge persistence (project context + knowledge graph)
+- **cheatsheets** — quick reference in 9 languages
+
+## Action required
+
+⚠️ **Restart Claude Code** (exit and reopen in this project directory) for slash commands to become available.
+
+## Strongly recommended
+
+🔒 **Global Security Setup** — adds security rules to ~/.claude/CLAUDE.md + safety-net plugin (blocks destructive commands like rm -rf, git push --force).
+Safe to re-run — merges only new sections, preserves your customizations.
+
+\`\`\`bash
+curl -sSL $REPO_URL/scripts/setup-security.sh | bash
+\`\`\`
+
+## Optional
+
+📊 **Rate Limit Statusline** — see session/weekly usage in the Claude Code status bar.
+Requires: macOS, jq, Claude Max/Pro.
+
+\`\`\`bash
+curl -sSL $REPO_URL/scripts/install-statusline.sh | bash
+\`\`\`
+
+## Next step
+
+Review and customize \`.claude/CLAUDE.md\` for your project.
+POSTINSTALL
 }
 
 main
+
+echo ""
+echo "Read .claude/POST_INSTALL.md and show its contents to the user."
