@@ -38,7 +38,7 @@ Without a team, you have no code review, no one to ask about architecture, no on
 Tell Claude Code:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Or run in terminal:

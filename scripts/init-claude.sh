@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Claude Guides Initialization Script
+# Claude Code Toolkit Initialization Script
 # Usage: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 # Or: curl -sSL ... | bash -s -- laravel
 # Or: curl -sSL ... | bash -s -- --dry-run
@@ -68,9 +68,9 @@ if [[ -z "$FRAMEWORK" ]]; then
     FRAMEWORK=$(detect_framework)
 fi
 
-echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Claude Guides Initialization       ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║   Claude Code Toolkit — Initialization     ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "📁 Framework detected: ${GREEN}$FRAMEWORK${NC}"
 echo -e "📂 Target directory: ${GREEN}$CLAUDE_DIR${NC}"
@@ -186,7 +186,7 @@ fi
 # Create directory structure
 create_structure() {
     echo -e "${BLUE}📁 Creating directory structure...${NC}"
-    
+
     local dirs=(
         "$CLAUDE_DIR"
         "$CLAUDE_DIR/prompts"
@@ -198,7 +198,7 @@ create_structure() {
         "$CLAUDE_DIR/cheatsheets"
         "$CLAUDE_DIR/scratchpad"
     )
-    
+
     for dir in "${dirs[@]}"; do
         if [[ "$DRY_RUN" == true ]]; then
             echo "  Would create: $dir"
@@ -213,16 +213,16 @@ create_structure() {
 download_files() {
     echo ""
     echo -e "${BLUE}📥 Downloading files...${NC}"
-    
+
     for file_spec in "${FILES[@]}"; do
         IFS=':' read -r src dest <<< "$file_spec"
         local full_dest="$CLAUDE_DIR/$dest"
         local full_url="$REPO_URL/$src"
-        
+
         # Create parent directory
         local parent_dir
         parent_dir=$(dirname "$full_dest")
-        
+
         if [[ "$DRY_RUN" == true ]]; then
             echo "  Would download: $src → $full_dest"
         else
@@ -243,9 +243,9 @@ download_files() {
 create_gitignore() {
     echo ""
     echo -e "${BLUE}📝 Creating .gitignore...${NC}"
-    
+
     local gitignore="$CLAUDE_DIR/.gitignore"
-    
+
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $gitignore"
     else
@@ -264,9 +264,9 @@ GITIGNORE
 create_scratchpad() {
     echo ""
     echo -e "${BLUE}📋 Creating scratchpad template...${NC}"
-    
+
     local scratchpad="$CLAUDE_DIR/scratchpad/current-task.md"
-    
+
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $scratchpad"
     else
@@ -291,55 +291,99 @@ SCRATCHPAD
     fi
 }
 
+# Install security setup automatically
+install_security() {
+    if [[ "$DRY_RUN" == true ]]; then
+        echo ""
+        echo -e "${BLUE}🔒 Would install security setup...${NC}"
+        return
+    fi
+
+    echo ""
+    echo -e "${BLUE}🔒 Installing security setup...${NC}"
+
+    if curl -sSL "$REPO_URL/scripts/setup-security.sh" | bash 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Security setup complete"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Security auto-install failed. Run manually:"
+        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-security.sh | bash${NC}"
+    fi
+}
+
+# Install rate limit statusline (macOS only)
+install_statusline() {
+    if [[ "$DRY_RUN" == true ]]; then
+        echo ""
+        echo -e "${BLUE}📊 Would install rate limit statusline...${NC}"
+        return
+    fi
+
+    # Only on macOS
+    if [[ "$(uname)" != "Darwin" ]]; then
+        return
+    fi
+
+    # Check jq
+    if ! command -v jq &>/dev/null; then
+        echo ""
+        echo -e "${YELLOW}📊 Rate Limit Statusline skipped (jq not installed).${NC}"
+        echo -e "  Install jq and run: ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
+        return
+    fi
+
+    # Check OAuth token
+    local token
+    token=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
+    if [[ -z "$token" ]]; then
+        echo ""
+        echo -e "${YELLOW}📊 Rate Limit Statusline skipped (no OAuth token).${NC}"
+        echo -e "  Sign into Claude Code first, then run:"
+        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
+        return
+    fi
+
+    echo ""
+    echo -e "${BLUE}📊 Installing rate limit statusline...${NC}"
+
+    if curl -sSL "$REPO_URL/scripts/install-statusline.sh" | bash 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Statusline installed"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Statusline auto-install failed. Run manually:"
+        echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
+    fi
+}
+
 # Main
 main() {
     create_structure
     download_files
     create_gitignore
     create_scratchpad
-    
+    install_security
+    install_statusline
+
     echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║     ✅ Initialization Complete!        ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "Next steps:"
     echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
-    echo -e "  2. Update project-specific sections"
-    echo -e "  3. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
+    echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
+    echo -e ""
+    echo -e "Installed extras:"
+    echo -e "  ${GREEN}✓${NC} Security — global rules + safety-net plugin (~/.claude/CLAUDE.md)"
+    if [[ "$(uname)" == "Darwin" ]] && command -v jq &>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Statusline — rate limits in status bar (~/.claude/statusline.sh)"
+    else
+        echo -e "  ${YELLOW}—${NC} Statusline — run install-statusline.sh when ready (macOS + jq)"
+    fi
     echo ""
     echo -e "Available commands:"
     echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
     echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
     echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
     echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
-    echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║  Security Recommendation                       ║${NC}"
-    echo -e "${BLUE}╠════════════════════════════════════════════════╣${NC}"
-    echo -e "${BLUE}║${NC}  Run the security setup for global protection: ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}digitalplanetno/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}scripts/setup-security.sh | bash${NC}              ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  This installs:                                ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  - Global security rules (~/.claude/CLAUDE.md) ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  - safety-net plugin (destructive cmd blocker) ${BLUE}║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
-    echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║  Rate Limit Statusline (macOS)                 ║${NC}"
-    echo -e "${BLUE}╠════════════════════════════════════════════════╣${NC}"
-    echo -e "${BLUE}║${NC}  See session/weekly usage in the status bar:   ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}digitalplanetno/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  ${YELLOW}scripts/install-statusline.sh | bash${NC}          ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  Shows: 25% | 5h:23% (2h57m) | 7d:16% (5d3h) ${BLUE}║${NC}"
-    echo -e "${BLUE}║${NC}  Requires: macOS, jq, Claude Max/Pro           ${BLUE}║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 

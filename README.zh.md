@@ -38,7 +38,7 @@ Claude Code AI 辅助开发的综合指南。
 告诉 Claude Code：
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 或在终端运行：

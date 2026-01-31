@@ -38,7 +38,7 @@ Sans equipe, vous n'avez pas de revue de code, personne a qui demander conseil s
 Dites a Claude Code :
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Ou executez dans le terminal :

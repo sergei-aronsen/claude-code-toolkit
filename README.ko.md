@@ -38,7 +38,7 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 가이드입니다.
 Claude Code에게 말하세요:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 또는 터미널에서 실행:

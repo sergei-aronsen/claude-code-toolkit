@@ -38,7 +38,7 @@
 Скажи Claude Code:
 
 ```text
-Скачай инструкции из https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Или выполни в терминале:

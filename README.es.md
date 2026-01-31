@@ -38,7 +38,7 @@ Sin un equipo, no tienes revisión de código, nadie a quien preguntar sobre arq
 Dile a Claude Code:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 O ejecuta en la terminal:

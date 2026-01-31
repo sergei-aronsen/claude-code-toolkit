@@ -38,7 +38,7 @@ Ohne ein Team gibt es kein Code-Review, niemanden, den man zur Architektur frage
 Sag Claude Code:
 
 ```text
-Download instructions from https://github.com/digitalplanetno/claude-code-toolkit
+Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
 ```
 
 Oder fuehre im Terminal aus:
