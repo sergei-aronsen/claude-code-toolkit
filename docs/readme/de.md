@@ -1,4 +1,4 @@
-# Claude Guides
+# Claude Toolkit
 
 Umfassende Anleitungen fuer KI-gestuetzte Entwicklung mit Claude Code.
 
@@ -7,7 +7,7 @@ Umfassende Anleitungen fuer KI-gestuetzte Entwicklung mit Claude Code.
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **Deutsch** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 
-> **Neu bei Claude Code?** Lies zuerst die [Schritt-fuer-Schritt Installationsanleitung](../howto/de.md).
+> Lies zuerst die vollstaendige [Schritt-fuer-Schritt Installationsanleitung](../howto/de.md).
 
 ---
 
@@ -15,217 +15,76 @@ Umfassende Anleitungen fuer KI-gestuetzte Entwicklung mit Claude Code.
 
 **Solo-Entwickler**, die Produkte mit [Claude Code](https://docs.anthropic.com/en/docs/claude-code) erstellen.
 
-Unterstuetzte Stacks: **Laravel/PHP**, **Next.js**, **Node.js**, **Python**, **Go**, **Ruby on Rails**.
+Unterstuetzte Stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
 
-Ohne ein Team gibt es kein Code-Review, niemanden, den man zur Architektur fragen kann, niemanden, der die Sicherheit prueft. Dieses Repository fuellt diese Luecken:
+**7 Templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-| Problem | Loesung |
-|---------|---------|
-| Claude vergisst jedes Mal die Regeln | `CLAUDE.md` — Anweisungen, die zu Beginn der Sitzung gelesen werden |
-| Niemanden zum Fragen | `/debug` — systematisches Debugging statt Raten |
-| Kein Code-Review | `/audit code` — Claude prueft gegen eine Checkliste |
-| Kein Sicherheits-Review | `/audit security` — SQL-Injection, XSS, CSRF, Authentifizierung |
-| Vergisst vor dem Deploy zu pruefen | `/verify` — Build, Typen, Lint, Tests in einem Befehl |
-
-**Was drin ist:** 24 Befehle, 7 Audits, 23+ Anleitungen, Templates fuer alle wichtigen Stacks.
+**24 Slash Commands** | **7 Audits** | **23+ Anleitungen** Siehe [vollstaendige Liste der Commands, Templates, Audits und Komponenten](../features.md#slash-commands-24-total).
 
 ---
 
 ## Schnellstart
 
-### Erste Installation
+### 1. Installation
 
-Sag Claude Code:
+Das Skript erkennt automatisch das Framework (Laravel, Next.js) und kopiert das entsprechende Template.
 
-```text
-Install claude-code-toolkit from https://github.com/digitalplanetno/claude-code-toolkit
-```
-
-Oder fuehre im Terminal aus:
+Fuehre einfach im Terminal im Projektordner aus:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
-Das Skript erkennt automatisch das Framework (Laravel, Next.js) und kopiert das entsprechende Template.
+**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl fuer Neuinstallation oder Updates.
 
-### Nach der Installation
+### 2. Security Pack
 
-Verwende den `/install` Befehl fuer Neuinstallation oder Updates:
-
-```text
-/install          # Framework automatisch erkennen
-/install laravel  # Laravel erzwingen
-/install nextjs   # Next.js erzwingen
-/install nodejs   # Node.js erzwingen
-/install python   # Python erzwingen
-/install go       # Go erzwingen
-/install rails    # Ruby on Rails erzwingen
-```
-
-Oder via Terminal:
+Enthaelt ein Defense-in-Depth Sicherheits-Setup. Siehe [components/security-hardening.md](../../components/security-hardening.md) fuer die vollstaendige Anleitung.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+```
+
+### 3. Rate Limit Statusline (Claude Max / Pro)
+
+Zeigt Sitzungs-/Woechentliche Limits in der Claude Code Statusleiste an. Mehr: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
 ---
 
 ## Killer-Features
 
-### 1. Selbstlernendes System
+| Feature | Beschreibung |
+|---------|--------------|
+| **Self-Learning** | `/learn` speichert einmalige Loesungen; Skill Accumulation erfasst wiederkehrende Muster automatisch |
+| **Auto-Activation Hooks** | Hook faengt Prompts ab, bewertet Kontext (Keywords, Intent, Dateipfade), empfiehlt relevante Skills |
+| **Memory Persistence** | MCP-Memory nach `.claude/memory/` exportieren, in Git committen — auf jedem Rechner verfuegbar |
+| **Systematic Debugging** | `/debug` erzwingt 4 Phasen: Ursache → Muster → Hypothese → Fix. Kein Raten |
+| **Structured Workflow** | 3 Pflichtphasen: RECHERCHE (nur lesen) → PLAN (Scratchpad) → AUSFUEHRUNG (nach Bestaetigung) |
 
-Claude lernt aus deinen Korrekturen und sammelt Projektwissen an.
+Siehe [detaillierte Beschreibungen und Beispiele](../features.md).
 
-**Zwei Mechanismen:**
+---
 
-| Mechanismus | Was es macht | Wann verwenden |
-|-------------|--------------|----------------|
-| `/learn` | Speichert **einmalige** Problemloesung | Nicht-triviales Problem geloest, Workaround gefunden |
-| **Skill-Akkumulation** | Sammelt **wiederkehrende** Muster | Claude wurde 2+ Mal korrigiert |
+## MCP-Server (empfohlen!)
 
-**Der Unterschied:**
+| Server | Zweck |
+|--------|-------|
+| `context7` | Bibliotheks-Dokumentation |
+| `playwright` | Browser-Automatisierung, UI-Tests |
+| `memory-bank` | Memory zwischen Sitzungen |
+| `sequential-thinking` | Schrittweise Problemloesung |
+| `memory` | Knowledge Graph (Beziehungsgraph) |
 
-```text
-/learn  → "Wie ich Problem X geloest habe"    (einmaliger Fix)
-skill   → "Wie wir Y immer machen"            (Projektmuster)
-```
-
-**Beispiel /learn:**
-
-```text
-> /learn
-
-Analysiere Sitzung...
-Gefunden: Prisma Serverless Connection Fix
-
-Problem: Connection Timeout in Vercel Edge Functions
-Loesung: ?connection_limit=1 zur DATABASE_URL hinzufuegen
-
-In .claude/learned/prisma-serverless.md speichern? → ja
-```
-
-**Beispiel Skill-Akkumulation:**
-
-```text
-Benutzer: erstelle Endpunkt fuer Benutzer
-Claude: [erstellt Endpunkt]
-Benutzer: nein, wir verwenden Zod fuer Validierung und AppError fuer Fehler
-
-Claude: Muster erkannt: Endpunkte verwenden Zod + AppError
-        Als Skill 'backend-endpoints' speichern?
-        Wird aktiviert bei: endpoint, api, route
-
-Benutzer: ja
-
-[Naechstes Mal verwendet Claude direkt Zod + AppError]
-```
-
-### 2. Auto-Aktivierungs-Hooks
-
-**Problem:** Du hast 10 Skills, vergisst aber sie zu verwenden.
-
-**Loesung:** Hook faengt den Prompt **BEVOR** er an Claude gesendet wird ab und empfiehlt das Laden eines Skills.
-
-```text
-Benutzer-Prompt → Hook analysiert → Bewertung → Empfehlung
-```
-
-**Bewertungssystem:**
-
-| Trigger | Punkte | Beispiel |
-|---------|--------|----------|
-| keyword | +2 | "endpoint" im Prompt |
-| intentPattern | +4 | "create.*endpoint" |
-| pathPattern | +5 | Datei `src/api/*` ist geoeffnet |
-
-**Beispiel:**
-
-```text
-Prompt: "erstelle POST Endpunkt fuer Registrierung"
-Datei: src/api/auth.controller.ts
-
-SKILL-EMPFEHLUNGEN:
-[HOCH] backend-dev (Punktzahl: 13)
-[HOCH] security-review (Punktzahl: 12)
-
-Verwende Skill-Tool zum Laden der Richtlinien.
-```
-
-### 3. Memory-Persistenz
-
-**Problem:** MCP-Memory wird lokal gespeichert. Wechsel zu einem anderen Computer — Memory verloren.
-
-**Loesung:** Export nach `.claude/memory/` → Git-Commit → ueberall verfuegbar.
-
-```text
-.claude/memory/
-├── knowledge-graph.json   # Komponentenbeziehungen
-├── project-context.md     # Projektkontext
-└── decisions-log.md       # Warum wir Entscheidung X getroffen haben
-```
-
-**Arbeitsablauf:**
-
-```text
-Bei Sitzungsstart:     Sync pruefen → Memory von MCP laden
-Nach Aenderungen:      Export → .claude/memory/ committen
-Auf neuem Computer:    Pull → In MCP importieren
-```
-
-### 4. Systematisches Debugging (/debug)
-
-**Eiserne Regel:**
-
-```text
-KEINE FIXES OHNE VORHERIGE URSACHENANALYSE
-```
-
-**4 Phasen:**
-
-| Phase | Was tun | Abschlusskriterium |
-|-------|---------|-------------------|
-| **1. Ursache** | Fehler lesen, reproduzieren, Datenfluss verfolgen | Verstanden WAS und WARUM |
-| **2. Muster** | Funktionierendes Beispiel finden, vergleichen | Unterschiede gefunden |
-| **3. Hypothese** | Theorie formulieren, EINE Aenderung testen | Bestaetigt |
-| **4. Fix** | Test schreiben, fixen, verifizieren | Tests gruen |
-
-**Drei-Fixes-Regel:**
-
-```text
-Wenn 3+ Fixes nicht funktioniert haben — STOPP!
-Das ist kein Bug. Das ist ein Architekturproblem.
-```
-
-### 5. Strukturierter Arbeitsablauf
-
-**Problem:** Claude "codet oft sofort" anstatt die Aufgabe zu verstehen.
-
-**Loesung:** 3 Phasen mit expliziten Einschraenkungen:
-
-| Phase | Zugriff | Was erlaubt ist |
-|-------|---------|-----------------|
-| **RECHERCHE** | Nur-Lesen | Glob, Grep, Read — Kontext verstehen |
-| **PLAN** | Nur-Scratchpad | Plan in `.claude/scratchpad/` schreiben |
-| **AUSFUEHRUNG** | Voll | Nur nach Plan-Bestaetigung |
-
-```text
-Benutzer: Fuege E-Mail-Validierung hinzu
-
-Claude: Phase 1: RECHERCHE
-        [Liest Dateien, sucht Muster]
-        Gefunden: Formular in RegisterForm.tsx, Validierung via Zod
-
-        Phase 2: PLAN
-        [Erstellt Plan in .claude/scratchpad/current-task.md]
-        Plan fertig. Bestaetigen zum Fortfahren.
-
-Benutzer: ok
-
-Claude: Phase 3: AUSFUEHRUNG
-        Schritt 1: Schema hinzufuegen...
-        Schritt 2: In Formular integrieren...
-        Schritt 3: Tests...
+```bash
+claude mcp add context7 -- npx -y @upstash/context7-mcp
+claude mcp add playwright -- npx @playwright/mcp@latest
+claude mcp add memory-bank -- npx -y @anthropic/memory-bank-mcp
+claude mcp add sequential-thinking -- npx -y @anthropic/sequential-thinking-mcp
+claude mcp add memory -- npx -y @anthropic/memory-mcp
 ```
 
 ---
@@ -260,196 +119,13 @@ dein-projekt/
 
 ---
 
-## Was drin ist
-
-### Templates (7 Optionen)
-
-| Template | Wofuer | Features |
-|----------|--------|----------|
-| `base/` | Jedes Projekt | Universelle Regeln |
-| `laravel/` | Laravel + Vue/Inertia | Eloquent, Migrationen, Blade, Pint |
-| `nextjs/` | Next.js + TypeScript | App Router, RSC, Tailwind |
-| `nodejs/` | Node.js + TypeScript | Express, APIs, Backend-Services |
-| `python/` | Python + FastAPI | Type Hints, Pydantic, asyncio |
-| `go/` | Go + Standard Library | Modules, Interfaces, Concurrency |
-| `rails/` | Ruby on Rails + Hotwire | ActiveRecord, Turbo, Stimulus, RSpec |
-
-### Slash-Befehle (24 insgesamt)
-
-| Befehl | Beschreibung |
-|--------|--------------|
-| `/verify` | Pre-Commit-Pruefung: Build, Typen, Lint, Tests |
-| `/debug [problem]` | 4-Phasen-Debugging: Ursache → Hypothese → Fix → Verifizieren |
-| `/learn` | Problemloesung in `.claude/learned/` speichern |
-| `/plan` | Plan im Scratchpad vor der Implementierung erstellen |
-| `/audit [type]` | Audit ausfuehren (security, performance, code, design, database) |
-| `/test` | Tests fuer Modul schreiben |
-| `/refactor` | Refactoring unter Beibehaltung des Verhaltens |
-| `/fix [issue]` | Spezifisches Problem beheben |
-| `/explain` | Erklaeren, wie der Code funktioniert |
-| `/doc` | Dokumentation generieren |
-| `/context-prime` | Projektkontext bei Sitzungsstart laden |
-| `/checkpoint` | Fortschritt im Scratchpad speichern |
-| `/handoff` | Aufgabenuebergabe vorbereiten (Zusammenfassung + naechste Schritte) |
-| `/worktree` | Git-Worktrees-Verwaltung |
-| `/install` | claude-guides ins Projekt installieren |
-| `/migrate` | Datenbank-Migrations-Unterstuetzung |
-| `/find-function` | Funktion nach Name/Beschreibung finden |
-| `/find-script` | Skript in package.json/composer.json finden |
-| `/tdd` | Test-Driven-Development-Arbeitsablauf |
-| `/docker` | Docker-Container-Verwaltung und Debugging |
-| `/api` | API-Endpunkt erstellen und dokumentieren |
-| `/e2e` | End-to-End-Tests schreiben und ausfuehren |
-| `/perf` | Performance-Analyse und Optimierung |
-| `/deps` | Abhaengigkeiten pruefen und aktualisieren |
-
-### Audits (7 Typen)
-
-| Audit | Datei | Was es prueft |
-|-------|-------|---------------|
-| **Security** | `SECURITY_AUDIT.md` | SQL-Injection, XSS, CSRF, Auth, Geheimnisse |
-| **Performance** | `PERFORMANCE_AUDIT.md` | N+1, Bundle-Groesse, Caching, Lazy Loading |
-| **Code-Review** | `CODE_REVIEW.md` | Muster, Lesbarkeit, SOLID, DRY |
-| **Design-Review** | `DESIGN_REVIEW.md` | UI/UX, Barrierefreiheit, Responsive (Playwright MCP) |
-| **MySQL** | `MYSQL_PERFORMANCE_AUDIT.md` | performance_schema, Indizes, langsame Abfragen |
-| **PostgreSQL** | `POSTGRES_PERFORMANCE_AUDIT.md` | pg_stat_statements, Bloat, Verbindungen |
-| **Deploy** | `DEPLOY_CHECKLIST.md` | Pre-Deploy-Checkliste |
-
-### Komponenten (23+ Anleitungen)
-
-| Komponente | Beschreibung |
-|------------|--------------|
-| `structured-workflow.md` | 3-Phasen-Ansatz: Recherche → Plan → Ausfuehrung |
-| `smoke-tests-guide.md` | Minimale API-Tests (Laravel/Next.js/Node.js) |
-| `hooks-auto-activation.md` | Auto-Aktivierung von Skills nach Prompt-Kontext |
-| `skill-accumulation.md` | Selbstlernen: Claude sammelt Projektwissen |
-| `modular-skills.md` | Progressive Offenlegung fuer grosse Richtlinien |
-| `spec-driven-development.md` | Spezifikationen vor dem Code |
-| `mcp-servers-guide.md` | Empfohlene MCP-Server |
-| `memory-persistence.md` | MCP-Memory-Sync mit Git |
-| `plan-mode-instructions.md` | Think-Level: think → think hard → ultrathink |
-| `git-worktrees-guide.md` | Paralleles Arbeiten an Branches |
-| `devops-highload-checklist.md` | Checkliste fuer Hochlast-Projekte |
-| `api-health-monitoring.md` | API-Endpunkt-Monitoring |
-| `bootstrap-workflow.md` | Arbeitsablauf fuer neue Projekte |
-| `github-actions-guide.md` | CI/CD mit GitHub Actions |
-| `pre-commit-hooks.md` | Pre-Commit-Hooks-Konfiguration |
-| `deployment-strategies.md` | Deployment-Strategien und Best Practices |
-
----
-
-## MCP-Server (empfohlen!)
-
-| Server | Zweck |
-|--------|-------|
-| `context7` | Bibliotheks-Dokumentation |
-| `playwright` | Browser-Automatisierung, UI-Tests |
-| `memory-bank` | Memory zwischen Sitzungen |
-| `sequential-thinking` | Schrittweise Problemloesung |
-| `memory` | Knowledge Graph (Beziehungsgraph) |
-
-```bash
-claude mcp add context7 -- npx -y @upstash/context7-mcp
-claude mcp add playwright -- npx @playwright/mcp@latest
-```
-
----
-
-## Rate Limit Statusline (Claude Max / Pro)
-
-Ueberwachen Sie Ihre API-Nutzungslimits direkt in der Claude Code Statusleiste.
-
-```text
-25% | 5h:23% (2h57m) | 7d:80% (1d18h)
- │      │      │          │       │
- │      │      │          │       └─ Zeit bis zum woechentlichen Reset
- │      │      │          └─ woechentliche Nutzung (7-Tage-Fenster)
- │      │      └─ Zeit bis zum Sitzungs-Reset
- │      └─ Sitzungsnutzung (5-Stunden-Fenster)
- └─ Kontextfenster-Nutzung
-```
-
-**Farben:** keine Farbe (<60%), Gelb (60-79%), Rot (80-89%), Hellrot (90-100%)
-
-**Voraussetzungen:** macOS, `jq`, Claude Code mit OAuth (Max- oder Pro-Abonnement)
-
-### Installation
-
-```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
-```
-
-Der Installer prueft Voraussetzungen, laedt Skripte nach `~/.claude/`, konfiguriert `settings.json` und fuehrt einen ersten Test durch.
-
-Details und Anpassung: [components/rate-limit-statusline.md](components/rate-limit-statusline.md).
-
----
-
-## Anwendungsbeispiele
-
-### /verify — Pre-Commit-Pruefung
-
-```text
-> /verify
-
-Fuehre Pruefungen aus...
-Build: bestanden
-TypeScript: keine Fehler
-ESLint: 2 Warnungen (unbenutzte Imports)
-Tests: 23 bestanden
-
-Empfehlung: Lint-Warnungen vor dem Commit beheben.
-```
-
-### /debug — systematisches Debugging
-
-```text
-> /debug API gibt 500 bei /api/users zurueck
-
-Phase 1: URSACHENANALYSE
-├── Lese app/api/users/route.ts
-├── Pruefe Logs
-└── Gefunden: prisma.user.findMany() ohne try/catch
-
-Phase 2: HYPOTHESE
-└── Datenbank-Verbindungs-Timeout bei Kaltstart
-
-Phase 3: FIX
-└── Fuege Fehlerbehandlung + Retry-Logik hinzu
-
-Phase 4: VERIFIZIEREN
-└── Teste Endpunkt — funktioniert
-```
-
-### /audit security — Sicherheitsaudit
-
-```text
-> /audit security
-
-SICHERHEITSAUDIT-BERICHT
-========================
-
-KRITISCH (1)
-├── SQL-Injection in UserController:45
-└── Empfehlung: Prepared Statements verwenden
-
-MITTEL (2)
-├── Kein Rate-Limiting auf /api/login
-└── CORS konfiguriert als Access-Control-Allow-Origin: *
-
-NIEDRIG (1)
-└── Debug-Modus in .env.example
-```
-
----
-
 ## Unterstuetzte Frameworks
 
 | Framework | Template | Skills | Auto-Erkennung |
 |-----------|----------|--------|----------------|
-| Laravel | Dediziert | Ja | `artisan` Datei |
-| Next.js | Dediziert | Ja | `next.config.*` |
-| Node.js | Dediziert | Ja | `package.json` (ohne next.config) |
-| Python | Dediziert | Ja | `pyproject.toml` / `requirements.txt` |
-| Go | Dediziert | Ja | `go.mod` |
-| Ruby on Rails | Dediziert | Ja | `bin/rails` / `config/application.rb` |
+| Laravel | ✅ | ✅ | `artisan` Datei |
+| Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
+| Next.js | ✅ | ✅ | `next.config.*` |
+| Node.js | ✅ | ✅ | `package.json` (ohne next.config) |
+| Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
+| Go | ✅ | ✅ | `go.mod` |
