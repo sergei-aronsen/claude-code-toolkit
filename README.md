@@ -40,7 +40,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 
 ### 2. Security Pack
 
-This toolkit includes a defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
+Includes a defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
@@ -49,7 +49,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 
-Monitor your session/weekly usage limits directly in the Claude Code status bar. See [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
+Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
@@ -114,6 +114,9 @@ your-project/
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
+claude mcp add memory-bank -- npx -y @anthropic/memory-bank-mcp
+claude mcp add sequential-thinking -- npx -y @anthropic/sequential-thinking-mcp
+claude mcp add memory -- npx -y @anthropic/memory-mcp
 ```
 
 ---
