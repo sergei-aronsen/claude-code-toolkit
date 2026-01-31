@@ -19,7 +19,7 @@ Stacks supportes : **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 commandes slash** | **7 audits** | **23+ guides** Voir la [liste complete des commandes, templates, audits et composants](../features.md#slash-commands-24-total).
+**24 commandes slash** | **7 audits** | **23+ guides** | Voir la [liste complete des commandes, templates, audits et composants](../features.md#slash-commands-24-total).
 
 ---
 
@@ -27,7 +27,7 @@ Stacks supportes : **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 ### 1. Installation
 
-Le script detecte automatiquement le framework (Laravel, Next.js) et copie le template approprie.
+Le script detecte automatiquement le framework et copie le template approprie.
 
 Executez simplement dans le terminal dans le dossier du projet :
 
