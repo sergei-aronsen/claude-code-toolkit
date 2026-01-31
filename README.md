@@ -440,7 +440,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 
 | Layer | Tool | Purpose |
 |-------|------|---------|
-| **Rules** | `~/.claude/CLAUDE.md` | 10 sections of security rules applied to ALL projects |
+| **Rules** | `~/.claude/CLAUDE.md` | 14 sections of security rules applied to ALL projects |
 | **Blocker** | `cc-safety-net` | Blocks destructive commands (`rm -rf`, `git push --force`, etc.) |
 | **Hook** | `~/.claude/settings.json` | Every Bash command goes through safety-net before execution |
 
