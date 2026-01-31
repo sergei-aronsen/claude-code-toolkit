@@ -7,6 +7,8 @@
 
 **[English](README.md)** | **Русский** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
 
+> **Первый раз с Claude Code?** Прочитайте [пошаговый мануал по установке](howto/ru.md).
+
 ---
 
 ## Для кого это

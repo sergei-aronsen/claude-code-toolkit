@@ -7,6 +7,8 @@ Claude Code AI 辅助开发的综合指南。
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **中文** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
 
+> **第一次使用 Claude Code？** 请先阅读[分步安装指南](howto/zh.md)。
+
 ---
 
 ## 适用人群

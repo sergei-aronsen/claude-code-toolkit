@@ -7,6 +7,8 @@ Instructions completes pour le developpement assiste par IA avec Claude Code.
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **Français** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
 
+> **Nouveau sur Claude Code ?** Lisez d'abord le [guide d'installation etape par etape](howto/fr.md).
+
 ---
 
 ## A qui s'adresse ce guide

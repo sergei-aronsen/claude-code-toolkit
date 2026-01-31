@@ -7,6 +7,8 @@ Umfassende Anleitungen fuer KI-gestuetzte Entwicklung mit Claude Code.
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **Deutsch** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **[한국어](README.ko.md)**
 
+> **Neu bei Claude Code?** Lies zuerst die [Schritt-fuer-Schritt Installationsanleitung](howto/de.md).
+
 ---
 
 ## Fuer wen ist das

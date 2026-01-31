@@ -7,6 +7,8 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 가이드입니다.
 
 **[English](README.md)** | **[Русский](README.ru.md)** | **[Español](README.es.md)** | **[Deutsch](README.de.md)** | **[Français](README.fr.md)** | **[中文](README.zh.md)** | **[日本語](README.ja.md)** | **[Português](README.pt.md)** | **한국어**
 
+> **Claude Code가 처음이신가요?** 먼저 [단계별 설치 가이드](howto/ko.md)를 읽어보세요.
+
 ---
 
 ## 대상 사용자
