@@ -45,7 +45,7 @@ The script automatically detects framework (Laravel, Next.js) and copies the app
 
 ### Updating
 
-Use `/install` command for reinstallation or updates.
+Use `/update-toolkit` command for reinstallation or updates.
 Or via terminal:
 
 ```bash
@@ -308,7 +308,7 @@ your-project/
 | `/checkpoint` | Save progress to scratchpad |
 | `/handoff` | Prepare task handoff (summary + next steps) |
 | `/worktree` | Git worktrees management |
-| `/install` | Install claude-guides to project |
+| `/update-toolkit` | Reinstall or update Claude Code Toolkit |
 | `/migrate` | Database migration assistance |
 | `/find-function` | Find function by name/description |
 | `/find-script` | Find script in package.json/composer.json |

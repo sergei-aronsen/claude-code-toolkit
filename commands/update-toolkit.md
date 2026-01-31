@@ -1,15 +1,15 @@
-# /install — Install Claude Code from Claude Guides
+# /update-toolkit — Update Claude Code Toolkit
 
 ## Description
 
-Automatic installation of Claude Code instructions from the claude-guides repository.
+Reinstall or update Claude Code Toolkit in the current project.
 
 ## Usage
 
 ```text
-/install
-/install laravel
-/install nextjs
+/update-toolkit
+/update-toolkit laravel
+/update-toolkit nextjs
 ```
 
 ## Process
@@ -43,9 +43,9 @@ After initialization, open `.claude/CLAUDE.md` and update:
 ### 4. Report completion
 
 ```text
-✅ Claude Code Toolkit installed!
+✅ Claude Code Toolkit updated!
 
-Created:
+Created/updated:
 - .claude/CLAUDE.md — main instructions
 - .claude/prompts/ — audits
 - .claude/agents/ — subagents
@@ -69,7 +69,7 @@ Next step: review and adapt .claude/CLAUDE.md for your project.
 
 ## Example
 
-**User:** `/install`
+**User:** `/update-toolkit`
 
 **Claude:**
 

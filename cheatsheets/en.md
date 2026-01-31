@@ -18,7 +18,7 @@
 | `/context-prime` | Load project context at session start |
 | `/checkpoint` | Save progress to scratchpad |
 | `/handoff` | Prepare task handoff with summary and next steps |
-| `/install` | Install claude-guides into your project |
+| `/update-toolkit` | Reinstall or update Claude Code Toolkit |
 | `/worktree` | Manage git worktrees for parallel branches |
 | `/migrate` | Create or troubleshoot database migrations |
 | `/find-function` | Find function or class definition in codebase |

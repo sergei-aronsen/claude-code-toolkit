@@ -127,7 +127,7 @@ declare -a FILES=(
     "commands/verify.md:commands/verify.md"
     "commands/debug.md:commands/debug.md"
     "commands/learn.md:commands/learn.md"
-    "commands/install.md:commands/install.md"
+    "commands/update-toolkit.md:commands/update-toolkit.md"
     "commands/worktree.md:commands/worktree.md"
     "commands/migrate.md:commands/migrate.md"
     "commands/find-function.md:commands/find-function.md"
