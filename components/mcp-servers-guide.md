@@ -79,6 +79,24 @@ Up-to-date documentation for Laravel, Vue, React, Next.js and other libraries.
 
 UI testing, screenshots, form filling.
 
+**Recommended config (Chromium — avoids conflicts with system Chrome):**
+
+```json
+{
+  "playwright": {
+    "command": "npx",
+    "args": ["@playwright/mcp@latest", "--browser", "chromium"],
+    "env": {}
+  }
+}
+```
+
+Then install Chromium: `npx playwright install chromium`
+
+> **Why Chromium?** System Chrome redirects new Playwright instances to the already-running window, causing failures. Chromium is a separate binary managed by Playwright — no conflicts.
+
+**Alternative (system Chrome):**
+
 ```json
 {
   "playwright": {
@@ -102,6 +120,8 @@ UI testing, screenshots, form filling.
 "Open localhost:3000 and check that form works"
 "Take screenshot of /dashboard page"
 ```
+
+**Important:** Always call `browser_close` after finishing tests. Multiple Claude sessions share the same browser profile — leaving it open blocks other sessions.
 
 **Screenshot formats:**
 
@@ -302,7 +322,7 @@ Add to `~/.claude.json`:
     },
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest"],
+      "args": ["@playwright/mcp@latest", "--browser", "chromium"],
       "env": {}
     },
     "memory-bank": {
@@ -346,6 +366,7 @@ Example: Record "Why we chose RDAP over WHOIS scraping"
 ### playwright — UI Testing
 **When:** Check web interface, take screenshot.
 Example: "Check that form on /contact works"
+**Important:** Always call `browser_close` after testing — sessions share the browser profile.
 
 ### sequential-thinking — Complex Tasks
 **When:** Multi-step analysis, architectural decisions.
@@ -390,6 +411,47 @@ Install Playwright browsers:
 ```bash
 npx playwright install chromium
 ```
+
+### Playwright: Browser Won't Start (Parallel Sessions)
+
+Multiple Claude Code sessions share the same browser profile. If one didn't close the browser, others can't launch it.
+
+**Quick fix:**
+
+```bash
+# Kill Playwright's Chrome (safe — doesn't touch your regular Chrome)
+pkill -f 'user-data-dir=.*mcp-chrome'
+
+# Remove stale lock (macOS)
+rm -f ~/Library/Caches/ms-playwright/mcp-chrome-*/SingletonLock
+
+# Remove stale lock (Linux)
+rm -f ~/.cache/ms-playwright/mcp-chrome-*/SingletonLock
+```
+
+**Permanent fix — add stop hook to `~/.claude/settings.json`:**
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pkill -f 'user-data-dir=.*mcp-chrome' 2>/dev/null; rm -f ~/Library/Caches/ms-playwright/mcp-chrome-*/SingletonLock 2>/dev/null; true"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This automatically kills the Playwright browser when a Claude session ends.
+
+See [playwright-self-testing.md](playwright-self-testing.md) for full details.
 
 ---
 

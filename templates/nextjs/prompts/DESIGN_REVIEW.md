@@ -318,6 +318,9 @@ mcp__playwright__browser_console_messages() — check for hydration errors
 
 # Viewport
 mcp__playwright__browser_resize(width, height)
+
+# Cleanup (ALWAYS call when done — shared browser profile blocks other sessions)
+mcp__playwright__browser_close()
 ```
 
 ---

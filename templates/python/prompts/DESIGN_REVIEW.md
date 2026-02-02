@@ -285,6 +285,9 @@ mcp__playwright__browser_resize(width, height)
 
 # Tabs
 mcp__playwright__browser_tabs(action: "list" | "new" | "close" | "select")
+
+# Cleanup (ALWAYS call when done — shared browser profile blocks other sessions)
+mcp__playwright__browser_close()
 ```
 
 ---

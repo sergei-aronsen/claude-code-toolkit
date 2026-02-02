@@ -159,6 +159,8 @@ bin/rails generate migration AddStatusToUsers status:integer
 
 Workflow: navigate to page, check for console errors, interact with changed elements, take screenshots, report findings. If bug found — fix, redeploy, re-test.
 
+**IMPORTANT: Always call `browser_close` after finishing tests.** Multiple Claude sessions share the same Playwright browser profile. Leaving the browser open will block other sessions from launching it.
+
 Requires Playwright MCP server. Full guide: `components/playwright-self-testing.md`
 
 ---
