@@ -103,11 +103,15 @@ For features, refactoring, multi-file changes — use 3 phases:
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `refactor:`)
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
-- **BEFORE COMMIT** — run linters, sync memory:
+- **PARALLEL SESSIONS** — user may run multiple Claude sessions simultaneously. If you see commits you didn't make, that's normal — another session made them. Always `git pull` before commit/push.
+- **BEFORE COMMIT** — run linters, pull latest, sync memory:
 
 ```bash
 # Run project linters (adjust command for your project)
 npm run lint   # or: make check / pnpm lint / etc.
+
+# Pull latest changes (parallel sessions may have pushed)
+git pull --rebase
 
 # Sync memory
 cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/

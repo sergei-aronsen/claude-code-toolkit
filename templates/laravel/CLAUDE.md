@@ -87,7 +87,8 @@ mcp__memory__create_relations(relations: [...relations from JSON...])
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `refactor:`)
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
-- **BEFORE COMMIT** — run `./vendor/bin/pint` (or project linters), fix all errors
+- **PARALLEL SESSIONS** — user may run multiple Claude sessions simultaneously. If you see commits you didn't make, that's normal — another session made them. Always `git pull` before commit/push.
+- **BEFORE COMMIT** — run `./vendor/bin/pint`, then `git pull --rebase`, fix all errors
 
 ---
 
