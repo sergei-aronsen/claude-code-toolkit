@@ -17,6 +17,7 @@
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
+5. **Language:** ALL code comments, commit messages, and docs in English only
 5. **Next.js:** App Router, Server Components by default, 'use client' only when necessary
 
 ---
@@ -189,6 +190,7 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 - Single responsibility per component
 - Strict TypeScript
 - Comments for complex logic
+- **All code comments, commit messages, and documentation in English** regardless of conversation language
 
 ---
 

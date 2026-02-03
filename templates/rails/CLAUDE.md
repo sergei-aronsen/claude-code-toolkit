@@ -16,6 +16,7 @@
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before coding, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
+5. **Language:** ALL code comments, commit messages, and docs in English only
 5. **Rails:** Convention over Configuration, Strong Parameters, Concerns for shared logic
 
 ---
@@ -203,6 +204,7 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 - Single responsibility per class
 - Use `frozen_string_literal: true` pragma
 - Prefer symbols over strings for hash keys
+- **All code comments, commit messages, and documentation in English** regardless of conversation language
 
 ---
 

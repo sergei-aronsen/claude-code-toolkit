@@ -17,6 +17,7 @@
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
+5. **Language:** ALL code comments, commit messages, and docs in English only
 5. **Types:** ALWAYS use type hints, mypy must pass
 
 ---
@@ -218,6 +219,7 @@ uv sync                              # Sync dependencies
 - Single responsibility per module
 - Type hints are mandatory
 - Docstrings for public API
+- **All code comments, commit messages, and documentation in English** regardless of conversation language
 
 ---
 
