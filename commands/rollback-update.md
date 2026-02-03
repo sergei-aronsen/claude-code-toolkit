@@ -1,4 +1,4 @@
-# /rollback — Rollback Toolkit Update
+# /rollback-update — Rollback Toolkit Update
 
 ## Description
 
@@ -7,10 +7,10 @@ Rollback to a previous version of Claude Code Toolkit after a failed or unwanted
 ## Usage
 
 ```text
-/rollback
-/rollback list
-/rollback latest
-/rollback 20260203-120000
+/rollback-update
+/rollback-update list
+/rollback-update latest
+/rollback-update 20260203-120000
 ```
 
 ## Actions
