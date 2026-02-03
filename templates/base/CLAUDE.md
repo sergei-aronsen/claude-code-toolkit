@@ -118,6 +118,39 @@ cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/
 # + export Knowledge Graph to .claude/memory/knowledge-graph.json
 ```
 
+### Git Worktree Workflow (Parallel Sessions)
+
+> **If multiple Claude sessions work on same repo, use git worktrees to avoid conflicts.**
+
+**At session start — detect worktree:**
+
+```bash
+git branch --show-current
+```
+
+- If branch is `work-1`, `work-2`, `work-3`, `work-4` → you're in a worktree
+- If branch is `main` → you're in main repo
+
+**Working in worktree (work-1, work-2, etc.):**
+
+1. **Before starting** — sync with main:
+
+   ```bash
+   git fetch origin main && git reset --hard origin/main
+   ```
+
+2. **Work normally** — make changes, test
+
+3. **When complete** — merge to main:
+
+   ```bash
+   git add <files> && git commit -m "feat: ..."
+   git checkout main && git merge work-X --no-edit && git push origin main
+   git checkout work-X && git reset --hard origin/main
+   ```
+
+Full guide: `components/git-worktrees-guide.md`
+
 ---
 
 ## 📁 Project Structure
