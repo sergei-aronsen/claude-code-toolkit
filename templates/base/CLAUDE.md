@@ -17,10 +17,22 @@
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
 5. **Language:** ALL code comments, commit messages, and docs in English only
+6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
 
 ---
 
 ## AT THE START OF EACH SESSION
+
+### 0. Verify working directory (CRITICAL for worktrees)
+
+```bash
+pwd
+git rev-parse --show-toplevel
+```
+
+**Lock this directory for the entire session.** Do NOT `cd` to parent folders, sibling worktrees, or the main repository. All file operations must stay within this directory.
+
+If using worktrees (`lantern-1`, `lantern-2`, etc.) — each session must stay in its own worktree folder.
 
 ### 1. Check memory synchronization
 

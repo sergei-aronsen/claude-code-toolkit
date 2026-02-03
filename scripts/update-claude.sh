@@ -102,9 +102,11 @@ for file in agents/code-reviewer.md agents/planner.md agents/security-auditor.md
         log_success "Updated: $file"
     else
         # Try base template
-        curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null && \
-            log_success "Updated: $file (from base)" || \
+        if curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
+            log_success "Updated: $file (from base)"
+        else
             log_warning "Skipped: $file"
+        fi
     fi
 done
 
@@ -116,17 +118,21 @@ for file in prompts/CODE_REVIEW.md prompts/DEPLOY_CHECKLIST.md prompts/DESIGN_RE
     if curl -sSL "$TEMPLATE_URL/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
         log_success "Updated: $file"
     else
-        curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null && \
-            log_success "Updated: $file (from base)" || \
+        if curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
+            log_success "Updated: $file (from base)"
+        else
             log_warning "Skipped: $file"
+        fi
     fi
 done
 
 # Skills
 mkdir -p "$CLAUDE_DIR/skills/ai-models"
-curl -sSL "$REPO_URL/templates/base/skills/ai-models/SKILL.md" -o "$CLAUDE_DIR/skills/ai-models/SKILL.md" 2>/dev/null && \
-    log_success "Updated: skills/ai-models/SKILL.md" || \
+if curl -sSL "$REPO_URL/templates/base/skills/ai-models/SKILL.md" -o "$CLAUDE_DIR/skills/ai-models/SKILL.md" 2>/dev/null; then
+    log_success "Updated: skills/ai-models/SKILL.md"
+else
     log_warning "Skipped: skills/ai-models/SKILL.md"
+fi
 
 # Don't overwrite skill-rules.json if exists (user customizations)
 if [[ ! -f "$CLAUDE_DIR/skills/skill-rules.json" ]]; then

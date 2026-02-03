@@ -170,6 +170,167 @@ When working with Claude across worktrees:
 
 ---
 
+## Worktree Isolation Problem (Claude Code Jumping Between Folders)
+
+**Problem:** When working in a worktree (e.g., `lantern-1`), Claude Code sometimes "jumps" to the main repo folder (`lantern`) or another worktree during task execution.
+
+**Why it happens:** Git worktrees don't have a full `.git` directory — they have a `.git` file pointing to the main repository. Claude Code may get confused about project boundaries.
+
+### Solution 1 — Always Launch From Inside Worktree
+
+**Most important.** Never `cd` into worktree from Claude session. Launch Claude Code while already inside:
+
+```bash
+# CORRECT — launch from inside worktree
+cd ~/projects/lantern-1 && claude
+
+# WRONG — launching from parent or main folder
+cd ~/projects && claude
+# then "cd lantern-1" inside session — DON'T DO THIS
+```
+
+### Solution 2 — Restrict Allowed Directories
+
+Create `.claude/settings.local.json` in each worktree to restrict Claude to that folder only:
+
+```bash
+# In each worktree
+mkdir -p ~/projects/lantern-1/.claude
+```
+
+**File: `lantern-1/.claude/settings.local.json`**
+
+```json
+{
+  "permissions": {
+    "allowedDirectories": [
+      "/Users/sergeiarutiunian/projects/lantern-1"
+    ]
+  }
+}
+```
+
+Repeat for each worktree with its own path.
+
+### Solution 3 — Use .claudeignore
+
+Create `.claudeignore` in each worktree to explicitly exclude other worktrees:
+
+**File: `lantern-1/.claudeignore`**
+
+```text
+# Exclude main repo and other worktrees
+../lantern
+../lantern-2
+../lantern-3
+../lantern-4
+```
+
+### Solution 4 — Session Start Check
+
+Add to your worktree's `CLAUDE.md`:
+
+```markdown
+## Session Start (REQUIRED)
+
+1. Verify working directory:
+   \`\`\`bash
+   pwd
+   \`\`\`
+
+2. If NOT in the expected worktree — STOP and ask user to restart Claude Code from correct folder.
+
+3. Stay in this directory for the entire session. Do NOT cd to parent or sibling folders.
+```
+
+### Solution 5 — Separate Terminal Processes
+
+Each terminal tab must run a **separate** Claude Code process:
+
+```bash
+# Tab 1
+cd ~/projects/lantern-1 && claude
+
+# Tab 2 (new terminal)
+cd ~/projects/lantern-2 && claude
+
+# Tab 3 (new terminal)
+cd ~/projects/lantern-3 && claude
+```
+
+**Warning for tmux/screen users:** Ensure environment variables (especially `$PWD`, cache paths) are not shared between panes.
+
+### Full Isolation Setup (Recommended)
+
+For maximum isolation, combine all solutions:
+
+```bash
+# 1. Create worktrees
+cd ~/projects/lantern
+git worktree add ../lantern-1 -b work-1
+git worktree add ../lantern-2 -b work-2
+git worktree add ../lantern-3 -b work-3
+git worktree add ../lantern-4 -b work-4
+
+# 2. For each worktree, create settings.local.json
+for i in 1 2 3 4; do
+  mkdir -p ~/projects/lantern-$i/.claude
+  cat > ~/projects/lantern-$i/.claude/settings.local.json << EOF
+{
+  "permissions": {
+    "allowedDirectories": [
+      "$HOME/projects/lantern-$i"
+    ]
+  }
+}
+EOF
+done
+
+# 3. For each worktree, create .claudeignore
+for i in 1 2 3 4; do
+  cat > ~/projects/lantern-$i/.claudeignore << EOF
+# Exclude main repo and other worktrees
+../lantern
+$(for j in 1 2 3 4; do [[ $j -ne $i ]] && echo "../lantern-$j"; done)
+EOF
+done
+
+# 4. Install dependencies in each
+for i in 1 2 3 4; do
+  cd ~/projects/lantern-$i && npm install
+done
+```
+
+### Debugging: Where Am I?
+
+If Claude seems confused, run these checks:
+
+```bash
+# Current directory
+pwd
+
+# Current git branch (worktree indicator)
+git branch --show-current
+
+# Git root (should be THIS worktree, not main repo)
+git rev-parse --show-toplevel
+
+# Worktree list
+git worktree list
+```
+
+**Expected output for `lantern-1`:**
+
+```text
+pwd:                  /Users/sergeiarutiunian/projects/lantern-1
+branch:               work-1
+git root:             /Users/sergeiarutiunian/projects/lantern-1
+```
+
+If `git root` points to main repo (`lantern`), something is wrong with worktree setup.
+
+---
+
 ## Parallel Claude Sessions Workflow
 
 **Problem:** Multiple Claude Code sessions in the same directory cause race conditions — one session overwrites another's changes.
