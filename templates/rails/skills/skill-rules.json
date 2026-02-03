@@ -9,7 +9,16 @@
         "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
         "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
         "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "rails": {
       "path": ".claude/skills/rails/SKILL.md",
@@ -18,7 +27,16 @@
         "keywords": ["activerecord", "migration", "rails", "hotwire", "turbo", "stimulus", "erb"],
         "intentPatterns": ["create.*model", "add.*migration", "generate.*controller"],
         "filePatterns": ["app/**/*.rb", "db/migrate/**", "config/routes.rb"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "tailwind": {
       "path": ".claude/skills/tailwind/SKILL.md",
@@ -27,7 +45,16 @@
         "keywords": ["tailwind", "css", "styling", "dark mode", "responsive", "className"],
         "intentPatterns": ["style.*", "add.*styles", "make.*responsive", "add.*dark mode"],
         "filePatterns": ["app/views/**/*.erb", "app/assets/stylesheets/**", "tailwind.config.js"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "docker": {
       "path": ".claude/skills/docker/SKILL.md",
@@ -36,7 +63,16 @@
         "keywords": ["docker", "container", "dockerfile", "compose"],
         "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
         "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "testing": {
       "path": ".claude/skills/testing/SKILL.md",
@@ -45,7 +81,16 @@
         "keywords": ["test", "testing", "tdd", "mock", "coverage", "rspec", "minitest"],
         "intentPatterns": ["write.*test", "add.*test", "test.*"],
         "filePatterns": ["spec/**/*.rb", "test/**/*.rb"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "api-design": {
       "path": ".claude/skills/api-design/SKILL.md",
@@ -54,7 +99,16 @@
         "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
         "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
         "filePatterns": ["app/controllers/api/**", "config/routes.rb", "openapi.*"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "database": {
       "path": ".claude/skills/database/SKILL.md",
@@ -63,7 +117,16 @@
         "keywords": ["database", "migration", "index", "query", "activerecord", "sql"],
         "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
         "filePatterns": ["db/migrate/**", "app/models/**"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "observability": {
       "path": ".claude/skills/observability/SKILL.md",
@@ -72,7 +135,16 @@
         "keywords": ["logging", "metrics", "tracing", "monitoring", "apm"],
         "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
         "filePatterns": ["config/environments/**", "config/initializers/logging*"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     },
     "llm-patterns": {
       "path": ".claude/skills/llm-patterns/SKILL.md",
@@ -81,7 +153,16 @@
         "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming"],
         "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
         "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
+      },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
       }
+    }
     }
   }
 }

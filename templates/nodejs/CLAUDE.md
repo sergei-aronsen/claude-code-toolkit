@@ -296,8 +296,9 @@ router.get('/users', asyncHandler(async (req, res) => {
 | ----- | --------------- |
 | `ai-models` | When working with AI API (Anthropic, Google) |
 | `nodejs` | Async patterns, validation, security |
+| `i18n` | When adding multilanguage support, translations, localization |
 
-Load: `Read .claude/skills/nodejs/SKILL.md`
+Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 

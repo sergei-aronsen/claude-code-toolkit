@@ -73,6 +73,15 @@
         "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
         "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
       }
+    },
+    "i18n": {
+      "path": ".claude/skills/i18n/SKILL.md",
+      "description": "Internationalization: translations, localization, multilanguage",
+      "triggers": {
+        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
+        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
+        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+      }
     }
   }
 }

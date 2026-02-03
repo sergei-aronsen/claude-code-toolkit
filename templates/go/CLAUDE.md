@@ -369,8 +369,9 @@ func TestAdd(t *testing.T) {
 | ----- | --------------- |
 | `ai-models` | When working with AI API (Anthropic, Google) |
 | `go` | Goroutines, error handling, table-driven tests |
+| `i18n` | When adding multilanguage support, translations, localization |
 
-Load: `Read .claude/skills/go/SKILL.md`
+Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 

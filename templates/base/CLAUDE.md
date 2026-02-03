@@ -295,8 +295,9 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 | Skill | When to load |
 | ----- | --------------- |
 | `ai-models` | When working with AI API (Anthropic, Google) |
+| `i18n` | When adding multilanguage support, translations, localization |
 
-Load: `Read .claude/skills/ai-models/SKILL.md`
+Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 

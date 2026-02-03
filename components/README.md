@@ -74,6 +74,14 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 ---
 
+## Frontend & Localization
+
+| Component | Description |
+|-----------|-------------|
+| [i18n-multilanguage.md](./i18n-multilanguage.md) | Multilanguage interface: file structure, key naming, plural forms, Intl API, Laravel+Vue integration. |
+
+---
+
 ## Skills (subfolder)
 
 | Component | Description |

@@ -261,8 +261,9 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 | ----- | --------------- |
 | `rails` | Rails conventions, ActiveRecord, Hotwire |
 | `ai-models` | When working with AI API (Anthropic, Google) |
+| `i18n` | When adding multilanguage support, translations, localization |
 
-Load: `Read .claude/skills/rails/SKILL.md`
+Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 
