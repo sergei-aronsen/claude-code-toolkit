@@ -16,7 +16,7 @@
 1. **Security:** DO NOT concatenate user input in SQL/commands, ALWAYS validate with Pydantic
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
-4. **Git:** Conventional Commits, DO NOT push to main directly
+4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Types:** ALWAYS use type hints, mypy must pass
 
@@ -88,6 +88,7 @@ mcp__memory__create_relations(relations: [...relations from JSON...])
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `refactor:`)
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
+- **BEFORE COMMIT** — run `uv run ruff check . && uv run mypy src/` (or project linters), fix all errors
 
 ---
 

@@ -15,7 +15,7 @@
 1. **Security:** DO NOT concatenate user input in SQL/HTML, ALWAYS validate input
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
-4. **Git:** Conventional Commits, DO NOT push to main directly
+4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
 5. **Language:** ALL code comments, commit messages, and docs in English only
 
 ---
@@ -103,9 +103,13 @@ For features, refactoring, multi-file changes — use 3 phases:
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `refactor:`)
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
-- **BEFORE COMMIT** — sync memory:
+- **BEFORE COMMIT** — run linters, sync memory:
 
 ```bash
+# Run project linters (adjust command for your project)
+npm run lint   # or: make check / pnpm lint / etc.
+
+# Sync memory
 cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/
 # + export Knowledge Graph to .claude/memory/knowledge-graph.json
 ```

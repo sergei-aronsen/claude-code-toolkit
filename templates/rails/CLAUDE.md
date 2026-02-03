@@ -15,7 +15,7 @@
 1. **Security:** DO NOT concatenate user input in SQL/HTML, ALWAYS validate input
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before coding, 3 phases (Research → Plan → Execute)
-4. **Git:** Conventional Commits, DO NOT push to main directly
+4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Rails:** Convention over Configuration, Strong Parameters, Concerns for shared logic
 
@@ -87,6 +87,7 @@ mcp__memory__create_relations(relations: [...relations from JSON...])
 - **Commits:** Conventional Commits (`feat:`, `fix:`, `refactor:`)
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
+- **BEFORE COMMIT** — run `bundle exec rubocop` (or project linters), fix all errors
 
 ---
 
