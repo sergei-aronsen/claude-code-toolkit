@@ -66,6 +66,58 @@ Grep on the saved file to find specific refs
 | Stale screenshot | Cache or CDN | Hard refresh or cache-bust |
 | Browser won't start | Another session holds the browser open | See [Parallel Sessions](#parallel-sessions-browser-conflicts) section below |
 | `Target page, context or browser has been closed` | Previous session crashed without cleanup | Kill stale processes (see below) |
+| Cookie banner blocks content | GDPR/cookie consent overlay | See [Cookie Banners](#cookie-banners) section below |
+
+---
+
+## Cookie Banners
+
+**Problem:** Cookie consent banners block screenshots and UI testing on many websites.
+
+### Solution 1 — Manual dismiss (simple cases)
+
+```text
+# Find and click the accept/dismiss button
+browser_snapshot → find cookie banner element ref
+browser_click ref="accept-cookies-button"
+```
+
+### Solution 2 — idcac-playwright (recommended for scraping)
+
+[idcac-playwright](https://github.com/nicobrinkkemper/idcac-playwright) — auto-dismiss cookie banners using 10,000+ selectors from "I Don't Care About Cookies" database.
+
+**Installation:**
+
+```bash
+npm install idcac-playwright
+```
+
+**Usage in Playwright code:**
+
+```javascript
+import { getInjectableScript } from 'idcac-playwright';
+
+// After page load, inject the cookie banner dismissal script
+await page.evaluate(getInjectableScript());
+```
+
+### Solution 3 — Browser extension (for Playwright service)
+
+If running Playwright as a service (e.g., with Firecrawl), install the browser extension:
+
+```bash
+# Clone the extension
+git clone https://github.com/nicobrinkkemper/nicobrinkkemper/nicobrinkkemper.github.io
+
+# Or use the main database
+git clone https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies
+```
+
+### Resources
+
+- [idcac-playwright](https://github.com/nicobrinkkemper/idcac-playwright) — Playwright-specific package
+- [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies) — 10,000+ site selectors in `src/data/`
+- [Apify IDCAC](https://github.com/apify/idcac) — Apify's fork for scraping
 
 ---
 

@@ -243,6 +243,29 @@ This applies to ALL HTTP requests — not just Playwright, but also:
 
 ---
 
+---
+
+## Cookie Banners
+
+Cookie consent overlays block content on many EU sites. Use `idcac-playwright` to auto-dismiss:
+
+```bash
+npm install idcac-playwright
+```
+
+```javascript
+import { getInjectableScript } from 'idcac-playwright';
+
+// After page.goto(), inject the script
+await page.evaluate(getInjectableScript());
+```
+
+This injects 10,000+ selectors from [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies) database.
+
+See also: `components/playwright-self-testing.md` → Cookie Banners section.
+
+---
+
 ## Add to CLAUDE.md
 
 ```markdown
@@ -253,6 +276,7 @@ Default Playwright is detected by WAF (Akamai, Cloudflare, DataDome).
 
 Key: stealth plugin, locale/timezone, real Chrome UA, `ignoreHTTPSErrors`.
 Test on bot.sannysoft.com — all tests must pass.
+Cookie banners: use `idcac-playwright` to auto-dismiss (10,000+ selectors).
 
 Full guide: `components/playwright-stealth-techniques.md`
 ```
