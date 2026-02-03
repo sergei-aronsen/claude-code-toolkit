@@ -2,78 +2,145 @@
 
 ## Description
 
-Reinstall or update Claude Code Toolkit in the current project.
+Smart update of Claude Code Toolkit — updates system files while preserving your customizations.
 
 ## Usage
 
 ```text
 /update-toolkit
-/update-toolkit laravel
-/update-toolkit nextjs
 ```
+
+## What Gets Updated
+
+| Category | Files | Behavior |
+|----------|-------|----------|
+| **Agents** | `agents/*.md` | Always updated |
+| **Prompts** | `prompts/*.md` | Always updated |
+| **Skills** | `skills/ai-models/SKILL.md` | Always updated |
+| **CLAUDE.md** | Main instructions | **Smart merge** (see below) |
+
+## What Gets Preserved
+
+| Category | Files | Behavior |
+|----------|-------|----------|
+| **User sections in CLAUDE.md** | Project Overview, Structure, Commands, Notes | Preserved during merge |
+| **Settings** | `settings.json`, `settings.local.json` | Never touched |
+| **Memory** | `memory/*.md`, `memory/*.json` | Never overwritten |
+| **Skill rules** | `skills/skill-rules.json` | Never overwritten |
+| **Scratchpad** | `scratchpad/*` | Never touched |
+
+## Smart Merge for CLAUDE.md
+
+The update script identifies two types of sections:
+
+**System sections** (updated):
+
+- Compact Instructions
+- Workflow Rules, Plan Mode, Git Workflow
+- Security Rules, Architecture Guidelines
+- Available Agents, Commands, Audits, Skills
+
+**User sections** (preserved):
+
+- 🎯 Project Overview
+- 📁 Project Structure
+- ⚡ Essential Commands
+- ⚠️ Project-Specific Notes
 
 ## Process
 
-### 1. Detect framework (if not specified)
-
-```bash
-# Check files in current directory
-ls -la
+```text
+1. Detect framework (Laravel, Next.js, etc.)
+2. Download manifest.json (version info)
+3. Create backup (.claude-backup-YYYYMMDD-HHMMSS/)
+4. Update agents, prompts, skills
+5. Smart merge CLAUDE.md:
+   - Download new template
+   - Extract user sections from current file
+   - Replace system sections with new versions
+   - Restore user sections
+6. Save version to .toolkit-version
+7. Show changelog link
 ```
 
-- `artisan` → Laravel
-- `next.config.js/mjs/ts` → Next.js
-- otherwise → base
-
-### 2. Run initialization
+## Version Tracking
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- [framework]
+# Check current version
+cat .claude/.toolkit-version
+
+# Compare with remote
+curl -s https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/manifest.json | grep version
 ```
 
-### 3. Adapt CLAUDE.md
+## Manual Run
 
-After initialization, open `.claude/CLAUDE.md` and update:
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
+```
 
-- **Project Overview:** name, description, stack
-- **Essential Commands:** current project commands
-- **Project Structure:** actual structure
-- **Known Gotchas:** project specifics (if any)
+## After Update
 
-### 4. Report completion
+1. **Review changes** — check CLAUDE.md for new sections
+2. **Restart Claude Code** — exit and reopen for slash commands to reload
+3. **Check changelog** — see what's new: [CHANGELOG.md](https://github.com/digitalplanetno/claude-code-toolkit/blob/main/CHANGELOG.md)
+
+## Rollback
+
+If something went wrong:
+
+```bash
+# Find backup
+ls -la .claude-backup-*
+
+# Restore
+rm -rf .claude
+mv .claude-backup-YYYYMMDD-HHMMSS .claude
+```
+
+## Example Output
 
 ```text
-✅ Claude Code Toolkit updated!
+╔════════════════════════════════════════════════════════════╗
+║         Claude Code Toolkit — Smart Update                 ║
+╚════════════════════════════════════════════════════════════╝
 
-Created/updated:
-- .claude/CLAUDE.md — main instructions
-- .claude/prompts/ — audits
-- .claude/agents/ — subagents
-- .claude/commands/ — slash commands (/plan, /tdd, /audit, /debug, /verify, /helpme, etc.)
-- .claude/skills/ — skill accumulation
-- .claude/memory/ — knowledge persistence
+ℹ Detected framework: laravel
+ℹ Fetching manifest...
+ℹ Remote version: 2.7.0
+ℹ Local version: 2.6.0
+✓ Backup created: .claude-backup-20260203-120000
 
-⚠️ Restart Claude Code (exit and reopen in this project directory) for slash commands to become available.
+ℹ Updating toolkit files...
+✓ Updated: agents/code-reviewer.md
+✓ Updated: agents/planner.md
+✓ Updated: prompts/SECURITY_AUDIT.md
+...
 
-🔒 Strongly recommended: Global Security Setup
-   Adds security rules to ~/.claude/CLAUDE.md + safety-net plugin (blocks destructive commands).
-   Safe to re-run — merges only new sections, preserves your customizations.
-   Install: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+ℹ Updating CLAUDE.md (preserving user sections)...
+ℹ Found user customizations, merging...
+✓ CLAUDE.md merged (user sections preserved)
 
-📊 Optional: Rate Limit Statusline — see session/weekly usage in the status bar.
-   Install: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
-   Requires: macOS, jq, Claude Max/Pro
+╔════════════════════════════════════════════════════════════╗
+║         Update Complete!                                   ║
+╚════════════════════════════════════════════════════════════╝
 
-Next step: review and adapt .claude/CLAUDE.md for your project.
+Version: 2.6.0 → 2.7.0
+Backup:  .claude-backup-20260203-120000
+
+What was updated:
+  • agents/       — subagent definitions
+  • prompts/      — audit templates
+  • skills/       — AI models skill
+  • CLAUDE.md     — system sections (user sections preserved)
+
+What was preserved:
+  • Project Overview, Structure, Commands
+  • Project-Specific Notes, Known Gotchas
+  • settings.json, settings.local.json
+  • memory/ content (if existed)
+
+Changelog: https://github.com/digitalplanetno/claude-code-toolkit/blob/main/CHANGELOG.md
+
+⚠ Restart Claude Code to apply changes
 ```
-
-## Example
-
-**User:** `/update-toolkit`
-
-**Claude:**
-
-1. Detects that this is a Laravel project (artisan exists)
-2. Runs `curl ... | bash -s -- laravel`
-3. Opens CLAUDE.md and updates Project Overview
-4. Reports completion

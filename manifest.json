@@ -1,0 +1,73 @@
+{
+  "version": "2.7.0",
+  "updated": "2026-02-03",
+  "description": "Claude Code Toolkit manifest for smart updates",
+
+  "files": {
+    "agents": [
+      "agents/code-reviewer.md",
+      "agents/planner.md",
+      "agents/security-auditor.md",
+      "agents/test-writer.md"
+    ],
+    "prompts": [
+      "prompts/CODE_REVIEW.md",
+      "prompts/DEPLOY_CHECKLIST.md",
+      "prompts/DESIGN_REVIEW.md",
+      "prompts/MYSQL_PERFORMANCE_AUDIT.md",
+      "prompts/PERFORMANCE_AUDIT.md",
+      "prompts/POSTGRES_PERFORMANCE_AUDIT.md",
+      "prompts/SECURITY_AUDIT.md"
+    ],
+    "skills": [
+      "skills/ai-models/SKILL.md",
+      "skills/skill-rules.json"
+    ],
+    "memory": [
+      "memory/README.md",
+      "memory/knowledge-graph.json",
+      "memory/project-context.md"
+    ]
+  },
+
+  "claude_md_sections": {
+    "system": [
+      "📌 Compact Instructions",
+      "WORKFLOW RULES",
+      "Plan Mode",
+      "Structured Workflow",
+      "Git Workflow",
+      "Git Worktree Workflow",
+      "Security Rules",
+      "Visual Self-Testing",
+      "🏗️ Architecture Guidelines",
+      "💻 Coding Style",
+      "🎨 Code Style",
+      "🤖 Available Agents",
+      "⚡ Quick Commands",
+      "📋 Available Audits",
+      "🎓 Available Skills",
+      "Scratchpad",
+      "Knowledge Persistence",
+      "Skill Accumulation"
+    ],
+    "user": [
+      "🎯 Project Overview",
+      "📁 Project Structure",
+      "⚡ Essential Commands",
+      "⚠️ Project-Specific Notes",
+      "Known Gotchas",
+      "Public Endpoints"
+    ]
+  },
+
+  "templates": {
+    "base": "templates/base",
+    "laravel": "templates/laravel",
+    "nextjs": "templates/nextjs",
+    "nodejs": "templates/nodejs",
+    "python": "templates/python",
+    "go": "templates/go",
+    "rails": "templates/rails"
+  }
+}
