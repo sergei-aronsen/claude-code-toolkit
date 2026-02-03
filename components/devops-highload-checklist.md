@@ -343,6 +343,157 @@ Http::withOptions(['proxy' => $proxy])->get($url);
 
 ---
 
+### 18. Playwright Service Stability (Multi-Layer Protection)
+
+**Problem:** Playwright Docker service crashes under load — 20+ workers bombard one
+container without backpressure, browsers accumulate memory, zombie processes pile up.
+
+#### Root Cause Analysis (Real Production Case)
+
+| Issue | Root Cause | Impact |
+| ----- | ---------- | ------ |
+| OOM kills | `MAX_CONCURRENT_PAGES=150` (one browser → 150 tabs) | Container killed by kernel |
+| Zombie Chrome | No PID 1 init process in Docker | 2600+ zombie processes |
+| /dev/shm crash | Docker default 64MB, Chrome needs more for IPC | Silent browser crashes |
+| No backpressure | All requests accepted, no queue limit | Memory spiral → crash |
+| No memory monitoring | Health check only tested connectivity | No preemptive action |
+
+#### Docker Configuration (Critical)
+
+```yaml
+services:
+  playwright-service:
+    init: true                    # tini as PID 1 — reaps zombie processes
+    shm_size: '2g'                # Chrome IPC needs > 64MB default
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    environment:
+      MAX_CONCURRENT_PAGES: 12    # NOT 150! Match to available RAM
+      MAX_SCREENSHOTS_PER_BROWSER: 150  # Browser recycling threshold
+      MEMORY_LIMIT_MB: 12800      # RSS limit for backpressure (80% of 16GB)
+      MAX_QUEUED_REQUESTS: 6      # Semaphore queue overflow threshold
+```
+
+**Key insight:** `init: true` eliminates the need for `pkill chrome renderer` cron.
+`shm_size: '2g'` eliminates silent Chrome IPC crashes.
+
+#### Backpressure Pattern (Service Level)
+
+```javascript
+// Semaphore with queue overflow detection
+function checkBackpressure() {
+  if (semaphore.waiting > MAX_QUEUED_REQUESTS) {
+    return { status: 503, retryAfter: 5 };  // Queue overflow
+  }
+  if (getMemoryUsage().rss > MEMORY_LIMIT_MB) {
+    return { status: 503, retryAfter: 10 }; // Memory pressure
+  }
+  return null; // OK to proceed
+}
+
+// In request handler — check BEFORE acquiring semaphore
+app.post('/screenshot', async (req, res) => {
+  const bp = checkBackpressure();
+  if (bp) {
+    res.set('Retry-After', bp.retryAfter);
+    return res.status(503).json({ error: 'Service overloaded' });
+  }
+  // ... acquire semaphore and process
+});
+```
+
+#### Concurrency Limiter (Queue Level)
+
+```php
+// Laravel Redis throttle middleware
+class PlaywrightConcurrencyLimiter
+{
+    public function handle(object $job, Closure $next): void
+    {
+        Redis::throttle('playwright:concurrent')
+            ->block(0)            // don't wait
+            ->allow($maxConcurrent)
+            ->every(60)
+            ->then(
+                fn() => $next($job),
+                fn() => $job->release(5)  // retry in 5s
+            );
+    }
+}
+```
+
+#### Browser Recycling
+
+```javascript
+// Track screenshots per browser slot
+const browserScreenshotCount = new Map();
+
+// After each screenshot
+count++;
+if (count >= MAX_SCREENSHOTS_PER_BROWSER) {
+  // Close old browser, launch new one (after current requests finish)
+  triggerBrowserRestart(slotIndex);
+}
+```
+
+**Why 150?** Memory creep is ~0.5MB per screenshot. At 150: +75MB per browser.
+With 6 browsers, recycling every 150 = ~7-8 hours between restarts.
+
+#### Enhanced Health Endpoint
+
+```javascript
+app.get('/health', (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    status: 'healthy',
+    memory: {
+      rss: Math.round(mem.rss / 1024 / 1024),
+      heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+    },
+    activeRequests,
+    memoryWarning: mem.rss / 1024 / 1024 > MEMORY_LIMIT_MB,
+    browsers: browserPool.filter(b => b?.isConnected()).length,
+  });
+});
+```
+
+**Important:** Health endpoint must be lightweight — no test context creation.
+External monitor checks `memoryWarning` flag for preemptive restart.
+
+#### Sizing Guide
+
+| Server RAM | Docker RAM | Browser Pool | Max Concurrent | Workers |
+| ---------- | ---------- | ------------ | -------------- | ------- |
+| 16GB | 8G | 4 | 8 | 6+2 |
+| 32GB | 16G | 6 | 12 | 10+2 |
+| 64GB | 32G | 10 | 20 | 16+4 |
+| 160GB | 140G | 12 | 24 | 16+4 |
+
+**Formula:** Workers ≈ Browser Pool × 2 (each browser handles 2-3 contexts).
+Max Concurrent = Browser Pool × 2 (or × 3 for lighter pages).
+
+#### Checklist
+
+```markdown
+- [ ] Docker: init: true (zombie killer)
+- [ ] Docker: shm_size >= 1g (Chrome IPC)
+- [ ] Docker: healthcheck configured
+- [ ] MAX_CONCURRENT_PAGES matches RAM (NOT 150!)
+- [ ] Backpressure: 503 + Retry-After on overload
+- [ ] Browser recycling every 100-200 screenshots
+- [ ] Memory monitoring in /health endpoint
+- [ ] Client handles 503 with sleep(Retry-After)
+- [ ] Workers count <= Browser Pool × 3
+- [ ] Supervisor: --max-jobs, --max-time, --memory flags
+```
+
+---
+
 ## Monitoring
 
 ### 16. Health Endpoint
