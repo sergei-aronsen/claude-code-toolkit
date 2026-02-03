@@ -18,7 +18,7 @@
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
 5. **Language:** ALL code comments, commit messages, and docs in English only
-5. **Next.js:** App Router, Server Components by default, 'use client' only when necessary
+6. **Next.js:** App Router, Server Components by default, 'use client' only when necessary
 
 ---
 

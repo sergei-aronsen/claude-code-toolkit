@@ -17,7 +17,7 @@
 3. **Workflow:** Plan Mode before coding, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
 5. **Language:** ALL code comments, commit messages, and docs in English only
-5. **Laravel:** Eloquent ORM, Form Requests for validation, Policies for authorization
+6. **Laravel:** Eloquent ORM, Form Requests for validation, Policies for authorization
 
 ---
 

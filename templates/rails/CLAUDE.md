@@ -17,7 +17,7 @@
 3. **Workflow:** Plan Mode before coding, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
 5. **Language:** ALL code comments, commit messages, and docs in English only
-5. **Rails:** Convention over Configuration, Strong Parameters, Concerns for shared logic
+6. **Rails:** Convention over Configuration, Strong Parameters, Concerns for shared logic
 
 ---
 

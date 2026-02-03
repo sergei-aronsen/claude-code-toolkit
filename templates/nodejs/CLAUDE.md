@@ -18,7 +18,7 @@
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly
 5. **Language:** ALL code comments, commit messages, and docs in English only
-5. **Async:** ALWAYS await promises, ALWAYS handle errors
+6. **Async:** ALWAYS await promises, ALWAYS handle errors
 
 ---
 
