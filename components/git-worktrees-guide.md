@@ -430,6 +430,16 @@ git commit -m "chore: stop tracking session logs"
 
 **This applies to bulk operations on multiple worktrees too!**
 
+### Before Build/Deploy (Parallel Sessions)
+
+When multiple Claude sessions work in parallel, **always fetch and merge before build/deploy**:
+
+```bash
+git fetch origin main && git merge origin/main
+```
+
+Why: Each session only sees its own commits. Without this, builds will miss changes from other sessions.
+
 ### Working in worktree (work-1, work-2, etc.)
 
 1. **Before starting work** — sync with main:
