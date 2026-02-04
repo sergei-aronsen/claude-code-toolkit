@@ -6,7 +6,7 @@ Proactive context management for optimal Claude Code performance.
 
 ## TL;DR
 
-- `/compact` at **75-80%** (don't wait for auto-compact at 90%+)
+- `/compact` at **80-83%** (don't wait for auto-compact at 90%+)
 - `/clear` between **unrelated** tasks
 - **Subagents** for exploration (preserves main context)
 - Update `.claude/memory.md` before `/clear` or session end
@@ -30,7 +30,7 @@ Auto-compact triggers at 75-92% — but quality degrades **non-linearly** in fin
 
 | Trigger | Action |
 |---------|--------|
-| Context at 75-80% | `/compact` immediately |
+| Context at 80-83% | `/compact` immediately |
 | Feature completed | `/compact` before starting next |
 | PR approved/merged | `/compact` to clear review context |
 | Logical breakpoint | `/compact` to preserve clean state |
@@ -39,10 +39,10 @@ Auto-compact triggers at 75-92% — but quality degrades **non-linearly** in fin
 
 | Zone | Range | Action |
 |------|-------|--------|
-| Green | 0-50% | Optimal, work freely |
-| Yellow | 50-75% | Good, plan next compact |
-| Orange | 75-80% | `/compact` now |
-| Red | 80-90% | Quality degrading, `/compact` urgent |
+| Green | 0-60% | Optimal, work freely |
+| Yellow | 60-80% | Good, plan next compact |
+| Orange | 80-83% | `/compact` now (before auto-compact at ~85%) |
+| Red | 85-90% | Auto-compact zone, quality degrading |
 | Critical | 90%+ | `/clear` immediately |
 
 ### Custom Compaction
@@ -179,7 +179,7 @@ Read .claude/memory.md and summarize current project state.
 When you see these signs:
 
 1. Check context usage (`/context`)
-2. If 75-80%: `/compact`
+2. If 80-83%: `/compact`
 3. If > 90% or symptoms persist: `/clear` + reload from `.claude/memory.md`
 
 ---
@@ -190,7 +190,7 @@ When you see these signs:
 ## Context Management
 
 ### Proactive Compaction
-- `/compact` at 75-80% context (don't wait for auto-compact at 90%+)
+- `/compact` at 80-83% context (don't wait for auto-compact at 90%+)
 - `/compact` at logical breakpoints (feature done, PR merged)
 - Quality degrades non-linearly above 80%
 
@@ -213,13 +213,13 @@ When you see these signs:
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  ZONES:                                                 │
-│  0-75%   →  Green/Yellow, work freely                   │
-│  75-80%  →  Orange, /compact now                        │
-│  80-90%  →  Red, quality degrading                      │
+│  0-80%   →  Green/Yellow, work freely                   │
+│  80-83%  →  Orange, /compact now                        │
+│  85-90%  →  Red, auto-compact zone                      │
 │  90%+    →  Critical, /clear immediately                │
 │                                                         │
 │  ACTIONS:                                               │
-│  75-80% context  →  /compact                            │
+│  80-83% context  →  /compact                            │
 │  Feature done    →  /compact                            │
 │  Unrelated task  →  /clear (after updating memory.md)   │
 │  Research needed →  Use subagent                        │
