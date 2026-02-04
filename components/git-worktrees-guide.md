@@ -402,24 +402,52 @@ Why this is dangerous:
 2. Then rebase
 3. Or use `merge` instead of `rebase`
 
+**⚠️ NEVER resolve merge conflicts automatically!**
+
+If you see `CONFLICT` in git output:
+
+1. **STOP immediately**
+2. Show user which files have conflicts
+3. **ASK how to resolve** — don't use `--theirs` or `--ours` without permission
+4. Let user decide what to keep
+
+Automatic `git checkout --theirs` or `--ours` = silent data loss!
+
+### Files That Should NOT Be Committed
+
+`.claude/activity.log` and `.claude/audit.log` are session-local files.
+They cause pointless merge conflicts and should be in `.gitignore`.
+
+**If already tracked, remove from git:**
+
+```bash
+git rm --cached .claude/activity.log .claude/audit.log
+echo "activity.log" >> .claude/.gitignore
+echo "audit.log" >> .claude/.gitignore
+git add .claude/.gitignore
+git commit -m "chore: stop tracking session logs"
+```
+
 **This applies to bulk operations on multiple worktrees too!**
 
 ### Working in worktree (work-1, work-2, etc.)
 
 1. **Before starting work** — sync with main:
-   \`\`\`bash
+
+   ```bash
    # CRITICAL: Check for uncommitted changes FIRST!
    git status
    # If there are changes — ASK USER before proceeding!
    # Only then:
    git fetch origin main
    git reset --hard origin/main
-   \`\`\`
+   ```
 
 2. **Work normally** — make changes, test
 
 3. **When task is complete** — merge to main:
-   \`\`\`bash
+
+   ```bash
    # Commit in current branch
    git add <files> && git commit -m "feat: ..."
 
@@ -431,14 +459,13 @@ Why this is dangerous:
    # Return to worktree branch and reset for next task
    git checkout work-X
    git reset --hard origin/main
-   \`\`\`
+   ```
 
 ### Avoiding conflicts
 
 - Each worktree = separate physical folder = no race conditions
 - Always sync with main before starting new task
 - Merge conflicts are resolved during `git merge`, not by overwriting
-```
 
 ### Why This Works
 

@@ -156,6 +156,11 @@ Before `git reset --hard`, `git checkout .`, `git clean -f`, `git rebase`, `git 
 - Stash pop conflicts = changes stuck in stash
 - Always commit first, then rebase (or use merge)
 
+**⚠️ NEVER resolve merge conflicts automatically!**
+
+- If you see `CONFLICT` — STOP and ask user
+- Don't use `--theirs` or `--ours` without permission
+
 **Working in worktree (work-1, work-2, etc.):**
 
 1. **Before starting** — check status then sync with main:
