@@ -6,7 +6,7 @@ Proactive context management for optimal Claude Code performance.
 
 ## TL;DR
 
-- `/compact` at **70%** (don't wait for auto-compact at 90%+)
+- `/compact` at **75-80%** (don't wait for auto-compact at 90%+)
 - `/clear` between **unrelated** tasks
 - **Subagents** for exploration (preserves main context)
 - Update `.claude/memory.md` before `/clear` or session end
@@ -20,7 +20,7 @@ Claude Code has auto-compact, but:
 > "Manual intervention is often more effective"
 > "Waiting for auto-compact can lead to agent losing important context"
 
-Auto-compact triggers at 75-92% — by then, performance already degrades.
+Auto-compact triggers at 75-92% — but quality degrades **non-linearly** in final 20% (80-100%).
 
 ---
 
@@ -30,10 +30,20 @@ Auto-compact triggers at 75-92% — by then, performance already degrades.
 
 | Trigger | Action |
 |---------|--------|
-| Context at 65-70% | `/compact` immediately |
+| Context at 75-80% | `/compact` immediately |
 | Feature completed | `/compact` before starting next |
 | PR approved/merged | `/compact` to clear review context |
 | Logical breakpoint | `/compact` to preserve clean state |
+
+### Context Zones
+
+| Zone | Range | Action |
+|------|-------|--------|
+| Green | 0-50% | Optimal, work freely |
+| Yellow | 50-75% | Good, plan next compact |
+| Orange | 75-80% | `/compact` now |
+| Red | 80-90% | Quality degrading, `/compact` urgent |
+| Critical | 90%+ | `/clear` immediately |
 
 ### Custom Compaction
 
@@ -169,8 +179,8 @@ Read .claude/memory.md and summarize current project state.
 When you see these signs:
 
 1. Check context usage (`/context`)
-2. If > 70%: `/compact`
-3. If symptoms persist: `/clear` + reload from `.claude/memory.md`
+2. If 75-80%: `/compact`
+3. If > 90% or symptoms persist: `/clear` + reload from `.claude/memory.md`
 
 ---
 
@@ -180,8 +190,9 @@ When you see these signs:
 ## Context Management
 
 ### Proactive Compaction
-- `/compact` at 70% context (don't wait for auto-compact)
+- `/compact` at 75-80% context (don't wait for auto-compact at 90%+)
 - `/compact` at logical breakpoints (feature done, PR merged)
+- Quality degrades non-linearly above 80%
 
 ### Memory Persistence
 - Before `/clear` or session end: update `.claude/memory.md`
@@ -201,7 +212,14 @@ When you see these signs:
 │  PROACTIVE CONTEXT MANAGEMENT                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  65-70% context  →  /compact                            │
+│  ZONES:                                                 │
+│  0-75%   →  Green/Yellow, work freely                   │
+│  75-80%  →  Orange, /compact now                        │
+│  80-90%  →  Red, quality degrading                      │
+│  90%+    →  Critical, /clear immediately                │
+│                                                         │
+│  ACTIONS:                                               │
+│  75-80% context  →  /compact                            │
 │  Feature done    →  /compact                            │
 │  Unrelated task  →  /clear (after updating memory.md)   │
 │  Research needed →  Use subagent                        │
