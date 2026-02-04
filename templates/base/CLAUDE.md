@@ -143,13 +143,18 @@ git branch --show-current
 - If branch is `work-1`, `work-2`, `work-3`, `work-4` → you're in a worktree
 - If branch is `main` → you're in main repo
 
-**⚠️ NEVER run destructive git commands without checking first!**
+**⚠️ NEVER run destructive git commands without asking!**
 
-Before `git reset --hard`, `git checkout .`, `git clean -f`:
+Before `git reset --hard`, `git checkout .`, `git clean -f`, `git rebase`, `git stash`:
 
 1. Run `git status` — check for uncommitted changes
 2. If changes exist — **STOP and ASK USER**
 3. Show what will be lost with `git diff`
+
+**⚠️ NEVER do `git stash && git rebase && git stash pop` automatically!**
+
+- Stash pop conflicts = changes stuck in stash
+- Always commit first, then rebase (or use merge)
 
 **Working in worktree (work-1, work-2, etc.):**
 

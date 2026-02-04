@@ -371,14 +371,36 @@ git branch --show-current
 - If branch is `work-1`, `work-2`, `work-3`, or `work-4` → you're in a worktree
 - If branch is `main` → you're in the main repo (avoid parallel work here)
 
-### ⚠️ NEVER Run Destructive Git Commands Without Checking First
+### ⚠️ NEVER Run Destructive Git Commands Without Asking
 
-**Before `git reset --hard`, `git checkout .`, `git clean -f`:**
+**Destructive commands that require user confirmation:**
+
+- `git reset --hard`
+- `git checkout .`
+- `git clean -f`
+- `git rebase` (when uncommitted changes exist)
+- `git stash` (automatic stash is risky!)
+
+**Before ANY of these:**
 
 1. Run `git status` in EACH affected directory
 2. If there are uncommitted changes — **STOP and ASK USER**
 3. Show what will be lost with `git diff`
 4. Only proceed after explicit confirmation
+
+**⚠️ NEVER do `git stash && git rebase && git stash pop` automatically!**
+
+Why this is dangerous:
+
+- If `stash pop` has conflicts — changes get "stuck" in stash
+- User loses visibility of what's happening
+- Silent data loss risk
+
+**Correct approach:**
+
+1. First commit ALL changes (including logs, temp files)
+2. Then rebase
+3. Or use `merge` instead of `rebase`
 
 **This applies to bulk operations on multiple worktrees too!**
 
