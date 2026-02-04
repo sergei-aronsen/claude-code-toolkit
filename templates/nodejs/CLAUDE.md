@@ -100,7 +100,7 @@ mcp__memory__create_relations(relations: [...relations from JSON...])
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
 - **PARALLEL SESSIONS** — user may run multiple Claude sessions simultaneously. If you see commits you didn't make, that's normal — another session made them. Always `git pull` before commit/push.
 - **BEFORE COMMIT** — run `pnpm lint`, then `git pull --rebase`, fix all errors
-- **WORKTREES** — if in branch `work-1`/`work-2`/etc., sync with main before work (`git fetch origin main && git reset --hard origin/main`), merge when done. See `components/git-worktrees-guide.md`
+- **WORKTREES** — if in branch `work-1`/`work-2`/etc., **always run `git status` first** before sync. If uncommitted changes — ask user! Then: `git fetch origin main && git reset --hard origin/main`. See `components/git-worktrees-guide.md`
 
 ---
 

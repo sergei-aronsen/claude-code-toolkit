@@ -172,6 +172,19 @@ myapp-review-pr-42
 
 ---
 
+## ⚠️ Safety Rules
+
+**Before ANY destructive git command (`reset --hard`, `checkout .`, `clean -f`):**
+
+1. Run `git status` in the target directory
+2. If uncommitted changes exist — **STOP and ASK USER**
+3. Show what will be lost with `git diff`
+4. Only proceed after explicit confirmation
+
+**This applies to bulk operations on multiple worktrees!**
+
+---
+
 ## Common Issues
 
 ### "Branch is already checked out"

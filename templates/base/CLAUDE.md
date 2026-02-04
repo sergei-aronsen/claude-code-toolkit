@@ -143,11 +143,21 @@ git branch --show-current
 - If branch is `work-1`, `work-2`, `work-3`, `work-4` → you're in a worktree
 - If branch is `main` → you're in main repo
 
+**⚠️ NEVER run destructive git commands without checking first!**
+
+Before `git reset --hard`, `git checkout .`, `git clean -f`:
+
+1. Run `git status` — check for uncommitted changes
+2. If changes exist — **STOP and ASK USER**
+3. Show what will be lost with `git diff`
+
 **Working in worktree (work-1, work-2, etc.):**
 
-1. **Before starting** — sync with main:
+1. **Before starting** — check status then sync with main:
 
    ```bash
+   git status  # CRITICAL: check for uncommitted changes first!
+   # If changes exist — ask user before proceeding!
    git fetch origin main && git reset --hard origin/main
    ```
 
@@ -158,7 +168,9 @@ git branch --show-current
    ```bash
    git add <files> && git commit -m "feat: ..."
    git checkout main && git merge work-X --no-edit && git push origin main
-   git checkout work-X && git reset --hard origin/main
+   git checkout work-X
+   git status  # Check before reset!
+   git reset --hard origin/main
    ```
 
 Full guide: `components/git-worktrees-guide.md`

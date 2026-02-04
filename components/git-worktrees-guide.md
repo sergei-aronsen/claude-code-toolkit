@@ -371,10 +371,25 @@ git branch --show-current
 - If branch is `work-1`, `work-2`, `work-3`, or `work-4` → you're in a worktree
 - If branch is `main` → you're in the main repo (avoid parallel work here)
 
+### ⚠️ NEVER Run Destructive Git Commands Without Checking First
+
+**Before `git reset --hard`, `git checkout .`, `git clean -f`:**
+
+1. Run `git status` in EACH affected directory
+2. If there are uncommitted changes — **STOP and ASK USER**
+3. Show what will be lost with `git diff`
+4. Only proceed after explicit confirmation
+
+**This applies to bulk operations on multiple worktrees too!**
+
 ### Working in worktree (work-1, work-2, etc.)
 
 1. **Before starting work** — sync with main:
    \`\`\`bash
+   # CRITICAL: Check for uncommitted changes FIRST!
+   git status
+   # If there are changes — ASK USER before proceeding!
+   # Only then:
    git fetch origin main
    git reset --hard origin/main
    \`\`\`
@@ -417,13 +432,20 @@ git branch --show-current
 If you realize you're in a worktree but didn't sync with main:
 
 ```bash
+# FIRST: Check for uncommitted changes!
+git status
+
+# If there are changes — DO NOT reset! Use stash:
+git stash
+
 # Check if main has new commits
 git fetch origin main
 git log HEAD..origin/main --oneline
 
-# If yes — stash your changes, reset, reapply
-git stash
+# If yes — reset and reapply
 git reset --hard origin/main
 git stash pop
 # Resolve any conflicts manually
 ```
+
+**⚠️ Never run `git reset --hard` without checking `git status` first!**
