@@ -106,14 +106,17 @@ Create `.claude/scratchpad/current-task.md`:
 - [ ] Step 1: [Specific action]
   - File: `path/to/file.ts`
   - Change: [what exactly to change]
+  - Verify: [how to verify — test command, curl, screenshot]
 
 - [ ] Step 2: [Specific action]
   - File: `path/to/another.ts`
   - Change: [what exactly to change]
+  - Verify: [how to verify]
 
 - [ ] Step 3: Write tests
   - File: `path/to/file.test.ts`
   - Cases: [what cases to cover]
+  - Verify: `npm test path/to/file.test.ts`
 
 ## Edge Cases
 
@@ -150,8 +153,39 @@ All tools without restrictions.
 
 1. **Follow the plan** — don't deviate without reason
 2. **One step at a time** — mark completed ones
-3. **Test immediately** — after each change
+3. **Verify immediately** — after each change (see below)
 4. **Commit atomically** — one commit per logical unit
+
+### Verification (MANDATORY!)
+
+> "Give Claude a way to verify its work. This is the single highest-leverage thing you can do." — Anthropic Best Practices
+
+**EVERY implementation step must have explicit verification:**
+
+| Change Type | Verification Method |
+|-------------|---------------------|
+| Logic/function | Write failing test FIRST, then implement |
+| UI component | Screenshot before/after, compare |
+| API endpoint | curl/httpie test, check response |
+| Bug fix | Reproduce → Fix → Verify not reproducible |
+| Refactoring | All existing tests must pass |
+| Database | Run migration, verify schema |
+
+**Pattern for each step:**
+
+```text
+Step N: [What to do]
+- File: path/to/file
+- Change: [specific change]
+- Verify: [HOW to verify this works]
+```
+
+**If verification fails:**
+
+1. Don't proceed to next step
+2. Debug current step
+3. Fix and re-verify
+4. Only then continue
 
 ### Track Progress
 
@@ -287,6 +321,11 @@ Moving to Phase 2: PLAN
 
 [Creates plan in .claude/scratchpad/current-task.md]
 
+Plan includes verification for each step:
+- Step 1: Add schema → Verify: unit test
+- Step 2: Integrate → Verify: npm run typecheck
+- Step 3: Tests → Verify: npm test
+
 Plan is ready. Please review `.claude/scratchpad/current-task.md` and confirm.
 
 User: ok
@@ -295,15 +334,18 @@ Claude: Phase 3: EXECUTE
 
 Step 1: Adding email schema to validation.ts...
 [Edit file]
-Step 1 done
+Verifying: Running unit test...
+✅ Test passes. Step 1 done.
 
 Step 2: Integrating into RegisterForm...
 [Edit file]
-Step 2 done
+Verifying: npm run typecheck...
+✅ No type errors. Step 2 done.
 
 Step 3: Adding tests...
 [Write test file]
-Step 3 done
+Verifying: npm test src/lib/validation.test.ts...
+✅ All tests pass. Step 3 done.
 
-All steps completed. Run tests?
+All steps completed and verified.
 ```

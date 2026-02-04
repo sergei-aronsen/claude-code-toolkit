@@ -30,6 +30,53 @@ Create comprehensive handoff documentation for another developer or AI session.
 
 ---
 
+## Persistent Memory File
+
+**CRITICAL:** Maintain `.claude/memory.md` for context persistence between sessions.
+
+### Template
+
+```markdown
+# .claude/memory.md
+
+## Current Status
+- [ ] Active Task: Implementing OAuth flow
+- [x] Recently Completed: Database migrations
+- [x] Recently Completed: User model with relations
+
+## Critical Context
+- Using Passport.js because it has built-in refresh token support (don't refactor to JWT)
+- Known bug in email validation module (deferred to next sprint)
+- API rate limiting set to 100 req/min (load test showed 150 causes timeouts)
+
+## Key Decisions
+- Chose PostgreSQL over MySQL for JSON column support
+- Using Redis for session storage (not in-memory)
+- Authentication via httpOnly cookies (not localStorage — XSS risk)
+
+## Failed Approaches (Don't Repeat!)
+- Tried refresh token in middleware → race condition
+- Tried localStorage for tokens → XSS vulnerability
+- Tried sync email sending → timeout on slow SMTP
+
+## Next Steps for Next Session
+1. Complete OAuth callback handler
+2. Add tests for token refresh
+3. Update API documentation
+```
+
+### Mandatory Rules
+
+**Before `/clear` or ending session:**
+
+> You MUST update `.claude/memory.md` with current state.
+
+**At session start:**
+
+> FIRST ACTION: Read `.claude/memory.md` and summarize project state.
+
+---
+
 ## Output Format
 
 ```markdown
@@ -130,3 +177,35 @@ Handoffs saved to: `.claude/scratchpad/handoff-[task-slug].md`
 | Passing to teammate | `/handoff for-[name]` |
 | Context limit reached | `/handoff continuation` |
 | Going on vacation | `/handoff full-project` |
+| **Before /clear** | Update `.claude/memory.md` |
+| **Session end** | Update `.claude/memory.md` |
+
+---
+
+## Integration with Context Management
+
+See `components/context-management.md` for full guide.
+
+**Quick rules:**
+
+1. `/compact` at 70% context — preserves key info
+2. `/clear` for unrelated tasks — but update memory.md first!
+3. Session start — read `.claude/memory.md` before anything else
+
+---
+
+## Add to CLAUDE.md
+
+```markdown
+## Session Persistence
+
+### Before /clear or session end
+You MUST update `.claude/memory.md` with:
+- Current task status
+- Key decisions made
+- Failed approaches (don't repeat!)
+- Next steps
+
+### At session start
+FIRST ACTION: Read `.claude/memory.md`
+```
