@@ -161,6 +161,15 @@ Before `git reset --hard`, `git checkout .`, `git clean -f`, `git rebase`, `git 
 - If you see `CONFLICT` — STOP and ask user
 - Don't use `--theirs` or `--ours` without permission
 
+**⚠️ Before EVERY push to main** — fetch and merge to avoid overwriting other sessions:
+
+```bash
+git fetch origin main
+git merge origin/main
+# If CONFLICT — STOP and ask user!
+git push origin main
+```
+
 **Working in worktree (work-1, work-2, etc.):**
 
 1. **Before starting** — check status then sync with main:

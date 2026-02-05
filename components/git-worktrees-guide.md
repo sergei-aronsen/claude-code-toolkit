@@ -430,15 +430,20 @@ git commit -m "chore: stop tracking session logs"
 
 **This applies to bulk operations on multiple worktrees too!**
 
-### Before Build/Deploy (Parallel Sessions)
+### IMPORTANT: Sync Before Push (Parallel Sessions)
 
-When multiple Claude sessions work in parallel, **always fetch and merge before build/deploy**:
+When multiple Claude sessions work in parallel, **always fetch and merge before EVERY push to main**:
 
 ```bash
-git fetch origin main && git merge origin/main
+git fetch origin main
+git merge origin/main
+# If CONFLICT — STOP and ask user!
+git push origin main
 ```
 
-Why: Each session only sees its own commits. Without this, builds will miss changes from other sessions.
+Why: Each session only sees its own commits. Without fetch/merge, pushing to main overwrites changes from other sessions.
+
+This also applies before build/deploy — otherwise the build will miss changes from other sessions.
 
 ### Working in worktree (work-1, work-2, etc.)
 
@@ -455,19 +460,22 @@ Why: Each session only sees its own commits. Without this, builds will miss chan
 
 2. **Work normally** — make changes, test
 
-3. **When task is complete** — merge to main:
+3. **When task is complete** — commit, sync, push:
 
    ```bash
    # Commit in current branch
    git add <files> && git commit -m "feat: ..."
 
-   # Switch to main, merge, push
-   git checkout main
-   git merge work-X --no-edit
-   git push origin main
+   # Sync with main FIRST (other sessions may have pushed!)
+   git fetch origin main
+   git merge origin/main
+   # If CONFLICT — STOP and ask user!
 
-   # Return to worktree branch and reset for next task
-   git checkout work-X
+   # Push to main
+   git push origin work-X:main
+
+   # Reset for next task
+   git fetch origin main
    git reset --hard origin/main
    ```
 
