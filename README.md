@@ -19,7 +19,7 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 slash commands** | **7 audits** | **23+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-24-total).
+**26 slash commands** | **7 audits** | **24+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-26-total).
 
 ---
 
@@ -63,6 +63,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Auto-Activation Hooks** | Hook intercepts prompts, scores context (keywords, intent, file paths), recommends relevant skills |
 | **Memory Persistence** | Export MCP memory to `.claude/memory/`, commit to git — available on any machine |
 | **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
+| **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
 | **Structured Workflow** | 3 mandatory phases: RESEARCH (read-only) → PLAN (scratchpad) → EXECUTE (after confirmation) |
 
 See [detailed descriptions and examples](docs/features.md).

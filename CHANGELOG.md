@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-02-06
+
+### Added
+
+- **Production Safety Guide** — new component `components/production-safety.md`
+  - Deployment safety: incremental deploy pattern, pre/post-deploy verification
+  - Queue and worker safety: rolling restarts, check before modify, test on subset
+  - Bug fix approach: simplest solution first, rule of three attempts
+  - File targeting: verify correct variant, branch, upstream status
+  - Rollback decision framework: when to rollback vs hotfix
+- **`/deploy` command** — safe deployment workflow with 4 phases
+  - Pre-deploy: git state, conflict check, tests, build
+  - Deploy: framework-specific steps with rolling worker restart
+  - Post-deploy: smoke tests, log check, worker status
+  - Rollback decision: automatic verification with user approval
+  - Framework auto-detection (Laravel, Next.js, Node.js, Python, Go)
+- **`/fix-prod` command** — production hotfix workflow
+  - Diagnose first (gather evidence, identify scope, rollback decision)
+  - Minimal change rule (fix only the broken thing)
+  - Post-fix monitoring (immediate + short-term)
+  - Common production issues quick reference
+- **Production Safety section** in all 7 CLAUDE.md templates
+  - Bug Fix Approach rules
+  - Deployment safety rules
+  - File Targeting checklist
+  - Laravel template: extra Queue and Worker Safety subsection
+- Inspired by insights from 94 Claude Code sessions (1,307 messages)
+
+### Changed
+
+- Updated Quick Commands table in all templates (+2 commands: `/deploy`, `/fix-prod`)
+- Updated README: 24 → 26 slash commands, 23+ → 24+ guides
+- Updated `docs/features.md` with Production Safety section and new commands
+- Updated `manifest.json` to v2.8.0 with Production Safety section
+
 ## [2.6.0] - 2026-01-23
 
 ### Added

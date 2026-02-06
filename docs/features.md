@@ -136,6 +136,61 @@ This is not a bug. This is an architectural problem.
 
 ---
 
+## Production Safety (/deploy, /fix-prod)
+
+**Problem:** Deploys break production, fixes introduce new bugs, workers crash.
+
+**Solution:** Safety-first approach to production operations.
+
+**Key rules:**
+
+| Rule | Why |
+|------|-----|
+| **Incremental deploy** | One change → verify → next change. Batch deploys hide which change broke things |
+| **Rolling worker restart** | Never restart all at once — active jobs fail and exceed retry limits |
+| **Simplest fix first** | Remove unnecessary code before adding new. Don't try complex hacks |
+| **Verify file target** | Confirm correct file variant (V2/legacy), correct branch, not already fixed upstream |
+
+**Example /deploy:**
+
+```text
+> /deploy
+
+Phase 1: Pre-Deploy
+  Git: clean, up to date with origin/main
+  Tests: 47 passed
+  Build: success
+
+Phase 2: Deploy
+  Code pulled, migrations run, cache cleared
+  Workers: rolling restart (graceful)
+
+Phase 3: Verification
+  Endpoints: all 200
+  Errors: none in last 60s
+  Workers: running normally
+
+Result: SUCCESS
+```
+
+**Example /fix-prod:**
+
+```text
+> /fix-prod queue jobs timing out
+
+Phase 1: Diagnose
+  Logs: Redis connection timeout after deploy
+  Root cause: Redis config not cached
+
+Phase 2: Fix
+  php artisan config:cache (1 line change)
+
+Phase 3: Verify
+  Queue processing normally, no errors
+```
+
+---
+
 ## Structured Workflow
 
 **Problem:** Claude often "codes right away" instead of understanding the task.
@@ -241,7 +296,7 @@ LOW (1)
 
 ---
 
-## Slash Commands (24 total)
+## Slash Commands (26 total)
 
 | Command | Description |
 |---------|-------------|
@@ -268,6 +323,8 @@ LOW (1)
 | `/api` | Design REST API endpoints, generate OpenAPI |
 | `/e2e` | Generate E2E tests with Playwright |
 | `/perf` | Performance analysis: N+1, bundle, memory |
+| `/deploy` | Safe deployment with pre/post checks and verification |
+| `/fix-prod` | Production hotfix: diagnose → minimal fix → verify |
 | `/deps` | Dependency audit: security, licenses, outdated |
 
 ---
@@ -286,7 +343,7 @@ LOW (1)
 
 ---
 
-## Components (23+ guides)
+## Components (24+ guides)
 
 | Component | Description |
 |-----------|-------------|
@@ -306,3 +363,4 @@ LOW (1)
 | `github-actions-guide.md` | CI/CD workflow templates |
 | `pre-commit-hooks.md` | Husky, lint-staged, pre-commit |
 | `deployment-strategies.md` | Blue-green, canary, rolling updates |
+| `production-safety.md` | Deploy safety, worker safety, bug fix approach, file targeting |

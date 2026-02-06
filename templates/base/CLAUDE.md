@@ -237,6 +237,32 @@ src/
 
 ---
 
+## 🛡️ Production Safety
+
+### Bug Fix Approach
+
+- Try **simplest solution first** — remove unnecessary code before adding new
+- **ONE change at a time**, verify immediately
+- If 2 attempts fail — **stop, re-analyze root cause** (`/debug`)
+- After fix, verify no regressions
+
+### Deployment
+
+- Deploy **incrementally** — one logical change, verify between deploys
+- Always fetch/merge latest before deploy
+- **NEVER** batch-restart all workers — use rolling restarts
+- Verify after every deploy: endpoints, logs, workers
+
+### File Targeting
+
+- Before editing, confirm **correct file variant** (V2, legacy, etc.)
+- Confirm correct branch/worktree with `pwd` and `git branch`
+- Check if already fixed upstream: `git log origin/main --oneline -5`
+
+Full guide: `components/production-safety.md`
+
+---
+
 ## Visual Self-Testing (Playwright MCP)
 
 **After ANY visual/UI change, self-test using Playwright MCP before reporting completion.**
@@ -303,6 +329,8 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 | `/verify` | Quick check: build, types, lint, tests |
 | `/debug` | Systematic debugging (4 phases, root cause first) |
 | `/learn` | Save problem solution to `.claude/learned/` |
+| `/deploy` | Safe deployment with pre/post checks |
+| `/fix-prod` | Production hotfix workflow |
 | `/audit [type]` | Deep analysis (security, performance, code) |
 
 ---
