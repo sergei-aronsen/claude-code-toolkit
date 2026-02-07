@@ -18,6 +18,7 @@
 4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
+7. **User-Agent:** NEVER use default library UA, ALWAYS set real browser User-Agent
 
 ---
 
@@ -234,6 +235,8 @@ src/
 3. **XSS** — NEVER output user data without escaping
 4. **Authorization** — ALWAYS check permissions before operations
 5. **Secrets** — NEVER hardcode keys and passwords
+6. **User-Agent** — NEVER use default/library User-Agent for HTTP requests. ALWAYS set a real browser UA:
+   `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36`
 
 ---
 

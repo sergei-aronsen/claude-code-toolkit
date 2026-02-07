@@ -19,6 +19,7 @@
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
 7. **Laravel:** Eloquent ORM, Form Requests for validation, Policies for authorization
+8. **User-Agent:** NEVER use default library UA, ALWAYS set real browser User-Agent
 
 ---
 
@@ -151,6 +152,8 @@ php artisan migrate:fresh --seed  # Fresh DB with seeds
 3. **XSS** — Blade automatically escapes `{{ }}`, DO NOT use `{!! !!}` for user data
 4. **Authorization** — ALWAYS use Policies, check in controllers
 5. **Secrets** — ONLY through `.env`, NEVER hardcode
+6. **User-Agent** — NEVER use default/library User-Agent for HTTP requests. ALWAYS set a real browser UA:
+   `Http::withHeaders(['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'])->get($url)`
 
 ---
 

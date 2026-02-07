@@ -155,7 +155,7 @@ curl -s -m 10 -o /dev/null -w 'HTTP %{http_code} connect:%{time_connect}s' https
 
 ### Client Hints (sec-ch-ua)
 
-Modern anti-bot checks `sec-ch-ua` headers. If User-Agent says Chrome 131
+Modern anti-bot checks `sec-ch-ua` headers. If User-Agent says Chrome 135
 but Client Hints are empty — detected.
 
 Playwright handles this automatically when you set a matching `userAgent`,
@@ -232,7 +232,7 @@ docker compose up -d playwright-service
 **NEVER use bot-identifying User-Agent strings.** Always use a real browser UA:
 
 ```text
-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36
 ```
 
 This applies to ALL HTTP requests — not just Playwright, but also:

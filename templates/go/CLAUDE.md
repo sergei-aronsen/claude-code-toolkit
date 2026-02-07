@@ -20,6 +20,7 @@
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
 7. **Errors:** ALWAYS check errors, ALWAYS wrap with context
+8. **User-Agent:** NEVER use default library UA, ALWAYS set real browser User-Agent
 
 ---
 
@@ -175,6 +176,8 @@ go mod download                      # Download dependencies
 5. **Secrets** — ONLY through env variables (viper/envconfig)
 6. **Context** — ALWAYS propagate context for cancellation
 7. **TLS** — ALWAYS TLS 1.3 in production
+8. **User-Agent** — NEVER use default/library User-Agent for HTTP requests. ALWAYS set a real browser UA:
+   `req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36")`
 
 ---
 

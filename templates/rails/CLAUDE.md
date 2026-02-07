@@ -19,6 +19,7 @@
 5. **Language:** ALL code comments, commit messages, and docs in English only
 6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
 7. **Rails:** Convention over Configuration, Strong Parameters, Concerns for shared logic
+8. **User-Agent:** NEVER use default library UA, ALWAYS set real browser User-Agent
 
 ---
 
@@ -164,6 +165,8 @@ bin/rails generate migration AddStatusToUsers status:integer
 4. **CSRF** — Keep `protect_from_forgery` enabled
 5. **Authorization** — Use Pundit or CanCanCan for authorization
 6. **Secrets** — ONLY through credentials or ENV, NEVER hardcode
+7. **User-Agent** — NEVER use default/library User-Agent for HTTP requests. ALWAYS set a real browser UA:
+   `Faraday.new { |f| f.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36' }`
 
 ---
 

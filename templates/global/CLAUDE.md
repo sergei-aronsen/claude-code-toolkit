@@ -75,6 +75,7 @@
 - **Always** apply rate limiting to ALL authentication endpoints (login, register, password reset, API key generation)
 - **Always** check authorization on both the route AND the data being accessed — "deny by default" (no access unless explicitly granted)
 - **Always** separate system instructions from user data when building LLM prompts (sandwich pattern)
+- **Always** set a real browser User-Agent for outgoing HTTP requests — never use default library UA (e.g., `python-requests/2.31`, `axios/1.7.2`, `Go-http-client/1.1`, `GuzzleHttp/7.0`). Use: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36`
 
 ---
 
