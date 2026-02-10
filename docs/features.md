@@ -350,8 +350,7 @@ LOW (1)
 | `structured-workflow.md` | 3-phase approach: Research → Plan → Execute |
 | `smoke-tests-guide.md` | Minimal API tests (Laravel/Next.js/Node.js) |
 | `hooks-auto-activation.md` | Skills auto-activation by prompt context |
-| `skill-accumulation.md` | Self-learning: Claude accumulates project knowledge |
-| `modular-skills.md` | Progressive disclosure for large guidelines |
+| `skills-system.md` | Self-learning + progressive disclosure for skills |
 | `spec-driven-development.md` | Specifications before code |
 | `mcp-servers-guide.md` | Recommended MCP servers |
 | `memory-persistence.md` | MCP memory sync with Git |

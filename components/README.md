@@ -19,8 +19,7 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 | Component | Description |
 |-----------|-------------|
-| [skill-accumulation.md](./skill-accumulation.md) | Self-learning: Claude accumulates knowledge from user corrections. |
-| [modular-skills.md](./modular-skills.md) | Progressive disclosure: SKILL.md + resources/. Saves 60-85% tokens. |
+| [skills-system.md](./skills-system.md) | Self-learning + progressive disclosure: accumulate knowledge, modular SKILL.md + resources/. |
 | [hooks-auto-activation.md](./hooks-auto-activation.md) | Auto-activation of skills by prompt. Scoring system and confidence levels. |
 
 ---
@@ -39,8 +38,7 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 | Component | Description |
 |-----------|-------------|
 | [playwright-self-testing.md](./playwright-self-testing.md) | Visual self-testing after UI changes. Playwright MCP workflow, tips, troubleshooting. |
-| [playwright-stealth-techniques.md](./playwright-stealth-techniques.md) | Anti-detection for Playwright: stealth plugin, fingerprint fixes, proxy decision matrix. |
-| [playwright-stability-guide.md](./playwright-stability-guide.md) | Why Playwright crashes in production. Docker config, memory, backpressure, browser recycling. |
+| [playwright-stability-guide.md](./playwright-stability-guide.md) | Playwright in production: Docker config, memory, backpressure, anti-detection, stealth. |
 | [smoke-tests-guide.md](./smoke-tests-guide.md) | Minimal tests for API. Examples for Laravel, Next.js, Node.js. |
 | [quick-check-scripts.md](./quick-check-scripts.md) | Bash scripts: find secrets, debug code, TODO/FIXME, large files. |
 | [markdown-lint-rules.md](./markdown-lint-rules.md) | Markdownlint rules: MD040, MD031/32, MD026. Config reference. |

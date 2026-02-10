@@ -452,27 +452,7 @@ readinessProbe:
 
 ---
 
-## Deployment Checklist
+## See Also
 
-### Pre-Deployment
-
-- [ ] All tests passing
-- [ ] Database migrations tested
-- [ ] Feature flags configured
-- [ ] Rollback plan documented
-- [ ] Monitoring alerts set
-- [ ] Team notified
-
-### During Deployment
-
-- [ ] Monitor error rates
-- [ ] Watch response times
-- [ ] Check resource usage
-- [ ] Verify health checks
-
-### Post-Deployment
-
-- [ ] Smoke tests passing
-- [ ] Metrics normal
-- [ ] No error spikes
-- [ ] User feedback monitored
+- [production-safety.md](./production-safety.md) — pre/post-deploy checklists, worker safety, rollback decisions
+- `/deploy` command — guided deployment workflow with safety checks

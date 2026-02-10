@@ -385,32 +385,7 @@ const getConfig = (status) => statusConfig[status] || statusConfig.error
 </template>
 ```
 
-### Usage in Dashboard
-
-```vue
-<template>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <ApiStatusCard
-            service="openai"
-            label="OpenAI API"
-            :status="stats.openaiStatus"
-            check-endpoint="/api/health/openai"
-        />
-        <ApiStatusCard
-            service="stripe"
-            label="Stripe"
-            :status="stats.stripeStatus"
-            check-endpoint="/api/health/stripe"
-        />
-        <ApiStatusCard
-            service="twilio"
-            label="Twilio SMS"
-            :status="stats.twilioStatus"
-            check-endpoint="/api/health/twilio"
-        />
-    </div>
-</template>
-```
+**Usage:** Add `<ApiStatusCard service="openai" label="OpenAI API" :status="stats.openaiStatus" check-endpoint="/api/health/openai" />` for each service.
 
 ---
 
@@ -512,45 +487,10 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/XXX/YYY/ZZZ
 
 ---
 
-## Extension
+## Adding a New Service
 
-### Adding a New Service
-
-1. Add check method to `ApiHealthService`:
-
-   ```php
-   public function checkNewService(): array
-   {
-       $apiKey = config('services.newservice.api_key');
-
-       if (empty($apiKey)) {
-           return ['status' => 'not_configured', 'message' => 'API key not set'];
-       }
-
-       try {
-           // Make minimal request to check
-           $response = Http::timeout(10)
-               ->withHeaders(['Authorization' => "Bearer {$apiKey}"])
-               ->get('https://api.newservice.com/v1/account');
-
-           if ($response->successful()) {
-               $this->markOk('newservice', 'Working');
-               return ['status' => 'ok', 'message' => 'Working', 'checked_at' => now()];
-           }
-
-           $error = $response->json()['error'] ?? 'Unknown error';
-           $this->recordError('newservice', $error, $response->status());
-           return $this->getStatus('newservice');
-
-       } catch (\Exception $e) {
-           $this->recordError('newservice', $e->getMessage());
-           return $this->getStatus('newservice');
-       }
-   }
-   ```
-
-2. Add `recordError()` to the service that uses this API
-
+1. Add check method to `ApiHealthService` (follow `checkOpenAI`/`checkStripe` pattern)
+2. Add `recordError()` calls in the service's catch blocks
 3. Add card to dashboard
 
 ---

@@ -284,4 +284,5 @@ Go back to /debug Phase 1.
 - Check if already fixed upstream
 
 Full guide: `components/production-safety.md`
+Deployment strategies (rolling, blue-green, canary): `components/deployment-strategies.md`
 ```

@@ -310,3 +310,5 @@ Result: [SUCCESS / NEEDS ATTENTION / ROLLBACK NEEDED]
 - After failed deploy, use `/fix-prod` for hotfix workflow
 - Use `/debug` if deploy issue root cause is unclear
 - Use `deploy checklist` audit for comprehensive pre-deploy review
+- For Docker-based deploys, see `/docker` for image configuration
+- For dependency vulnerabilities before deploy, run `/deps audit`

@@ -165,3 +165,11 @@ Automatically detects commands:
 3. Collect results from each phase
 4. Generate report in the format above
 5. Specify concrete issues to fix
+
+---
+
+## Related Commands
+
+- `/audit` — deep code analysis (finds logical errors, not just build failures)
+- `/deps audit` — dependency vulnerability and license checks
+- `/api validate` — validate API design consistency

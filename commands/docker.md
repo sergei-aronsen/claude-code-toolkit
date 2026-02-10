@@ -197,3 +197,11 @@ docker compose logs -f app
 3. Create docker-compose.yml for development
 4. Generate .dockerignore
 5. Run security and optimization checks
+
+---
+
+## Related Commands
+
+- `/deploy` — safe deployment workflow (including Docker-based deploys)
+- `/verify` — run verification checks before building images
+- `/audit security` — audit Dockerfile and compose for security issues

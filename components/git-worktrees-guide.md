@@ -262,72 +262,17 @@ cd ~/projects/lantern-3 && claude
 
 ### Full Isolation Setup (Recommended)
 
-For maximum isolation, combine all solutions:
+Combine all solutions: create worktrees, then for each one create
+`settings.local.json` (with `allowedDirectories`), `.claudeignore` (excluding siblings),
+and install dependencies. See Solutions 1-5 above for the individual configs.
+
+### Debugging: Where Am I
 
 ```bash
-# 1. Create worktrees
-cd ~/projects/lantern
-git worktree add ../lantern-1 -b work-1
-git worktree add ../lantern-2 -b work-2
-git worktree add ../lantern-3 -b work-3
-git worktree add ../lantern-4 -b work-4
-
-# 2. For each worktree, create settings.local.json
-for i in 1 2 3 4; do
-  mkdir -p ~/projects/lantern-$i/.claude
-  cat > ~/projects/lantern-$i/.claude/settings.local.json << EOF
-{
-  "permissions": {
-    "allowedDirectories": [
-      "$HOME/projects/lantern-$i"
-    ]
-  }
-}
-EOF
-done
-
-# 3. For each worktree, create .claudeignore
-for i in 1 2 3 4; do
-  cat > ~/projects/lantern-$i/.claudeignore << EOF
-# Exclude main repo and other worktrees
-../lantern
-$(for j in 1 2 3 4; do [[ $j -ne $i ]] && echo "../lantern-$j"; done)
-EOF
-done
-
-# 4. Install dependencies in each
-for i in 1 2 3 4; do
-  cd ~/projects/lantern-$i && npm install
-done
+pwd                                # Current directory
+git branch --show-current          # Worktree indicator
+git rev-parse --show-toplevel      # Should be THIS worktree, not main repo
 ```
-
-### Debugging: Where Am I?
-
-If Claude seems confused, run these checks:
-
-```bash
-# Current directory
-pwd
-
-# Current git branch (worktree indicator)
-git branch --show-current
-
-# Git root (should be THIS worktree, not main repo)
-git rev-parse --show-toplevel
-
-# Worktree list
-git worktree list
-```
-
-**Expected output for `lantern-1`:**
-
-```text
-pwd:                  /Users/sergeiarutiunian/projects/lantern-1
-branch:               work-1
-git root:             /Users/sergeiarutiunian/projects/lantern-1
-```
-
-If `git root` points to main repo (`lantern`), something is wrong with worktree setup.
 
 ---
 

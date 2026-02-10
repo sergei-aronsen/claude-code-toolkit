@@ -148,3 +148,12 @@ Automatically detect framework and use appropriate template:
 3. Analyze findings with appropriate template
 4. Apply self-check filter (remove false positives)
 5. Generate report with severity levels
+
+---
+
+## Related Commands
+
+- `/verify` — fast automated checks (build, types, lint, tests)
+- `/deps audit` — focused dependency vulnerability scan
+- `/perf` — detailed performance profiling
+- `/deploy` — pre-deploy safety checks

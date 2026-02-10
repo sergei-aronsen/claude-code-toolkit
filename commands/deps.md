@@ -309,3 +309,11 @@ npx depgraph
 4. Analyze bundle size impact
 5. Identify unused/duplicate dependencies
 6. Provide specific remediation steps
+
+---
+
+## Related Commands
+
+- `/audit security` — deep security audit beyond dependency vulnerabilities
+- `/verify pre-pr` — includes security scan before creating a PR
+- `/perf` — performance profiling (bundle size overlaps with `/deps size`)

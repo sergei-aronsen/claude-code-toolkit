@@ -369,62 +369,12 @@ process.stdin.on("end", () => {
 
 ### 5. skill-rules.schema.json (optional)
 
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": ["version", "config", "scoring", "skills"],
-  "properties": {
-    "version": { "type": "string" },
-    "config": {
-      "type": "object",
-      "required": ["minConfidenceScore", "maxSkillsToShow"],
-      "properties": {
-        "minConfidenceScore": { "type": "integer", "minimum": 1 },
-        "maxSkillsToShow": { "type": "integer", "minimum": 1 }
-      }
-    },
-    "scoring": {
-      "type": "object",
-      "properties": {
-        "keywords": { "type": "integer" },
-        "keywordPatterns": { "type": "integer" },
-        "intentPatterns": { "type": "integer" },
-        "pathPatterns": { "type": "integer" },
-        "contentPatterns": { "type": "integer" }
-      }
-    },
-    "skills": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "required": ["description", "priority", "triggers"],
-        "properties": {
-          "description": { "type": "string" },
-          "priority": { "type": "integer", "minimum": 1, "maximum": 10 },
-          "triggers": {
-            "type": "object",
-            "properties": {
-              "keywords": { "type": "array", "items": { "type": "string" } },
-              "keywordPatterns": { "type": "array", "items": { "type": "string" } },
-              "intentPatterns": { "type": "array", "items": { "type": "string" } },
-              "pathPatterns": { "type": "array", "items": { "type": "string" } },
-              "contentPatterns": { "type": "array", "items": { "type": "string" } }
-            }
-          },
-          "excludePatterns": { "type": "array", "items": { "type": "string" } }
-        }
-      }
-    }
-  }
-}
-```
+JSON Schema for IDE autocompletion in `skill-rules.json`. Generate from the
+TypeScript interfaces above, or reference `"$schema": "./skill-rules.schema.json"` in your rules file.
 
 ---
 
-## Output Examples
-
-### High Confidence
+## Output Example
 
 ```text
 Prompt: "create POST endpoint for user registration"
@@ -432,34 +382,12 @@ Files: ["src/api/auth.controller.ts"]
 
 SKILL RECOMMENDATIONS:
 ================================
-[HIGH] backend-dev (score: 13)
-   Backend development guidelines
-
-[HIGH] security-review (score: 12)
-   Security-critical code review
+[HIGH] backend-dev (score: 13)    — keyword "endpoint" +2, intent +4, path +5
+[HIGH] security-review (score: 12) — keyword "password" +2, intent +4, path +5
 ================================
 ```
 
-### Medium Confidence
-
-```text
-Prompt: "add validation to form"
-
-SKILL RECOMMENDATIONS:
-================================
-[MED] frontend-forms (score: 8)
-   Form handling and validation patterns
-================================
-```
-
-### Exclusion by exclude pattern
-
-```text
-Prompt: "create mock for api service"
-
-(skill "backend-dev" excluded due to "mock" in excludePatterns)
-(nothing shown - no relevant skills)
-```
+Exclusion: `"create mock for api"` → "mock" matches `excludePatterns` → skill skipped.
 
 ---
 
@@ -532,18 +460,6 @@ If you want file context to be more important than words - increase `pathPattern
 ### 3. Done
 
 Hook automatically picks up the new skill.
-
----
-
-## Comparison: Before and After
-
-| Aspect | Simple Version | Version with Scoring |
-|--------|----------------|---------------------|
-| Accuracy | Any match | Weighted points |
-| Noise | Many recommendations | Filtered by threshold |
-| False positives | Often | Rare (excludePatterns) |
-| Configuration | Minimal | Flexible |
-| Clarity | priority (critical/high) | confidence (HIGH/MEDIUM/LOW) + score |
 
 ---
 

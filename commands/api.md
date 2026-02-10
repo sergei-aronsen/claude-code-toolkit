@@ -258,3 +258,12 @@ Generates:
 3. Generate request/response schemas
 4. Create OpenAPI specification
 5. Scaffold CRUD code if requested
+
+---
+
+## Related Commands
+
+- `/test` — generate tests for your API endpoints
+- `/e2e` — end-to-end testing for API flows
+- `/verify` — verify build, types, and lint before committing API changes
+- `/audit security` — check API for security vulnerabilities

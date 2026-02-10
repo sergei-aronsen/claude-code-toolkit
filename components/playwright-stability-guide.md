@@ -665,45 +665,12 @@ SSL certificate error (for non-redirect domains)
 
 ## Graceful Browser Restart
 
-When recycling a browser, you can't just `browser.close()` — active requests
-on that browser will fail. Pattern:
+When recycling a browser, don't just `browser.close()` — active requests will fail.
 
-```javascript
-async function triggerBrowserRestart(slotIndex) {
-  // Mark slot as restarting (new requests go to other browsers)
-  isRestarting[slotIndex] = true;
+**Pattern:** Flag slot as restarting (new requests go elsewhere) → wait for active
+requests to finish (max 30s) → close old browser (catch errors) → launch new one → reset counter.
 
-  // Wait for active requests on this slot to finish (max 30s)
-  const maxWait = 30_000;
-  const start = Date.now();
-  while (activeRequestsPerSlot[slotIndex] > 0 && Date.now() - start < maxWait) {
-    await new Promise(r => setTimeout(r, 1000));
-  }
-
-  // Close old browser
-  try {
-    await browserPool[slotIndex]?.close();
-  } catch (e) {
-    // Browser might already be dead — that's fine
-  }
-
-  // Launch new browser
-  browserPool[slotIndex] = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-
-  isRestarting[slotIndex] = false;
-  browserScreenshotCount.set(slotIndex, 0);
-}
-```
-
-**Key points:**
-
-- Flag `isRestarting` prevents new requests from being routed to this slot
-- Wait loop gives active requests time to finish (with timeout)
-- Even if the old browser is dead, `close()` might throw — catch it
-- `--disable-dev-shm-usage` is a fallback if `shm_size` in docker-compose isn't enough
+See root cause #5 (Memory creep) for the recycling trigger logic.
 
 ---
 
@@ -756,54 +723,102 @@ for ($attempt = 1; $attempt <= MAX_PROXY_RETRIES; $attempt++) {
 
 ---
 
-## Anti-Detection (Quick Reference)
+## Anti-Detection and Stealth
 
-Stealth and stability are different concerns but both affect success rate.
+Default Playwright (headless Chromium) is detected by WAF systems
+(Akamai Bot Manager, Cloudflare, DataDome, Google Cloud Armor).
+Sites return `ERR_HTTP2_PROTOCOL_ERROR`, 403, or empty pages.
+
+### Diagnosis — classify the block type
+
+| Symptom | Block Type | Stealth helps |
+|---------|-----------|---------------|
+| `ERR_HTTP2_PROTOCOL_ERROR` | TLS/HTTP2 fingerprint or WAF | Yes |
+| 403 Forbidden | WAF/CDN rule | Maybe |
+| Empty page / JS challenge | JavaScript fingerprint | Yes |
+| TCP timeout (connect fails) | IP-level firewall | No — need proxy |
+
+Test your setup on [bot.sannysoft.com](https://bot.sannysoft.com/) — all tests must pass.
+
+### Stealth plugin (playwright-extra)
+
+```bash
+npm install playwright-extra puppeteer-extra-plugin-stealth
+```
+
+```javascript
+const { chromium } = require('playwright-extra');
+const stealth = require('puppeteer-extra-plugin-stealth')();
+chromium.use(stealth);
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  userAgent: '...', // Real Chrome UA
+  viewport: { width: 1920, height: 1080 },
+  locale: 'nb-NO',
+  timezoneId: 'Europe/Oslo',
+  colorScheme: 'light',
+  ignoreHTTPSErrors: true,
+});
+```
+
+**What stealth fixes:** `navigator.webdriver`, `window.chrome`, `navigator.plugins`,
+WebGL renderer, CDP detection. Real test: without stealth 49/56, with stealth **56/56**.
 
 ### UA Rotation
 
-Don't use a single User-Agent. Rotate from a pool of 15-20 real Chrome UAs:
+Rotate from a pool of 15-20 real Chrome UAs (don't use a single one):
 
 ```javascript
 const DESKTOP_UAS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15',
 ];
-
-function getRandomUA(isMobile) {
-  const pool = isMobile ? MOBILE_UAS : DESKTOP_UAS;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 ```
 
 ### Random delays
 
-Bots are fast and consistent. Humans are slow and random.
-
 ```javascript
-// Before navigation: 500-2000ms
+// Before navigation: 500-2000ms (bots are fast, humans are slow)
 await new Promise(r => setTimeout(r, 500 + Math.random() * 1500));
 await page.goto(url, { waitUntil: 'networkidle' });
-
-// Between scrolls: 200-600ms
-for (const step of scrollSteps) {
-  await new Promise(r => setTimeout(r, 200 + Math.random() * 400));
-  await page.evaluate(y => window.scrollTo(0, y), step);
-}
 ```
 
-### Stealth plugin
+### When stealth is NOT enough
 
-See `playwright-stealth-techniques.md` for full guide. Quick setup:
+**IP-level blocking:** Some sites block datacenter IP ranges at the firewall.
+TCP connection fails — no TLS handshake. Solution: residential proxies.
+
+**Client Hints (sec-ch-ua):** If UA says Chrome 135 but Client Hints are empty — detected.
+Playwright handles this automatically when you set a matching `userAgent`.
+
+### Proxy vs Stealth Decision Matrix
+
+| Scenario | Stealth alone | Proxy alone | Both needed |
+|----------|--------------|-------------|-------------|
+| Small/medium sites | Yes | No | No |
+| Corporate WAF (Akamai, Cloudflare) | Yes | No | No |
+| IP-blocked datacenter ranges | No | Yes | No |
+| Advanced anti-bot (DataDome, PerimeterX) | Maybe | Maybe | Yes |
+
+85-90% of sites work with stealth alone for typical scraping (different domains, 1 visit each).
+
+### Cookie Banners
+
+Use `idcac-playwright` to auto-dismiss cookie consent overlays:
+
+```bash
+npm install idcac-playwright
+```
 
 ```javascript
-import { chromium } from 'playwright-extra';
-import stealth from 'puppeteer-extra-plugin-stealth';
-chromium.use(stealth());
+import { getInjectableScript } from 'idcac-playwright';
+await page.evaluate(getInjectableScript()); // 10,000+ selectors
 ```
+
+**Tip:** Use `btn.click({ force: true })` for cookie buttons — `position: fixed`
+elements sometimes report `isVisible() = false`.
 
 ---
 
@@ -844,84 +859,11 @@ this can cause timeout. Always set an explicit timeout.
 
 ### scroll_to_bottom is critical but expensive
 
-Many modern sites use lazy loading — images and content only load when
-scrolled into view. Without scrolling, you get a screenshot with placeholder
-images or empty sections.
+Many modern sites use lazy loading. Without scrolling, screenshots have placeholder images.
+But scrolling loads more content = more memory.
 
-**But:** scrolling loads more content, which uses more memory per tab.
-On a 50000px page, scrolling can load 200+ images.
-
-**Mitigation:**
-
-- Height limit (15000-20000px max)
-- Random delays between scrolls (helps with both anti-detection and memory)
-- Close context immediately after screenshot (release memory)
-
-```javascript
-// Scroll with height limit and random delays
-async function scrollToBottom(page, maxHeight = 15000) {
-  const viewportHeight = page.viewportSize().height;
-  let currentPos = 0;
-
-  while (currentPos < maxHeight) {
-    currentPos += viewportHeight;
-    await page.evaluate(y => window.scrollTo(0, y), currentPos);
-    // Random delay: looks human + gives browser time to load
-    await new Promise(r => setTimeout(r, 200 + Math.random() * 400));
-
-    // Check if we've reached the bottom
-    const pageHeight = await page.evaluate(() => document.body.scrollHeight);
-    if (currentPos >= pageHeight) break;
-  }
-
-  // Scroll back to top for the screenshot
-  await page.evaluate(() => window.scrollTo(0, 0));
-  // Wait for any final lazy-loaded content
-  await new Promise(r => setTimeout(r, 1000));
-}
-```
-
-### Cookie banners block screenshots
-
-Cookie consent banners can cover 30-50% of the viewport. Must be handled
-before taking the screenshot:
-
-1. **Click accept** (with `force: true`, no `isVisible()` check)
-2. **Click inside iframes** (Sourcepoint, Schibsted use iframes)
-3. **CSS fallback** (hide banner with `display: none`)
-
-```javascript
-// Click with force: true — skips visibility check
-// Some banners are position:fixed and report as "not visible"
-await btn.click({ timeout: 2000, force: true });
-```
-
-**The `isVisible()` trap:** Cookie banners with `position: fixed` sometimes
-report `isVisible() = false` because they're outside the normal layout flow.
-This caused us to skip clicking → banner stays → covers screenshot.
-Use `force: true` instead.
-
----
-
-## Compiled TypeScript Gotcha
-
-If the Playwright service is written in TypeScript but runs compiled JavaScript
-(`node dist/api.js`), editing `.ts` files has no effect until you rebuild:
-
-```bash
-# Inside the container:
-docker exec <container> npm run build
-
-# Then restart:
-docker compose restart playwright-service
-
-# Or rebuild the image entirely:
-docker compose build --no-cache playwright-service
-docker compose up -d playwright-service
-```
-
-Check `package.json` scripts section to see if the service runs `.ts` directly
-(ts-node) or compiled `.js`.
+**Mitigation:** Height limit (15000-20000px), random delays between scrolls,
+close context immediately after screenshot. See Anti-Detection section for cookie banner handling.
 
 ---
 
@@ -1007,6 +949,5 @@ supervisorctl status | grep screenshot
 
 ## See Also
 
-- [playwright-stealth-techniques.md](./playwright-stealth-techniques.md) — anti-detection, stealth plugin, fingerprint fixes
 - [playwright-self-testing.md](./playwright-self-testing.md) — visual UI testing with Playwright MCP
 - [devops-highload-checklist.md](./devops-highload-checklist.md) — broader production checklist
