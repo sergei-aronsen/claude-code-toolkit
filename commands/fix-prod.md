@@ -39,19 +39,12 @@ Structured workflow for fixing production issues: diagnose first, minimal change
 # Check recent deploys
 git log --oneline -5
 
-# Check error logs
-# Laravel
-tail -50 storage/logs/laravel.log | grep -i "error\|exception\|fatal"
-
-# Node.js
-pm2 logs --lines 50 --err
-
-# Python
-tail -50 /var/log/app/error.log
+# Check error logs (last 50 lines, filter for errors)
+# Adapt path for your framework: storage/logs/, pm2 logs, /var/log/app/
+tail -50 <error-log-path> | grep -i "error\|exception\|fatal"
 
 # Check system resources
-df -h        # Disk space
-free -m      # Memory
+df -h && free -m
 ```
 
 ### 1.2 Identify Scope
@@ -105,20 +98,7 @@ git commit -m "fix: [what was fixed and why]"
 
 ### 2.3 Test the Fix
 
-```bash
-# Run relevant tests
-# Laravel
-php artisan test --filter=RelevantTest
-
-# Node.js
-npm test -- --grep "relevant test"
-
-# Python
-pytest tests/test_relevant.py
-
-# Run full suite to check for regressions
-[full test command]
-```
+Run relevant tests for the changed code, then run the full suite to check for regressions.
 
 ---
 
@@ -136,20 +116,7 @@ git merge hotfix/description
 
 ### 3.2 Verify Fix in Production
 
-```bash
-# 1. Check the specific issue is resolved
-# [reproduce the original error — should be fixed now]
-
-# 2. Check no new errors
-# Laravel
-tail -20 storage/logs/laravel.log
-
-# Node.js
-pm2 logs --lines 20 --err
-
-# 3. Check related functionality still works
-# [test adjacent features]
-```
+Verify: original issue is resolved, no new errors in logs, related features still work.
 
 ---
 
@@ -206,8 +173,6 @@ Use /learn to save the solution pattern
 
 ## Common Production Issues
 
-### Quick Reference
-
 | Symptom | First Check | Likely Cause |
 |---------|-------------|--------------|
 | 500 errors after deploy | `git log -1`, error log | Code bug in latest commit |
@@ -216,23 +181,6 @@ Use /learn to save the solution pattern
 | Login broken | Session/cache config | Cache stale, config not cleared |
 | Missing data | Recent migration | Migration issue |
 | CORS errors | Nginx/app config | Config not updated |
-
-### Worker/Queue Issues
-
-```bash
-# Check worker status
-# Laravel
-php artisan queue:monitor redis:default
-php artisan queue:failed
-
-# PM2
-pm2 status
-pm2 monit
-
-# Check failed jobs
-# Laravel
-php artisan queue:retry all  # Retry failed jobs (careful!)
-```
 
 ---
 

@@ -248,30 +248,6 @@ Plan Mode (Shift+Tab x 2)
 
 ---
 
-## Add to CLAUDE.md
-
-```markdown
-## Structured Workflow
-
-For complex tasks use 3-phase approach:
-
-1. **RESEARCH** (read-only) — understand context
-   - Only Glob, Grep, Read, WebFetch
-   - No code changes
-
-2. **PLAN** (scratchpad-only) — create plan
-   - Write to `.claude/scratchpad/current-task.md`
-   - Wait for confirmation
-
-3. **EXECUTE** (full access) — implement
-   - Follow the plan
-   - Track progress
-
-**When:** new features, refactoring, multiple files, critical code
-```
-
----
-
 ## Example Flow
 
 Typical session: RESEARCH (find files, study patterns, check deps) then PLAN (write plan to scratchpad, wait for user OK) then EXECUTE (implement step-by-step, verify each step, commit).

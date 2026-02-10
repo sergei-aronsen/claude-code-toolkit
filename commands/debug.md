@@ -56,21 +56,7 @@ If Phase 1 is not completed — cannot propose fixes.
    - What called the function with the bad value?
    - Continue up until you find the source
 
-**For Multi-Component systems:**
-
-```bash
-# Layer 1: Entry point
-echo "=== Input data: ==="
-echo "$INPUT"
-
-# Layer 2: Processing
-echo "=== After processing: ==="
-echo "$PROCESSED"
-
-# Layer 3: Output
-echo "=== Final output: ==="
-echo "$OUTPUT"
-```
+**For multi-component systems:** Add logging at each layer (input, processing, output) to isolate where data goes wrong.
 
 ---
 
@@ -142,16 +128,11 @@ This is not a bug. This is an architecture problem.
 
 ## Red Flags — STOP and return to Phase 1
 
-If you're thinking:
+If you're thinking any of these, STOP and return to Phase 1:
 
 - "Quick fix now, I'll figure it out later"
 - "Let me just try changing X"
-- "I'll add several changes, run tests"
-- "It's probably X, let me fix it"
-- "Don't quite understand, but it might work"
 - "One more try" (when 2+ already failed)
-
-**ALL of this means: STOP. Return to Phase 1.**
 
 ---
 
@@ -161,10 +142,7 @@ If you're thinking:
 |--------|---------|
 | "Simple bug, no process needed" | Simple bugs also have root cause |
 | "Urgent, no time for process" | Systematic approach is FASTER than guessing |
-| "Try first, figure out later" | First fix sets the pattern. Do it right from the start |
-| "I'll write test after fix" | Untested fixes don't hold |
 | "Multiple fixes at once saves time" | Can't tell what worked. Creates new bugs |
-| "I see the problem, let me fix it" | Seeing symptom ≠ understanding root cause |
 | "One more try" (after 2+ fails) | 3+ fails = architectural problem |
 
 ---
@@ -175,46 +153,25 @@ If you're thinking:
 # Debug Report: [Problem]
 
 ## Phase 1: Investigation
-
-**Error Message:**
-[Full error text]
-
-**Reproduction Steps:**
-1. ...
-2. ...
-
-**Recent Changes:**
-- [commit/change that might be related]
-
-**Data Flow Trace:**
-[Source] → [Transform] → [Where it breaks]
+**Error:** [Full error text]
+**Reproduction:** [Steps]
+**Recent Changes:** [Commits/changes]
+**Data Flow:** [Source] -> [Transform] -> [Where it breaks]
 
 ## Phase 2: Pattern Analysis
-
-**Working Example:**
-[Similar code that works]
-
-**Differences:**
-- [Difference 1]
-- [Difference 2]
+**Working Example:** [Similar working code]
+**Differences:** [Key differences found]
 
 ## Phase 3: Hypothesis
-
 **Hypothesis:** [X is root cause because Y]
-
 **Test:** [Minimal change to verify]
-
 **Result:** [Pass/Fail]
 
 ## Phase 4: Fix
-
 **Root Cause:** [What was actually wrong]
-
 **Fix:** [What was changed]
-
 **Test Added:** [test name]
-
-**Verification:** All tests pass ✅
+**Verification:** All tests pass
 ```
 
 ---

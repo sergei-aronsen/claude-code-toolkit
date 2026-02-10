@@ -10,7 +10,7 @@ Help create, review, or troubleshoot database migrations.
 
 ```text
 /migrate <action> [options]
-```text
+```
 
 **Actions:**
 
@@ -34,102 +34,33 @@ Help create, review, or troubleshoot database migrations.
 
 ```bash
 php artisan make:migration add_status_to_orders_table
-```text
+```
 
 ```php
-// database/migrations/2025_01_13_000000_add_status_to_orders_table.php
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('status')->default('pending')->after('total');
-            $table->index('status');
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->dropIndex(['status']);
-            $table->dropColumn('status');
-        });
-    }
-};
-```text
+// up(): Schema::table('orders', function (Blueprint $table) {
+//     $table->string('status')->default('pending')->after('total');
+//     $table->index('status');
+// });
+// down(): dropIndex(['status']), dropColumn('status')
+```
 
 ### Safe Migration Patterns
 
-```php
-// ✅ Safe: Add nullable column
-$table->string('new_column')->nullable();
-
-// ✅ Safe: Add column with default
-$table->boolean('is_active')->default(true);
-
-// ⚠️ Careful: Add NOT NULL without default (will fail if data exists)
-// First: add nullable, then update data, then make NOT NULL
-$table->string('required_field')->nullable();  // Step 1
-// UPDATE orders SET required_field = 'default' WHERE required_field IS NULL;  // Step 2
-// Then new migration to make NOT NULL
-
-// ✅ Safe: Add index
-$table->index('column_name');
-
-// ⚠️ Careful: Add unique index (check for duplicates first)
-$table->unique('email');
-
-// ✅ Safe: Rename column (Laravel 9+)
-$table->renameColumn('old_name', 'new_name');
-
-// ❌ Dangerous: Drop column (data loss)
-$table->dropColumn('column_name');
-```text
+| Pattern | Safety | Notes |
+|---------|--------|-------|
+| Add nullable column | Safe | `->nullable()` |
+| Add column with default | Safe | `->default(value)` |
+| Add NOT NULL (no default) | Dangerous | Add nullable first, update data, then NOT NULL |
+| Add index | Safe | `->index('column')` |
+| Add unique index | Careful | Check for duplicates first |
+| Rename column | Safe | Laravel 9+ `->renameColumn()` |
+| Drop column | Dangerous | Data loss, check foreign keys |
 
 ---
 
 ## Prisma Migrations (Next.js)
 
-### Create Migration
-
-```bash
-npx prisma migrate dev --name add_status_to_orders
-```text
-
-```prisma
-// prisma/schema.prisma
-model Order {
-  id        String   @id @default(cuid())
-  total     Float
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
-
-  @@index([status])
-}
-```text
-
-### Safe Patterns
-
-```prisma
-// ✅ Safe: Add optional field
-newField String?
-
-// ✅ Safe: Add field with default
-isActive Boolean @default(true)
-
-// ⚠️ Careful: Add required field
-// Use @default or make optional first
-requiredField String @default("default_value")
-
-// ✅ Safe: Add index
-@@index([fieldName])
-```text
+Prisma: `npx prisma migrate dev --name description`. Same safe patterns apply -- add optional fields (`String?`) or with defaults first, check for duplicates before unique constraints.
 
 ---
 
@@ -159,42 +90,11 @@ requiredField String @default("default_value")
 
 ## Common Issues & Fixes
 
-### Issue: Migration Fails on NOT NULL
-
-```php
-// Problem
-$table->string('required_field');  // Fails if table has data
-
-// Solution: Three-step migration
-// Migration 1: Add nullable
-$table->string('required_field')->nullable();
-
-// Migration 2: Update data
-DB::table('orders')->whereNull('required_field')->update(['required_field' => 'default']);
-
-// Migration 3: Make NOT NULL
-$table->string('required_field')->nullable(false)->change();
-```text
-
-### Issue: Duplicate Index Name
-
-```php
-// Problem
-$table->index('status');  // Might conflict
-
-// Solution: Explicit name
-$table->index('status', 'orders_status_index');
-```text
-
-### Issue: Foreign Key Constraint
-
-```php
-// Problem: Can't drop column with foreign key
-
-// Solution: Drop constraint first
-$table->dropForeign(['user_id']);
-$table->dropColumn('user_id');
-```text
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| NOT NULL fails | Table has existing rows | 3-step: add nullable, update data, then NOT NULL |
+| Duplicate index name | Auto-generated name conflicts | Use explicit name: `->index('col', 'table_col_index')` |
+| Can't drop column | Foreign key constraint | Drop foreign key first, then drop column |
 
 ---
 
@@ -207,20 +107,10 @@ $table->dropColumn('user_id');
 [What this migration does]
 
 ### SQL Preview
-\`\`\`sql
-ALTER TABLE orders ADD COLUMN status VARCHAR(255) DEFAULT 'pending';
-CREATE INDEX orders_status_index ON orders (status);
-\`\`\`
+[Generated SQL]
 
 ### Migration Code
-\`\`\`php
-// Full migration code
-\`\`\`
-
-### Rollback
-\`\`\`php
-// down() method
-\`\`\`
+[Full up() and down() code]
 
 ### Checklist
 - [ ] Backup created
@@ -229,17 +119,8 @@ CREATE INDEX orders_status_index ON orders (status);
 - [ ] Data migration needed?
 
 ### Commands
-\`\`\`bash
-# Preview
-php artisan migrate --pretend
-
-# Run
-php artisan migrate
-
-# Rollback (if needed)
-php artisan migrate:rollback --step=1
-\`\`\`
-```text
+Preview, run, rollback commands for the detected framework
+```
 
 ---
 

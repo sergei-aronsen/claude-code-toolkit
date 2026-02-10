@@ -372,30 +372,18 @@ Without a handler, browsers die mid-request — corrupted screenshots, leaked re
 
 ```javascript
 let isShuttingDown = false;
-
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
-  console.log(`Received ${signal}, shutting down gracefully...`);
-
-  // Stop accepting new requests
+  console.log(`Received ${signal}, shutting down...`);
   server.close();
-
-  // Wait for active requests to finish (max 30s)
-  const maxWait = 30_000;
   const start = Date.now();
-  while (activeRequests > 0 && Date.now() - start < maxWait) {
+  while (activeRequests > 0 && Date.now() - start < 30_000)
     await new Promise(r => setTimeout(r, 1000));
-  }
-
-  // Close all browsers
-  for (const browser of browserPool) {
-    try { await browser?.close(); } catch (e) { /* ignore */ }
-  }
-
+  for (const browser of browserPool)
+    try { await browser?.close(); } catch { /* ignore */ }
   process.exit(0);
 }
-
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 ```
@@ -450,34 +438,20 @@ const screenshot = await page.screenshot({ type: 'jpeg', quality: 80 });
 
 **Storage math:** 10K screenshots/day × 1.5MB = 15GB/day (PNG) vs 4.5GB/day (WebP).
 
-### Resource Blocking (When NOT Taking Screenshots)
+### Resource Blocking
 
-For scraping/parsing (not screenshots), block heavy resources for 3-5x speed:
-
-```javascript
-await page.route('**/*', (route) => {
-  const type = route.request().resourceType();
-  if (['image', 'media', 'font', 'stylesheet'].includes(type)) {
-    return route.abort();
-  }
-  // Block trackers (save time on JS execution)
-  const url = route.request().url();
-  if (/googletagmanager|analytics|doubleclick|facebook.*pixel/.test(url)) {
-    return route.abort();
-  }
-  return route.continue();
-});
-```
-
-**For screenshots: do NOT block images or CSS** — you need visual fidelity.
-But you CAN block trackers, analytics, and video to save memory:
+Block unnecessary resources for faster loads and lower memory. Adjust what
+you block based on mode (scraping blocks more, screenshots need visual fidelity):
 
 ```javascript
 await page.route('**/*', (route) => {
   const type = route.request().resourceType();
+  // Scraping mode: block images, media, fonts, stylesheets (3-5x speed)
+  // Screenshot mode: block only media (keep images/CSS for visual fidelity)
   if (['media'].includes(type)) return route.abort();
+  // Block trackers in both modes
   const url = route.request().url();
-  if (/googletagmanager|analytics|doubleclick/.test(url)) return route.abort();
+  if (/googletagmanager|analytics|doubleclick|facebook.*pixel/.test(url)) return route.abort();
   return route.continue();
 });
 ```
@@ -670,8 +644,6 @@ When recycling a browser, don't just `browser.close()` — active requests will 
 **Pattern:** Flag slot as restarting (new requests go elsewhere) → wait for active
 requests to finish (max 30s) → close old browser (catch errors) → launch new one → reset counter.
 
-See root cause #5 (Memory creep) for the recycling trigger logic.
-
 ---
 
 ## Proxy Cascade Pattern
@@ -689,26 +661,16 @@ Attempt 4: Residential proxy (2captcha, BrightData, etc.)
 ```
 
 ```php
-// Laravel implementation
-const MAX_PROXY_RETRIES = 4;
-const RESIDENTIAL_ATTEMPT_AFTER = 3;
-
-for ($attempt = 1; $attempt <= MAX_PROXY_RETRIES; $attempt++) {
+for ($attempt = 1; $attempt <= 4; $attempt++) {
     $proxy = match(true) {
-        $attempt <= 2   => $this->getRandomDatacenterProxy(),
-        $attempt === 3  => null,  // direct, no proxy
-        default         => $this->getResidentialProxy(),
+        $attempt <= 2  => $this->getRandomDatacenterProxy(),
+        $attempt === 3 => null,
+        default        => $this->getResidentialProxy(),
     };
-
     try {
         return $this->takeScreenshot($url, $proxy);
     } catch ($e) {
-        if ($this->isServiceRetryableError($e)) {
-            sleep(3);  // Browser recycling — don't change proxy
-            continue;
-        }
-        // Proxy/target error — try next proxy
-        continue;
+        if ($this->isServiceRetryableError($e)) sleep(3);
     }
 }
 ```
@@ -890,60 +852,7 @@ supervisorctl status | grep screenshot
 
 ## Checklist for New Playwright Service
 
-```markdown
-## Docker
-- [ ] `init: true` (zombie process reaper)
-- [ ] `shm_size: '2g'` (Chrome shared memory)
-- [ ] `healthcheck` configured (curl /health every 30s)
-- [ ] `mem_limit` set (50% of server RAM)
-- [ ] `memswap_limit` = `mem_limit` (disable swap for predictable OOM)
-- [ ] `restart: unless-stopped`
-- [ ] `stop_grace_period` > graceful shutdown timeout
-- [ ] `tmpfs` for /tmp/.cache (Chrome temp files)
-- [ ] Fonts: `fonts-noto-cjk`, `fonts-noto-color-emoji`, `fonts-liberation`
-- [ ] Env vars use dedicated names (no reusing vars across services)
-
-## Browser
-- [ ] Launch args: --no-sandbox, --disable-dev-shm-usage, --disable-gpu
-- [ ] MAX_CONCURRENT_PAGES = BROWSER_POOL_SIZE × 2 (NOT 50+!)
-- [ ] Browser recycling every 100-200 screenshots
-- [ ] Graceful restart: wait for active requests before closing browser
-- [ ] New context per request (never reuse contexts)
-- [ ] Always close context in `finally` block
-
-## Service
-- [ ] Backpressure: 503 + Retry-After on queue overflow or memory pressure
-- [ ] Memory monitoring in /health (RSS, heapUsed, memoryWarning)
-- [ ] Lightweight /health (no test context creation!)
-- [ ] SIGTERM handler: stop accepting, wait for active, close browsers
-- [ ] UA rotation (15+ real Chrome UAs)
-- [ ] Random delays before navigation (500-2000ms)
-- [ ] fullPage crash fallback (tall viewport pattern)
-- [ ] Screenshot height limit (15000px desktop, 20000px mobile)
-
-## Client
-- [ ] Handle HTTP 503 with sleep(Retry-After)
-- [ ] Handle "browser closed" errors as retryable (sleep 3s)
-- [ ] Concurrency limiter (Redis throttle or similar)
-- [ ] Workers count ≤ Browser Pool × 3
-- [ ] Proxy cascade: datacenter → direct → residential
-- [ ] Screenshot compression: PNG → WebP (70% smaller)
-- [ ] Timeout hierarchy: Playwright < HTTP < Job < Supervisor
-
-## Workers (Supervisor)
-- [ ] `--max-jobs` (restart after N jobs, prevents memory leaks)
-- [ ] `--max-time` (restart every hour)
-- [ ] `--memory` (restart if PHP/Node exceeds threshold)
-- [ ] `stopwaitsecs` > job timeout
-- [ ] `stopasgroup=true`, `killasgroup=true`
-
-## Monitoring
-- [ ] /health returns memory stats and memoryWarning flag
-- [ ] External check every 5 min (preemptive restart on memoryWarning)
-- [ ] Alert on container restart
-- [ ] Log rotation configured (json-file, max-size 10m)
-- [ ] Resource blocking for analytics/trackers (even in screenshot mode)
-```
+Review each section above. Key items: `init: true`, `shm_size: '2g'`, `MAX_CONCURRENT_PAGES = BROWSER_POOL_SIZE × 2`, backpressure (503 + Retry-After), browser recycling, context isolation, SIGTERM handler, timeout hierarchy.
 
 ---
 

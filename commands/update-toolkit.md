@@ -101,46 +101,13 @@ mv .claude-backup-YYYYMMDD-HHMMSS .claude
 ## Example Output
 
 ```text
-╔════════════════════════════════════════════════════════════╗
-║         Claude Code Toolkit — Smart Update                 ║
-╚════════════════════════════════════════════════════════════╝
+Detected framework: laravel
+Version: 2.6.0 -> 2.7.0
+Backup: .claude-backup-20260203-120000
 
-ℹ Detected framework: laravel
-ℹ Fetching manifest...
-ℹ Remote version: 2.7.0
-ℹ Local version: 2.6.0
-✓ Backup created: .claude-backup-20260203-120000
+Updated: agents/, prompts/, skills/, CLAUDE.md (system sections)
+Preserved: Project Overview, Structure, Commands, Notes, settings, memory/
 
-ℹ Updating toolkit files...
-✓ Updated: agents/code-reviewer.md
-✓ Updated: agents/planner.md
-✓ Updated: prompts/SECURITY_AUDIT.md
-...
-
-ℹ Updating CLAUDE.md (preserving user sections)...
-ℹ Found user customizations, merging...
-✓ CLAUDE.md merged (user sections preserved)
-
-╔════════════════════════════════════════════════════════════╗
-║         Update Complete!                                   ║
-╚════════════════════════════════════════════════════════════╝
-
-Version: 2.6.0 → 2.7.0
-Backup:  .claude-backup-20260203-120000
-
-What was updated:
-  • agents/       — subagent definitions
-  • prompts/      — audit templates
-  • skills/       — AI models skill
-  • CLAUDE.md     — system sections (user sections preserved)
-
-What was preserved:
-  • Project Overview, Structure, Commands
-  • Project-Specific Notes, Known Gotchas
-  • settings.json, settings.local.json
-  • memory/ content (if existed)
-
-Changelog: https://github.com/digitalplanetno/claude-code-toolkit/blob/main/CHANGELOG.md
-
-⚠ Restart Claude Code to apply changes
+Changelog: https://github.com/.../CHANGELOG.md
+Warning: Restart Claude Code to apply changes
 ```

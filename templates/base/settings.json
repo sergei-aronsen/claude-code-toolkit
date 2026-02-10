@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended in $(pwd)' >> ~/.claude/sessions.log"
+            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended: $(pwd)' >> ~/.claude/sessions.log"
           }
         ]
       }
@@ -61,6 +61,7 @@
     "deny": [
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
       "Bash(sudo *)",
       "Bash(chmod 777 *)",
       "Bash(curl * | bash)",

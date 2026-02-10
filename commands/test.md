@@ -10,7 +10,7 @@ Write tests for code, functions, or features.
 
 ```text
 /test <target> [--type=unit|integration|e2e]
-```text
+```
 
 **Examples:**
 
@@ -33,103 +33,47 @@ Write tests for code, functions, or features.
 
 ## Framework Templates
 
-### Laravel (PHPUnit/Pest)
+### PHPUnit/Pest Pattern
 
 ```php
-// tests/Unit/Services/PaymentServiceTest.php
-<?php
-
-namespace Tests\Unit\Services;
-
-use App\Services\PaymentService;
-use App\Models\User;
-use Tests\TestCase;
-use Mockery;
-
-class PaymentServiceTest extends TestCase
+class ServiceTest extends TestCase
 {
-    private PaymentService $service;
+    private Service $service;
 
-    protected function setUp(): void
+    protected function setUp(): void { parent::setUp(); $this->service = new Service(); }
+
+    public function test_happy_path(): void
     {
-        parent::setUp();
-        $this->service = new PaymentService();
-    }
-
-    public function test_process_payment_succeeds_with_valid_data(): void
-    {
-        // Arrange
-        $user = User::factory()->create();
-        $amount = 100.00;
-
-        // Act
-        $result = $this->service->processPayment($user, $amount);
-
-        // Assert
+        // Arrange -> Act -> Assert
+        $result = $this->service->process($validInput);
         $this->assertTrue($result->success);
-        $this->assertEquals($amount, $result->amount);
     }
 
-    public function test_process_payment_fails_with_insufficient_balance(): void
+    public function test_error_case(): void
     {
-        // Arrange
-        $user = User::factory()->create(['balance' => 50]);
-
-        // Act & Assert
-        $this->expectException(InsufficientBalanceException::class);
-        $this->service->processPayment($user, 100.00);
+        $this->expectException(DomainException::class);
+        $this->service->process($invalidInput);
     }
 }
-```text
+```
 
-### Next.js (Vitest/Jest)
+### Vitest/Jest Pattern
 
 ```typescript
-// __tests__/services/payment.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processPayment } from '@/lib/services/payment';
-import { prisma } from '@/lib/db';
+describe('Service', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
 
-vi.mock('@/lib/db', () => ({
-  prisma: {
-    payment: {
-      create: vi.fn(),
-    },
-    user: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
-
-describe('PaymentService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('should succeed with valid input', async () => {
+    // Arrange: vi.mocked(dep).mockResolvedValue(data)
+    // Act: const result = await service.process(input)
+    // Assert: expect(result.success).toBe(true)
   });
 
-  it('should process payment successfully', async () => {
-    // Arrange
-    const mockUser = { id: '1', balance: 200 };
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser);
-    vi.mocked(prisma.payment.create).mockResolvedValue({ id: 'pay_1', amount: 100 });
-
-    // Act
-    const result = await processPayment('1', 100);
-
-    // Assert
-    expect(result.success).toBe(true);
-    expect(result.amount).toBe(100);
-  });
-
-  it('should throw error for insufficient balance', async () => {
-    // Arrange
-    const mockUser = { id: '1', balance: 50 };
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser);
-
-    // Act & Assert
-    await expect(processPayment('1', 100)).rejects.toThrow('Insufficient balance');
+  it('should throw on invalid input', async () => {
+    await expect(service.process(bad)).rejects.toThrow('message');
   });
 });
-```text
+```
 
 ---
 
@@ -158,32 +102,20 @@ describe('PaymentService', () => {
 ## Tests for [target]
 
 ### Test File
-`tests/[path]/[Name]Test.php` or `__tests__/[path]/[name].test.ts`
+[path to test file]
 
 ### Test Cases
-
 | # | Test | Type | Description |
 |---|------|------|-------------|
 | 1 | test_happy_path | Unit | Normal operation |
 | 2 | test_edge_case | Unit | Empty input |
-| 3 | test_error_case | Unit | Invalid data |
 
 ### Code
+[Full test code]
 
-\`\`\`php
-// Full test code here
-\`\`\`
-
-### Run Tests
-
-\`\`\`bash
-# Laravel
-php artisan test --filter=PaymentServiceTest
-
-# Next.js
-npm test -- payment.test.ts
-\`\`\`
-```text
+### Run
+[Framework-specific test command]
+```
 
 ---
 
