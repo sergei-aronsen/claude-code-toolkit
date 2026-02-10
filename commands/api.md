@@ -51,86 +51,10 @@ Design REST APIs, generate OpenAPI specs, and scaffold CRUD endpoints.
 
 ### Request/Response
 
-#### GET /api/v1/users
-
-**Query Parameters:**
-
-| Param | Type | Description |
-|-------|------|-------------|
-| page | int | Page number (default: 1) |
-| limit | int | Items per page (default: 20, max: 100) |
-| sort | string | Sort field (e.g., -createdAt) |
-| search | string | Search in name, email |
-
-**Response 200:**
+For each endpoint, generate: query parameters table (page, limit, sort, search), request/response JSON with `data` + `pagination` wrapper, and error format:
 
 \`\`\`json
-{
-  "data": [
-    {
-      "id": "usr_123",
-      "email": "user@example.com",
-      "name": "John Doe",
-      "createdAt": "2024-01-15T10:30:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 150,
-    "totalPages": 8
-  }
-}
-\`\`\`
-
-#### POST /api/v1/users
-
-**Request Body:**
-
-\`\`\`json
-{
-  "email": "user@example.com",
-  "name": "John Doe",
-  "password": "securePassword123"
-}
-\`\`\`
-
-**Response 201:**
-
-\`\`\`json
-{
-  "id": "usr_123",
-  "email": "user@example.com",
-  "name": "John Doe",
-  "createdAt": "2024-01-15T10:30:00Z"
-}
-\`\`\`
-
-### Error Responses
-
-**400 Bad Request:**
-
-\`\`\`json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request body",
-    "details": [
-      { "field": "email", "message": "Invalid email format" }
-    ]
-  }
-}
-\`\`\`
-
-**404 Not Found:**
-
-\`\`\`json
-{
-  "error": {
-    "code": "NOT_FOUND",
-    "message": "User not found"
-  }
-}
+{ "error": { "code": "VALIDATION_ERROR", "message": "...", "details": [...] } }
 \`\`\`
 ```
 
@@ -138,87 +62,7 @@ Design REST APIs, generate OpenAPI specs, and scaffold CRUD endpoints.
 
 ## OpenAPI Generation
 
-### For `/api openapi`
-
-```yaml
-openapi: 3.0.3
-info:
-  title: Project API
-  version: 1.0.0
-
-servers:
-  - url: https://api.example.com/v1
-
-paths:
-  /users:
-    get:
-      summary: List users
-      tags: [Users]
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-            maximum: 100
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-components:
-  schemas:
-    User:
-      type: object
-      required: [id, email, name]
-      properties:
-        id:
-          type: string
-        email:
-          type: string
-          format: email
-        name:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-
-    UserList:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  responses:
-    Unauthorized:
-      description: Authentication required
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-```
+Generates OpenAPI 3.0.3 spec with: paths per resource, `$ref` schemas, pagination schema, bearerAuth security scheme, and standard error responses (400, 401, 404, 500).
 
 ---
 

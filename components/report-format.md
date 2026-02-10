@@ -1,72 +1,44 @@
 # Report Format
 
-Standard report format for audits.
+Standard report format for audits. All reports follow the same base structure with type-specific sections.
 
 ---
 
-## Security Audit Report
+## Generic Report Template
 
 ```markdown
-# Security Audit Report — [Project Name]
+# [Report Type] — [Project Name]
 Date: [date]
-Auditor: Claude (Senior Security Engineer)
+[Additional metadata — see type-specific fields below]
 
-## Executive Summary
+## Summary
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| Critical | X | X fixed |
-| High | X | X fixed |
-| Medium | X | X fixed |
-| Low | X | - |
-| Info | X | - |
-
-**Overall Risk Level**: [Critical/High/Medium/Low]
+[Summary table — format varies by type]
 
 ---
 
-## Critical Vulnerabilities
+## Issues by Severity
 
-### CRIT-001: [Title]
-**Location**: `path/to/file.ext:XX`
-**CVSS Score**: X.X (if applicable)
-**Description**: [Vulnerability description]
-**Impact**: [What damage can be done]
-**Proof of Concept**: [How to reproduce]
-**Remediation**: [How to fix]
-**Status**: Fixed / Pending
+### CRITICAL
+| # | Location | Issue | Solution | Status |
+|---|----------|-------|----------|--------|
+| 1 | file:line | [Description] | [Solution] | Fixed/Pending |
 
----
+### HIGH
+[Same table format]
 
-## High Severity Issues
-[Similar format]
-
-## Medium Severity Issues
-[Similar format]
-
-## Low Severity Issues
-[Brief list]
-
-## Informational
+### MEDIUM / LOW
 [Brief list]
 
 ---
 
-## Security Controls in Place
-
-- [x] [What is already implemented]
-- [x] [What is already implemented]
-- [ ] [What is recommended to add]
-
----
-
-## Remediation Checklist
+## Checklist
 
 ### Immediate (24h)
-- [ ] [Critical fixes]
+- [ ] [Critical items]
 
 ### Short-term (1 week)
-- [ ] [Important fixes]
+- [ ] [Important items]
 
 ### Long-term (1 month)
 - [ ] [Improvements]
@@ -74,132 +46,28 @@ Auditor: Claude (Senior Security Engineer)
 
 ---
 
-## Code Review Report
+## Type-Specific Differences
 
-```markdown
-# Code Review Report — [Project Name]
-Date: [date]
-Scope: [which files/commits were reviewed]
+### Security Audit
 
-## Summary
+- **Metadata:** `Auditor: Claude (Senior Security Engineer)`
+- **Summary table columns:** Severity | Count | Status
+- **Add field per issue:** `CVSS Score`, `Impact`, `Proof of Concept`
+- **Extra section:** "Security Controls in Place" (checklist of existing and recommended controls)
+- **Overall Risk Level:** Critical / High / Medium / Low
 
-| Category | Issues | Critical |
-|----------|--------|----------|
-| Architecture | X | X |
-| Code Quality | X | X |
-| [Framework] | X | X |
-| Security | X | X |
-| Performance | X | X |
+### Code Review
 
----
+- **Metadata:** `Scope: [files/commits reviewed]`
+- **Summary table columns:** Category (Architecture, Code Quality, Security, Performance) | Issues | Critical
+- **Extra section:** "Good Practices Found" (what was done well)
+- **Extra section:** "Code Suggestions" with before/after code snippets
 
-## CRITICAL Issues
+### Deploy Checklist
 
-| # | File | Line | Issue | Solution |
-|---|------|------|-------|----------|
-| 1 | file.ext | 45 | [Description] | [Solution] |
-
-## HIGH Priority
-[Similar format]
-
-## MEDIUM Priority
-[Similar format]
-
----
-
-## Good Practices Found
-
-- [What was done well]
-
----
-
-## Code Suggestions
-
-### 1. [Change name]
-
-```language
-// Before (path/to/file.ext:XX-YY)
-[old code]
-
-// After
-[new code]
-```
-
----
-
-## Checklist for Author
-
-- [ ] Fix critical issues
-- [ ] Update documentation
-- [ ] Run tests
-
-```text
-
----
-
-## Deploy Checklist Report
-
-```markdown
-# Deploy Checklist Report — [Project Name]
-Date: [date]
-Version: [git commit hash]
-Deployed by: [who]
-
-## Summary
-
-| Step | Status | Duration |
-|------|--------|----------|
-| Pre-checks | Pass/Fail | X min |
-| Backup | Pass/Fail | X min |
-| Code deploy | Pass/Fail | X min |
-| Migrations | Pass/Fail | X min |
-| Build | Pass/Fail | X min |
-| Cache | Pass/Fail | X min |
-| Verification | Pass/Fail | X min |
-| **Total** | **Pass/Fail** | **X min** |
-
-## Readiness Score
-
-**Score**: XX% — [READY / ACCEPTABLE / NOT READY]
-
-### Blockers
-- [If any]
-
-### Warnings
-- [If any]
-
-### Passed
-- [List of passed checks]
-
----
-
-## Changes Deployed
-
-### Features
-- [New features]
-
-### Fixes
-- [Bug fixes]
-
-### Migrations
-- [Database migrations]
-
----
-
-## Verification Results
-
-| Check | Result |
-|-------|--------|
-| Homepage loads | Pass/Fail |
-| Login works | Pass/Fail |
-| Core functionality | Pass/Fail |
-| Error rate | X% |
-
----
-
-## Post-Deploy Tasks
-
-- [ ] Monitor error rate for 24h
-- [ ] Check queue processing
-- [ ] Notify stakeholders
-```
+- **Metadata:** `Version: [git hash]`, `Deployed by: [who]`
+- **Summary table columns:** Step (Pre-checks, Backup, Deploy, Migrations, Build, Cache, Verification) | Status | Duration
+- **Extra section:** "Readiness Score" (XX% - READY / ACCEPTABLE / NOT READY)
+- **Extra section:** "Changes Deployed" (Features, Fixes, Migrations)
+- **Extra section:** "Verification Results" (Homepage loads, Login works, Error rate)
+- **Post-Deploy Tasks:** Monitor error rate 24h, check queues, notify stakeholders

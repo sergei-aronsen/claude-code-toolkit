@@ -26,44 +26,10 @@
 
 ## AT THE START OF EACH SESSION
 
-### 0. Verify working directory (CRITICAL for worktrees)
-
-```bash
-pwd
-git rev-parse --show-toplevel
-```
-
-**Lock this directory for the entire session.** Do NOT `cd` to parent folders, sibling worktrees, or the main repository. All file operations must stay within this directory.
-
-### 1. Check memory synchronization
-
-```bash
-# Compare MCP vs git file dates
-ls -la ~/.claude/memory-bank/[PROJECT_NAME]/*.md
-ls -la .claude/memory/*.md
-```
-
-- **MCP is newer than git** → copy: `cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/`
-- **git is newer than MCP** (new computer) → import memory into MCP
-
-### 2. Read project memory (Memory Bank)
-
-```text
-mcp__memory-bank__memory_bank_read (projectName: "[PROJECT_NAME]", fileName: "project-context.md")
-```
-
-### 3. Import Knowledge Graph (required every session)
-
-> **Knowledge Graph is in-memory only — data is lost on every restart of Claude Code.**
-
-```text
-# Check if graph has data
-mcp__memory__read_graph()
-
-# If empty — import from .claude/memory/knowledge-graph.json:
-mcp__memory__create_entities(entities: [...entities from JSON...])
-mcp__memory__create_relations(relations: [...relations from JSON...])
-```
+1. **Verify directory:** `pwd` + `git rev-parse --show-toplevel` — lock this directory for the session
+2. **Memory sync:** compare dates `~/.claude/memory-bank/[PROJECT_NAME]/*.md` vs `.claude/memory/*.md`, copy newer
+3. **Load memory:** `mcp__memory-bank__memory_bank_read` for project context
+4. **Knowledge Graph:** `mcp__memory__read_graph()` — if empty, import from `.claude/memory/knowledge-graph.json`
 
 ---
 
@@ -296,31 +262,6 @@ router.get('/users', asyncHandler(async (req, res) => {
 
 ---
 
-## Quick Commands
-
-| Command | Description |
-| --------- | -------- |
-| `/verify` | Quick check: build, types, lint, tests |
-| `/debug` | Systematic debugging (4 phases, root cause first) |
-| `/learn` | Save problem solution to `.claude/learned/` |
-| `/deploy` | Safe deployment with pre/post checks |
-| `/fix-prod` | Production hotfix workflow |
-| `/audit [type]` | Deep analysis (security, performance, code) |
-
----
-
-## Available Audits
-
-| Trigger | Action |
-| --------- | -------- |
-| `security audit` | Run `SECURITY_AUDIT.md` |
-| `performance audit` | Run `PERFORMANCE_AUDIT.md` |
-| `code review` | Run `CODE_REVIEW.md` |
-| `postgres audit` | Run `POSTGRES_PERFORMANCE_AUDIT.md` |
-| `deploy checklist` | Run `DEPLOY_CHECKLIST.md` |
-
----
-
 ## Available Skills
 
 | Skill | When to load |
@@ -335,32 +276,16 @@ Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ## Scratchpad
 
-For complex tasks use `.claude/scratchpad/`:
-
-- `current-task.md` — current plan with checkboxes
-- `findings.md` — research notes
-- `decisions.md` — architectural decisions log
+Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for research, `decisions.md` for decisions.
 
 ---
 
-## Knowledge Persistence (SAVE KNOWLEDGE!)
+## Knowledge Persistence
 
-On **significant changes** — save knowledge in THREE places:
-
-1. **CLAUDE.md** — update this file
-2. **Documentation** — update /docs or README
-3. **MCP Memory** — save for future sessions (always in English, regardless of conversation language)
+On significant changes, save to: (1) CLAUDE.md, (2) docs/README, (3) MCP Memory (always in English).
 
 ---
 
 ## Project-Specific Notes
 
-### Known Gotchas
-
-- [List project-specific issues]
-
-### Public Endpoints (by design)
-
-- `/health` — Health check
-- `/metrics` — Prometheus metrics
-- `/api/webhooks/*` — External webhooks
+<!-- Add known gotchas, public endpoints, and project-specific issues here -->

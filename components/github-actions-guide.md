@@ -254,71 +254,29 @@ jobs:
 
 ### Deploy to Railway
 
+Same structure as Vercel. Key steps:
+
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-
-      - name: Deploy
-        run: railway up
+      - run: npm i -g @railway/cli
+      - run: railway up
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 ```
 
 ### Deploy Docker to Cloud Run
 
+Same trigger structure. Key steps:
+
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE: my-service
-  REGION: us-central1
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Auth GCP
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Build and push
-        run: |
-          gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE
-
-      - name: Deploy to Cloud Run
-        run: |
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE
+      - run: |
           gcloud run deploy $SERVICE \
             --image gcr.io/$PROJECT_ID/$SERVICE \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated
+            --region $REGION --platform managed
 ```
 
 ---
@@ -350,7 +308,7 @@ jobs:
 
 ## Caching Strategies
 
-### Node.js (pnpm)
+Most setup actions support built-in caching. Example (Node.js/pnpm):
 
 ```yaml
 - uses: pnpm/action-setup@v2
@@ -363,32 +321,11 @@ jobs:
     cache: 'pnpm'
 ```
 
-### Python (uv)
+Other languages follow the same pattern — use the `cache` option in their setup action:
 
-```yaml
-- uses: astral-sh/setup-uv@v1
-  with:
-    enable-cache: true
-```
-
-### Go
-
-```yaml
-- uses: actions/setup-go@v5
-  with:
-    go-version: '1.21'
-    cache: true
-```
-
-### Docker layers
-
-```yaml
-- uses: docker/build-push-action@v5
-  with:
-    context: .
-    cache-from: type=gha
-    cache-to: type=gha,mode=max
-```
+- **Python (uv):** `astral-sh/setup-uv@v1` with `enable-cache: true`
+- **Go:** `actions/setup-go@v5` with `cache: true`
+- **Docker layers:** `docker/build-push-action@v5` with `cache-from: type=gha`
 
 ---
 
@@ -469,29 +406,3 @@ jobs:
     with:
       node-version: '20'
 ```
-
----
-
-## Best Practices
-
-| Practice | Implementation |
-|----------|----------------|
-| Concurrency | Cancel in-progress runs |
-| Caching | Cache dependencies |
-| Fail fast | Stop on first failure |
-| Timeouts | Set job timeouts |
-| Permissions | Minimal GITHUB_TOKEN |
-| Branch protection | Require CI pass |
-
----
-
-## Useful Actions
-
-| Action | Purpose |
-|--------|---------|
-| `actions/checkout@v4` | Checkout code |
-| `actions/setup-node@v4` | Setup Node.js |
-| `actions/cache@v4` | Cache dependencies |
-| `codecov/codecov-action@v3` | Upload coverage |
-| `docker/build-push-action@v5` | Build Docker images |
-| `softprops/action-gh-release@v1` | Create releases |

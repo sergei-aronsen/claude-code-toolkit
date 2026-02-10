@@ -47,42 +47,15 @@ Analyze and optimize application performance: N+1 queries, bundle size, memory l
 | `UserController:45` | `SELECT * FROM posts WHERE user_id = ?` | 100x | HIGH |
 | `OrderService:78` | `SELECT * FROM products WHERE id = ?` | 50x | MEDIUM |
 
-### Recommendations
-
-#### Fix N+1 in UserController
-
-**Before:**
-\`\`\`php
-$users = User::all();
-foreach ($users as $user) {
-    $posts = $user->posts; // N queries!
-}
-\`\`\`
-
-**After:**
-\`\`\`php
-$users = User::with('posts')->get(); // 2 queries total
-\`\`\`
+Fix pattern: eager loading (`with()` / `include`) instead of lazy loading loops.
 
 ### Missing Indexes
 
-| Table | Column | Query |
-|-------|--------|-------|
-| orders | user_id | `WHERE user_id = ?` |
-| posts | status | `WHERE status = 'published'` |
-
-### Suggested Indexes
-
-\`\`\`sql
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_posts_status ON posts(status);
-\`\`\`
+Table with Column | Query columns. Generates `CREATE INDEX` statements.
 
 ### Slow Queries (>100ms)
 
-| Query | Time | Location |
-|-------|------|----------|
-| `SELECT * FROM logs WHERE...` | 2.3s | LogService:34 |
+Table with Query | Time | Location.
 ```
 
 ---
@@ -110,36 +83,7 @@ CREATE INDEX idx_posts_status ON posts(status);
 | moment | 66 KB | 4.9% |
 | chart.js | 180 KB | 13.4% |
 
-### Recommendations
-
-1. **Replace lodash with lodash-es**
-   \`\`\`bash
-   npm remove lodash
-   npm install lodash-es
-   \`\`\`
-
-2. **Replace moment with date-fns**
-   \`\`\`bash
-   npm remove moment
-   npm install date-fns
-   # Saves ~60KB
-   \`\`\`
-
-3. **Dynamic import for chart.js**
-   \`\`\`typescript
-   // Before
-   import Chart from 'chart.js';
-
-   // After
-   const Chart = await import('chart.js');
-   \`\`\`
-
-### Tree Shaking Issues
-
-| Import | Problem |
-|--------|---------|
-| `import * as utils from './utils'` | Import only what you need |
-| `import { Button } from 'ui-library'` | Check if library is tree-shakeable |
+Recommendations: lighter alternatives (lodash→lodash-es, moment→date-fns), dynamic imports for heavy libs, tree-shaking fixes.
 ```
 
 ---
@@ -159,49 +103,9 @@ CREATE INDEX idx_posts_status ON posts(status);
 | Timer not cleared | `setInterval` in Poller.ts | MEDIUM |
 | Subscription not unsubscribed | `useStore` in Header.tsx | MEDIUM |
 
-### Fixes
+Fix pattern: always return cleanup from `useEffect` — `removeEventListener`, `clearInterval`, unsubscribe.
 
-#### Dashboard.tsx (Line 45)
-
-**Before:**
-\`\`\`tsx
-useEffect(() => {
-  window.addEventListener('resize', handleResize);
-}, []);
-\`\`\`
-
-**After:**
-\`\`\`tsx
-useEffect(() => {
-  window.addEventListener('resize', handleResize);
-  return () => window.removeEventListener('resize', handleResize);
-}, []);
-\`\`\`
-
-#### Poller.ts (Line 23)
-
-**Before:**
-\`\`\`typescript
-const interval = setInterval(fetchData, 5000);
-\`\`\`
-
-**After:**
-\`\`\`typescript
-const interval = setInterval(fetchData, 5000);
-// In cleanup
-return () => clearInterval(interval);
-\`\`\`
-
-### Memory Profiling Commands
-
-\`\`\`bash
-# Node.js heap snapshot
-node --inspect app.js
-# Open chrome://inspect
-
-# Chrome DevTools
-# Performance tab → Record → Memory
-\`\`\`
+Profile with `node --inspect` + Chrome DevTools Performance tab.
 ```
 
 ---
@@ -223,31 +127,11 @@ node --inspect app.js
 
 ### Slow Endpoints
 
-#### GET /api/posts (230ms avg)
-
-**Bottlenecks:**
-1. N+1 query for author info
-2. No pagination
-3. Full text fields loaded
-
-**Recommendations:**
-\`\`\`typescript
-// Add pagination
-const posts = await prisma.post.findMany({
-  take: 20,
-  skip: page * 20,
-  include: { author: { select: { id: true, name: true } } },
-  select: { id: true, title: true, excerpt: true, createdAt: true }
-});
-\`\`\`
+For slow endpoints: identify bottlenecks (N+1, no pagination, full fields), provide fix with pagination + field selection + eager loading.
 
 ### Caching Opportunities
 
-| Endpoint | TTL | Strategy |
-|----------|-----|----------|
-| /api/users/:id | 5min | Cache-aside |
-| /api/posts | 1min | Cache with invalidation |
-| /api/config | 1hour | Long-term cache |
+Table with Endpoint | TTL | Strategy (cache-aside, invalidation, long-term).
 ```
 
 ---

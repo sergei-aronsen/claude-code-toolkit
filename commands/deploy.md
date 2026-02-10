@@ -65,96 +65,25 @@ git merge --abort  # Reset after check
 
 **If conflicts — resolve BEFORE deploying. DO NOT use `git reset --hard`.**
 
-### 1.3 Tests
+### 1.3 Tests and Build
 
-```bash
-# Laravel
-php artisan test
-
-# Next.js / Node.js
-npm test
-
-# Python
-pytest
-
-# Go
-go test ./...
-```
-
-**If tests fail — STOP. Fix tests before deploying.**
-
-### 1.4 Build
-
-```bash
-# Laravel
-npm run build
-
-# Next.js
-npm run build
-
-# Python
-# no build step usually
-
-# Go
-go build ./...
-```
+Run the project's test and build commands. **If tests fail — STOP. Fix before deploying.**
 
 ---
 
 ## Phase 2: Deploy
 
-### 2.1 Framework-Specific Deploy
+### 2.1 Deploy Steps
 
-**Laravel:**
+Pattern: `git pull` → install deps → build → migrate → cache → restart workers.
 
-```bash
-ssh production 'cd /app && \
-  git pull origin main && \
-  composer install --no-dev --optimize-autoloader && \
-  php artisan migrate --force && \
-  php artisan config:cache && \
-  php artisan route:cache && \
-  php artisan view:cache && \
-  php artisan queue:restart'
-```
-
-**Next.js:**
-
-```bash
-ssh production 'cd /app && \
-  git pull origin main && \
-  npm ci --production && \
-  npm run build && \
-  pm2 reload next-app'
-```
-
-**Node.js:**
-
-```bash
-ssh production 'cd /app && \
-  git pull origin main && \
-  npm ci --production && \
-  pm2 reload app'
-```
-
-**Python:**
-
-```bash
-ssh production 'cd /app && \
-  git pull origin main && \
-  pip install -r requirements.txt && \
-  python manage.py migrate && \
-  supervisorctl restart app'
-```
-
-**Go:**
-
-```bash
-ssh production 'cd /app && \
-  git pull origin main && \
-  go build -o app . && \
-  systemctl restart app'
-```
+| Framework | Install | Build | Migrate | Restart |
+|-----------|---------|-------|---------|---------|
+| Laravel | `composer install --no-dev` | `npm run build` | `php artisan migrate --force` | `queue:restart` |
+| Next.js | `npm ci --production` | `npm run build` | — | `pm2 reload` |
+| Node.js | `npm ci --production` | — | — | `pm2 reload` |
+| Python | `pip install -r requirements.txt` | — | `manage.py migrate` | `supervisorctl restart` |
+| Go | — | `go build -o app .` | — | `systemctl restart` |
 
 ### 2.2 Worker Restart (SAFETY!)
 
@@ -195,34 +124,9 @@ done
 
 **All must return 200. If any returns 500 — investigate immediately.**
 
-### 3.2 Log Check
+### 3.2 Log and Worker Check
 
-```bash
-# Laravel
-tail -30 storage/logs/laravel.log | grep -i "error\|exception"
-
-# Next.js / Node.js
-pm2 logs --lines 30 --err
-
-# Python
-tail -30 /var/log/app/error.log
-
-# Systemd
-journalctl -u app --since "1 minute ago" --no-pager
-```
-
-### 3.3 Worker Status
-
-```bash
-# Laravel
-php artisan queue:monitor redis:default
-
-# PM2
-pm2 status
-
-# Supervisor
-supervisorctl status
-```
+Check logs for errors (last 30 lines) and verify worker status using the project's process manager (PM2/Supervisor/systemd).
 
 ---
 

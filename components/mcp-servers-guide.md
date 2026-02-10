@@ -173,7 +173,7 @@ Saving project context for future sessions.
 
 ### 4. Sequential Thinking — Complex Tasks
 
-Step-by-step solving of complex problems with revision capability.
+Multi-step problem solving with revision capability. Use for architectural decisions and complex analysis.
 
 ```json
 {
@@ -185,25 +185,9 @@ Step-by-step solving of complex problems with revision capability.
 }
 ```
 
-**When to use:**
-
-- Task requires multi-step analysis
-- Many solution options
-- Need to not miss details
-- Architectural decisions
-
-**Examples:**
-
-```text
-"Design a notification system with scaling in mind"
-"Analyze all edge cases for payment system"
-```
-
----
-
 ### 5. Morph Fast Tools — Fast Editing
 
-Smart code search (WarpGrep) and fast file editing.
+Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
 
 ```json
 {
@@ -218,28 +202,11 @@ Smart code search (WarpGrep) and fast file editing.
 }
 ```
 
-**Requires:** API key from [morph.sh](https://morph.sh)
-
-**When to use:**
-
-- Find code by functionality description
-- Quickly edit large file
-- Search for related code
-
-**Examples:**
-
-```text
-"Find where authorization errors are handled"
-"Find all places where Redis is used"
-```
-
----
-
 ### 6. Knowledge Graph Memory — Knowledge Graph (for Opus)
 
-> **WARNING:** Knowledge Graph MCP server is **in-memory only** — all data is lost on every restart of Claude Code or the MCP server. You must import it from `.claude/memory/knowledge-graph.json` at the start of **every session**. See [memory-persistence.md](memory-persistence.md) for details.
+> **WARNING:** In-memory only — data lost on restart. Import from `.claude/memory/knowledge-graph.json` at session start. See [memory-persistence.md](memory-persistence.md).
 
-Advanced memory that builds a graph of relationships between project entities.
+Builds a graph of relationships between project entities. Unlike Memory Bank (key-value facts), this stores how entities relate to each other.
 
 ```json
 {
@@ -250,31 +217,6 @@ Advanced memory that builds a graph of relationships between project entities.
   }
 }
 ```
-
-**Difference from Memory Bank:**
-
-| Memory Bank | Knowledge Graph |
-|-------------|-----------------|
-| Stores facts | Stores relationships between facts |
-| Key-value storage | Graph database |
-| "Why we chose Redis" | "Redis is connected to cache, cache is connected to API, API depends on auth" |
-
-**When to use:**
-
-- Build project dependency graph
-- Find circular dependencies
-- Analyze architectural contradictions
-- Track how decisions affect each other
-
-**Examples:**
-
-```text
-"Build dependency graph of authorization module"
-"Find components that depend on deprecated API"
-"Analyze relationships between services and find bottlenecks"
-```
-
-**Recommended for:** Claude Opus 4.5 (requires deep analysis)
 
 ---
 
@@ -390,68 +332,23 @@ claude
 
 ## Troubleshooting
 
-### Server doesn't connect
+| Problem | Fix |
+|---------|-----|
+| Server doesn't connect | Check `npx --version`, try `claude --debug`, install globally if needed |
+| Memory Bank "directory not found" | `mkdir -p ~/.claude/memory-bank` |
+| Playwright "browser not installed" | `npx playwright install chromium` |
+| Playwright won't start (parallel sessions) | `pkill -f 'user-data-dir=.*mcp-chrome'` then remove stale lock (see below) |
 
-1. Check that `npx` works: `npx --version`
-2. Check logs: `claude --debug`
-3. Try installing package globally: `npm install -g @package/name`
-
-### Memory Bank: "directory not found"
-
-Create directory manually:
-
-```bash
-mkdir -p ~/.claude/memory-bank
-```
-
-### Playwright: "browser not installed"
-
-Install Playwright browsers:
+**Playwright stale lock removal:**
 
 ```bash
-npx playwright install chromium
-```
-
-### Playwright: Browser Won't Start (Parallel Sessions)
-
-Multiple Claude Code sessions share the same browser profile. If one didn't close the browser, others can't launch it.
-
-**Quick fix:**
-
-```bash
-# Kill Playwright's Chrome (safe — doesn't touch your regular Chrome)
-pkill -f 'user-data-dir=.*mcp-chrome'
-
-# Remove stale lock (macOS)
+# macOS
 rm -f ~/Library/Caches/ms-playwright/mcp-chrome-*/SingletonLock
-
-# Remove stale lock (Linux)
+# Linux
 rm -f ~/.cache/ms-playwright/mcp-chrome-*/SingletonLock
 ```
 
-**Permanent fix — add stop hook to `~/.claude/settings.json`:**
-
-```json
-{
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pkill -f 'user-data-dir=.*mcp-chrome' 2>/dev/null; rm -f ~/Library/Caches/ms-playwright/mcp-chrome-*/SingletonLock 2>/dev/null; true"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-This automatically kills the Playwright browser when a Claude session ends.
-
-See [playwright-self-testing.md](playwright-self-testing.md) for full details.
+**Permanent fix** — add stop hook to `~/.claude/settings.json` to auto-kill browser on session end. See [playwright-self-testing.md](playwright-self-testing.md) for details.
 
 ---
 

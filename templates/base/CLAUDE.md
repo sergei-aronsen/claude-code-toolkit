@@ -27,52 +27,10 @@
 
 ## AT THE START OF EACH SESSION
 
-### 0. Verify working directory (CRITICAL for worktrees)
-
-```bash
-pwd
-git rev-parse --show-toplevel
-```
-
-**Lock this directory for the entire session.** Do NOT `cd` to parent folders, sibling worktrees, or the main repository. All file operations must stay within this directory.
-
-If using worktrees (`lantern-1`, `lantern-2`, etc.) — each session must stay in its own worktree folder.
-
-### 1. Check memory synchronization
-
-```bash
-# Compare MCP vs git file dates
-ls -la ~/.claude/memory-bank/[PROJECT_NAME]/*.md
-ls -la .claude/memory/*.md
-```
-
-- **MCP newer than git** → copy: `cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/`
-- **git newer than MCP** (new computer) → import memory into MCP
-
-### 2. Read project memory (Memory Bank)
-
-```text
-mcp__memory-bank__memory_bank_read (projectName: "[PROJECT_NAME]", fileName: "project-context.md")
-```
-
-### 3. Import Knowledge Graph (required every session)
-
-> **Knowledge Graph is in-memory only — data is lost on every restart of Claude Code.**
-
-```text
-# Check if graph has data
-mcp__memory__read_graph()
-
-# If empty — import from .claude/memory/knowledge-graph.json:
-mcp__memory__create_entities(entities: [...entities from JSON...])
-mcp__memory__create_relations(relations: [...relations from JSON...])
-```
-
-### 4. Load additional files if needed
-
-- `decisions-log.md` — architectural decisions
-- `server-config.md` — configurations (if any)
-- `integrations.md` — external services (if any)
+1. **Verify directory:** `pwd` + `git rev-parse --show-toplevel` — lock this directory for the session
+2. **Memory sync:** compare dates `~/.claude/memory-bank/[PROJECT_NAME]/*.md` vs `.claude/memory/*.md`, copy newer
+3. **Load memory:** `mcp__memory-bank__memory_bank_read` for project context
+4. **Knowledge Graph:** `mcp__memory__read_graph()` — if empty, import from `.claude/memory/knowledge-graph.json`
 
 ---
 
@@ -269,15 +227,9 @@ Full guide: `components/production-safety.md`
 
 ---
 
-## Visual Self-Testing (Playwright MCP)
+## Visual Self-Testing
 
-**After ANY visual/UI change, self-test using Playwright MCP before reporting completion.**
-
-Workflow: navigate to page, check for console errors, interact with changed elements, take screenshots, report findings. If bug found — fix, redeploy, re-test.
-
-**IMPORTANT: Always call `browser_close` after finishing tests.** Multiple Claude sessions share the same Playwright browser profile. Leaving the browser open will block other sessions from launching it.
-
-Requires Playwright MCP server. Full guide: `components/playwright-self-testing.md`
+After UI changes, test with Playwright MCP: navigate, check errors, interact, screenshot. Always call `browser_close` after. Guide: `components/playwright-self-testing.md`
 
 ---
 
@@ -328,33 +280,6 @@ Requires Playwright MCP server. Full guide: `components/playwright-self-testing.
 
 ---
 
-## ⚡ Quick Commands
-
-| Command | Description |
-| --------- | -------- |
-| `/verify` | Quick check: build, types, lint, tests |
-| `/debug` | Systematic debugging (4 phases, root cause first) |
-| `/learn` | Save problem solution to `.claude/learned/` |
-| `/deploy` | Safe deployment with pre/post checks |
-| `/fix-prod` | Production hotfix workflow |
-| `/audit [type]` | Deep analysis (security, performance, code) |
-
----
-
-## 📋 Available Audits
-
-| Trigger | Action |
-| --------- | -------- |
-| `security audit` | Run `SECURITY_AUDIT.md` |
-| `performance audit` | Run `PERFORMANCE_AUDIT.md` |
-| `code review` | Run `CODE_REVIEW.md` |
-| `design review` | Run `DESIGN_REVIEW.md` (Playwright MCP) |
-| `mysql audit` | Run `MYSQL_PERFORMANCE_AUDIT.md` |
-| `postgres audit` | Run `POSTGRES_PERFORMANCE_AUDIT.md` |
-| `deploy checklist` | Run `DEPLOY_CHECKLIST.md` |
-
----
-
 ## 🎓 Available Skills
 
 | Skill | When to load |
@@ -368,64 +293,13 @@ Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ## Scratchpad
 
-For complex tasks use `.claude/scratchpad/`:
-
-- `current-task.md` — current plan with checkboxes
-- `findings.md` — research notes
-- `decisions.md` — architectural decisions log
+Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for research, `decisions.md` for decisions.
 
 ---
 
-## Knowledge Persistence (SAVE KNOWLEDGE!)
+## Knowledge Persistence
 
-On **significant changes** — save knowledge to THREE places + sync:
-
-### 1. CLAUDE.md — update this file
-
-- New gotchas and limitations
-- Architecture changes
-- New patterns and practices
-
-### 2. Documentation — update /docs or README
-
-- API changes
-- New features
-- Developer instructions
-
-### 3. MCP Memory — save for future sessions
-
-> **IMPORTANT:** All memory entries must be written in English, regardless of conversation language.
-
-**Knowledge Graph** (relationships and architecture):
-
-```text
-"Save to knowledge graph: module X depends on Y because of Z"
-```
-
-**Memory Bank** (facts and decisions):
-
-```text
-"Save to memory-bank: chose Redis because..."
-```
-
-### 4. IMMEDIATELY sync memory to git
-
-After MCP changes — **immediately** copy to `.claude/memory/`:
-
-```bash
-cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/
-```
-
-And export Knowledge Graph to `.claude/memory/knowledge-graph.json`.
-
-**Don't delay — do it right after MCP changes!**
-
-### What to save
-
-- Architectural decisions and their reasons
-- Critical gotchas
-- Module relationships
-- Non-standard solutions
+On significant changes, save to: (1) CLAUDE.md, (2) docs/README, (3) MCP Memory (always in English).
 
 ---
 
@@ -479,13 +353,6 @@ Update?
 
 ---
 
-## ⚠️ Project-Specific Notes
+## Project-Specific Notes
 
-### Known Gotchas
-
-- [List project-specific issues]
-
-### Public Endpoints (by design)
-
-- `/api/health` — Health check
-- `/webhooks/*` — External webhooks
+<!-- Add known gotchas, public endpoints, and project-specific issues here -->

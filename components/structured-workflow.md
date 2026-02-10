@@ -210,35 +210,6 @@ If during execution you realize the plan is wrong:
 
 ---
 
-## Quick Reference
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  RESEARCH (read-only)                                   │
-│  ─────────────────────                                  │
-│  Allowed: Glob, Grep, Read, WebFetch, WebSearch         │
-│  Forbidden: Write, Edit, Bash                           │
-│                                                         │
-│  Exit: Understood context and dependencies              │
-├─────────────────────────────────────────────────────────┤
-│  PLAN (scratchpad-only)                                 │
-│  ─────────────────────                                  │
-│  Allowed: Read + Write ONLY to .claude/scratchpad/      │
-│  Forbidden: Changes to project code                     │
-│                                                         │
-│  Exit: Plan ready + user confirmation                   │
-├─────────────────────────────────────────────────────────┤
-│  EXECUTE (full access)                                  │
-│  ─────────────────────                                  │
-│  Allowed: All tools                                     │
-│  Follow plan, track progress                            │
-│                                                         │
-│  Exit: All steps completed                              │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
 ## When to Use
 
 ### Use Structured Workflow for
@@ -301,51 +272,6 @@ For complex tasks use 3-phase approach:
 
 ---
 
-## Example Session
+## Example Flow
 
-```text
-User: Add email validation to registration form
-
-Claude: Starting Phase 1: RESEARCH
-
-[Uses Glob to search for form files]
-[Uses Read to study current validation]
-[Uses Grep to search for validation patterns]
-
-Found:
-- Form in `src/components/RegisterForm.tsx`
-- Validation via Zod in `src/lib/validation.ts`
-- Similar pattern in `src/components/LoginForm.tsx`
-
-Moving to Phase 2: PLAN
-
-[Creates plan in .claude/scratchpad/current-task.md]
-
-Plan includes verification for each step:
-- Step 1: Add schema → Verify: unit test
-- Step 2: Integrate → Verify: npm run typecheck
-- Step 3: Tests → Verify: npm test
-
-Plan is ready. Please review `.claude/scratchpad/current-task.md` and confirm.
-
-User: ok
-
-Claude: Phase 3: EXECUTE
-
-Step 1: Adding email schema to validation.ts...
-[Edit file]
-Verifying: Running unit test...
-✅ Test passes. Step 1 done.
-
-Step 2: Integrating into RegisterForm...
-[Edit file]
-Verifying: npm run typecheck...
-✅ No type errors. Step 2 done.
-
-Step 3: Adding tests...
-[Write test file]
-Verifying: npm test src/lib/validation.test.ts...
-✅ All tests pass. Step 3 done.
-
-All steps completed and verified.
-```
+Typical session: RESEARCH (find files, study patterns, check deps) then PLAN (write plan to scratchpad, wait for user OK) then EXECUTE (implement step-by-step, verify each step, commit).

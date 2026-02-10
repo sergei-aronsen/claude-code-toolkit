@@ -109,108 +109,19 @@ php artisan test --filter=SmokeTest
 
 ### Next.js (Vitest)
 
-```typescript
-// __tests__/smoke.test.ts
+Same pattern using `fetch` against `BASE_URL`. Key differences from Laravel:
 
-import { describe, it, expect } from 'vitest'
-
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000'
-
-describe('Smoke Tests', () => {
-  describe('Public endpoints', () => {
-    it.each([
-      ['/api/health', 200],
-      ['/', 200],
-    ])('%s returns %i', async (endpoint, status) => {
-      const res = await fetch(`${BASE_URL}${endpoint}`)
-      expect(res.status).toBe(status)
-    })
-  })
-
-  describe('Protected endpoints return 401', () => {
-    it.each([
-      '/api/me',
-      '/api/dashboard',
-    ])('%s returns 401 without auth', async (endpoint) => {
-      const res = await fetch(`${BASE_URL}${endpoint}`)
-      expect(res.status).toBe(401)
-    })
-  })
-
-  describe('Auth flow', () => {
-    it('login returns token', async () => {
-      const res = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: 'test@example.com',
-          password: 'password',
-        }),
-      })
-
-      expect(res.status).toBe(200)
-      const data = await res.json()
-      expect(data).toHaveProperty('token')
-    })
-  })
-})
-```
-
-**Run:**
-
-```bash
-# Dev server must be running
-npm run dev &
-npx vitest run __tests__/smoke.test.ts
-```
+- File: `__tests__/smoke.test.ts`, use `describe`/`it.each` with Vitest
+- Requires dev server running: `npm run dev &` before tests
+- Run: `npx vitest run __tests__/smoke.test.ts`
 
 ### Node.js / Express (Jest + Supertest)
 
-```typescript
-// tests/smoke.test.ts
+Same pattern using `supertest` for direct app testing. Key differences:
 
-import request from 'supertest'
-import app from '../src/app'
-
-describe('Smoke Tests', () => {
-  describe('Public endpoints', () => {
-    it.each([
-      ['/api/health', 200],
-      ['/api/version', 200],
-    ])('%s returns %i', async (endpoint, status) => {
-      const res = await request(app).get(endpoint)
-      expect(res.status).toBe(status)
-    })
-  })
-
-  describe('Protected endpoints', () => {
-    it.each([
-      '/api/me',
-      '/api/settings',
-    ])('%s returns 401 without auth', async (endpoint) => {
-      const res = await request(app).get(endpoint)
-      expect(res.status).toBe(401)
-    })
-  })
-
-  describe('Response structure', () => {
-    it('GET /api/users returns array', async () => {
-      const res = await request(app)
-        .get('/api/users')
-        .set('Authorization', 'Bearer test-token')
-
-      expect(res.status).toBe(200)
-      expect(Array.isArray(res.body.data)).toBe(true)
-    })
-  })
-})
-```
-
-**Run:**
-
-```bash
-npx jest tests/smoke.test.ts
-```
+- File: `tests/smoke.test.ts`, import app and use `request(app).get(endpoint)`
+- No server needed — supertest binds to the app directly
+- Run: `npx jest tests/smoke.test.ts`
 
 ---
 

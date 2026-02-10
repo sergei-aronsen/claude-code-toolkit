@@ -113,21 +113,11 @@ t('welcome', { name: userName })
 
 ### Правило 2: Не конструируй предложения в коде
 
-```javascript
-// ❌ Плохо — порядок слов зависит от языка
-const msg = t('you_have') + count + t('new_messages')
-
-// ✅ Хорошо — полное предложение
-const msg = t('new_messages_count', { count })
-```
+Use `t('new_messages_count', { count })` instead of `t('you_have') + count + t('new_messages')` -- word order varies by language.
 
 ### Правило 3: Используй библиотеки для сложной логики
 
-Не пиши свою логику для:
-
-- Множественных форм (plural)
-- Гендерных согласований
-- Склонений
+Don't write custom logic for plurals, gender agreement, or declensions -- use i18n libraries.
 
 ---
 
@@ -235,22 +225,7 @@ n(1234.5, 'currency')    // Число как валюта
 
 ## 8. Псевдо-локализация (тестирование)
 
-Тестируй UI **до** реального перевода:
-
-```javascript
-// Оригинал
-"Save"
-
-// Псевдо-локализация
-"[Šåṿḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗḗ]"  // Длинный текст + спецсимволы
-```
-
-### Что находит
-
-- Обрезанный текст
-- Проблемы с кодировкой
-- Захардкоженные строки (не обёрнутые в `t()`)
-- Сломанный layout
+Тестируй UI **до** реального перевода. Заменяет `"Save"` на `"[Šåṿḗḗḗ...]"` (длинный текст + спецсимволы). Находит: обрезанный текст, проблемы с кодировкой, захардкоженные строки, сломанный layout.
 
 ---
 
@@ -320,65 +295,27 @@ t('common.button.save')
 
 ---
 
-## 11. AI-assisted перевод
+## 11. Translation Workflow (AI, CI/CD, Adding Languages)
 
-### Быстрый перевод через Claude
+### Quick AI Translation
 
 ```bash
-# Перевод JSON файла
 cat lang/en/common.json | claude "Translate values to Russian. Keep JSON keys unchanged. Output valid JSON only."
-
-# С контекстом
-cat lang/en/billing.json | claude "Translate to German. Context: SaaS billing interface. Keep technical terms (API, OAuth) as-is."
 ```
 
-### Проверка недостающих ключей
+### Adding a New Language
 
-```bash
-# Сравнить ключи между локалями
-diff <(jq -r 'keys[]' lang/en/common.json | sort) \
-     <(jq -r 'keys[]' lang/ru/common.json | sort)
-```
+1. `cp -r lang/en lang/{locale}` -- copy base language
+2. Translate (AI or manually)
+3. Add locale to config: `'available_locales' => ['en', 'ru', '{locale}']`
+4. Verify key coverage: `diff <(jq -r 'keys[]' lang/en/common.json | sort) <(jq -r 'keys[]' lang/{locale}/common.json | sort)`
 
----
+### CI/CD Tools
 
-## 12. CI/CD инструменты
-
-| Инструмент | Тип | Интеграция |
-|------------|-----|------------|
-| [Localazy](https://localazy.com) | CLI + TMS | GitHub, GitLab |
-| [Crowdin](https://crowdin.com) | TMS | Git, API |
-| [Lingo.dev](https://github.com/lingodotdev/lingo.dev) | AI-powered | GitHub Actions |
-| [Locize](https://locize.com) | i18next + CDN | Realtime updates |
-
-### GitHub Action пример
-
-```yaml
-- name: Sync translations
-  run: |
-    npx localazy upload
-    npx localazy download
-```
-
----
-
-## 13. Добавление нового языка
-
-```bash
-# 1. Копировать базовый язык
-cp -r lang/en lang/sv
-
-# 2. Перевести (вручную или AI)
-cat lang/sv/common.json | claude "Translate to Swedish..."
-
-# 3. Добавить в конфиг
-# config/app.php
-'available_locales' => ['en', 'ru', 'sv']
-
-# 4. Проверить покрытие
-diff <(jq -r 'keys[]' lang/en/common.json | sort) \
-     <(jq -r 'keys[]' lang/sv/common.json | sort)
-```
+- [Localazy](https://localazy.com) -- CLI + TMS, GitHub/GitLab integration
+- [Crowdin](https://crowdin.com) -- TMS with Git and API
+- [Lingo.dev](https://github.com/lingodotdev/lingo.dev) -- AI-powered, GitHub Actions
+- [Locize](https://locize.com) -- i18next + CDN, realtime updates
 
 ---
 
