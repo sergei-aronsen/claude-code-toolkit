@@ -67,7 +67,7 @@ validate:
 			echo "❌ Missing QUICK CHECK: $$f"; \
 			ERRORS=$$((ERRORS + 1)); \
 		fi; \
-		if ! grep -q "САМОПРОВЕРКА" "$$f" 2>/dev/null; then \
+		if ! grep -qE "САМОПРОВЕРКА|SELF-CHECK" "$$f" 2>/dev/null; then \
 			echo "❌ Missing САМОПРОВЕРКА: $$f"; \
 			ERRORS=$$((ERRORS + 1)); \
 		fi; \

@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/settings.json",
-  
+
   "hooks": {
     "PostToolUse": [
       {
@@ -8,11 +8,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [[ \"$FILE_PATH\" == *.php ]]; then ./vendor/bin/pint \"$FILE_PATH\" --quiet 2>/dev/null || true; fi"
+            "command": "if [[ \"$FILE_PATH\" == *.rb ]]; then bundle exec rubocop -a \"$FILE_PATH\" --fail-level error 2>/dev/null || true; fi"
           },
           {
             "type": "command",
-            "command": "if [[ \"$FILE_PATH\" == *.vue ]] || [[ \"$FILE_PATH\" == *.js ]] || [[ \"$FILE_PATH\" == *.ts ]]; then npx prettier --write \"$FILE_PATH\" --log-level error 2>/dev/null || true; fi"
+            "command": "if [[ \"$FILE_PATH\" == *.js ]] || [[ \"$FILE_PATH\" == *.ts ]]; then npx prettier --write \"$FILE_PATH\" --log-level error 2>/dev/null || true; fi"
           },
           {
             "type": "command",
@@ -44,7 +44,7 @@
       }
     ]
   },
-  
+
   "permissions": {
     "allow": [
       "Edit(*)",
@@ -52,18 +52,18 @@
       "Read(*)",
       "Grep(*)",
       "Glob(*)",
-      
-      "Bash(php artisan *)",
-      "Bash(composer *)",
-      "Bash(./vendor/bin/pint *)",
-      "Bash(./vendor/bin/phpstan *)",
-      "Bash(./vendor/bin/pest *)",
-      
+
+      "Bash(bin/rails *)",
+      "Bash(bundle *)",
+      "Bash(bundle exec rubocop *)",
+      "Bash(bundle exec rspec *)",
+      "Bash(rake *)",
+
       "Bash(npm *)",
       "Bash(npx *)",
       "Bash(pnpm *)",
       "Bash(yarn *)",
-      
+
       "Bash(git *)",
       "Bash(cat *)",
       "Bash(ls *)",
@@ -87,8 +87,8 @@
       "Bash(curl * | bash)",
       "Bash(wget * | bash)",
       "Bash(dd if=*)",
-      "Bash(php artisan migrate:fresh --force)",
-      "Bash(php artisan db:wipe *)"
+      "Bash(bin/rails db:drop *)",
+      "Bash(bin/rails db:reset --force *)"
     ]
   }
 }
