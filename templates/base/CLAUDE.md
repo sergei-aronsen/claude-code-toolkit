@@ -1,6 +1,9 @@
 # [Project Name] — Claude Code Instructions
 
-## 🎯 Project Overview
+> **This is a PROJECT-LEVEL template.** Install into `project/.claude/CLAUDE.md`, not `~/.claude/CLAUDE.md`.
+> For global setup, use `setup-security.sh` instead. See `components/claude-md-guide.md` for details.
+
+## Project Overview
 
 **Stack:** [Framework] + [Frontend] + [Database]
 **Type:** [SaaS/API/Dashboard/etc.]

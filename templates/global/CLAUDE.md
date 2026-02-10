@@ -269,3 +269,25 @@ These tools provide defense layers beyond prompt-based rules:
 - Use `crypto/rand` not `math/rand` for security tokens
 - Use `html/template` (auto-escaping) not `text/template` for HTML
 - Use `exec.Command()` with explicit args — never pass user input to shell
+
+---
+
+## 15. USER PREFERENCES (customize this section)
+
+> Add your personal rules below. These apply to ALL projects on this machine.
+> Keep it short (under 20 lines) — this file loads into every message.
+> Project-specific rules go in `project/.claude/CLAUDE.md`, not here.
+
+```markdown
+## Communication
+- Respond in [your language]
+
+## Workflow
+- Plan Mode before code for non-trivial tasks
+- KISS: simplest working solution
+- Do not create files without confirmation
+
+## Git
+- Conventional Commits (feat:, fix:, refactor:)
+- Never push directly to main
+```

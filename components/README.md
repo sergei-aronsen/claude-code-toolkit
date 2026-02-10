@@ -64,6 +64,14 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 ---
 
+## Configuration & Setup
+
+| Component | Description |
+|-----------|-------------|
+| [claude-md-guide.md](./claude-md-guide.md) | Global vs Project CLAUDE.md: what goes where, size guidelines, anti-patterns. |
+
+---
+
 ## Git & Version Control
 
 | Component | Description |

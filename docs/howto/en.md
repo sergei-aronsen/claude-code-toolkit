@@ -153,6 +153,8 @@ php artisan test
 
 Claude **reads this file at every launch** in this project. The better you fill it in — the smarter Claude will be.
 
+> **Do not copy this file to `~/.claude/CLAUDE.md`!** The global file (from Step 1) should only contain security rules and personal preferences — under 50 lines. Both files load into every message, so duplication wastes tokens. See [components/claude-md-guide.md](../../components/claude-md-guide.md) for guidelines.
+
 ---
 
 ## Step 5: Commit .claude to Git

@@ -45,6 +45,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 
 **Restart Claude!** For future updates use `/update-toolkit` command for reinstallation or updates.
 
+> **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md) for details.
+
 ### 3. Rate Limit Statusline (Claude Max / Pro)
 
 Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)

@@ -347,6 +347,7 @@ LOW (1)
 
 | Component | Description |
 |-----------|-------------|
+| `claude-md-guide.md` | Global vs Project CLAUDE.md: what goes where, size guidelines, anti-patterns |
 | `structured-workflow.md` | 3-phase approach: Research → Plan → Execute |
 | `smoke-tests-guide.md` | Minimal API tests (Laravel/Next.js/Node.js) |
 | `hooks-auto-activation.md` | Skills auto-activation by prompt context |
