@@ -35,10 +35,12 @@ Two scripts work together:
 
 1. Reads OAuth token from macOS Keychain (`Claude Code-credentials`)
 2. Sends minimal API request to `claude-haiku-4-5` (1 token, cheapest model)
-3. Parses undocumented `anthropic-ratelimit-unified-*` response headers
-4. Caches results in `/tmp/claude-rate-limits.json`
-5. Skips if cache is fresh (less than 60 seconds old)
-6. Uses lock file to prevent concurrent runs
+3. Retries up to 2 times with 5s pause on 529/overloaded responses
+4. Parses undocumented `anthropic-ratelimit-unified-*` response headers
+5. Caches results in `/tmp/claude-rate-limits.json`
+6. Preserves valid cache on transient errors (does not overwrite good data)
+7. Skips if cache is fresh (less than 60 seconds old)
+8. Uses lock file to prevent concurrent runs
 
 ### statusline.sh (display)
 
@@ -175,9 +177,18 @@ claude
 
 API responded but without rate limit headers. This can happen if:
 
+- The API returned 529 (overloaded) — the probe retries automatically, wait a minute
 - The OAuth token has expired (restart Claude Code to refresh)
-- Anthropic changed the header format
+- The `anthropic-beta` header is outdated (currently requires `interleaved-thinking-2025-05-14,oauth-2025-04-20`)
 - Network issues
+
+To force a fresh probe:
+
+```bash
+rm -f /tmp/claude-rate-limits.json /tmp/claude-rate-limit-probe.lock
+bash ~/.claude/rate-limit-probe.sh
+cat /tmp/claude-rate-limits.json
+```
 
 ### Cache not updating
 
