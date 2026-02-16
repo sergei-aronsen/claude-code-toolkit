@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-02-16
+
+### Added
+
+- **Supreme Council** — multi-AI code review system (Gemini + ChatGPT)
+  - `brain.py` orchestrator: sends plans to Gemini (Architect) and ChatGPT (Critic)
+  - 4-phase review: Context Discovery → Architectural Audit → Second Opinion → Final Report
+  - Security-hardened vs original: no hardcoded keys, no shell=True, temp file cleanup, input validation
+  - Configurable models via `~/.claude/council/config.json` with env var overrides
+  - Gemini modes: CLI (free with subscription) or API
+  - Path traversal protection, file size limits, command timeouts
+- **`/council` command** — multi-AI pre-implementation review
+  - Run before coding high-stakes features (auth, payments, refactoring)
+  - Outputs APPROVED/REJECTED report to `.claude/scratchpad/council-report.md`
+- **`setup-council.sh`** — installation script
+  - Dependency checks (Python 3.8+, tree, curl)
+  - Interactive Gemini mode selection (CLI vs API)
+  - API key configuration (prompt + env var support)
+  - Automatic `brain` shell alias
+  - Installation verification
+- **Supreme Council component** — `components/supreme-council.md`
+  - Full documentation: how it works, when to use, configuration, security improvements
+- Supreme Council section in base CLAUDE.md template
+- `/council` command distributed to all projects via init-claude.sh
+
+### Changed
+
+- Updated README: 26 → 27 slash commands, added Supreme Council to features and quick start
+- Updated `manifest.json` to v3.0.0
+- Updated `init-claude.sh` with council command and setup recommendation
+
 ## [2.8.0] - 2026-02-06
 
 ### Added

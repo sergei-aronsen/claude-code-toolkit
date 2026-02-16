@@ -1,6 +1,6 @@
 {
-  "version": "2.8.0",
-  "updated": "2026-02-06",
+  "version": "3.0.0",
+  "updated": "2026-02-16",
   "description": "Claude Code Toolkit manifest for smart updates",
 
   "files": {
@@ -50,7 +50,8 @@
       "🎓 Available Skills",
       "Scratchpad",
       "Knowledge Persistence",
-      "Skill Accumulation"
+      "Skill Accumulation",
+      "Supreme Council"
     ],
     "user": [
       "🎯 Project Overview",

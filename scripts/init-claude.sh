@@ -137,6 +137,7 @@ declare -a FILES=(
     "commands/e2e.md:commands/e2e.md"
     "commands/perf.md:commands/perf.md"
     "commands/deps.md:commands/deps.md"
+    "commands/council.md:commands/council.md"
 
     # Cheatsheets
     "cheatsheets/en.md:cheatsheets/en.md"
@@ -309,6 +310,15 @@ recommend_statusline() {
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
+# Show Supreme Council recommendation
+recommend_council() {
+    echo ""
+    echo -e "${BLUE}🧠 Supreme Council (optional):${NC}"
+    echo -e "  Multi-AI code review — Gemini + ChatGPT review your plans before coding."
+    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
+    echo -e "  Requires: Python 3.8+, Gemini CLI or API key, OpenAI API key"
+}
+
 # Main
 main() {
     create_structure
@@ -336,6 +346,7 @@ main() {
 
     recommend_security
     recommend_statusline
+    recommend_council
 
     echo ""
     echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
@@ -381,6 +392,13 @@ Requires: macOS, jq, Claude Max/Pro.
 
 \`\`\`bash
 curl -sSL $REPO_URL/scripts/install-statusline.sh | bash
+\`\`\`
+
+🧠 **Supreme Council** — multi-AI code review (Gemini + ChatGPT review plans before coding).
+Requires: Python 3.8+, Gemini CLI or API key, OpenAI API key.
+
+\`\`\`bash
+curl -sSL $REPO_URL/scripts/setup-council.sh | bash
 \`\`\`
 
 ## Next step

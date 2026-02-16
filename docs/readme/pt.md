@@ -19,7 +19,7 @@ Stacks suportadas: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 slash commands** | **7 auditorias** | **23+ guias** | Veja a [lista completa de comandos, templates, auditorias e componentes](../features.md#slash-commands-24-total).
+**27 slash commands** | **7 auditorias** | **24+ guias** | Veja a [lista completa de comandos, templates, auditorias e componentes](../features.md#slash-commands-27-total).
 
 ---
 
@@ -53,6 +53,14 @@ Mostra os limites de sessão/semanais na barra de status do Claude Code. Mais: [
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (revisão multi-IA, opcional)
+
+Gemini + ChatGPT revisam seus planos antes da codificação. Mais: [components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Recursos Principais
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Hooks de Auto-Ativação** | Hook intercepta prompts, pontua contexto (palavras-chave, intenção, caminhos de arquivos), recomenda skills relevantes |
 | **Persistência de Memória** | Exportar memória MCP para `.claude/memory/`, commit no git — disponível em qualquer máquina |
 | **Depuração Sistemática** | `/debug` aplica 4 fases: causa raiz → padrão → hipótese → correção. Sem adivinhação |
+| **Segurança em Produção** | `/deploy` com verificações pré/pós, `/fix-prod` para hotfixes, deploys incrementais |
+| **Supreme Council** | `/council` envia planos para Gemini + ChatGPT para revisão independente antes da codificação |
 | **Fluxo de Trabalho Estruturado** | 3 fases obrigatórias: PESQUISA (somente leitura) → PLANO (scratchpad) → EXECUÇÃO (após confirmação) |
 
 Veja [descrições detalhadas e exemplos](../features.md).

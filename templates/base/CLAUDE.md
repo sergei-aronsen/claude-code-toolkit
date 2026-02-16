@@ -291,6 +291,18 @@ Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 
+## Supreme Council (Optional)
+
+For high-stakes changes, use multi-AI review:
+`/council "feature description"` or `brain "feature description"`
+
+**When to use:** New features, security, refactoring, payments, breaking API changes.
+**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
+
+Full guide: `components/supreme-council.md`
+
+---
+
 ## Scratchpad
 
 Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for research, `decisions.md` for decisions.

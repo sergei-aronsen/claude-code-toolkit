@@ -19,7 +19,7 @@ Stacks soportados: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 plantillas** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 slash commands** | **7 auditorias** | **23+ guias** | Ver la [lista completa de comandos, plantillas, auditorias y componentes](../features.md#slash-commands-24-total).
+**27 slash commands** | **7 auditorias** | **24+ guias** | Ver la [lista completa de comandos, plantillas, auditorias y componentes](../features.md#slash-commands-27-total).
 
 ---
 
@@ -53,6 +53,14 @@ Muestra los limites de sesion/semanales en la barra de estado de Claude Code. Ma
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (revision multi-IA, opcional)
+
+Gemini + ChatGPT revisan tus planes antes de codificar. Mas informacion: [components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Caracteristicas Principales
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Hooks de Auto-Activacion** | El hook intercepta prompts, evalua el contexto (palabras clave, intencion, rutas de archivos), recomienda habilidades relevantes |
 | **Persistencia de Memoria** | Exporta la memoria MCP a `.claude/memory/`, haz commit a git — disponible en cualquier maquina |
 | **Depuracion Sistematica** | `/debug` aplica 4 fases: causa raiz, patron, hipotesis, correccion. Sin adivinanzas |
+| **Seguridad en Produccion** | `/deploy` con verificaciones pre/post, `/fix-prod` para hotfixes, despliegues incrementales |
+| **Supreme Council** | `/council` envia planes a Gemini + ChatGPT para revision independiente antes de codificar |
 | **Flujo de Trabajo Estructurado** | 3 fases obligatorias: INVESTIGACION (solo lectura), PLAN (scratchpad), EJECUCION (tras confirmacion) |
 
 Ver [descripciones detalladas y ejemplos](../features.md).

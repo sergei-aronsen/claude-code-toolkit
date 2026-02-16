@@ -98,7 +98,7 @@ my-app/
 └── .claude/
     ├── CLAUDE.md              ← Instructions for Claude (FOR YOUR PROJECT)
     ├── settings.json          ← Settings, hooks
-    ├── commands/              ← 24 slash commands
+    ├── commands/              ← 27 slash commands
     │   ├── debug.md           ← /debug — systematic debugging
     │   ├── plan.md            ← /plan — planning before coding
     │   ├── verify.md          ← /verify — pre-commit check

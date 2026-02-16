@@ -19,7 +19,7 @@
 
 **7 шаблонов** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 slash-команды** | **7 аудитов** | **23+ гайдов** | Смотрите [полный список команд, шаблонов, аудитов и компонентов](../features.md#slash-commands-24-total).
+**27 slash-команд** | **7 аудитов** | **24+ гайдов** | Смотрите [полный список команд, шаблонов, аудитов и компонентов](../features.md#slash-commands-27-total).
 
 ---
 
@@ -53,6 +53,14 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (мульти-AI ревью, опционально)
+
+Gemini + ChatGPT проверяют ваши планы перед кодингом. Подробнее: [components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Killer Features
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Auto-Activation Hooks** | Hook перехватывает промпты, оценивает контекст (ключевые слова, намерение, пути файлов), рекомендует подходящие skills |
 | **Memory Persistence** | Экспорт MCP-памяти в `.claude/memory/`, коммит в git — доступно на любом компьютере |
 | **Systematic Debugging** | `/debug` применяет 4 фазы: root cause -> pattern -> hypothesis -> fix. Без угадывания |
+| **Production Safety** | `/deploy` с пре/пост проверками, `/fix-prod` для хотфиксов, инкрементальные деплои |
+| **Supreme Council** | `/council` отправляет планы в Gemini + ChatGPT для независимого ревью перед кодингом |
 | **Structured Workflow** | 3 обязательные фазы: RESEARCH (только чтение) -> PLAN (scratchpad) -> EXECUTE (после подтверждения) |
 
 Смотрите [подробные описания и примеры](../features.md).

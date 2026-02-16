@@ -1,0 +1,11 @@
+{
+  "gemini": {
+    "mode": "cli",
+    "api_key": "",
+    "model": "gemini-3-pro-preview"
+  },
+  "openai": {
+    "api_key": "",
+    "model": "gpt-5.2"
+  }
+}

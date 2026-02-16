@@ -19,7 +19,7 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**26 slash commands** | **7 audits** | **24+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-26-total).
+**27 slash commands** | **7 audits** | **24+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-27-total).
 
 ---
 
@@ -55,6 +55,14 @@ Shows session/weekly limits in the Claude Code status bar. More: [components/rat
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (multi-AI review, optional)
+
+Gemini + ChatGPT review your plans before coding. More: [components/supreme-council.md](components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Killer Features
@@ -66,6 +74,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Memory Persistence** | Export MCP memory to `.claude/memory/`, commit to git — available on any machine |
 | **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
 | **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
+| **Supreme Council** | `/council` sends plans to Gemini + ChatGPT for independent review before coding |
 | **Structured Workflow** | 3 mandatory phases: RESEARCH (read-only) → PLAN (scratchpad) → EXECUTE (after confirmation) |
 
 See [detailed descriptions and examples](docs/features.md).

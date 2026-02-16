@@ -19,7 +19,7 @@
 
 **7 个模板**（基础、Laravel、Rails、Next.js、Node.js、Python、Go）
 
-**24 个斜杠命令** | **7 种审计** | **23+ 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-24-total)。
+**27 个斜杠命令** | **7 种审计** | **24+ 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-27-total)。
 
 ---
 
@@ -53,6 +53,14 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council（多AI审查，可选）
+
+Gemini + ChatGPT 在编码前审查你的计划。更多信息：[components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## 核心亮点
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **自动激活钩子** | 钩子拦截提示，评估上下文（关键词、意图、文件路径），推荐相关技能 |
 | **记忆持久化** | 将 MCP 记忆导出到 `.claude/memory/`，提交到 git — 在任何机器上可用 |
 | **系统化调试** | `/debug` 强制执行 4 个阶段：根因 → 模式 → 假设 → 修复。不靠猜测 |
+| **生产安全** | `/deploy` 带预/后检查，`/fix-prod` 用于热修复，增量部署 |
+| **Supreme Council** | `/council` 将计划发送给 Gemini + ChatGPT，在编码前进行独立审查 |
 | **结构化工作流** | 3 个必经阶段：研究（只读） → 计划（草稿本） → 执行（确认后） |
 
 查看[详细描述和示例](../features.md)。

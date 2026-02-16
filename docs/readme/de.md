@@ -19,7 +19,7 @@ Unterstuetzte Stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js
 
 **7 Templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 Slash Commands** | **7 Audits** | **23+ Anleitungen** | Siehe [vollstaendige Liste der Commands, Templates, Audits und Komponenten](../features.md#slash-commands-24-total).
+**27 Slash Commands** | **7 Audits** | **24+ Anleitungen** | Siehe [vollstaendige Liste der Commands, Templates, Audits und Komponenten](../features.md#slash-commands-27-total).
 
 ---
 
@@ -53,6 +53,14 @@ Zeigt Sitzungs-/Woechentliche Limits in der Claude Code Statusleiste an. Mehr: [
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (Multi-AI Review, optional)
+
+Gemini + ChatGPT pruefen deine Plaene vor dem Coding. Mehr: [components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Killer-Features
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Auto-Activation Hooks** | Hook faengt Prompts ab, bewertet Kontext (Keywords, Intent, Dateipfade), empfiehlt relevante Skills |
 | **Memory Persistence** | MCP-Memory nach `.claude/memory/` exportieren, in Git committen — auf jedem Rechner verfuegbar |
 | **Systematic Debugging** | `/debug` erzwingt 4 Phasen: Ursache → Muster → Hypothese → Fix. Kein Raten |
+| **Production Safety** | `/deploy` mit Pre-/Post-Checks, `/fix-prod` fuer Hotfixes, inkrementelle Deployments |
+| **Supreme Council** | `/council` sendet Plaene an Gemini + ChatGPT fuer unabhaengige Pruefung vor dem Coding |
 | **Structured Workflow** | 3 Pflichtphasen: RECHERCHE (nur lesen) → PLAN (Scratchpad) → AUSFUEHRUNG (nach Bestaetigung) |
 
 Siehe [detaillierte Beschreibungen und Beispiele](../features.md).

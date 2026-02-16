@@ -19,7 +19,7 @@ Stacks supportes : **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**24 commandes slash** | **7 audits** | **23+ guides** | Voir la [liste complete des commandes, templates, audits et composants](../features.md#slash-commands-24-total).
+**27 commandes slash** | **7 audits** | **24+ guides** | Voir la [liste complete des commandes, templates, audits et composants](../features.md#slash-commands-27-total).
 
 ---
 
@@ -53,6 +53,14 @@ Affiche les limites de session/hebdomadaires dans la barre d'etat de Claude Code
 curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
+### 4. Supreme Council (revue multi-IA, optionnel)
+
+Gemini + ChatGPT revisent vos plans avant le codage. Plus d'infos : [components/supreme-council.md](../../components/supreme-council.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+```
+
 ---
 
 ## Fonctionnalites phares
@@ -63,6 +71,8 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 | **Auto-Activation Hooks** | Le hook intercepte les prompts, evalue le contexte (mots-cles, intention, chemins de fichiers) et recommande les competences pertinentes |
 | **Memory Persistence** | Exporte la memoire MCP vers `.claude/memory/`, commit dans git — disponible sur n'importe quelle machine |
 | **Systematic Debugging** | `/debug` impose 4 phases : cause racine, pattern, hypothese, correction. Pas de devinettes |
+| **Production Safety** | `/deploy` avec verifications pre/post, `/fix-prod` pour les hotfixes, deploiements incrementaux |
+| **Supreme Council** | `/council` envoie les plans a Gemini + ChatGPT pour une revue independante avant le codage |
 | **Structured Workflow** | 3 phases obligatoires : RECHERCHE (lecture seule), PLAN (scratchpad), EXECUTION (apres confirmation) |
 
 Voir les [descriptions detaillees et exemples](../features.md).
