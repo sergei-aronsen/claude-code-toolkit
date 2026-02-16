@@ -37,7 +37,7 @@ Cela installe les regles de securite et le plugin safety-net. A faire **une seul
 Ouvrez votre terminal habituel (pas Claude Code) :
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
 **Ce qui se passe :**
@@ -88,7 +88,7 @@ cd ~/Projects/my-app
 En etant **dans le dossier du projet**, executez :
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 Le script **detecte automatiquement** votre framework (Laravel, Next.js, Python, Go, etc.) et cree :
@@ -116,7 +116,7 @@ my-app/
 **Pour specifier le framework explicitement :**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
 ```
 
 ---
@@ -251,7 +251,7 @@ Lorsque de nouvelles commandes ou de nouveaux modeles sont publies :
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 Ou depuis Claude Code :

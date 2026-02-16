@@ -2,7 +2,7 @@
 
 Comprehensive instructions for AI-assisted development with Claude Code.
 
-[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](README.md)** | **[Русский](docs/readme/ru.md)** | **[Español](docs/readme/es.md)** | **[Deutsch](docs/readme/de.md)** | **[Français](docs/readme/fr.md)** | **[中文](docs/readme/zh.md)** | **[日本語](docs/readme/ja.md)** | **[Português](docs/readme/pt.md)** | **[한국어](docs/readme/ko.md)**
@@ -30,7 +30,7 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 Includes a defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
 ### 2. Installation (per project)
@@ -40,7 +40,7 @@ The script automatically detects framework and copies the appropriate template.
 Run in terminal in the project folder:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 **Restart Claude!** For future updates use `/update-toolkit` command for reinstallation or updates.
@@ -52,7 +52,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
 ### 4. Supreme Council (multi-AI review, optional)
@@ -60,7 +60,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 Gemini + ChatGPT review your plans before coding. More: [components/supreme-council.md](components/supreme-council.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 ```
 
 ---

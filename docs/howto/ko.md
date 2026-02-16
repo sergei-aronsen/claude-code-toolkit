@@ -37,7 +37,7 @@ npm install -g @anthropic-ai/claude-code
 일반 터미널(Claude Code가 아닌)을 여세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
 **수행되는 작업:**
@@ -88,7 +88,7 @@ cd ~/Projects/my-app
 **프로젝트 폴더 내에서** 다음을 실행하세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 스크립트가 프레임워크(Laravel, Next.js, Python, Go 등)를 **자동으로 감지**하고 다음을 생성합니다:
@@ -116,7 +116,7 @@ my-app/
 **프레임워크를 명시적으로 지정하려면:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
 ```
 
 ---
@@ -251,7 +251,7 @@ Claude Code가 시작되면 자동으로 다음을 로드합니다:
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 또는 Claude Code 내에서:

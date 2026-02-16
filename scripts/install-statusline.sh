@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code Rate Limit Statusline — Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 
 set -e
 
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"

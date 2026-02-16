@@ -70,20 +70,20 @@ The update script identifies two types of sections:
 cat .claude/.toolkit-version
 
 # Compare with remote
-curl -s https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/manifest.json | grep version
+curl -s https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/manifest.json | grep version
 ```
 
 ## Manual Run
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/update-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
 ```
 
 ## After Update
 
 1. **Review changes** — check CLAUDE.md for new sections
 2. **Restart Claude Code** — exit and reopen for slash commands to reload
-3. **Check changelog** — see what's new: [CHANGELOG.md](https://github.com/digitalplanetno/claude-code-toolkit/blob/main/CHANGELOG.md)
+3. **Check changelog** — see what's new: [CHANGELOG.md](https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/CHANGELOG.md)
 
 ## Rollback
 

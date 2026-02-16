@@ -339,7 +339,7 @@ echo -e "${BLUE}╠════════════════════�
 echo -e "${BLUE}║${NC}  Run the security setup for global protection: ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  ${YELLOW}digitalplanetno/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}  ${YELLOW}sergei-aronsen/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  ${YELLOW}scripts/setup-security.sh | bash${NC}              ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  This installs:                                ${BLUE}║${NC}"

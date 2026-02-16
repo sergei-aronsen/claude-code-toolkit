@@ -2,7 +2,7 @@
 
 使用 Claude Code 进行 AI 辅助开发的综合指南。
 
-[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **中文** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
@@ -30,7 +30,7 @@
 包含纵深防御安全设置。完整指南请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
 ### 2. 安装（每个项目）
@@ -40,7 +40,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 在项目文件夹的终端中运行：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 **重启 Claude！** 后续更新请使用 `/update-toolkit` 命令进行重新安装或更新。
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 在 Claude Code 状态栏中显示会话/周限额。更多信息：[components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
 ### 4. Supreme Council（多AI审查，可选）
@@ -58,7 +58,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 Gemini + ChatGPT 在编码前审查你的计划。更多信息：[components/supreme-council.md](../../components/supreme-council.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 ```
 
 ---

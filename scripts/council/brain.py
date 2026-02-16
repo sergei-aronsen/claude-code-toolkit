@@ -51,7 +51,7 @@ def load_config():
     if not CONFIG_PATH.exists():
         print(f"\n\u274c Config not found: {CONFIG_PATH}")
         print("Run setup first:")
-        print("  curl -sSL https://raw.githubusercontent.com/digitalplanetno/"
+        print("  curl -sSL https://raw.githubusercontent.com/sergei-aronsen/"
               "claude-code-toolkit/main/scripts/setup-council.sh | bash")
         sys.exit(1)
 

@@ -39,7 +39,7 @@ Get pre-implementation review from Gemini (Architect) and ChatGPT (Critic) befor
 Supreme Council must be installed:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 ```
 
 **Check:**

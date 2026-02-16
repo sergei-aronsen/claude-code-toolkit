@@ -2,7 +2,7 @@
 
 Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 
-[![Quality Check](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/digitalplanetno/claude-code-toolkit/actions/workflows/quality.yml)
+[![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **[Português](pt.md)** | **한국어**
@@ -30,7 +30,7 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 심층 방어 보안 설정을 포함합니다. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-security.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
 ### 2. 설치 (프로젝트별)
@@ -40,7 +40,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 프로젝트 폴더의 터미널에서 실행하세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
 **Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하여 재설치 또는 업데이트하세요.
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 Claude Code 상태 표시줄에 세션/주간 제한을 표시합니다. 자세히: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
 ### 4. Supreme Council (멀티 AI 리뷰, 선택 사항)
@@ -58,7 +58,7 @@ curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/
 Gemini + ChatGPT가 코딩 전에 계획을 리뷰합니다. 자세히: [components/supreme-council.md](../../components/supreme-council.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 ```
 
 ---

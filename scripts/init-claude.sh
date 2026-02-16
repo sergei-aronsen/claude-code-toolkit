@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code Toolkit Initialization Script
-# Usage: curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/init-claude.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 # Or: curl -sSL ... | bash -s -- laravel
 # Or: curl -sSL ... | bash -s -- --dry-run
 
@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Config
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 DRY_RUN=false
 FRAMEWORK=""

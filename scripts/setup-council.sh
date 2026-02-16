@@ -4,7 +4,7 @@
 # Installs multi-AI code review system (Gemini + ChatGPT)
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main/scripts/setup-council.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 
 set -e
 
@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 COUNCIL_DIR="$CLAUDE_DIR/council"
 

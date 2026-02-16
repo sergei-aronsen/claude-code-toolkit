@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/digitalplanetno/claude-code-toolkit/main"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 MANIFEST_URL="$REPO_URL/manifest.json"
 
@@ -284,6 +284,6 @@ echo "  • settings.json, settings.local.json"
 echo "  • memory/ content (if existed)"
 echo "  • skills/skill-rules.json (if existed)"
 echo ""
-echo -e "${CYAN}Changelog:${NC} https://github.com/digitalplanetno/claude-code-toolkit/blob/main/CHANGELOG.md"
+echo -e "${CYAN}Changelog:${NC} https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/CHANGELOG.md"
 echo ""
 echo -e "${YELLOW}⚠ Restart Claude Code to apply changes${NC}"
