@@ -69,7 +69,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |----------------|-------------|
 | **Auto-Aprendizaje** | `/learn` guarda soluciones unicas; la Acumulacion de Habilidades captura patrones recurrentes automaticamente |
 | **Hooks de Auto-Activacion** | El hook intercepta prompts, evalua el contexto (palabras clave, intencion, rutas de archivos), recomienda habilidades relevantes |
-| **Persistencia de Memoria** | Exporta la memoria MCP a `.claude/memory/`, haz commit a git — disponible en cualquier maquina |
+| **Persistencia del Conocimiento** | Hechos del proyecto en `.claude/rules/` — carga automatica en cada sesion, commit a git, disponible en cualquier maquina |
 | **Depuracion Sistematica** | `/debug` aplica 4 fases: causa raiz, patron, hipotesis, correccion. Sin adivinanzas |
 | **Seguridad en Produccion** | `/deploy` con verificaciones pre/post, `/fix-prod` para hotfixes, despliegues incrementales |
 | **Supreme Council** | `/council` envia planes a Gemini + ChatGPT para revision independiente antes de codificar |
@@ -85,16 +85,12 @@ Ver [descripciones detalladas y ejemplos](../features.md).
 |----------|-----------|
 | `context7` | Documentacion de librerias |
 | `playwright` | Automatizacion de navegador, testing de UI |
-| `memory-bank` | Memoria entre sesiones |
 | `sequential-thinking` | Resolucion de problemas paso a paso |
-| `memory` | Knowledge Graph (grafo de relaciones) |
 
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---

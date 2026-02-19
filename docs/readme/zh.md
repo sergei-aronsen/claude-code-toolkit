@@ -69,7 +69,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |---------|-------------|
 | **自学习** | `/learn` 保存一次性解决方案；技能积累自动捕获重复出现的模式 |
 | **自动激活钩子** | 钩子拦截提示，评估上下文（关键词、意图、文件路径），推荐相关技能 |
-| **记忆持久化** | 将 MCP 记忆导出到 `.claude/memory/`，提交到 git — 在任何机器上可用 |
+| **知识持久化** | 项目事实存储在 `.claude/rules/` — 每次会话自动加载，提交到 git，在任何机器上可用 |
 | **系统化调试** | `/debug` 强制执行 4 个阶段：根因 → 模式 → 假设 → 修复。不靠猜测 |
 | **生产安全** | `/deploy` 带预/后检查，`/fix-prod` 用于热修复，增量部署 |
 | **Supreme Council** | `/council` 将计划发送给 Gemini + ChatGPT，在编码前进行独立审查 |
@@ -85,16 +85,12 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |--------|---------|
 | `context7` | 库文档 |
 | `playwright` | 浏览器自动化，UI 测试 |
-| `memory-bank` | 会话间记忆 |
 | `sequential-thinking` | 逐步问题解决 |
-| `memory` | 知识图谱（关系图） |
 
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---

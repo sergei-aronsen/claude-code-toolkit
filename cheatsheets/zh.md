@@ -217,9 +217,7 @@ Claude 在保持行为的同时重构。之后总是运行测试。
 |--------|------|
 | context7 | 最新的库文档 |
 | playwright | 浏览器自动化、UI 测试、截图 |
-| memory-bank | 会话间持久记忆 |
 | sequential-thinking | 逐步问题解决 |
-| memory | 关系知识图谱 |
 
 ---
 

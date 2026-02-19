@@ -201,9 +201,7 @@ Checks for security vulnerabilities, outdated packages, license issues.
 |--------|---------|
 | context7 | Up-to-date library documentation |
 | playwright | Browser automation, UI testing, screenshots |
-| memory-bank | Persistent memory between sessions |
 | sequential-thinking | Step-by-step problem solving |
-| memory | Knowledge graph for relationships |
 
 ---
 

@@ -217,9 +217,7 @@ Claude refatora preservando comportamento. Sempre executa testes depois.
 |----------|----------|
 | context7 | Documentacao atualizada de bibliotecas |
 | playwright | Automacao de navegador, testes UI, capturas |
-| memory-bank | Memoria persistente entre sessoes |
 | sequential-thinking | Resolucao passo a passo |
-| memory | Grafo de conhecimento para relacoes |
 
 ---
 

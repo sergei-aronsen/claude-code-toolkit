@@ -9,7 +9,7 @@ Proactive context management for optimal Claude Code performance.
 - `/compact` at **80-83%** (don't wait for auto-compact at 90%+)
 - `/clear` between **unrelated** tasks
 - **Subagents** for exploration (preserves main context)
-- Update `.claude/memory.md` before `/clear` or session end
+- Update `.claude/scratchpad/state.md` before `/clear` or session end
 
 ---
 
@@ -114,14 +114,14 @@ Use a subagent to review this code for security issues.
 
 ---
 
-## Memory Persistence
+## Session Persistence
 
 ### Before /clear or Session End
 
-**MANDATORY:** Update `.claude/memory.md` with current state.
+**MANDATORY:** Update `.claude/scratchpad/state.md` with current state.
 
 ```markdown
-# .claude/memory.md
+# .claude/scratchpad/state.md
 
 ## Current Status
 - [ ] Active Task: Implementing OAuth flow
@@ -145,10 +145,10 @@ Use a subagent to review this code for security issues.
 
 ### Session Start
 
-**FIRST ACTION:** Read `.claude/memory.md`
+**FIRST ACTION:** Read `.claude/scratchpad/state.md`
 
 ```text
-Read .claude/memory.md and summarize current project state.
+Read .claude/scratchpad/state.md and summarize current project state.
 ```
 
 ---
@@ -180,7 +180,7 @@ When you see these signs:
 
 1. Check context usage (`/context`)
 2. If 80-83%: `/compact`
-3. If > 90% or symptoms persist: `/clear` + reload from `.claude/memory.md`
+3. If > 90% or symptoms persist: `/clear` + reload from `.claude/scratchpad/state.md`
 
 ---
 
@@ -194,9 +194,10 @@ When you see these signs:
 - `/compact` at logical breakpoints (feature done, PR merged)
 - Quality degrades non-linearly above 80%
 
-### Memory Persistence
-- Before `/clear` or session end: update `.claude/memory.md`
-- Session start: read `.claude/memory.md` first
+### Session Persistence
+- Before `/clear` or session end: update `.claude/scratchpad/state.md`
+- Session start: read `.claude/scratchpad/state.md` first
+- Permanent project facts go in `.claude/rules/` (auto-loaded)
 
 ### Subagent Delegation
 - Use subagents for exploration/research (preserves main context)
@@ -221,11 +222,11 @@ When you see these signs:
 │  ACTIONS:                                               │
 │  80-83% context  →  /compact                            │
 │  Feature done    →  /compact                            │
-│  Unrelated task  →  /clear (after updating memory.md)   │
+│  Unrelated task  →  /clear (after updating state.md)     │
 │  Research needed →  Use subagent                        │
 │                                                         │
-│  BEFORE /clear:   Update .claude/memory.md              │
-│  SESSION START:   Read .claude/memory.md                │
+│  BEFORE /clear:   Update .claude/scratchpad/state.md              │
+│  SESSION START:   Read .claude/scratchpad/state.md                │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```

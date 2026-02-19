@@ -106,10 +106,9 @@ declare -a FILES=(
     "templates/$FRAMEWORK/skills/skill-rules.json:skills/skill-rules.json"
     "templates/$FRAMEWORK/skills/ai-models/SKILL.md:skills/ai-models/SKILL.md"
 
-    # Memory
-    "templates/$FRAMEWORK/memory/README.md:memory/README.md"
-    "templates/$FRAMEWORK/memory/project-context.md:memory/project-context.md"
-    "templates/$FRAMEWORK/memory/knowledge-graph.json:memory/knowledge-graph.json"
+    # Rules (auto-loaded project context)
+    "templates/$FRAMEWORK/rules/README.md:rules/README.md"
+    "templates/$FRAMEWORK/rules/project-context.md:rules/project-context.md"
 
     # Commands
     "commands/plan.md:commands/plan.md"
@@ -195,7 +194,8 @@ create_structure() {
         "$CLAUDE_DIR/commands"
         "$CLAUDE_DIR/skills"
         "$CLAUDE_DIR/skills/ai-models"
-        "$CLAUDE_DIR/memory"
+        "$CLAUDE_DIR/rules"
+        "$CLAUDE_DIR/docs"
         "$CLAUDE_DIR/cheatsheets"
         "$CLAUDE_DIR/scratchpad"
     )
@@ -336,7 +336,7 @@ main() {
     echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
     echo -e ""
     echo -e "Installed:"
-    echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, memory"
+    echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
     echo ""
     echo -e "Available commands:"
     echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
@@ -369,7 +369,7 @@ IMPORTANT: Show the following recommendations to the user after installation.
 - **agents** — code-reviewer, test-writer, planner, security-auditor
 - **prompts** — security audit, performance audit, code review, deploy checklist
 - **skills** — skill accumulation system
-- **memory** — knowledge persistence (project context + knowledge graph)
+- **rules** — auto-loaded project context (servers, architecture, conventions)
 - **cheatsheets** — quick reference in 9 languages
 
 ## Action required

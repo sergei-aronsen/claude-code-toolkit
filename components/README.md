@@ -24,12 +24,12 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 ---
 
-## Memory & Persistence
+## Knowledge & Persistence
 
 | Component | Description |
 |-----------|-------------|
-| [memory-persistence.md](./memory-persistence.md) | Synchronizing MCP memory with Git. Structure of `.claude/memory/`. |
-| [mcp-servers-guide.md](./mcp-servers-guide.md) | Guide to MCP servers: context7, playwright, memory-bank, sequential-thinking. |
+| [memory-persistence.md](./memory-persistence.md) | Knowledge persistence with `.claude/rules/` (auto-loaded) and `.claude/docs/` (on-demand). |
+| [mcp-servers-guide.md](./mcp-servers-guide.md) | Guide to MCP servers: context7, playwright, sequential-thinking. |
 
 ---
 

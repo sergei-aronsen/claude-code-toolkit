@@ -87,25 +87,26 @@ Use Skill tool to load guidelines.
 
 ---
 
-## Memory Persistence
+## Knowledge Persistence
 
-**Problem:** MCP memory is stored locally. Move to another computer — memory lost.
+**Problem:** Project knowledge scattered across MCP servers, local files, manual exports. Move to another computer — knowledge lost.
 
-**Solution:** Export to `.claude/memory/` → commit to git → available everywhere.
+**Solution:** Use `.claude/rules/` — files auto-loaded into every session, committed to git.
 
 ```text
-.claude/memory/
-├── knowledge-graph.json   # Component relationships
-├── project-context.md     # Project context
-└── decisions-log.md       # Why we made decision X
+.claude/
+├── rules/                 # Auto-loaded every session
+│   └── project-context.md # Servers, architecture, conventions
+└── docs/                  # Read on demand (reference)
+    └── decisions-log.md   # Why we made decision X
 ```
 
 **Workflow:**
 
 ```text
-At session start:    Check sync → Load memory from MCP
-After changes:       Export → Commit .claude/memory/
-On new computer:     Pull → Import to MCP
+At session start:    Rules auto-loaded — nothing to do
+After changes:       Update .claude/rules/ → commit to git
+On new computer:     Pull → rules auto-loaded immediately
 ```
 
 ---
@@ -354,7 +355,7 @@ LOW (1)
 | `skills-system.md` | Self-learning + progressive disclosure for skills |
 | `spec-driven-development.md` | Specifications before code |
 | `mcp-servers-guide.md` | Recommended MCP servers |
-| `memory-persistence.md` | MCP memory sync with Git |
+| `memory-persistence.md` | Knowledge persistence with `.claude/rules/` |
 | `plan-mode-instructions.md` | Think levels: think → think hard → ultrathink |
 | `git-worktrees-guide.md` | Parallel work on branches |
 | `devops-highload-checklist.md` | Highload projects checklist |

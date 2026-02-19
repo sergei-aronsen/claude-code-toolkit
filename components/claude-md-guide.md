@@ -149,9 +149,9 @@ php artisan test   # tests
 3. php artisan migrate --force
 4. php artisan config:cache && queue:restart
 
-## Memory Sync
-- Before commit: cp ~/.claude/memory-bank/myapp/*.md .claude/memory/
-- Knowledge Graph is in-memory only — import from JSON each session
+## Knowledge Persistence
+- Project facts in `.claude/rules/` — auto-loaded every session
+- Reference docs in `.claude/docs/` — read on demand
 ```
 
 This is ~40 lines. Add i18n rules, worktree workflow, etc. as needed — but keep each section concise.

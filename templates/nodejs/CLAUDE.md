@@ -27,9 +27,8 @@
 ## AT THE START OF EACH SESSION
 
 1. **Verify directory:** `pwd` + `git rev-parse --show-toplevel` — lock this directory for the session
-2. **Memory sync:** compare dates `~/.claude/memory-bank/[PROJECT_NAME]/*.md` vs `.claude/memory/*.md`, copy newer
-3. **Load memory:** `mcp__memory-bank__memory_bank_read` for project context
-4. **Knowledge Graph:** `mcp__memory__read_graph()` — if empty, import from `.claude/memory/knowledge-graph.json`
+2. **Context is auto-loaded** from `.claude/rules/` — no manual reads needed
+3. **For on-demand details:** read `.claude/docs/` files as needed
 
 ---
 
@@ -282,7 +281,7 @@ Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for
 
 ## Knowledge Persistence
 
-On significant changes, save to: (1) CLAUDE.md, (2) docs/README, (3) MCP Memory (always in English).
+On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.claude/CLAUDE.md` if workflow changed, (3) docs/README for humans.
 
 ---
 

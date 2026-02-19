@@ -147,22 +147,13 @@ Update documentation if changes affect:
 - Changes in project structure
 - New features or practices
 
-### 3. MCP Memory — for persistence between sessions
+### 3. Rules — for auto-loaded project context
 
-> **IMPORTANT:** All memory entries must be written in English, regardless of conversation language.
-
-**Knowledge Graph (memory)** — for relationships and architecture:
+Update `.claude/rules/` files when operational facts change. These are auto-loaded into every session — no manual reads needed.
 
 ```text
-"Save to knowledge graph: added component X, related to Y"
-"Add to knowledge graph: decision to use approach Z because of reason W"
-```
-
-**Memory Bank** — for facts and decisions:
-
-```text
-"Save to memory-bank: why we chose structure X"
-"Record in project memory: gotcha about Y"
+.claude/rules/project-context.md  # Servers, architecture, conventions
+.claude/docs/decisions-log.md     # Historical decisions (read on demand)
 ```
 
 ### What to save

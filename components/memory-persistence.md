@@ -1,258 +1,170 @@
-# Memory Persistence — Synchronizing Memory with Git
+# Knowledge Persistence — Using .claude/rules/ for Auto-Loaded Context
 
-System for saving MCP memory (Memory Bank + Knowledge Graph) to repository for transfer between computers and team collaboration.
+System for maintaining project knowledge across sessions using Claude Code's built-in rules system.
 
-## Problem
+## The Old Way (MCP Memory Bank)
 
-MCP servers store data **locally**:
+Previously, project context was stored in MCP servers (Memory Bank, Knowledge Graph) and manually synced to `.claude/memory/`. This required:
+- Manual MCP reads at session start
+- Manual sync before commits
+- Knowledge Graph re-import every session (in-memory only)
+- 3-way sync between MCP, git, and auto-memory
 
-- Memory Bank → `~/.claude/memory-bank/` (file-based, persists between sessions)
-- Knowledge Graph → **in-memory only** (lost on every restart of Claude Code or MCP server)
+**Problems:** Sync was often skipped, leading to stale context. Knowledge Graph was lost on every restart.
 
-When transferring project to another computer or working in a team — Memory Bank files are lost.
+## The New Way (.claude/rules/)
 
-**Knowledge Graph has an additional problem:** since it is in-memory only, data is lost not just on a new computer, but on **every restart** of Claude Code. It must be imported from `knowledge-graph.json` at the start of **every session**.
-
-## Solution
-
-Export memory to `.claude/memory/` inside the repository:
+Claude Code **auto-loads** all `.md` files from `.claude/rules/` into every session. No manual reads needed.
 
 ```text
 .claude/
-├── CLAUDE.md
-├── memory/                    # ← Memory export for git
-│   ├── README.md              # Sync instructions
-│   ├── knowledge-graph.json   # Knowledge Graph (entities + relations)
-│   ├── project-context.md     # Memory Bank files
-│   ├── decisions-log.md
-│   └── ...
+├── CLAUDE.md              # Workflow rules (auto-loaded)
+├── rules/                 # Project facts (auto-loaded)
+│   ├── project-context.md # Core facts — servers, architecture, services
+│   └── [domain].md        # Domain-specific rules (path-scoped)
+└── docs/                  # Reference docs (read on demand)
+    ├── integrations.md
+    └── decisions-log.md
 ```
 
 ---
 
-## File Structure
+## Tiered Architecture
 
-### knowledge-graph.json
+### Tier 1: Always Auto-Loaded
 
-Export of project entities and relations:
-
-```json
-{
-  "project": "project-name",
-  "exported_at": "2025-01-22",
-  "entities": [
-    {
-      "name": "AuthService",
-      "entityType": "Service",
-      "observations": [
-        "Handles authentication",
-        "Uses JWT tokens"
-      ]
-    }
-  ],
-  "relations": [
-    {
-      "from": "AuthService",
-      "to": "UserModel",
-      "relationType": "uses"
-    }
-  ]
-}
-```
-
-### Memory Bank files (markdown)
-
-| File | Content |
+| File | Purpose |
 |------|---------|
-| `project-context.md` | General project context |
-| `architecture-notes.md` | Architecture notes |
-| `decisions-log.md` | Decision log "why this way" |
-| `server-config.md` | Server configurations (if applicable) |
-| `integrations.md` | External services and APIs |
+| `.claude/CLAUDE.md` | Workflow rules, git conventions, security |
+| `.claude/rules/project-context.md` | Core project facts (servers, architecture, services) |
+| `.claude/rules/[domain].md` | Domain rules with `globs:` scope |
+
+### Tier 2: On-Demand Reference
+
+| File | Purpose |
+|------|---------|
+| `.claude/docs/integrations.md` | External services reference |
+| `.claude/docs/decisions-log.md` | Historical decisions and rationale |
+| `.claude/docs/[topic].md` | Deep reference material |
 
 ---
 
-## Workflow
+## Path-Scoped Rules
 
-### At session start — check sync status
+Use `globs:` frontmatter to load rules only when touching matching files:
 
-#### Memory Bank (file-based, persists automatically)
+```yaml
+---
+description: i18n rules for translations
+globs:
+  - "lang/**"
+  - "resources/js/**"
+---
+```
+
+Examples:
+- `i18n.md` — loaded when editing `lang/` or `resources/js/`
+- `go-crawler.md` — loaded when editing `tools/crawler/`
+- `playwright.md` — loaded when editing screenshot-related files
+
+---
+
+## What to Store Where
+
+### rules/ (auto-loaded, keep concise)
+
+- Server IPs, architecture overview
+- Key patterns and conventions
+- Active issues and recent changes
+- Queue/worker configuration
+- Proxy setup summary
+
+### docs/ (on-demand, can be detailed)
+
+- Full API reference for integrations
+- Historical decision log
+- Detailed server configuration
+- Parsing/pipeline guides
+- Worker configuration details
+
+### CLAUDE.md (workflow only)
+
+- Git conventions
+- Deploy procedures
+- Security rules
+- Plan mode instructions
+
+---
+
+## Migration from MCP Memory Bank
+
+### 1. Create rules/ directory
 
 ```bash
-# Compare file dates MCP vs git
-ls -la ~/.claude/memory-bank/[project]/*.md
-ls -la .claude/memory/*.md
+mkdir -p .claude/rules .claude/docs
 ```
 
-- **MCP newer than git** → copy: `cp ~/.claude/memory-bank/[project]/*.md .claude/memory/`
-- **git newer than MCP** (new computer) → import into MCP via `mcp__memory-bank__memory_bank_write`
+### 2. Move operational facts
 
-#### Knowledge Graph (in-memory, MUST import every session)
+Take key facts from your MCP memory bank files and consolidate into `.claude/rules/project-context.md`:
 
-```text
-# Step 1: Check if graph has data
-mcp__memory__read_graph()
-
-# Step 2: If empty — import from file
-# Read .claude/memory/knowledge-graph.json, then:
-mcp__memory__create_entities(entities: [...all entities from JSON...])
-mcp__memory__create_relations(relations: [...all relations from JSON...])
-
-# Step 3: Verify import
-mcp__memory__read_graph()
+```yaml
+---
+description: Core project facts
+globs:
+  - "**/*"
+---
 ```
 
-> **Note:** Knowledge Graph import is needed at the start of **every session**, not just on a new computer. Memory Bank does not require import — it is file-based and persists automatically.
+### 3. Move reference docs
 
-### After changes in MCP — sync immediately
+Move detailed reference material to `.claude/docs/`:
 
 ```bash
-# Memory Bank — copy files
-cp ~/.claude/memory-bank/[project]/*.md .claude/memory/
+# If you had these in .claude/memory/:
+mv .claude/memory/integrations.md .claude/docs/
+mv .claude/memory/decisions-log.md .claude/docs/
+mv .claude/memory/server-config.md .claude/docs/
 ```
 
-```text
-# Knowledge Graph — export via Claude
-# Claude reads mcp__memory__read_graph() and writes to .claude/memory/knowledge-graph.json
-Export Knowledge Graph to .claude/memory/knowledge-graph.json
-(only entities from this project)
-```
-
-### Before commit — mandatory sync
-
-1. Copy Memory Bank files
-2. Update knowledge-graph.json
-3. Add to commit
-
----
-
-## Import
-
-### When import is needed
-
-| Server | When to import |
-|--------|---------------|
-| Memory Bank | Only on new computer / after `git pull` with memory changes |
-| Knowledge Graph | **Every session** (in-memory only, always starts empty) |
-
-### 1. Ensure MCP servers are configured
+### 4. Remove old memory
 
 ```bash
-claude mcp list
-# Should have: memory-bank, memory
+rm -rf .claude/memory/
 ```
 
-### 2. Import Memory Bank (new computer only)
+### 5. Remove MCP servers (optional)
 
-Memory Bank is file-based and persists automatically. Import is only needed when MCP files are missing or outdated compared to git.
-
-Ask Claude:
-
-```text
-Import memory from .claude/memory/ into Memory Bank:
-- Read each .md file
-- Write via mcp__memory-bank__memory_bank_write (projectName: "[project]")
-```
-
-### 3. Import Knowledge Graph (every session)
-
-> **Knowledge Graph is in-memory only.** It starts empty on every session. Always import.
-
-Ask Claude:
-
-```text
-Import Knowledge Graph from .claude/memory/knowledge-graph.json:
-- Read JSON
-- Create entities via mcp__memory__create_entities
-- Create relations via mcp__memory__create_relations
-- Verify with mcp__memory__read_graph()
-```
-
----
-
-## Automation (optional)
-
-### Pre-commit hook
+Memory Bank and Knowledge Graph MCP servers are no longer needed. You can remove them:
 
 ```bash
-#!/bin/bash
-# .git/hooks/pre-commit
-
-PROJECT_NAME="your-project"
-MEMORY_BANK_PATH="$HOME/.claude/memory-bank/$PROJECT_NAME"
-
-if [ -d "$MEMORY_BANK_PATH" ]; then
-    echo "Syncing Memory Bank to git..."
-    cp "$MEMORY_BANK_PATH"/*.md .claude/memory/ 2>/dev/null
-    git add .claude/memory/*.md
-fi
+claude mcp remove memory-bank
+claude mcp remove memory
 ```
 
-### Makefile target
+### 6. Clean up CLAUDE.md
 
-```makefile
-sync-memory:
-    @echo "Syncing Memory Bank..."
-    @cp ~/.claude/memory-bank/$(PROJECT_NAME)/*.md .claude/memory/ 2>/dev/null || true
-    @echo "Remember to export Knowledge Graph manually!"
-```
+Remove "AT THE START OF EACH SESSION" MCP sync steps and "BEFORE COMMIT" memory sync commands.
 
 ---
 
-## Instructions for CLAUDE.md
+## Security
 
-Add the following sections to your `CLAUDE.md`:
+**NEVER store credentials in `.claude/rules/` or `.claude/docs/`** — these are git-tracked.
 
-### Section "AT THE START OF EACH SESSION"
+Use `.env` references instead:
 
-1. Check Memory Bank sync:
-   - `ls -la ~/.claude/memory-bank/[project]/*.md`
-   - `ls -la .claude/memory/*.md`
-   - MCP newer than git → copy to `.claude/memory/`
-   - git newer than MCP → import into MCP
-
-2. Read Memory Bank:
-   - `mcp__memory-bank__memory_bank_read(projectName, fileName)`
-
-3. Import Knowledge Graph (required **every session** — in-memory only):
-   - `mcp__memory__read_graph()` — check if empty
-   - If empty → read `.claude/memory/knowledge-graph.json`
-   - `mcp__memory__create_entities(entities)` + `mcp__memory__create_relations(relations)`
-   - `mcp__memory__read_graph()` — verify import
-
-### Section "BEFORE COMMIT"
-
-1. Sync Memory Bank: `cp ~/.claude/memory-bank/[project]/*.md .claude/memory/`
-2. Export Knowledge Graph to `.claude/memory/knowledge-graph.json`
-
-See templates in `templates/*/CLAUDE.md` for ready examples.
-
----
-
-## What to Store in Memory
-
-### Memory Bank (facts)
-
-- Project context (stack, architecture)
-- Architectural decisions and their reasons
-- Server configurations
-- Integrations with external services
-- Gotchas and known issues
-
-### Knowledge Graph (relations)
-
-- Project entities (Services, Jobs, Models)
-- Relations between components (uses, depends_on, calls)
-- Infrastructure dependencies
-- Integrations
+```markdown
+Credentials in `.env` — see `DATABASE_*`, `API_KEY_*` variables.
+```
 
 ---
 
 ## Best Practices
 
-1. **Sync immediately** — don't postpone
-2. **Filter by project** — Knowledge Graph may contain data from other projects
-3. **Check at session start** — to avoid working with stale memory
-4. **Document decisions** — write "why", not just "what"
-5. **Commit memory** — together with code, not separately
-6. **Write in English** — all memory entries (entities, observations, decisions, notes) must be written in English, regardless of the conversation language
+1. **Keep rules/ concise** — auto-loaded into every session, affects context budget
+2. **Use path-scoped globs** — domain-specific rules load only when relevant
+3. **Separate facts from reference** — rules/ for quick facts, docs/ for deep dives
+4. **Update immediately** — when facts change, update rules/ right away
+5. **No credentials in git** — only `.env` variable names, never values
+6. **Write in English** — all rules and docs in English regardless of conversation language

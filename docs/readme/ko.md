@@ -69,7 +69,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |---------|-------------|
 | **자가 학습** | `/learn`으로 일회성 해결책을 저장하고, 스킬 축적이 반복 패턴을 자동으로 캡처합니다 |
 | **자동 활성화 훅** | 훅이 프롬프트를 가로채서 컨텍스트(키워드, 의도, 파일 경로)를 점수화하고 관련 스킬을 추천합니다 |
-| **메모리 지속성** | MCP 메모리를 `.claude/memory/`로 내보내서 git에 커밋하면 어떤 머신에서든 사용 가능합니다 |
+| **지식 지속성** | 프로젝트 사실을 `.claude/rules/`에 저장 — 매 세션 자동 로드, git에 커밋, 어떤 머신에서든 사용 가능 |
 | **체계적인 디버깅** | `/debug`가 4단계를 강제합니다: 근본 원인 -> 패턴 -> 가설 -> 수정. 추측 없음 |
 | **프로덕션 안전** | `/deploy`로 사전/사후 검사, `/fix-prod`로 핫픽스, 점진적 배포 |
 | **Supreme Council** | `/council`로 계획을 Gemini + ChatGPT에 전송하여 코딩 전 독립적 리뷰 수행 |
@@ -85,16 +85,12 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |--------|---------|
 | `context7` | 라이브러리 문서 |
 | `playwright` | 브라우저 자동화, UI 테스트 |
-| `memory-bank` | 세션 간 메모리 |
 | `sequential-thinking` | 단계별 문제 해결 |
-| `memory` | Knowledge Graph (관계 그래프) |
 
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---

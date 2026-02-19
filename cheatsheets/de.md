@@ -217,9 +217,7 @@ Claude refaktorisiert unter Beibehaltung des Verhaltens. Fuehrt immer Tests dana
 |--------|-------|
 | context7 | Aktuelle Bibliotheksdokumentation |
 | playwright | Browser-Automatisierung, UI-Tests, Screenshots |
-| memory-bank | Persistenter Speicher zwischen Sessions |
 | sequential-thinking | Schrittweise Problemloesung |
-| memory | Wissensgraph fuer Beziehungen |
 
 ---
 

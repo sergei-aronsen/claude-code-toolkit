@@ -140,9 +140,9 @@ if [[ ! -f "$CLAUDE_DIR/skills/skill-rules.json" ]]; then
         log_success "Created: skills/skill-rules.json"
 fi
 
-# Memory templates (don't overwrite if exists)
-mkdir -p "$CLAUDE_DIR/memory"
-for file in memory/README.md memory/knowledge-graph.json memory/project-context.md; do
+# Rules templates (don't overwrite if exists)
+mkdir -p "$CLAUDE_DIR/rules"
+for file in rules/README.md rules/project-context.md; do
     if [[ ! -f "$CLAUDE_DIR/$file" ]]; then
         curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null && \
             log_success "Created: $file"
@@ -281,7 +281,7 @@ echo -e "${YELLOW}What was preserved:${NC}"
 echo "  • Project Overview, Structure, Commands"
 echo "  • Project-Specific Notes, Known Gotchas"
 echo "  • settings.json, settings.local.json"
-echo "  • memory/ content (if existed)"
+echo "  • rules/ content (if existed)"
 echo "  • skills/skill-rules.json (if existed)"
 echo ""
 echo -e "${CYAN}Changelog:${NC} https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/CHANGELOG.md"

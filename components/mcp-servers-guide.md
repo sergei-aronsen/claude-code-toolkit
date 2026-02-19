@@ -140,38 +140,7 @@ convert screenshot.png screenshot.webp
 
 ---
 
-### 3. Memory Bank — Memory Between Sessions
-
-Saving project context for future sessions.
-
-```json
-{
-  "memory-bank": {
-    "command": "npx",
-    "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
-    "env": {
-      "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
-    }
-  }
-}
-```
-
-**When to use:**
-
-- Save important architectural decision
-- Record "why we did it this way"
-- Pass context to new session
-
-**Examples:**
-
-```text
-"Save to memory-bank why we chose Redis over Memcached"
-"What's recorded in memory-bank about this project?"
-```
-
----
-
-### 4. Sequential Thinking — Complex Tasks
+### 3. Sequential Thinking — Complex Tasks
 
 Multi-step problem solving with revision capability. Use for architectural decisions and complex analysis.
 
@@ -185,7 +154,7 @@ Multi-step problem solving with revision capability. Use for architectural decis
 }
 ```
 
-### 5. Morph Fast Tools — Fast Editing
+### 4. Morph Fast Tools — Fast Editing
 
 Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
 
@@ -202,51 +171,26 @@ Smart code search (WarpGrep) and fast file editing. Requires API key from [morph
 }
 ```
 
-### 6. Knowledge Graph Memory — Knowledge Graph (for Opus)
+## Project Knowledge Persistence
 
-> **WARNING:** In-memory only — data lost on restart. Import from `.claude/memory/knowledge-graph.json` at session start. See [memory-persistence.md](memory-persistence.md).
-
-Builds a graph of relationships between project entities. Unlike Memory Bank (key-value facts), this stores how entities relate to each other.
-
-```json
-{
-  "memory": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-memory"],
-    "env": {}
-  }
-}
-```
-
----
-
-## Syncing Memory with Git
-
-**Problem:** MCP servers store data locally. When transferring project to another computer — memory is lost.
-
-**Solution:** Export memory to `.claude/memory/` inside repository.
+**Recommended approach:** Use `.claude/rules/` for auto-loaded project context instead of MCP memory servers.
 
 ### Structure
 
 ```text
 .claude/
-├── CLAUDE.md
-└── memory/                    # Memory export for git
-    ├── README.md
-    ├── knowledge-graph.json   # Knowledge Graph export
-    ├── project-context.md     # Memory Bank files
+├── CLAUDE.md              # Workflow rules (auto-loaded)
+├── rules/                 # Project facts (auto-loaded)
+│   └── project-context.md # Servers, architecture, conventions
+└── docs/                  # Reference docs (read on demand)
     └── decisions-log.md
 ```
 
-### Workflow
-
-1. **At session start** — check sync (file dates)
-2. **After MCP changes** — immediately copy to `.claude/memory/`
-3. **Before commit** — ensure memory is synced
+Files in `.claude/rules/` are automatically loaded into every session — no manual MCP reads needed.
 
 ### Details
 
-See component **[memory-persistence.md](memory-persistence.md)** for complete instructions.
+See **[memory-persistence.md](memory-persistence.md)** for the complete guide.
 
 ---
 
@@ -267,21 +211,9 @@ Add to `~/.claude.json`:
       "args": ["@playwright/mcp@latest", "--browser", "chromium"],
       "env": {}
     },
-    "memory-bank": {
-      "command": "npx",
-      "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
-      "env": {
-        "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
-      }
-    },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "env": {}
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {}
     }
   }
@@ -300,10 +232,6 @@ Add to your `CLAUDE.md` so Claude knows when to use MCP tools:
 ### context7 — Library Documentation
 **When:** Need current documentation for Laravel, Vue, React and others.
 Example: "How does Laravel Queue middleware work?"
-
-### memory-bank — Project Memory
-**When:** Save or read important context between sessions.
-Example: Record "Why we chose RDAP over WHOIS scraping"
 
 ### playwright — UI Testing
 **When:** Check web interface, take screenshot.
@@ -335,7 +263,6 @@ claude
 | Problem | Fix |
 |---------|-----|
 | Server doesn't connect | Check `npx --version`, try `claude --debug`, install globally if needed |
-| Memory Bank "directory not found" | `mkdir -p ~/.claude/memory-bank` |
 | Playwright "browser not installed" | `npx playwright install chromium` |
 | Playwright won't start (parallel sessions) | `pkill -f 'user-data-dir=.*mcp-chrome'` then remove stale lock (see below) |
 

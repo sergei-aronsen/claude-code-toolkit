@@ -118,10 +118,10 @@ Claude should update:
 
 ### 3. Saves Context (optional)
 
-If MCP servers are configured:
+Update `.claude/rules/project-context.md` with key project facts:
 
 ```text
-Save project context to Knowledge Graph and Memory Bank
+Update rules/project-context.md with servers, architecture, conventions
 ```
 
 ---
@@ -188,4 +188,4 @@ Then adapt it to your stack.
 - [ ] Essential Commands match the project
 - [ ] `.claude/settings.json` is configured (hooks, permissions)
 - [ ] Audits in `.claude/prompts/` are in place
-- [ ] (Optional) Context saved to MCP Memory
+- [ ] (Optional) Project context saved to `.claude/rules/project-context.md`

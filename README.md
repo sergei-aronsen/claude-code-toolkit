@@ -71,7 +71,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 |---------|-------------|
 | **Self-Learning** | `/learn` saves one-time solutions; Skill Accumulation captures recurring patterns automatically |
 | **Auto-Activation Hooks** | Hook intercepts prompts, scores context (keywords, intent, file paths), recommends relevant skills |
-| **Memory Persistence** | Export MCP memory to `.claude/memory/`, commit to git — available on any machine |
+| **Knowledge Persistence** | Project facts in `.claude/rules/` — auto-loaded every session, committed to git, available on any machine |
 | **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
 | **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
 | **Supreme Council** | `/council` sends plans to Gemini + ChatGPT for independent review before coding |
@@ -87,16 +87,12 @@ See [detailed descriptions and examples](docs/features.md).
 |--------|---------|
 | `context7` | Library documentation |
 | `playwright` | Browser automation, UI testing |
-| `memory-bank` | Memory between sessions |
 | `sequential-thinking` | Step-by-step problem solving |
-| `memory` | Knowledge Graph (relationship graph) |
 
 ```bash
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---
@@ -125,8 +121,8 @@ your-project/
     │   └── planner.md
     ├── skills/                # Framework expertise
     │   └── [framework]/SKILL.md
-    ├── scratchpad/            # Working notes
-    └── memory/                # MCP memory export
+    ├── rules/                 # Auto-loaded project facts
+    └── scratchpad/            # Working notes
 ```
 
 ---

@@ -28,9 +28,8 @@
 ## AT THE START OF EACH SESSION
 
 1. **Verify directory:** `pwd` + `git rev-parse --show-toplevel` — lock this directory for the session
-2. **Memory sync:** compare dates `~/.claude/memory-bank/[PROJECT_NAME]/*.md` vs `.claude/memory/*.md`, copy newer
-3. **Load memory:** `mcp__memory-bank__memory_bank_read` for project context
-4. **Knowledge Graph:** `mcp__memory__read_graph()` — if empty, import from `.claude/memory/knowledge-graph.json`
+2. **Context is auto-loaded** from `.claude/rules/` — no manual reads needed
+3. **For on-demand details:** read `.claude/docs/` files as needed
 
 ---
 
@@ -78,7 +77,7 @@ For features, refactoring, multi-file changes — use 3 phases:
 - **NEVER** push directly to `main`
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
 - **PARALLEL SESSIONS** — user may run multiple Claude sessions simultaneously. If you see commits you didn't make, that's normal — another session made them. Always `git pull` before commit/push. **Before build/deploy: `git fetch origin main && git merge origin/main`** to include changes from other sessions.
-- **BEFORE COMMIT** — run linters, pull latest, sync memory:
+- **BEFORE COMMIT** — run linters, pull latest:
 
 ```bash
 # Run project linters (adjust command for your project)
@@ -86,10 +85,6 @@ npm run lint   # or: make check / pnpm lint / etc.
 
 # Pull latest changes (parallel sessions may have pushed)
 git pull --rebase
-
-# Sync memory
-cp ~/.claude/memory-bank/[PROJECT_NAME]/*.md .claude/memory/
-# + export Knowledge Graph to .claude/memory/knowledge-graph.json
 ```
 
 ### Git Worktree Workflow (Parallel Sessions)
@@ -311,7 +306,7 @@ Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for
 
 ## Knowledge Persistence
 
-On significant changes, save to: (1) CLAUDE.md, (2) docs/README, (3) MCP Memory (always in English).
+On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.claude/CLAUDE.md` if workflow changed, (3) docs/README for humans.
 
 ---
 

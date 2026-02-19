@@ -217,9 +217,7 @@ Claude refactoriza preservando comportamiento. Siempre ejecuta tests despues.
 |----------|----------|
 | context7 | Documentacion actualizada de librerias |
 | playwright | Automatizacion de navegador, tests UI, capturas |
-| memory-bank | Memoria persistente entre sesiones |
 | sequential-thinking | Resolucion paso a paso |
-| memory | Grafo de conocimiento para relaciones |
 
 ---
 

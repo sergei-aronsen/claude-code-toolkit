@@ -30,14 +30,14 @@ Create comprehensive handoff documentation for another developer or AI session.
 
 ---
 
-## Persistent Memory File
+## Session State File
 
-**CRITICAL:** Maintain `.claude/memory.md` for context persistence between sessions.
+**CRITICAL:** Maintain `.claude/scratchpad/state.md` for context persistence between sessions.
 
 ### Template
 
 ```markdown
-# .claude/memory.md
+# .claude/scratchpad/state.md
 
 ## Current Status
 - [ ] Active Task: Implementing OAuth flow
@@ -69,11 +69,13 @@ Create comprehensive handoff documentation for another developer or AI session.
 
 **Before `/clear` or ending session:**
 
-> You MUST update `.claude/memory.md` with current state.
+> You MUST update `.claude/scratchpad/state.md` with current state.
 
 **At session start:**
 
-> FIRST ACTION: Read `.claude/memory.md` and summarize project state.
+> FIRST ACTION: Read `.claude/scratchpad/state.md` and summarize project state.
+
+**For permanent project facts** (servers, architecture, conventions), use `.claude/rules/` — these are auto-loaded every session.
 
 ---
 
@@ -177,8 +179,8 @@ Handoffs saved to: `.claude/scratchpad/handoff-[task-slug].md`
 | Passing to teammate | `/handoff for-[name]` |
 | Context limit reached | `/handoff continuation` |
 | Going on vacation | `/handoff full-project` |
-| **Before /clear** | Update `.claude/memory.md` |
-| **Session end** | Update `.claude/memory.md` |
+| **Before /clear** | Update `.claude/scratchpad/state.md` |
+| **Session end** | Update `.claude/scratchpad/state.md` |
 
 ---
 
@@ -190,7 +192,7 @@ See `components/context-management.md` for full guide.
 
 1. `/compact` at 70% context — preserves key info
 2. `/clear` for unrelated tasks — but update memory.md first!
-3. Session start — read `.claude/memory.md` before anything else
+3. Session start — read `.claude/scratchpad/state.md` before anything else
 
 ---
 
@@ -200,12 +202,12 @@ See `components/context-management.md` for full guide.
 ## Session Persistence
 
 ### Before /clear or session end
-You MUST update `.claude/memory.md` with:
+You MUST update `.claude/scratchpad/state.md` with:
 - Current task status
 - Key decisions made
 - Failed approaches (don't repeat!)
 - Next steps
 
 ### At session start
-FIRST ACTION: Read `.claude/memory.md`
+FIRST ACTION: Read `.claude/scratchpad/state.md`
 ```
