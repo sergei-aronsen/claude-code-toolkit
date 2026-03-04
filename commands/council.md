@@ -69,6 +69,12 @@ Or if alias is configured:
 brain "<detailed implementation plan>"
 ```
 
+The orchestrator automatically collects context:
+
+- Project files (Gemini CLI reads natively via `@file`)
+- Git diff (uncommitted changes)
+- CLAUDE.md project rules
+
 ### Step 3 — Read Report
 
 Read `.claude/scratchpad/council-report.md` and analyze:

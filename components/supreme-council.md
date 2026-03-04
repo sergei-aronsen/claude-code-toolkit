@@ -39,11 +39,18 @@ Gemini reads the identified files and performs deep review:
 - Performance concerns (N+1, missing indexes, memory leaks)
 - Edge cases and race conditions
 
+In CLI mode, Gemini reads files natively via `@file` syntax (no size limits).
+In API mode, file contents are embedded in the prompt (20KB per file limit).
+
+Both modes include **git diff** (uncommitted changes) and **CLAUDE.md** project rules
+when available, so reviewers understand what is changing and what conventions apply.
+
 Ends with: `VERDICT: APPROVED` or `VERDICT: REJECTED`
 
 ### Phase 3 — Second Opinion (ChatGPT)
 
-ChatGPT receives the plan and Gemini's critique, provides independent review:
+ChatGPT receives the plan, Gemini's critique, **file contents**, git diff, and
+project rules. Provides independent review:
 
 - Agreement/disagreement with Gemini
 - Additional concerns missed by Gemini
@@ -201,6 +208,19 @@ Per review (typical feature):
 | Gemini (API) | ~$0.01-0.05 |
 | ChatGPT (API) | ~$0.10-0.50 |
 | **Total** | **~$0.10-0.50** |
+
+---
+
+## Context Enrichment (v3.1)
+
+The orchestrator automatically collects and sends to reviewers:
+
+- **Project files** — critical files identified by Gemini (Gemini CLI uses native `@file`)
+- **Git diff** — uncommitted changes (`git diff HEAD`, max 30KB)
+- **CLAUDE.md** — project rules and conventions (max 10KB)
+- **Total context limit** — 200K characters across all files
+
+This ensures reviewers see actual code, what is changing, and project conventions.
 
 ---
 

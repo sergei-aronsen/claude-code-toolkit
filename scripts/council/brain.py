@@ -27,6 +27,10 @@ CONFIG_PATH = Path.home() / ".claude" / "council" / "config.json"
 
 TREE_EXCLUDE = "node_modules|dist|.git|__pycache__|env|venv|vendor|.next|.nuxt|tmp|log"
 
+MAX_TOTAL_CONTEXT = 200000  # 200K characters total file context limit
+MAX_GIT_DIFF = 30000        # 30K characters git diff limit
+MAX_PROJECT_RULES = 10000   # 10K characters CLAUDE.md limit
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -120,39 +124,90 @@ def get_project_structure():
     return result
 
 
+def validate_file_path(file_path):
+    """Validate and resolve a file path safely. Returns resolved Path or None."""
+    file_path = file_path.strip().strip("'\"`)>")
+    if not file_path or "/" not in file_path:
+        return None
+    resolved = Path(file_path).resolve()
+    cwd = Path.cwd().resolve()
+    if not str(resolved).startswith(str(cwd)):
+        print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
+        return None
+    if not resolved.exists() or not resolved.is_file():
+        print(f"\u26a0\ufe0f  File not found: {file_path}")
+        return None
+    return resolved
+
+
 def read_files(file_list):
-    """Read requested files safely."""
+    """Read requested files safely with total context limit."""
     content = ""
+    total_size = 0
     for file_path in file_list:
-        file_path = file_path.strip().strip("'\"`)>")
-        if not file_path or "/" not in file_path:
+        resolved = validate_file_path(file_path)
+        if not resolved:
             continue
-        # Basic path traversal protection
-        resolved = Path(file_path).resolve()
-        cwd = Path.cwd().resolve()
-        if not str(resolved).startswith(str(cwd)):
-            print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
-            continue
-        if resolved.exists() and resolved.is_file():
-            try:
-                text = resolved.read_text(encoding="utf-8", errors="replace")
-                # Limit per-file size to avoid token explosion
-                if len(text) > 20000:
-                    text = text[:20000] + "\n... (truncated)"
-                content += f"\n--- FILE: {file_path} ---\n{text}\n"
-            except Exception as e:
-                print(f"\u26a0\ufe0f  Could not read {file_path}: {e}")
-        else:
-            print(f"\u26a0\ufe0f  File not found: {file_path}")
+        if total_size >= MAX_TOTAL_CONTEXT:
+            print(f"\u26a0\ufe0f  Context limit reached ({MAX_TOTAL_CONTEXT} chars), skipping remaining files")
+            break
+        try:
+            text = resolved.read_text(encoding="utf-8", errors="replace")
+            if len(text) > 20000:
+                text = text[:20000] + "\n... (truncated)"
+            remaining = MAX_TOTAL_CONTEXT - total_size
+            if len(text) > remaining:
+                text = text[:remaining] + "\n... (context limit reached)"
+            content += f"\n--- FILE: {file_path} ---\n{text}\n"
+            total_size += len(text)
+        except Exception as e:
+            print(f"\u26a0\ufe0f  Could not read {file_path}: {e}")
     return content
+
+
+def get_validated_paths(file_list):
+    """Get list of validated file paths for @file usage."""
+    paths = []
+    for file_path in file_list:
+        resolved = validate_file_path(file_path)
+        if resolved:
+            paths.append(str(resolved))
+    return paths
+
+
+def get_git_diff():
+    """Get git diff (staged + unstaged) for context."""
+    result = run_command(["git", "diff", "HEAD"], timeout=10)
+    if result.startswith("Error") or not result:
+        return ""
+    if len(result) > MAX_GIT_DIFF:
+        result = result[:MAX_GIT_DIFF] + "\n... (diff truncated)"
+    return result
+
+
+def get_project_rules():
+    """Read CLAUDE.md from project root if it exists."""
+    claude_md = Path.cwd() / "CLAUDE.md"
+    if not claude_md.exists():
+        return ""
+    try:
+        text = claude_md.read_text(encoding="utf-8", errors="replace")
+        if len(text) > MAX_PROJECT_RULES:
+            text = text[:MAX_PROJECT_RULES] + "\n... (truncated)"
+        return text
+    except Exception:
+        return ""
 
 
 # ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
 
-def ask_gemini_cli(prompt, model):
-    """Query Gemini via CLI (stdin pipe)."""
+def ask_gemini_cli(prompt, model, file_paths=None):
+    """Query Gemini via CLI (stdin pipe). Supports @file for native file reading."""
+    if file_paths:
+        file_refs = "\n".join(f"@{p}" for p in file_paths)
+        prompt = f"{file_refs}\n\n{prompt}"
     return run_command(
         ["gemini", "--model", model],
         input_text=prompt,
@@ -203,13 +258,13 @@ def ask_gemini_api(prompt, model, api_key):
             os.unlink(tmp.name)
 
 
-def ask_gemini(prompt, config):
+def ask_gemini(prompt, config, file_paths=None):
     """Route to CLI or API based on config."""
     mode = config["gemini"].get("mode", "cli")
     model = config["gemini"]["model"]
 
     if mode == "cli":
-        return ask_gemini_cli(prompt, model)
+        return ask_gemini_cli(prompt, model, file_paths=file_paths)
     return ask_gemini_api(prompt, model, config["gemini"].get("api_key", ""))
 
 
@@ -276,6 +331,12 @@ def main():
     config = load_config()
 
     project_map = get_project_structure()
+    git_diff = get_git_diff()
+    project_rules = get_project_rules()
+
+    # Build shared context blocks
+    diff_block = f"\nGIT CHANGES:\n{git_diff}" if git_diff else ""
+    rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
 
     # ── Phase 1: Context Discovery ──
     print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
@@ -295,18 +356,26 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     files_to_read = ask_gemini(context_prompt, config)
 
     files_content = ""
+    file_paths = []
     if files_to_read and "/" in files_to_read and not files_to_read.startswith("Error"):
         file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
         print(f"\U0001f4c2 Reading {len(file_list)} file(s)...")
+        file_paths = get_validated_paths(file_list)
         files_content = read_files(file_list)
 
     # ── Phase 2: Architectural Audit (Gemini) ──
     print("\U0001f9e8 [Gemini]: Deep architectural audit...")
 
+    # In CLI mode, Gemini reads files natively via @file (no content in prompt)
+    use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
+    files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
+
     audit_prompt = f"""{GEMINI_SYSTEM}
+{rules_block}
 
 FILES CONTEXT:
-{files_content if files_content else "(no files read)"}
+{files_in_prompt}
+{diff_block}
 
 IMPLEMENTATION PLAN:
 {plan}
@@ -320,7 +389,10 @@ Perform a thorough architectural review:
 
 End with: VERDICT: APPROVED or REJECTED with specific reasons."""
 
-    gemini_verdict = ask_gemini(audit_prompt, config)
+    gemini_verdict = ask_gemini(
+        audit_prompt, config,
+        file_paths=file_paths if use_native_files else None
+    )
 
     # ── Phase 3: Second Opinion (ChatGPT) ──
     print("\U0001f6e1\ufe0f  [ChatGPT]: Security and logic audit...")
@@ -332,6 +404,11 @@ Find what the architect missed. Focus on:
 3. Race conditions
 4. Missing validation
 5. Alternative approaches
+{rules_block}
+
+FILES CONTEXT:
+{files_content if files_content else "(no files read)"}
+{diff_block}
 
 PLAN:
 {plan}
