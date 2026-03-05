@@ -5,22 +5,26 @@
 # Writes results to /tmp/claude-rate-limits.json
 # Uses claude-haiku-4-5 (cheapest model) with max_tokens=1 to minimize usage impact.
 
-CACHE_FILE="/tmp/claude-rate-limits.json"
-LOCK_FILE="/tmp/claude-rate-limit-probe.lock"
+CACHE_FILE="${TMPDIR:-/tmp}/claude-rate-limits.json"
+LOCK_DIR="${TMPDIR:-/tmp}/claude-rate-limit-probe.lock"
 
-# Prevent concurrent runs
-if [ -f "$LOCK_FILE" ]; then
-    LOCK_AGE=$(( $(date +%s) - $(stat -f %m "$LOCK_FILE" 2>/dev/null || echo 0) ))
+# Prevent concurrent runs (mkdir is atomic)
+if mkdir "$LOCK_DIR" 2>/dev/null; then
+    trap 'rm -rf "$LOCK_DIR"' EXIT
+else
+    # Lock exists — check if stale (>30s)
+    LOCK_AGE=$(( $(date +%s) - $(stat -f %m "$LOCK_DIR" 2>/dev/null || echo 0) ))
     if [ "$LOCK_AGE" -lt 30 ]; then
         exit 0
     fi
-    rm -f "$LOCK_FILE"
+    rm -rf "$LOCK_DIR"
+    mkdir "$LOCK_DIR" 2>/dev/null || exit 0
+    trap 'rm -rf "$LOCK_DIR"' EXIT
 fi
-touch "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"' EXIT
 
 # Skip if cache is fresh (less than 60 seconds old)
 if [ -f "$CACHE_FILE" ]; then
+    # Note: stat -f %m is macOS-only; this script is designed for macOS
     CACHE_AGE=$(( $(date +%s) - $(stat -f %m "$CACHE_FILE" 2>/dev/null || echo 0) ))
     if [ "$CACHE_AGE" -lt 60 ]; then
         exit 0

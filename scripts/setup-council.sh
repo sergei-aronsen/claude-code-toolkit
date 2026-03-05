@@ -6,7 +6,7 @@
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -188,7 +188,8 @@ else
   }
 }
 CONFIGEOF
-    echo -e "  ${GREEN}✓${NC} config.json created"
+    chmod 600 "$CONFIG_FILE"
+    echo -e "  ${GREEN}✓${NC} config.json created (permissions: owner-only)"
 fi
 
 echo ""

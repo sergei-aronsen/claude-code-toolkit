@@ -5,6 +5,7 @@ System for maintaining project knowledge across sessions using Claude Code's bui
 ## The Old Way (MCP Memory Bank)
 
 Previously, project context was stored in MCP servers (Memory Bank, Knowledge Graph) and manually synced to `.claude/memory/`. This required:
+
 - Manual MCP reads at session start
 - Manual sync before commits
 - Knowledge Graph re-import every session (in-memory only)
@@ -63,6 +64,7 @@ globs:
 ```
 
 Examples:
+
 - `i18n.md` — loaded when editing `lang/` or `resources/js/`
 - `go-crawler.md` — loaded when editing `tools/crawler/`
 - `playwright.md` — loaded when editing screenshot-related files

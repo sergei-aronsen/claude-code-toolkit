@@ -1,8 +1,8 @@
-# /council — Multi-AI Code Review (Supreme Council)
+# /council — Multi-AI Plan Validation (Supreme Council)
 
 ## Purpose
 
-Get pre-implementation review from Gemini (Architect) and ChatGPT (Critic) before coding high-stakes features.
+Challenge your implementation plan with Gemini (The Skeptic) and ChatGPT (The Pragmatist) before coding. Not a linter — validates whether the approach is justified.
 
 ---
 
@@ -28,6 +28,7 @@ Get pre-implementation review from Gemini (Architect) and ChatGPT (Critic) befor
 | Security-related changes | Yes |
 | Architectural refactoring | Yes |
 | Breaking API changes | Yes |
+| Plan feels overcomplicated | Yes |
 | Simple bug fix | No |
 | UI tweaks | No |
 | Time-critical hotfix | No |
@@ -77,19 +78,21 @@ The orchestrator automatically collects context:
 
 ### Step 3 — Read Report
 
-Read `.claude/scratchpad/council-report.md` and analyze:
+Read `.claude/scratchpad/council-report.md` and analyze the verdict:
 
-- **APPROVED** — proceed with implementation
-- **REJECTED** — fix issues listed in the report, then re-run
+- **PROCEED** — plan is justified, start implementation
+- **SIMPLIFY** — reduce scope or complexity, then re-run
+- **RETHINK** — try a different approach, then re-run
+- **SKIP** — don't do this, move on
 
 ### Step 4 — Report to User
 
 Before writing code, output:
 
 ```text
-Council review completed. Status: [APPROVED/REJECTED].
+Council review completed. Verdict: [PROCEED/SIMPLIFY/RETHINK/SKIP].
 Key findings: [brief summary].
-[Commencing implementation / Awaiting plan revision].
+[Commencing implementation / Adjusting plan / Skipping task].
 ```
 
 ---
@@ -97,11 +100,11 @@ Key findings: [brief summary].
 ## Iron Rules
 
 1. **DO** run `/plan` before `/council`
-2. **DO** wait for APPROVED before coding
-3. **DO** address concerns in REJECTED reports
+2. **DO** wait for PROCEED before coding
+3. **DO** address concerns in SIMPLIFY/RETHINK verdicts
 4. **DO** re-run council after major plan changes
 5. **DO NOT** use for simple bug fixes (overhead)
-6. **DO NOT** implement REJECTED plans without rework
+6. **DO NOT** implement non-PROCEED plans without rework
 7. **DO NOT** use for time-critical hotfixes (too slow)
 
 ---
@@ -111,18 +114,22 @@ Key findings: [brief summary].
 Report saved to `.claude/scratchpad/council-report.md`:
 
 ```text
-SUPREME COUNCIL FINAL REPORT
-=============================
+SUPREME COUNCIL REPORT
+============================================================
 
-ARCHITECT (Gemini):
-  [Architectural review, SOLID/DRY violations, risks]
-  VERDICT: APPROVED/REJECTED
+THE SKEPTIC (Gemini):
+  [Problem assessment, simplicity check, do-nothing analysis]
+  VERDICT: PROCEED/SIMPLIFY/RETHINK/SKIP
 
-CRITIC (ChatGPT):
-  [Security review, edge cases, alternative approaches]
-  VERDICT: APPROVED/REJECTED
+THE PRAGMATIST (ChatGPT):
+  [Production readiness, maintenance forecast, alternatives]
+  VERDICT: PROCEED/SIMPLIFY/RETHINK/SKIP
 
-STATUS: PLAN APPROVED / PLAN REJECTED
+------------------------------------------------------------
+  Skeptic:    [verdict]
+  Pragmatist: [verdict]
+  Final:      [most conservative verdict]
+------------------------------------------------------------
 ```
 
 ---

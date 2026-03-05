@@ -1,13 +1,14 @@
-# Supreme Council — Multi-AI Code Review
+# Supreme Council — Multi-AI Plan Validation
 
-> Optional advanced feature: Claude Code writes code, Gemini and ChatGPT review before implementation.
+> Optional advanced feature: before Claude Code starts coding, Gemini and ChatGPT challenge whether the plan is worth doing at all.
 
 ---
 
 ## TL;DR
 
-- Claude drafts plan, Gemini reviews architecture, ChatGPT provides second opinion
-- Use for: new features, security changes, refactoring, payments, breaking API changes
+- Claude drafts plan, Gemini challenges justification, ChatGPT evaluates practicality
+- NOT a linter — validates whether the approach is justified, not whether the code is clean
+- Verdicts: PROCEED / SIMPLIFY / RETHINK / SKIP
 - Install: `curl -sSL .../setup-council.sh | bash`
 - Usage: `/council "add OAuth with Google"` or `brain "add OAuth with Google"`
 
@@ -18,11 +19,11 @@
 ```text
 Claude Code → creates plan
     ↓
-Gemini (Architect) → analyzes structure, reads files, reviews architecture
+The Skeptic (Gemini) → challenges justification, checks for overengineering
     ↓
-ChatGPT (Critic) → independent second opinion on plan + Gemini's critique
+The Pragmatist (ChatGPT) → evaluates production readiness, maintenance cost
     ↓
-Final Report → APPROVED / REJECTED → saved to .claude/scratchpad/council-report.md
+Final Report → PROCEED / SIMPLIFY / RETHINK / SKIP → .claude/scratchpad/council-report.md
 ```
 
 ### Phase 1 — Context Discovery
@@ -30,14 +31,16 @@ Final Report → APPROVED / REJECTED → saved to .claude/scratchpad/council-rep
 Orchestrator runs `tree` to get project structure, sends it to Gemini.
 Gemini identifies critical files for the planned change.
 
-### Phase 2 — Architectural Audit (Gemini)
+### Phase 2 — The Skeptic (Gemini)
 
-Gemini reads the identified files and performs deep review:
+Gemini reads the identified files and challenges the plan:
 
-- SOLID/DRY violations
-- Security risks (injection, auth bypass, data exposure)
-- Performance concerns (N+1, missing indexes, memory leaks)
-- Edge cases and race conditions
+- **Problem Assessment** — is this solving a real problem?
+- **Simplicity Check** — is there a simpler approach?
+- **Do-Nothing Analysis** — what happens if we skip this entirely?
+- **Concerns** — max 3, ranked by impact (skips trivial issues Claude Code handles)
+
+Does NOT look for SOLID violations, linting issues, or basic security — Claude Code already does that.
 
 In CLI mode, Gemini reads files natively via `@file` syntax (no size limits).
 In API mode, file contents are embedded in the prompt (20KB per file limit).
@@ -45,24 +48,36 @@ In API mode, file contents are embedded in the prompt (20KB per file limit).
 Both modes include **git diff** (uncommitted changes) and **CLAUDE.md** project rules
 when available, so reviewers understand what is changing and what conventions apply.
 
-Ends with: `VERDICT: APPROVED` or `VERDICT: REJECTED`
+Ends with: `VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP`
 
-### Phase 3 — Second Opinion (ChatGPT)
+### Phase 3 — The Pragmatist (ChatGPT)
 
-ChatGPT receives the plan, Gemini's critique, **file contents**, git diff, and
-project rules. Provides independent review:
+ChatGPT receives the plan, The Skeptic's assessment, **file contents**, git diff, and
+project rules. Does NOT repeat The Skeptic's points. Focuses on:
 
-- Agreement/disagreement with Gemini
-- Additional concerns missed by Gemini
-- Alternative approaches
-- Security vulnerabilities
+- **Production Readiness** — will this actually work in production?
+- **Maintenance Forecast** — long-term cost, will the next developer understand this?
+- **Alternative Approaches** — proven prior art, libraries, simpler patterns
+- **Agreement with Skeptic** — specific agree/disagree creates a dialogue
 
-Ends with: `VERDICT: APPROVED` or `VERDICT: REJECTED`
+Ends with: `VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP`
 
 ### Phase 4 — Final Report
 
 Both reviews combined into `.claude/scratchpad/council-report.md`.
-Claude reads the report and decides whether to proceed.
+The more conservative verdict wins (SKIP > RETHINK > SIMPLIFY > PROCEED).
+Claude reads the report and decides how to proceed.
+
+---
+
+## Verdicts
+
+| Verdict | Meaning | Action |
+|---------|---------|--------|
+| PROCEED | Plan is justified and well-scoped | Start implementation |
+| SIMPLIFY | Core idea is valid, approach is overcomplicated | Reduce scope, re-run `/council` |
+| RETHINK | Problem is real, solution is wrong | Try different approach, re-run `/council` |
+| SKIP | Cost outweighs benefit | Don't do this, move on |
 
 ---
 
@@ -74,6 +89,8 @@ Claude reads the report and decides whether to proceed.
 | Security-related changes | Yes |
 | Architectural refactoring | Yes |
 | Breaking API changes | Yes |
+| Plan feels overcomplicated | Yes |
+| "Should we even do this?" moments | Yes |
 | Simple bug fix | No |
 | UI tweaks, typos | No |
 | Time-critical hotfix | No |
@@ -171,16 +188,22 @@ python3 ~/.claude/council/brain.py "refactor auth to use JWT"
 Report saved to `.claude/scratchpad/council-report.md`:
 
 ```text
-SUPREME COUNCIL FINAL REPORT
-=============================
+SUPREME COUNCIL REPORT
+============================================================
 
-ARCHITECT (Gemini gemini-3-pro-preview):
-[Gemini's architectural review]
+THE SKEPTIC (Gemini gemini-3-pro-preview):
+[Problem assessment, simplicity check, do-nothing analysis]
 
-CRITIC (ChatGPT gpt-5.2):
-[ChatGPT's security review]
+THE PRAGMATIST (ChatGPT gpt-5.2):
+[Production readiness, maintenance forecast, alternatives]
 
-STATUS: PLAN APPROVED / PLAN REJECTED
+------------------------------------------------------------
+  Skeptic:    SIMPLIFY
+  Pragmatist: PROCEED
+  Final:      SIMPLIFY — Core idea is valid, but the approach is overcomplicated.
+------------------------------------------------------------
+
+VERDICT: SIMPLIFY
 ```
 
 ---
@@ -211,7 +234,7 @@ Per review (typical feature):
 
 ---
 
-## Context Enrichment (v3.1)
+## Context Enrichment
 
 The orchestrator automatically collects and sends to reviewers:
 
@@ -239,11 +262,12 @@ This ensures reviewers see actual code, what is changing, and project convention
 ```markdown
 ## Supreme Council (Optional)
 
-For high-stakes changes, use multi-AI review:
+For high-stakes changes, use multi-AI plan validation:
 `/council "feature description"` or `brain "feature description"`
 
-**When to use:** New features, security, refactoring, payments, breaking API changes.
-**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
+**When to use:** New features, security, refactoring, overcomplicated plans.
+**Verdicts:** PROCEED / SIMPLIFY / RETHINK / SKIP
+**Output:** `.claude/scratchpad/council-report.md`
 
 Full guide: `components/supreme-council.md`
 ```

@@ -5,7 +5,7 @@
 # Or: curl -sSL ... | bash -s -- laravel
 # Or: curl -sSL ... | bash -s -- --dry-run
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'

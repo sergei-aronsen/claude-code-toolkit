@@ -4,9 +4,9 @@
 # Usage:
 #   /path/to/claude-guides/scripts/init-local.sh [--dry-run] [framework]
 #
-# Frameworks: laravel, nextjs, django, rails, golang, rust, auto (default)
+# Frameworks: laravel, nextjs, nodejs, python, go, rails, base, auto (default)
 
-set -e
+set -euo pipefail
 
 VERSION="1.1.0"
 
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
         --help|-h)
             echo "Usage: init-local.sh [--dry-run] [framework]"
             echo ""
-            echo "Frameworks: laravel, nextjs, django, rails, golang, rust, nodejs, generic"
+            echo "Frameworks: laravel, nextjs, nodejs, python, go, rails, base"
             echo ""
             echo "Options:"
             echo "  --dry-run    Show what would be created"
@@ -73,18 +73,16 @@ detect_framework() {
         echo "laravel"
     elif [ -f "next.config.js" ] || [ -f "next.config.ts" ] || [ -f "next.config.mjs" ]; then
         echo "nextjs"
-    elif [ -f "manage.py" ] && grep -q "django" requirements.txt 2>/dev/null; then
-        echo "django"
     elif [ -f "Gemfile" ] && grep -q "rails" Gemfile 2>/dev/null; then
         echo "rails"
     elif [ -f "go.mod" ]; then
-        echo "golang"
-    elif [ -f "Cargo.toml" ]; then
-        echo "rust"
+        echo "go"
+    elif [ -f "manage.py" ] || [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+        echo "python"
     elif [ -f "package.json" ]; then
         echo "nodejs"
     else
-        echo "generic"
+        echo "base"
     fi
 }
 
@@ -103,9 +101,17 @@ case $FRAMEWORK in
     nextjs)
         TEMPLATE_PATH="$GUIDES_DIR/templates/nextjs"
         ;;
-    django|rails|golang|rust)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/base"
-        echo -e "${YELLOW}Note: Using base templates. Framework-specific templates coming soon.${NC}"
+    go)
+        TEMPLATE_PATH="$GUIDES_DIR/templates/go"
+        ;;
+    python)
+        TEMPLATE_PATH="$GUIDES_DIR/templates/python"
+        ;;
+    rails)
+        TEMPLATE_PATH="$GUIDES_DIR/templates/rails"
+        ;;
+    nodejs)
+        TEMPLATE_PATH="$GUIDES_DIR/templates/nodejs"
         ;;
     *)
         TEMPLATE_PATH="$GUIDES_DIR/templates/base"

@@ -1,4 +1,4 @@
-.PHONY: help lint shellcheck mdlint test validate clean install
+.PHONY: help check lint shellcheck mdlint test validate clean install
 
 # Default target
 help:
@@ -12,6 +12,10 @@ help:
 	@echo "  make install    - Install dev dependencies"
 	@echo "  make clean      - Clean temporary files"
 	@echo ""
+
+# Run all checks (documented in CLAUDE.md as primary quality gate)
+check: lint validate
+	@echo "All checks passed!"
 
 # Install dependencies
 install:
@@ -27,7 +31,7 @@ lint: shellcheck mdlint
 # ShellCheck
 shellcheck:
 	@echo "Running ShellCheck..."
-	@shellcheck scripts/*.sh && echo "✅ ShellCheck passed"
+	@find scripts -name '*.sh' -exec shellcheck {} + && echo "✅ ShellCheck passed"
 
 # Markdown lint
 mdlint:
@@ -62,7 +66,7 @@ test:
 validate:
 	@echo "Validating templates..."
 	@ERRORS=0; \
-	for f in templates/**/*.md; do \
+	for f in $$(find templates -name '*.md'); do \
 		if ! grep -q "QUICK CHECK" "$$f" 2>/dev/null; then \
 			echo "❌ Missing QUICK CHECK: $$f"; \
 			ERRORS=$$((ERRORS + 1)); \

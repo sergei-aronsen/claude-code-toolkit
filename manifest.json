@@ -23,10 +23,9 @@
       "skills/ai-models/SKILL.md",
       "skills/skill-rules.json"
     ],
-    "memory": [
-      "memory/README.md",
-      "memory/knowledge-graph.json",
-      "memory/project-context.md"
+    "rules": [
+      "rules/README.md",
+      "rules/project-context.md"
     ]
   },
 

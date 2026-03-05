@@ -6,7 +6,7 @@
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -150,17 +150,20 @@ if [[ -f "$SETTINGS_JSON" ]]; then
         # Use a temporary file for safe JSON merging
         # We need to add hooks.PreToolUse to existing config
         if command -v python3 &>/dev/null; then
-            if python3 -c "
+            if python3 - "$SETTINGS_JSON" "$HOOK_COMMAND" << 'PYEOF' 2>/dev/null
 import json, sys
 
-with open('$SETTINGS_JSON', 'r') as f:
+settings_path = sys.argv[1]
+hook_command = sys.argv[2]
+
+with open(settings_path, 'r') as f:
     config = json.load(f)
 
 hook_entry = {
     'matcher': 'Bash',
     'hooks': [{
         'type': 'command',
-        'command': '$HOOK_COMMAND'
+        'command': hook_command
     }]
 }
 
@@ -178,10 +181,11 @@ already = any(
 if not already:
     config['hooks']['PreToolUse'].append(hook_entry)
 
-with open('$SETTINGS_JSON', 'w') as f:
+with open(settings_path, 'w') as f:
     json.dump(config, f, indent=2)
     f.write('\n')
-" 2>/dev/null; then
+PYEOF
+then
                 echo -e "  ${GREEN}✓${NC} Hook merged into settings.json"
             else
                 echo -e "  ${RED}✗${NC} Failed to merge — add manually:"

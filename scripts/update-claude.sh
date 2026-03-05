@@ -3,7 +3,7 @@
 # Claude Code Toolkit — Smart Update Script
 # Updates toolkit files while preserving user customizations in CLAUDE.md
 
-set -e
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

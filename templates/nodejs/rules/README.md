@@ -33,6 +33,7 @@ This rule file will only be loaded when Claude touches files matching those glob
 ## Migration from .claude/memory/
 
 If you previously used `.claude/memory/` with MCP memory bank:
+
 1. Move operational facts to `.claude/rules/project-context.md`
 2. Move large reference docs to `.claude/docs/`
 3. Delete `.claude/memory/` directory

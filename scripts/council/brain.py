@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Supreme Council — Multi-AI Code Review Orchestrator
+Supreme Council — Multi-AI Hypothesis Validation Orchestrator
 
-Sends implementation plans to Gemini and ChatGPT for independent review
-before Claude Code starts coding.
+Sends implementation plans to Gemini (The Skeptic) and ChatGPT (The Pragmatist)
+for independent validation before Claude Code starts coding.
 
 Usage:
     python3 brain.py "Your implementation plan"
@@ -12,6 +12,7 @@ Usage:
 Config: ~/.claude/council/config.json
 """
 
+import re
 import subprocess
 import sys
 import os
@@ -38,16 +39,54 @@ USER_AGENT = (
 )
 
 GEMINI_SYSTEM = (
-    "You are a ruthless senior architect. Review implementation plans "
-    "for critical flaws, SOLID/DRY violations, security risks, and "
-    "performance issues. Be brief and direct."
+    "You are The Skeptic — a senior engineer who questions whether things "
+    "should be built at all. Your job is NOT to find bugs or SOLID violations — "
+    "Claude Code already does that. Your job is to challenge whether the proposed "
+    "approach is justified, whether it's overengineered, and whether a simpler "
+    "solution exists. Be brief and direct."
 )
 
 GPT_SYSTEM = (
-    "You are a ruthless security and logic auditor. Find flaws that "
-    "others miss. Focus on edge cases, race conditions, injection "
-    "vectors, and logic errors. Be brief and direct."
+    "You are The Pragmatist — a battle-scarred production engineer. Your job is "
+    "NOT to find bugs or security issues — Claude Code already does that. Your job "
+    "is to evaluate whether this plan will actually work in production, what the "
+    "long-term maintenance cost is, and whether there's proven prior art that "
+    "solves this better. Be brief and direct."
 )
+
+VERDICTS = {
+    "PROCEED": "Plan is justified and well-scoped. Go ahead.",
+    "SIMPLIFY": "Core idea is valid, but the approach is overcomplicated. Reduce scope.",
+    "RETHINK": "The problem is real, but the solution is wrong. Try a different approach.",
+    "SKIP": "This doesn't need to be done. The cost outweighs the benefit.",
+}
+
+VERDICT_PRIORITY = ["SKIP", "RETHINK", "SIMPLIFY", "PROCEED"]
+
+
+def extract_verdict(text):
+    """Extract verdict from reviewer response. Prefers explicit VERDICT: pattern."""
+    if not text:
+        return "RETHINK"
+    upper = text.upper()
+    # First: look for explicit "VERDICT: <word>" pattern
+    match = re.search(r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)", upper)
+    if match:
+        return match.group(1)
+    # Fallback: scan full text in priority order
+    for verdict in VERDICT_PRIORITY:
+        if verdict in upper:
+            return verdict
+    return "RETHINK"
+
+
+def sanitize_error(text, config):
+    """Remove API keys from error output to prevent leaks."""
+    for provider in ("gemini", "openai"):
+        key = config.get(provider, {}).get("api_key", "")
+        if key and len(key) >= 4:
+            text = text.replace(key, key[:4] + "***")
+    return text
 
 
 def load_config():
@@ -61,6 +100,12 @@ def load_config():
 
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
+
+    # Validate required config structure
+    for key in ("gemini", "openai"):
+        if key not in config or "model" not in config.get(key, {}):
+            print(f"\n\u274c Invalid config: missing '{key}.model' in {CONFIG_PATH}")
+            sys.exit(1)
 
     # Environment variables override config file
     if os.getenv("OPENAI_API_KEY"):
@@ -131,7 +176,7 @@ def validate_file_path(file_path):
         return None
     resolved = Path(file_path).resolve()
     cwd = Path.cwd().resolve()
-    if not str(resolved).startswith(str(cwd)):
+    if not str(resolved).startswith(str(cwd) + os.sep):
         print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
         return None
     if not resolved.exists() or not resolved.is_file():
@@ -215,11 +260,13 @@ def ask_gemini_cli(prompt, model, file_paths=None):
     )
 
 
-def ask_gemini_api(prompt, model, api_key):
+def ask_gemini_api(prompt, model, api_key, config=None):
     """Query Gemini via REST API using curl."""
     if not api_key:
         return "Error: Gemini API key not set (check config or GEMINI_API_KEY env)"
 
+    # Note: Gemini API requires key in URL query parameter (Google API design).
+    # The key may appear in server/proxy logs. Use env vars and rotate keys regularly.
     url = (f"https://generativelanguage.googleapis.com/v1beta/"
            f"models/{model}:generateContent?key={api_key}")
 
@@ -252,7 +299,8 @@ def ask_gemini_api(prompt, model, api_key):
             data = json.loads(result)
             return data["candidates"][0]["content"]["parts"][0]["text"]
         except (json.JSONDecodeError, KeyError, IndexError):
-            return f"Gemini API error: {result[:500]}"
+            error = f"Gemini API error: {result[:500]}"
+            return sanitize_error(error, config) if config else error
     finally:
         if tmp and os.path.exists(tmp.name):
             os.unlink(tmp.name)
@@ -265,7 +313,7 @@ def ask_gemini(prompt, config, file_paths=None):
 
     if mode == "cli":
         return ask_gemini_cli(prompt, model, file_paths=file_paths)
-    return ask_gemini_api(prompt, model, config["gemini"].get("api_key", ""))
+    return ask_gemini_api(prompt, model, config["gemini"].get("api_key", ""), config=config)
 
 
 # ─────────────────────────────────────────────────
@@ -310,7 +358,7 @@ def ask_chatgpt(prompt, config):
             data = json.loads(result)
             return data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError):
-            return f"OpenAI API error: {result[:500]}"
+            return sanitize_error(f"OpenAI API error: {result[:500]}", config)
     finally:
         if tmp and os.path.exists(tmp.name):
             os.unlink(tmp.name)
@@ -363,14 +411,14 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
         file_paths = get_validated_paths(file_list)
         files_content = read_files(file_list)
 
-    # ── Phase 2: Architectural Audit (Gemini) ──
-    print("\U0001f9e8 [Gemini]: Deep architectural audit...")
+    # ── Phase 2: The Skeptic (Gemini) ──
+    print("\U0001f9d0 [The Skeptic]: Challenging plan justification...")
 
     # In CLI mode, Gemini reads files natively via @file (no content in prompt)
     use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
     files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
 
-    audit_prompt = f"""{GEMINI_SYSTEM}
+    skeptic_prompt = f"""{GEMINI_SYSTEM}
 {rules_block}
 
 FILES CONTEXT:
@@ -380,30 +428,37 @@ FILES CONTEXT:
 IMPLEMENTATION PLAN:
 {plan}
 
-Perform a thorough architectural review:
-1. SOLID/DRY violations
-2. Security risks (injection, auth bypass, data exposure)
-3. Performance concerns (N+1 queries, missing indexes, memory leaks)
-4. Edge cases and race conditions
-5. Missing error handling
+Evaluate this plan using the following structure:
 
-End with: VERDICT: APPROVED or REJECTED with specific reasons."""
+## Problem Assessment
+Is this solving a real problem? What evidence supports the need for this change?
+
+## Simplicity Check
+What is the simplest thing that could work? Is the proposed approach the simplest, or is it overengineered?
+
+## Do-Nothing Analysis
+What happens if we don't do this at all? What's the actual cost of inaction?
+
+## Concerns (max 3)
+List up to 3 concerns, ranked by impact. Skip trivial issues — Claude Code handles linting, SOLID, and basic security.
+
+## Verdict
+End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
+- PROCEED — plan is justified and well-scoped
+- SIMPLIFY — core idea is valid, but approach is overcomplicated
+- RETHINK — the problem is real, but the solution is wrong
+- SKIP — this doesn't need to be done"""
 
     gemini_verdict = ask_gemini(
-        audit_prompt, config,
+        skeptic_prompt, config,
         file_paths=file_paths if use_native_files else None
     )
 
-    # ── Phase 3: Second Opinion (ChatGPT) ──
-    print("\U0001f6e1\ufe0f  [ChatGPT]: Security and logic audit...")
+    # ── Phase 3: The Pragmatist (ChatGPT) ──
+    print("\U0001f528 [The Pragmatist]: Evaluating production readiness...")
 
-    gpt_prompt = f"""Verify this implementation plan and Gemini's architectural critique.
-Find what the architect missed. Focus on:
-1. Security vulnerabilities
-2. Logic errors and edge cases
-3. Race conditions
-4. Missing validation
-5. Alternative approaches
+    pragmatist_prompt = f"""Review this implementation plan and The Skeptic's assessment.
+Do NOT repeat The Skeptic's points. Focus on what they missed or got wrong.
 {rules_block}
 
 FILES CONTEXT:
@@ -413,34 +468,61 @@ FILES CONTEXT:
 PLAN:
 {plan}
 
-GEMINI'S CRITIQUE:
+THE SKEPTIC'S ASSESSMENT:
 {gemini_verdict}
 
-End with: VERDICT: APPROVED or REJECTED with specific reasons."""
+Evaluate using this structure:
 
-    gpt_verdict = ask_chatgpt(gpt_prompt, config)
+## Production Readiness
+Will this actually work in production? What operational risks exist?
+
+## Maintenance Forecast
+What's the long-term maintenance cost? Will the next developer understand this?
+
+## Alternative Approaches
+Is there proven prior art that solves this better? A library, pattern, or simpler architecture?
+
+## Agreement with Skeptic
+Where do you agree/disagree with The Skeptic's assessment? Be specific.
+
+## Verdict
+End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
+- PROCEED — plan is justified and well-scoped
+- SIMPLIFY — core idea is valid, but approach is overcomplicated
+- RETHINK — the problem is real, but the solution is wrong
+- SKIP — this doesn't need to be done"""
+
+    gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
 
     # ── Phase 4: Final Report ──
+    skeptic_decision = extract_verdict(gemini_verdict)
+    pragmatist_decision = extract_verdict(gpt_verdict)
+
+    # More conservative verdict wins
+    skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
+    pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
+    final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
+
     print("\n" + "=" * 60)
-    print("\U0001f4cb SUPREME COUNCIL FINAL REPORT")
+    print("\U0001f4cb SUPREME COUNCIL REPORT")
     print("=" * 60)
-    print(f"\n\U0001f3db\ufe0f  ARCHITECT (Gemini {config['gemini']['model']}):")
+    print(f"\n\U0001f9d0 THE SKEPTIC (Gemini {config['gemini']['model']}):")
     print(gemini_verdict)
-    print(f"\n\U0001f575\ufe0f  CRITIC (ChatGPT {config['openai']['model']}):")
+    print(f"\n\U0001f528 THE PRAGMATIST (ChatGPT {config['openai']['model']}):")
     print(gpt_verdict)
-    print("\n" + "=" * 60)
+    print("\n" + "-" * 60)
+    print(f"  Skeptic:    {skeptic_decision}")
+    print(f"  Pragmatist: {pragmatist_decision}")
+    print(f"  Final:      {final_verdict} — {VERDICTS[final_verdict]}")
+    print("-" * 60)
 
-    # Determine overall status
-    gemini_rejected = "REJECTED" in gemini_verdict.upper() if gemini_verdict else False
-    gpt_rejected = "REJECTED" in gpt_verdict.upper() if gpt_verdict else False
-
-    if gemini_rejected or gpt_rejected:
-        print("\u274c STATUS: PLAN REJECTED. Fix the issues before coding.")
-        status = "REJECTED"
-    else:
-        print("\u2705 STATUS: PLAN APPROVED. Proceed with implementation.")
-        status = "APPROVED"
-
+    verdict_icons = {
+        "PROCEED": "\u2705",
+        "SIMPLIFY": "\U0001f4a1",
+        "RETHINK": "\U0001f504",
+        "SKIP": "\u26d4",
+    }
+    print(f"\n{verdict_icons[final_verdict]} VERDICT: {final_verdict}")
     print("=" * 60 + "\n")
 
     # Save report to scratchpad
@@ -450,26 +532,36 @@ End with: VERDICT: APPROVED or REJECTED with specific reasons."""
 
     report = f"""# Supreme Council Review Report
 
-## Decision: {status}
+## Verdict: {final_verdict}
+
+> {VERDICTS[final_verdict]}
+
+| Reviewer | Verdict |
+|----------|---------|
+| Skeptic (Gemini) | {skeptic_decision} |
+| Pragmatist (ChatGPT) | {pragmatist_decision} |
+| **Final** | **{final_verdict}** |
 
 ---
 
-## Architect Review (Gemini {config['gemini']['model']})
+## The Skeptic (Gemini {config['gemini']['model']})
 
 {gemini_verdict}
 
 ---
 
-## Critic Review (ChatGPT {config['openai']['model']})
+## The Pragmatist (ChatGPT {config['openai']['model']})
 
 {gpt_verdict}
 
 ---
 
-## Next Steps
+## What To Do Next
 
-- **APPROVED** — proceed with implementation
-- **REJECTED** — fix the issues listed above, then re-run `/council`
+- **PROCEED** — plan is justified. Start implementation.
+- **SIMPLIFY** — reduce scope or complexity, then re-run `/council`.
+- **RETHINK** — try a different approach entirely, then re-run `/council`.
+- **SKIP** — don't do this. Move on to something else.
 """
 
     report_path.write_text(report, encoding="utf-8")

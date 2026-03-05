@@ -10,9 +10,10 @@
 input=$(cat)
 
 # Read cached rate limits
-CACHE="/tmp/claude-rate-limits.json"
+CACHE="${TMPDIR:-/tmp}/claude-rate-limits.json"
 
 # Trigger background probe if cache is stale (>60s) or missing
+# Note: stat -f %m is macOS-only; this script is designed for macOS
 if [ ! -f "$CACHE" ] || [ $(( $(date +%s) - $(stat -f %m "$CACHE" 2>/dev/null || echo 0) )) -gt 60 ]; then
     bash ~/.claude/rate-limit-probe.sh &>/dev/null &
 fi
