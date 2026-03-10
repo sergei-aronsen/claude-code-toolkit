@@ -293,6 +293,33 @@ SCRATCHPAD
     fi
 }
 
+# Create lessons-learned seed file
+create_lessons_learned() {
+    local lessons_file="$CLAUDE_DIR/rules/lessons-learned.md"
+
+    if [[ -f "$lessons_file" ]]; then
+        return
+    fi
+
+    echo ""
+    echo -e "${BLUE}📝 Creating lessons-learned seed file...${NC}"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        echo "  Would create: $lessons_file"
+    else
+        cat > "$lessons_file" << 'LESSONS'
+---
+description: Lessons learned from debugging, fixes, and corrections
+globs:
+  - "**/*"
+---
+# Lessons Learned
+<!-- Added by /learn command. Auto-loaded every session. -->
+LESSONS
+        echo -e "  ${GREEN}✓${NC} rules/lessons-learned.md"
+    fi
+}
+
 # Show security setup recommendation
 recommend_security() {
     echo ""
@@ -326,6 +353,7 @@ main() {
     download_files
     create_gitignore
     create_scratchpad
+    create_lessons_learned
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"

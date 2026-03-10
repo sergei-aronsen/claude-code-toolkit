@@ -167,6 +167,7 @@ fi
 echo -e "${YELLOW}Creating directory structure...${NC}"
 mkdir -p "$PROMPTS_DIR"
 mkdir -p "$CLAUDE_DIR/reports"
+mkdir -p "$CLAUDE_DIR/rules"
 
 echo -e "${YELLOW}Copying templates from $TEMPLATE_PATH...${NC}"
 
@@ -219,6 +220,23 @@ if [ -d "$GUIDES_DIR/cheatsheets" ]; then
             echo -e "  - $filename... ${GREEN}OK${NC}"
         fi
     done
+fi
+
+# Create lessons-learned seed file
+LESSONS_FILE="$CLAUDE_DIR/rules/lessons-learned.md"
+if [ ! -f "$LESSONS_FILE" ]; then
+    echo ""
+    echo -e "${YELLOW}Creating lessons-learned seed file...${NC}"
+    cat > "$LESSONS_FILE" << 'LESSONS'
+---
+description: Lessons learned from debugging, fixes, and corrections
+globs:
+  - "**/*"
+---
+# Lessons Learned
+<!-- Added by /learn command. Auto-loaded every session. -->
+LESSONS
+    echo -e "  ${GREEN}OK${NC}"
 fi
 
 # Create CLAUDE.md if it doesn't exist
