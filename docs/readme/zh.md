@@ -1,4 +1,4 @@
-# Claude Toolkit
+# Claude Code Toolkit
 
 使用 Claude Code 进行 AI 辅助开发的综合指南。
 
@@ -19,7 +19,7 @@
 
 **7 个模板**（基础、Laravel、Rails、Next.js、Node.js、Python、Go）
 
-**27 个斜杠命令** | **7 种审计** | **24+ 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-27-total)。
+**29 个斜杠命令** | **7 种审计** | **30 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-29-total)。
 
 ---
 

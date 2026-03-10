@@ -33,7 +33,7 @@ Found: Prisma Serverless Connection Fix
 Problem: Connection timeout in Vercel Edge Functions
 Solution: Add ?connection_limit=1 to DATABASE_URL
 
-Save to .claude/learned/prisma-serverless.md? → yes
+Save to .claude/rules/lessons-learned.md? → yes
 ```
 
 **Example Skill Accumulation:**
@@ -297,13 +297,13 @@ LOW (1)
 
 ---
 
-## Slash Commands (26 total)
+## Slash Commands (29 total)
 
 | Command | Description |
 |---------|-------------|
 | `/verify` | Pre-commit check: build, types, lint, tests |
 | `/debug [problem]` | 4-phase debugging: root cause → hypothesis → fix → verify |
-| `/learn` | Save problem solution to `.claude/learned/` |
+| `/learn` | Save lessons to `.claude/rules/lessons-learned.md` (auto-loaded) |
 | `/plan` | Create plan in scratchpad before implementation |
 | `/audit [type]` | Run audit (security, performance, code, design, database) |
 | `/test` | Write tests for module |
@@ -316,6 +316,7 @@ LOW (1)
 | `/handoff` | Prepare task handoff (summary + next steps) |
 | `/worktree` | Git worktrees management |
 | `/update-toolkit` | Reinstall or update Claude Code Toolkit |
+| `/rollback-update` | Rollback to previous toolkit version |
 | `/migrate` | Database migration assistance |
 | `/find-function` | Find function by name/description |
 | `/find-script` | Find script in package.json/composer.json |
@@ -327,6 +328,8 @@ LOW (1)
 | `/deploy` | Safe deployment with pre/post checks and verification |
 | `/fix-prod` | Production hotfix: diagnose → minimal fix → verify |
 | `/deps` | Dependency audit: security, licenses, outdated |
+| `/council` | Multi-AI pre-implementation review (Gemini + ChatGPT) |
+| `/helpme` | Quick reference cheatsheet (9 languages) |
 
 ---
 
@@ -344,7 +347,7 @@ LOW (1)
 
 ---
 
-## Components (24+ guides)
+## Components (30 guides)
 
 | Component | Description |
 |-----------|-------------|

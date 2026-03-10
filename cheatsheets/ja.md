@@ -14,7 +14,7 @@
 | `/refactor` | 動作を変えずに構造を改善 |
 | `/explain` | コードやアーキテクチャの仕組みを説明 |
 | `/doc` | ドキュメントを生成 |
-| `/learn` | 解決策を `.claude/learned/` に保存（将来のセッション用） |
+| `/learn` | 教訓を `.claude/rules/lessons-learned.md` に保存（自動読み込み） |
 | `/context-prime` | セッション開始時にプロジェクトコンテキストを読み込み |
 | `/checkpoint` | 進捗をスクラッチパッドに保存 |
 | `/handoff` | タスクの引き継ぎ（要約と次のステップ付き） |

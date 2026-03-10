@@ -112,7 +112,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Security scan for pre-pr mode
   - Auto-detection of framework (Laravel, Next.js, Node.js)
 - **`/learn` command** — extracting and saving patterns
-  - Saves problem solutions to `.claude/learned/`
+  - Saves problem solutions to `.claude/rules/lessons-learned.md` (auto-loaded)
   - Integration with Memory Bank and Knowledge Graph
   - Pattern types: error resolution, workarounds, debugging, user corrections
   - **Mistakes & Learnings** pattern (Error → Learning → Prevention) from loki-mode

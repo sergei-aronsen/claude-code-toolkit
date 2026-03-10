@@ -1,4 +1,4 @@
-# Claude Toolkit
+# Claude Code Toolkit
 
 Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 
@@ -19,7 +19,7 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 
 **7가지 템플릿** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**27개 슬래시 명령어** | **7개 감사** | **24개 이상의 가이드** | [명령어, 템플릿, 감사, 컴포넌트 전체 목록](../features.md#slash-commands-27-total) 보기.
+**29개 슬래시 명령어** | **7개 감사** | **30개 가이드** | [명령어, 템플릿, 감사, 컴포넌트 전체 목록](../features.md#slash-commands-29-total) 보기.
 
 ---
 

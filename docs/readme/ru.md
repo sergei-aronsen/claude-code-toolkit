@@ -1,4 +1,4 @@
-# Claude Toolkit
+# Claude Code Toolkit
 
 Исчерпывающий набор инструкций для AI-assisted разработки с Claude Code.
 
@@ -19,7 +19,7 @@
 
 **7 шаблонов** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**27 slash-команд** | **7 аудитов** | **24+ гайдов** | Смотрите [полный список команд, шаблонов, аудитов и компонентов](../features.md#slash-commands-27-total).
+**29 slash-команд** | **7 аудитов** | **30 гайдов** | Смотрите [полный список команд, шаблонов, аудитов и компонентов](../features.md#slash-commands-29-total).
 
 ---
 
