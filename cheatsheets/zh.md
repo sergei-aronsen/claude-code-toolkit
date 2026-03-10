@@ -28,6 +28,10 @@
 | `/e2e` | 使用 Playwright 生成端到端测试 |
 | `/perf` | 性能分析：N+1、包大小、内存 |
 | `/deps` | 依赖审计：安全性、许可证、过期版本 |
+| `/deploy` | 安全部署：部署前后检查与验证 |
+| `/fix-prod` | 生产热修复：诊断、修复、验证 |
+| `/rollback-update` | 回滚工具包到上一版本 |
+| `/council` | 多AI审查：Gemini + ChatGPT 实施前检查 |
 
 ---
 

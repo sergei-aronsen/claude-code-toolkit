@@ -28,6 +28,10 @@
 | `/e2e` | Generer des tests E2E avec Playwright |
 | `/perf` | Analyse de performance : N+1, bundle, memoire |
 | `/deps` | Audit des dependances : securite, licences, obsoletes |
+| `/deploy` | Deploiement securise avec verifications pre/post |
+| `/fix-prod` | Hotfix production : diagnostic, correction, verification |
+| `/rollback-update` | Revenir a la version precedente du toolkit |
+| `/council` | Revue multi-IA : Gemini + ChatGPT avant implementation |
 
 ---
 
