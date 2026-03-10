@@ -212,19 +212,129 @@ else
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "code-review@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
   }
 }
 SETTINGS
-    echo -e "  ${GREEN}✓${NC} Created settings.json with safety-net hook"
+    echo -e "  ${GREEN}✓${NC} Created settings.json with safety-net hook and official plugins"
 fi
 
 echo ""
 
 # ─────────────────────────────────────────────────
-# Step 4: Verify
+# Step 4: Install official Anthropic plugins
 # ─────────────────────────────────────────────────
 
-echo -e "${CYAN}Step 4: Verification${NC}"
+echo -e "${CYAN}Step 4: Official Anthropic plugins${NC}"
+
+PLUGINS=(
+    "code-review@claude-plugins-official"
+    "commit-commands@claude-plugins-official"
+    "security-guidance@claude-plugins-official"
+    "frontend-design@claude-plugins-official"
+)
+
+if [[ -f "$SETTINGS_JSON" ]]; then
+    if grep -q "enabledPlugins" "$SETTINGS_JSON" 2>/dev/null; then
+        # Check if all plugins already present
+        ALL_PRESENT=true
+        for plugin in "${PLUGINS[@]}"; do
+            if ! grep -q "$plugin" "$SETTINGS_JSON" 2>/dev/null; then
+                ALL_PRESENT=false
+                break
+            fi
+        done
+
+        if [[ "$ALL_PRESENT" == true ]]; then
+            echo -e "  ${GREEN}✓${NC} All official plugins already enabled"
+        else
+            # Merge missing plugins
+            if command -v python3 &>/dev/null; then
+                PLUGINS_JSON=$(printf '"%s",' "${PLUGINS[@]}")
+                PLUGINS_JSON="[${PLUGINS_JSON%,}]"
+
+                if python3 - "$SETTINGS_JSON" "$PLUGINS_JSON" << 'PYEOF' 2>/dev/null
+import json, sys
+
+settings_path = sys.argv[1]
+plugins = json.loads(sys.argv[2])
+
+with open(settings_path, 'r') as f:
+    config = json.load(f)
+
+if 'enabledPlugins' not in config:
+    config['enabledPlugins'] = {}
+
+added = 0
+for plugin in plugins:
+    if plugin not in config['enabledPlugins']:
+        config['enabledPlugins'][plugin] = True
+        added += 1
+
+with open(settings_path, 'w') as f:
+    json.dump(config, f, indent=2)
+    f.write('\n')
+
+print(added)
+PYEOF
+then
+                    echo -e "  ${GREEN}✓${NC} Plugins merged into settings.json"
+                else
+                    echo -e "  ${RED}✗${NC} Failed to merge plugins"
+                fi
+            else
+                echo -e "  ${YELLOW}⚠${NC} python3 not found — add plugins manually to ~/.claude/settings.json"
+            fi
+        fi
+    else
+        # enabledPlugins key missing — add it
+        if command -v python3 &>/dev/null; then
+            if python3 - "$SETTINGS_JSON" << 'PYEOF' 2>/dev/null
+import json, sys
+
+settings_path = sys.argv[1]
+
+with open(settings_path, 'r') as f:
+    config = json.load(f)
+
+config['enabledPlugins'] = {
+    "code-review@claude-plugins-official": True,
+    "commit-commands@claude-plugins-official": True,
+    "security-guidance@claude-plugins-official": True,
+    "frontend-design@claude-plugins-official": True,
+}
+
+with open(settings_path, 'w') as f:
+    json.dump(config, f, indent=2)
+    f.write('\n')
+PYEOF
+then
+                echo -e "  ${GREEN}✓${NC} Plugins added to settings.json"
+            else
+                echo -e "  ${RED}✗${NC} Failed to add plugins"
+            fi
+        else
+            echo -e "  ${YELLOW}⚠${NC} python3 not found — add plugins manually"
+        fi
+    fi
+else
+    # settings.json doesn't exist yet — will be created in step 3
+    # This shouldn't happen since step 3 runs first, but just in case
+    echo -e "  ${YELLOW}⚠${NC} settings.json not found — plugins will be added after settings are created"
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 5: Verify
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 5: Verification${NC}"
 
 PASS=0
 FAIL=0
@@ -268,6 +378,26 @@ if command -v cc-safety-net &>/dev/null; then
     fi
 fi
 
+# Check official plugins
+if [[ -f "$SETTINGS_JSON" ]] && grep -q "enabledPlugins" "$SETTINGS_JSON"; then
+    PLUGIN_COUNT=0
+    for plugin in "${PLUGINS[@]}"; do
+        if grep -q "$plugin" "$SETTINGS_JSON" 2>/dev/null; then
+            PLUGIN_COUNT=$((PLUGIN_COUNT + 1))
+        fi
+    done
+    if [[ $PLUGIN_COUNT -eq ${#PLUGINS[@]} ]]; then
+        echo -e "  ${GREEN}✓${NC} All ${#PLUGINS[@]} official plugins enabled"
+        PASS=$((PASS + 1))
+    else
+        echo -e "  ${YELLOW}~${NC} $PLUGIN_COUNT/${#PLUGINS[@]} official plugins enabled"
+        PASS=$((PASS + 1))
+    fi
+else
+    echo -e "  ${RED}✗${NC} Official plugins not configured"
+    FAIL=$((FAIL + 1))
+fi
+
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -298,6 +428,12 @@ echo -e "     Blocks: rm -rf, git push --force, git reset --hard, etc."
 echo ""
 echo -e "  3. ${GREEN}PreToolUse hook${NC} — ~/.claude/settings.json"
 echo -e "     Every Bash command goes through safety-net before execution"
+echo ""
+echo -e "  4. ${GREEN}Official Anthropic plugins${NC} — ~/.claude/settings.json"
+echo -e "     code-review: PR review with /code-review"
+echo -e "     commit-commands: /commit, /commit-push-pr, /clean_gone"
+echo -e "     security-guidance: PreToolUse warnings for security patterns"
+echo -e "     frontend-design: auto-activates for frontend work"
 echo ""
 echo -e "${BLUE}Recommended next steps:${NC}"
 echo -e "  1. Add ${CYAN}claude-code-security-review${NC} GitHub Action to your repos"

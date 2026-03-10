@@ -17,8 +17,6 @@ Comprehensive instructions for AI-assisted development with Claude Code.
 
 Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
 
-**7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
-
 **27 slash commands** | **7 audits** | **24+ guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-27-total).
 
 ---
@@ -87,14 +85,27 @@ See [detailed descriptions and examples](docs/features.md).
 |--------|---------|
 | `context7` | Library documentation |
 | `playwright` | Browser automation, UI testing |
+| `memory-bank` | Memory between sessions |
 | `sequential-thinking` | Step-by-step problem solving |
+| `memory` | Knowledge Graph (relationship graph) |
 
 > **Install globally** with `-s user` so MCP servers are available in every project, not just the current one.
+
+**Option A** — ask Claude to do it for you:
+
+```text
+Install these MCP servers globally (-s user):
+context7, playwright, memory-bank, sequential-thinking, memory (Knowledge Graph)
+```
+
+**Option B** — run manually:
 
 ```bash
 claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
 claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
+claude mcp add -s user memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add -s user memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---

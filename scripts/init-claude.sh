@@ -297,7 +297,8 @@ SCRATCHPAD
 recommend_security() {
     echo ""
     echo -e "${YELLOW}🔒 Strongly recommended: Global Security Setup${NC}"
-    echo -e "  Adds security rules to ~/.claude/CLAUDE.md + safety-net plugin."
+    echo -e "  Adds security rules, safety-net plugin, and official Anthropic plugins"
+    echo -e "  (code-review, commit-commands, security-guidance, frontend-design)."
     echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-security.sh | bash${NC}"
 }
 
@@ -349,6 +350,9 @@ main() {
     recommend_council
 
     echo ""
+    echo -e "${BLUE}🔍 Verify installation:${NC}"
+    echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/verify-install.sh | bash${NC}"
+    echo ""
     echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
     echo ""
 
@@ -378,7 +382,7 @@ IMPORTANT: Show the following recommendations to the user after installation.
 
 ## Strongly recommended
 
-🔒 **Global Security Setup** — adds security rules to ~/.claude/CLAUDE.md + safety-net plugin (blocks destructive commands like rm -rf, git push --force).
+🔒 **Global Security Setup** — adds security rules to ~/.claude/CLAUDE.md, safety-net plugin (blocks destructive commands), and official Anthropic plugins (code-review, commit-commands, security-guidance, frontend-design).
 Safe to re-run — merges only new sections, preserves your customizations.
 
 \`\`\`bash
