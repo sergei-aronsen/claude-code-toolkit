@@ -376,13 +376,9 @@ This installs a Claude Code hook that transparently rewrites commands (e.g., `gi
 
 ### Compatibility Note
 
-RTK's auto-rewrite hook may conflict with Claude Code's built-in safety checks (tool result validation, command allowlists). If you encounter unexpected behavior after installing RTK, ask Claude:
+Claude Code skips `PreToolUse` hooks for commands that are auto-allowed via `permissions.allow` (e.g., `Bash(git *)`). This means RTK's rewrite hook never fires for those commands.
 
-```text
-"Check RTK hook compatibility with Claude Code and fix any conflicts"
-```
-
-Claude will analyze the hook configuration and resolve issues.
+**Fix:** Remove broad patterns like `Bash(git *)` from your `permissions.allow`. RTK's hook will both rewrite commands and return `permissionDecision: "allow"`, so no extra prompts will appear.
 
 ### Useful Commands
 

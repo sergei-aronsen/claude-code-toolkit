@@ -108,8 +108,9 @@ brew install rtk
 rtk init -g
 ```
 
-> **Note:** RTK's auto-rewrite hook may conflict with Claude Code's built-in safety checks.
-> If you encounter issues, ask Claude: *"Check RTK hook compatibility and fix any conflicts."*
+> **Note:** Claude Code skips `PreToolUse` hooks for auto-allowed commands (e.g., `Bash(git *)` in `permissions.allow`).
+> To ensure RTK rewrites all commands, remove broad patterns like `Bash(git *)` from your allow-list —
+> RTK's hook will handle both rewriting and permission via `permissionDecision: "allow"`.
 
 ---
 
