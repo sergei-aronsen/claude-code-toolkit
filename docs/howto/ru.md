@@ -25,14 +25,14 @@ npm install -g @anthropic-ai/claude-code
 
 | Уровень | Что | Когда |
 |---------|-----|-------|
-| **Глобальный** | Security rules + safety-net | Один раз на машину |
+| **Глобальный** | Security rules + хуки + плагины | Один раз на машину |
 | **Проектный** | Команды, скиллы, шаблоны | Один раз на проект |
 
 ---
 
 ## Шаг 1: Глобальная настройка (один раз на машину)
 
-Ставит security rules и safety-net плагин. Делается **один раз**, работает для **всех** проектов.
+Ставит security rules, комбинированный хук (safety-net + поддержка RTK) и официальные плагины Anthropic. Делается **один раз**, работает для **всех** проектов.
 
 Открой обычный терминал (не Claude Code):
 
@@ -43,13 +43,14 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **Что произойдёт:**
 
 - Создастся `~/.claude/CLAUDE.md` — глобальные правила безопасности. Claude Code читает этот файл **при каждом запуске в любом проекте**. Это инструкция: "никогда не делай SQL injection, не используй eval(), спрашивай перед опасными операциями"
-- Установится `cc-safety-net` — плагин, который перехватывает каждую bash-команду и блокирует деструктивные (`rm -rf /`, `git push --force` и т.д.)
-- Настроится хук в `~/.claude/settings.json` — связка между Claude Code и safety-net
+- Установится `cc-safety-net` — блокирует деструктивные команды (`rm -rf /`, `git push --force` и т.д.)
+- Настроится комбинированный хук в `~/.claude/settings.json` — safety-net и RTK (если установлен) последовательно, без конфликтов
+- Включатся официальные плагины Anthropic — code-review, commit-commands, security-guidance, frontend-design
 
 **Проверить что всё встало:**
 
 ```bash
-cc-safety-net doctor
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
 ```
 
 Всё. Глобальная часть готова. Это больше **никогда не нужно повторять**.
@@ -212,7 +213,8 @@ Claude Code стартует и автоматически загружает:
 │                                                     │
 │  Результат:                                         │
 │  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← safety-net hook         │
+│  ~/.claude/settings.json  ← комбинированный хук     │
+│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK    │
 │  cc-safety-net            ← npm package             │
 └─────────────────────────────────────────────────────┘
                       │
@@ -267,6 +269,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 | Проблема | Решение |
 |----------|---------|
 | `cc-safety-net: command not found` | Запусти `npm install -g cc-safety-net` |
+| RTK не реврайтит команды | Убедись что в settings.json один комбинированный хук, не отдельные |
 | Claude не видит toolkit | Проверь что `.claude/CLAUDE.md` есть в корне проекта |
 | Команды не доступны | Перезапусти `init-claude.sh` или проверь папку `.claude/commands/` |
 | safety-net блокирует нормальную команду | Выполни команду вручную в обычном терминале |

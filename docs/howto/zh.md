@@ -25,14 +25,14 @@ npm install -g @anthropic-ai/claude-code
 
 | 层级 | 内容 | 时机 |
 |------|------|------|
-| **全局** | 安全规则 + safety-net | 每台机器配置一次 |
+| **全局** | 安全规则 + hooks + 插件 | 每台机器配置一次 |
 | **项目级** | 命令、技能、模板 | 每个项目配置一次 |
 
 ---
 
 ## 第一步：全局配置（每台机器一次）
 
-此步骤安装安全规则和 safety-net 插件。只需执行**一次**，即可在**所有**项目中生效。
+此步骤安装安全规则、组合 hook（safety-net + RTK 支持）和 Anthropic 官方插件。只需执行**一次**，即可在**所有**项目中生效。
 
 打开常规终端（不是 Claude Code）：
 
@@ -43,13 +43,14 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **执行结果：**
 
 - 创建 `~/.claude/CLAUDE.md` — 全局安全规则。Claude Code **在任何项目中每次启动时**都会读取此文件。它相当于一条指令，告诉 Claude "不要进行 SQL 注入、不要使用 eval()、执行危险操作前先确认"
-- 安装 `cc-safety-net` — 一个拦截所有 bash 命令并阻止破坏性操作的插件（如 `rm -rf /`、`git push --force` 等）
-- 在 `~/.claude/settings.json` 中配置 hook — 连接 Claude Code 和 safety-net
+- 安装 `cc-safety-net` — 阻止破坏性命令（如 `rm -rf /`、`git push --force` 等）
+- 配置组合 hook（safety-net + RTK 顺序执行，无并行冲突）
+- 启用 Anthropic 官方插件（code-review、commit-commands、security-guidance、frontend-design）
 
 **验证是否正常工作：**
 
 ```bash
-cc-safety-net doctor
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
 ```
 
 完成。全局部分已配置好，**无需再次执行此步骤**。
@@ -212,7 +213,8 @@ Claude Code 启动并自动加载：
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← safety-net hook         │
+│  ~/.claude/settings.json  ← 组合 hook + 插件         │
+│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK     │
 │  cc-safety-net            ← npm package             │
 └─────────────────────────────────────────────────────┘
                       │
@@ -270,3 +272,4 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 | Claude 未检测到 Toolkit | 检查项目根目录中是否存在 `.claude/CLAUDE.md` |
 | 命令不可用 | 重新运行 `init-claude.sh` 或检查 `.claude/commands/` 文件夹 |
 | safety-net 阻止了合法命令 | 在 Claude Code 外部的终端中手动运行该命令 |
+| RTK 未重写命令 | 确保 settings.json 中只有一个组合 hook，而不是多个独立 hook |

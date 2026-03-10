@@ -25,14 +25,14 @@ npm install -g @anthropic-ai/claude-code
 
 | 수준 | 내용 | 시기 |
 |------|------|------|
-| **전역** | 보안 규칙 + safety-net | 머신당 한 번 |
+| **전역** | 보안 규칙 + hooks + 플러그인 | 머신당 한 번 |
 | **프로젝트별** | 명령어, 스킬, 템플릿 | 프로젝트당 한 번 |
 
 ---
 
 ## 1단계: 전역 설정 (머신당 한 번)
 
-보안 규칙과 safety-net 플러그인을 설치합니다. **한 번만** 수행하면 **모든** 프로젝트에서 작동합니다.
+보안 규칙, 통합 훅(safety-net + RTK 지원) 및 Anthropic 공식 플러그인을 설치합니다. **한 번만** 수행하면 **모든** 프로젝트에서 작동합니다.
 
 일반 터미널(Claude Code가 아닌)을 여세요:
 
@@ -43,13 +43,14 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **수행되는 작업:**
 
 - `~/.claude/CLAUDE.md`가 생성됩니다 — 전역 보안 규칙입니다. Claude Code는 **모든 프로젝트에서 실행할 때마다** 이 파일을 읽습니다. "SQL 인젝션을 절대 하지 마라, eval()을 사용하지 마라, 위험한 작업 전에 확인하라" 같은 지침입니다
-- `cc-safety-net`이 설치됩니다 — 모든 bash 명령어를 가로채고 파괴적인 명령어(`rm -rf /`, `git push --force` 등)를 차단하는 플러그인입니다
-- `~/.claude/settings.json`에 훅이 구성됩니다 — Claude Code와 safety-net 간의 연결입니다
+- `cc-safety-net`이 설치됩니다 — 파괴적인 명령어(`rm -rf /`, `git push --force` 등)를 차단합니다
+- 통합 훅이 구성됩니다 (safety-net + RTK 순차 실행, 병렬 충돌 없음)
+- Anthropic 공식 플러그인이 활성화됩니다 (code-review, commit-commands, security-guidance, frontend-design)
 
 **모든 것이 작동하는지 확인:**
 
 ```bash
-cc-safety-net doctor
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
 ```
 
 이것으로 전역 설정이 완료되었습니다. **이 작업을 다시 반복할 필요가 없습니다**.
@@ -212,7 +213,8 @@ Claude Code가 시작되면 자동으로 다음을 로드합니다:
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← safety-net hook         │
+│  ~/.claude/settings.json  ← 통합 훅 + 플러그인       │
+│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK     │
 │  cc-safety-net            ← npm package             │
 └─────────────────────────────────────────────────────┘
                       │
@@ -270,3 +272,4 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 | Claude가 툴킷을 감지하지 못함 | 프로젝트 루트에 `.claude/CLAUDE.md`가 있는지 확인 |
 | 명령어를 사용할 수 없음 | `init-claude.sh`를 다시 실행하거나 `.claude/commands/` 폴더 확인 |
 | safety-net이 정상적인 명령어를 차단함 | Claude Code 외부의 터미널에서 해당 명령어를 수동으로 실행 |
+| RTK가 명령어를 재작성하지 않음 | settings.json에 개별 훅이 아닌 단일 통합 훅이 있는지 확인 |

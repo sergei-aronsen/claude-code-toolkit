@@ -25,14 +25,14 @@ npm install -g @anthropic-ai/claude-code
 
 | レベル | 内容 | タイミング |
 |--------|------|------------|
-| **グローバル** | セキュリティルール + safety-net | マシンごとに1回 |
+| **グローバル** | セキュリティルール + hooks + プラグイン | マシンごとに1回 |
 | **プロジェクトごと** | コマンド、スキル、テンプレート | プロジェクトごとに1回 |
 
 ---
 
 ## ステップ 1: グローバルセットアップ (マシンごとに1回)
 
-セキュリティルールと safety-net プラグインをインストールします。**1回**だけ実行すれば、**すべての**プロジェクトで機能します。
+セキュリティルール、統合フック（safety-net + RTK サポート）、Anthropic 公式プラグインをインストールします。**1回**だけ実行すれば、**すべての**プロジェクトで機能します。
 
 通常のターミナル (Claude Code ではなく) を開いてください:
 
@@ -43,13 +43,14 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **実行される内容:**
 
 - `~/.claude/CLAUDE.md` が作成されます -- グローバルセキュリティルールです。Claude Code は**すべてのプロジェクトで起動するたびに**このファイルを読み込みます。「SQLインジェクションを行わない、eval()を使わない、危険な操作の前に確認を取る」といった指示です
-- `cc-safety-net` がインストールされます -- すべての bash コマンドを監視し、破壊的なコマンド (`rm -rf /`、`git push --force` など) をブロックするプラグインです
-- `~/.claude/settings.json` にフックが設定されます -- Claude Code と safety-net の接続です
+- `cc-safety-net` がインストールされます -- 破壊的なコマンド (`rm -rf /`、`git push --force` など) をブロックします
+- 統合フックが設定されます (safety-net + RTK 順次実行、並列の競合なし)
+- Anthropic 公式プラグインが有効化されます (code-review、commit-commands、security-guidance、frontend-design)
 
 **正常に動作しているか確認:**
 
 ```bash
-cc-safety-net doctor
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
 ```
 
 以上です。グローバル部分は完了しました。**この作業を繰り返す必要はありません**。
@@ -212,7 +213,8 @@ Claude Code が起動し、自動的に以下を読み込みます:
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← safety-net hook         │
+│  ~/.claude/settings.json  ← 統合フック + プラグイン   │
+│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK     │
 │  cc-safety-net            ← npm package             │
 └─────────────────────────────────────────────────────┘
                       │
@@ -270,3 +272,4 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 | Claude が Toolkit を検出しない | プロジェクトルートに `.claude/CLAUDE.md` が存在するか確認してください |
 | コマンドが利用できない | `init-claude.sh` を再実行するか、`.claude/commands/` フォルダを確認してください |
 | safety-net が正当なコマンドをブロックする | Claude Code の外の通常のターミナルでコマンドを手動実行してください |
+| RTK がコマンドを書き換えない | settings.json に単一の統合フックがあることを確認してください。個別のフックではなく統合フックを使用してください |

@@ -119,9 +119,10 @@ brew install rtk
 rtk init -g
 ```
 
-> **Note:** Claude Code skips `PreToolUse` hooks for auto-allowed commands (e.g., `Bash(git *)` in `permissions.allow`).
-> To ensure RTK rewrites all commands, remove broad patterns like `Bash(git *)` from your allow-list —
-> RTK's hook will handle both rewriting and permission via `permissionDecision: "allow"`.
+> **Known issue:** Multiple `PreToolUse` hooks with the same matcher run **in parallel**.
+> If RTK and cc-safety-net are separate hooks, their results conflict and RTK's rewrite gets lost.
+> **Fix:** Use a single combined hook that runs safety-net first, then RTK sequentially.
+> See `components/security-hardening.md` for the combined hook setup.
 
 ---
 

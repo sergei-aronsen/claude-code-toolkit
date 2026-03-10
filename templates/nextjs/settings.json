@@ -17,17 +17,7 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] BASH: $COMMAND' >> .claude/audit.log"
-          }
-        ]
-      }
-    ],
+    "PreToolUse": [],
     "Stop": [
       {
         "matcher": ".*",
@@ -58,7 +48,7 @@
       "Bash(node *)",
       "Bash(tsx *)",
       
-      "Bash(git *)",
+
       "Bash(cat *)",
       "Bash(ls *)",
       "Bash(find *)",

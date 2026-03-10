@@ -376,9 +376,11 @@ This installs a Claude Code hook that transparently rewrites commands (e.g., `gi
 
 ### Compatibility Note
 
-Claude Code skips `PreToolUse` hooks for commands that are auto-allowed via `permissions.allow` (e.g., `Bash(git *)`). This means RTK's rewrite hook never fires for those commands.
+Claude Code runs all `PreToolUse` hooks with the same matcher **in parallel**. If RTK and cc-safety-net are separate hooks, their results conflict and RTK's `updatedInput` gets lost.
 
-**Fix:** Remove broad patterns like `Bash(git *)` from your `permissions.allow`. RTK's hook will both rewrite commands and return `permissionDecision: "allow"`, so no extra prompts will appear.
+**Fix:** Use a single combined hook (`~/.claude/hooks/pre-bash.sh`) that runs safety-net first, then RTK sequentially. See `components/security-hardening.md` for the full script.
+
+Also remove broad patterns like `Bash(git *)` from `permissions.allow` — RTK's hook handles both rewriting and permission via `permissionDecision: "allow"`.
 
 ### Useful Commands
 

@@ -165,8 +165,21 @@ fi
 
 # PreToolUse hook
 if [[ -f "$SETTINGS_JSON" ]]; then
-    if grep -q "cc-safety-net" "$SETTINGS_JSON" 2>/dev/null; then
-        pass "PreToolUse hook configured (safety-net)"
+    if grep -q "pre-bash.sh" "$SETTINGS_JSON" 2>/dev/null; then
+        pass "Combined PreToolUse hook configured (safety-net + RTK)"
+
+        # Check if the hook file exists and is executable
+        HOOK_PATH=$(grep -o '[^"]*pre-bash.sh' "$SETTINGS_JSON" 2>/dev/null | head -1)
+        HOOK_PATH="${HOOK_PATH/#\~/$HOME}"
+        if [[ -x "$HOOK_PATH" ]]; then
+            pass "pre-bash.sh exists and is executable"
+        elif [[ -f "$HOOK_PATH" ]]; then
+            warn "pre-bash.sh exists but not executable — run: chmod +x $HOOK_PATH"
+        else
+            fail "pre-bash.sh not found at $HOOK_PATH"
+        fi
+    elif grep -q "cc-safety-net" "$SETTINGS_JSON" 2>/dev/null; then
+        warn "Legacy safety-net hook (upgrade to combined hook with setup-security.sh)"
     else
         fail "PreToolUse hook missing in settings.json"
     fi

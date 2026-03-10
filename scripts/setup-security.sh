@@ -132,23 +132,72 @@ fi
 echo ""
 
 # ─────────────────────────────────────────────────
-# Step 3: Configure PreToolUse hook in settings.json
+# Step 3: Install combined PreToolUse hook
 # ─────────────────────────────────────────────────
 
 echo -e "${CYAN}Step 3: Configuring PreToolUse hook${NC}"
 
-HOOK_COMMAND="cc-safety-net --claude-code"
+HOOKS_DIR="$CLAUDE_DIR/hooks"
+COMBINED_HOOK="$HOOKS_DIR/pre-bash.sh"
+
+# Create combined hook (safety-net → RTK, sequential, no parallel conflicts)
+mkdir -p "$HOOKS_DIR"
+
+cat > "$COMBINED_HOOK" << 'HOOKEOF'
+#!/usr/bin/env bash
+# Combined PreToolUse hook for Bash commands
+# Runs safety-net first (block dangerous), then RTK (rewrite for token savings).
+# Must be a SINGLE hook to avoid parallel execution conflicts.
+# See: https://github.com/sergei-aronsen/claude-code-toolkit
+
+INPUT=$(cat)
+
+# Step 1: cc-safety-net — block destructive commands
+if command -v cc-safety-net &>/dev/null; then
+    SAFETY_RESULT=$(echo "$INPUT" | cc-safety-net --claude-code 2>/dev/null)
+    if echo "$SAFETY_RESULT" | grep -q '"deny"' 2>/dev/null; then
+        echo "$SAFETY_RESULT"
+        exit 0
+    fi
+fi
+
+# Step 2: RTK rewrite — optimize token usage
+if command -v rtk &>/dev/null && command -v jq &>/dev/null; then
+    CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+    if [ -n "$CMD" ]; then
+        REWRITTEN=$(rtk rewrite "$CMD" 2>/dev/null) || true
+        if [ -n "$REWRITTEN" ] && [ "$CMD" != "$REWRITTEN" ]; then
+            ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
+            UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
+            jq -n --argjson updated "$UPDATED_INPUT" \
+                '{ "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "RTK auto-rewrite",
+                    "updatedInput": $updated
+                }}'
+            exit 0
+        fi
+    fi
+fi
+
+# No rewrite needed, no block — pass through
+exit 0
+HOOKEOF
+
+chmod +x "$COMBINED_HOOK"
+echo -e "  ${GREEN}✓${NC} Combined hook installed: $COMBINED_HOOK"
+
+# Configure settings.json to use combined hook
+HOOK_COMMAND="$COMBINED_HOOK"
 
 if [[ -f "$SETTINGS_JSON" ]]; then
-    # Check if hook already configured
-    if grep -q "cc-safety-net" "$SETTINGS_JSON" 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} safety-net hook already configured"
+    # Check if combined hook or safety-net already configured
+    if grep -q "pre-bash.sh" "$SETTINGS_JSON" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Combined hook already configured in settings.json"
     else
-        echo -e "  ${YELLOW}⚠${NC} settings.json exists but lacks safety-net hook"
-        echo -e "  Merging hook configuration..."
+        echo -e "  Configuring combined hook in settings.json..."
 
-        # Use a temporary file for safe JSON merging
-        # We need to add hooks.PreToolUse to existing config
         if command -v python3 &>/dev/null; then
             if python3 - "$SETTINGS_JSON" "$HOOK_COMMAND" << 'PYEOF' 2>/dev/null
 import json, sys
@@ -169,27 +218,27 @@ hook_entry = {
 
 if 'hooks' not in config:
     config['hooks'] = {}
-if 'PreToolUse' not in config['hooks']:
+
+# Replace all existing Bash PreToolUse hooks (safety-net, rtk-rewrite)
+# with the single combined hook to avoid parallel conflicts
+if 'PreToolUse' in config.get('hooks', {}):
+    config['hooks']['PreToolUse'] = [
+        entry for entry in config['hooks']['PreToolUse']
+        if entry.get('matcher') != 'Bash'
+    ]
+else:
     config['hooks']['PreToolUse'] = []
 
-# Check if already present
-already = any(
-    any(h.get('command', '').startswith('cc-safety-net') for h in entry.get('hooks', []))
-    for entry in config['hooks']['PreToolUse']
-)
-
-if not already:
-    config['hooks']['PreToolUse'].append(hook_entry)
+config['hooks']['PreToolUse'].append(hook_entry)
 
 with open(settings_path, 'w') as f:
     json.dump(config, f, indent=2)
     f.write('\n')
 PYEOF
 then
-                echo -e "  ${GREEN}✓${NC} Hook merged into settings.json"
+                echo -e "  ${GREEN}✓${NC} Combined hook configured (replaces separate safety-net/RTK hooks)"
             else
-                echo -e "  ${RED}✗${NC} Failed to merge — add manually:"
-                echo -e "  See instructions below"
+                echo -e "  ${RED}✗${NC} Failed to configure — add manually"
             fi
         else
             echo -e "  ${YELLOW}⚠${NC} python3 not found for JSON merge"
@@ -197,8 +246,8 @@ then
         fi
     fi
 else
-    echo -e "  Creating settings.json with hook..."
-    cat > "$SETTINGS_JSON" << 'SETTINGS'
+    echo -e "  Creating settings.json with combined hook..."
+    cat > "$SETTINGS_JSON" << SETTINGS
 {
   "hooks": {
     "PreToolUse": [
@@ -207,7 +256,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "cc-safety-net --claude-code"
+            "command": "$COMBINED_HOOK"
           }
         ]
       }
@@ -221,7 +270,7 @@ else
   }
 }
 SETTINGS
-    echo -e "  ${GREEN}✓${NC} Created settings.json with safety-net hook and official plugins"
+    echo -e "  ${GREEN}✓${NC} Created settings.json with combined hook and official plugins"
 fi
 
 echo ""
@@ -358,8 +407,11 @@ else
 fi
 
 # Check hook
-if [[ -f "$SETTINGS_JSON" ]] && grep -q "cc-safety-net" "$SETTINGS_JSON"; then
-    echo -e "  ${GREEN}✓${NC} PreToolUse hook configured"
+if [[ -f "$SETTINGS_JSON" ]] && grep -q "pre-bash.sh" "$SETTINGS_JSON"; then
+    echo -e "  ${GREEN}✓${NC} Combined PreToolUse hook configured (safety-net + RTK)"
+    PASS=$((PASS + 1))
+elif [[ -f "$SETTINGS_JSON" ]] && grep -q "cc-safety-net" "$SETTINGS_JSON"; then
+    echo -e "  ${YELLOW}~${NC} Legacy safety-net hook (consider upgrading to combined hook)"
     PASS=$((PASS + 1))
 else
     echo -e "  ${RED}✗${NC} PreToolUse hook not configured"
@@ -426,8 +478,9 @@ echo -e "  2. ${GREEN}safety-net plugin${NC} — blocks destructive commands"
 echo -e "     Semantic analysis (not pattern matching) of shell commands"
 echo -e "     Blocks: rm -rf, git push --force, git reset --hard, etc."
 echo ""
-echo -e "  3. ${GREEN}PreToolUse hook${NC} — ~/.claude/settings.json"
-echo -e "     Every Bash command goes through safety-net before execution"
+echo -e "  3. ${GREEN}Combined PreToolUse hook${NC} — ~/.claude/hooks/pre-bash.sh"
+echo -e "     safety-net (block dangerous) → RTK (rewrite for token savings)"
+echo -e "     Single hook avoids parallel execution conflicts"
 echo ""
 echo -e "  4. ${GREEN}Official Anthropic plugins${NC} — ~/.claude/settings.json"
 echo -e "     code-review: PR review with /code-review"

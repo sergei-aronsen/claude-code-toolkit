@@ -350,6 +350,7 @@ echo -e "${BLUE}║${NC}  ${YELLOW}scripts/setup-security.sh | bash${NC}        
 echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  This installs:                                ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}  - Global security rules (~/.claude/CLAUDE.md) ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  - safety-net plugin (destructive cmd blocker) ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}  - Combined hook (safety-net + RTK support)    ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}  - Official Anthropic plugins (4 plugins)      ${BLUE}║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
 echo ""

@@ -105,6 +105,73 @@ xargs rm -rf < file_with_slash
 | `SAFETY_NET_PARANOID_RM=1` | Block non-temp `rm -rf` within cwd |
 | `SAFETY_NET_PARANOID_INTERPRETERS=1` | Block interpreter one-liners |
 
+### Combining with RTK (Important)
+
+Claude Code runs all `PreToolUse` hooks with the same matcher **in parallel**. If safety-net and RTK are separate hooks, their results conflict — RTK's `updatedInput` gets lost.
+
+**Solution:** Use a single combined hook `~/.claude/hooks/pre-bash.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Combined PreToolUse hook: safety-net (block) → RTK (rewrite)
+# Must be a SINGLE hook to avoid parallel execution conflicts.
+
+INPUT=$(cat)
+
+# Step 1: safety-net — block destructive commands
+if command -v cc-safety-net &>/dev/null; then
+    SAFETY_RESULT=$(echo "$INPUT" | cc-safety-net --claude-code 2>/dev/null)
+    if echo "$SAFETY_RESULT" | grep -q '"deny"' 2>/dev/null; then
+        echo "$SAFETY_RESULT"
+        exit 0
+    fi
+fi
+
+# Step 2: RTK — rewrite for token savings
+if command -v rtk &>/dev/null && command -v jq &>/dev/null; then
+    CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+    if [ -n "$CMD" ]; then
+        REWRITTEN=$(rtk rewrite "$CMD" 2>/dev/null) || true
+        if [ -n "$REWRITTEN" ] && [ "$CMD" != "$REWRITTEN" ]; then
+            ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
+            UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
+            jq -n --argjson updated "$UPDATED_INPUT" \
+                '{ "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "RTK auto-rewrite",
+                    "updatedInput": $updated
+                }}'
+            exit 0
+        fi
+    fi
+fi
+
+exit 0
+```
+
+**Settings.json** — one hook, not two:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Without RTK, use safety-net directly as the only hook (no conflict).
+
 ## Layer 3: Security Review Command
 
 Use `/security-review` (or `/audit security`) before committing security-sensitive changes.

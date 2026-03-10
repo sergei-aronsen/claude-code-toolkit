@@ -25,14 +25,14 @@ npm install -g @anthropic-ai/claude-code
 
 | Level | What | When |
 |-------|------|------|
-| **Global** | Security rules + safety-net | Once per machine |
+| **Global** | Security rules + hooks + plugins | Once per machine |
 | **Per-project** | Commands, skills, templates | Once per project |
 
 ---
 
 ## Step 1: Global Setup (once per machine)
 
-This installs security rules and the safety-net plugin. Done **once**, works for **all** projects.
+This installs security rules, combined hook (safety-net + RTK support), and official Anthropic plugins. Done **once**, works for **all** projects.
 
 Open your regular terminal (not Claude Code):
 
@@ -43,13 +43,14 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **What happens:**
 
 - `~/.claude/CLAUDE.md` is created — global security rules. Claude Code reads this file **at every launch in any project**. It's an instruction like "never do SQL injection, don't use eval(), ask before dangerous operations"
-- `cc-safety-net` is installed — a plugin that intercepts every bash command and blocks destructive ones (`rm -rf /`, `git push --force`, etc.)
-- A hook is configured in `~/.claude/settings.json` — the connection between Claude Code and safety-net
+- `cc-safety-net` is installed — blocks destructive commands (`rm -rf /`, `git push --force`, etc.)
+- A combined hook is configured in `~/.claude/settings.json` — runs safety-net and RTK (if installed) sequentially, avoiding parallel hook conflicts
+- Official Anthropic plugins are enabled — code-review, commit-commands, security-guidance, frontend-design
 
 **Verify everything is working:**
 
 ```bash
-cc-safety-net doctor
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
 ```
 
 That's it. The global part is done. You **never need to repeat this**.
@@ -214,7 +215,8 @@ Now you can work:
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← safety-net hook         │
+│  ~/.claude/settings.json  ← combined hook + plugins │
+│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK    │
 │  cc-safety-net            ← npm package             │
 └─────────────────────────────────────────────────────┘
                       │
@@ -269,6 +271,7 @@ Or inside Claude Code:
 | Problem | Solution |
 |---------|----------|
 | `cc-safety-net: command not found` | Run `npm install -g cc-safety-net` |
+| RTK not rewriting commands | Ensure single combined hook in settings.json, not separate hooks |
 | Toolkit not detected by Claude | Check that `.claude/CLAUDE.md` exists in project root |
 | Commands not available | Re-run `init-claude.sh` or check `.claude/commands/` folder |
 | Safety-net blocks a legitimate command | Run the command manually in terminal outside Claude Code |
