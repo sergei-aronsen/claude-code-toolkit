@@ -1,4 +1,4 @@
-# Claude Toolkit
+# Claude Code Toolkit
 
 Comprehensive instructions for AI-assisted development with Claude Code.
 

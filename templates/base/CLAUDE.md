@@ -306,7 +306,7 @@ Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for
 
 ## Knowledge Persistence
 
-On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.claude/CLAUDE.md` if workflow changed, (3) docs/README for humans.
+On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.claude/CLAUDE.md` if workflow changed, (3) docs/README for humans. Lessons from debugging and fixes are saved to `.claude/rules/lessons-learned.md` via `/learn` — auto-loaded every session.
 
 ---
 
@@ -342,6 +342,10 @@ New: [what was learned]
 Update?
 [A] Add rule [B] Replace [C] Exception [D] No
 ```
+
+### Lessons from Debugging
+
+Use `/learn` to save debugging insights and corrections to `.claude/rules/lessons-learned.md`. These are auto-loaded every session — no manual reads needed.
 
 ### When NOT to suggest
 

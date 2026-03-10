@@ -38,6 +38,7 @@ Claude Code **auto-loads** all `.md` files from `.claude/rules/` into every sess
 |------|---------|
 | `.claude/CLAUDE.md` | Workflow rules, git conventions, security |
 | `.claude/rules/project-context.md` | Core project facts (servers, architecture, services) |
+| `.claude/rules/lessons-learned.md` | Debugging insights, fixes, corrections (via `/learn`) |
 | `.claude/rules/[domain].md` | Domain rules with `globs:` scope |
 
 ### Tier 2: On-Demand Reference

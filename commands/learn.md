@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Extract and save problem solutions for future sessions.
+Extract and save problem solutions for future sessions — auto-loaded every session.
 
 ---
 
@@ -23,17 +23,17 @@ Extract and save problem solutions for future sessions.
 
 Run `/learn` when:
 
-- ✅ Solved a non-trivial problem
-- ✅ Found a workaround for a library/framework
-- ✅ Discovered non-obvious behavior
-- ✅ User corrected your mistake (remember it!)
-- ✅ Debugging took a long time
+- Solved a non-trivial problem
+- Found a workaround for a library/framework
+- Discovered non-obvious behavior
+- User corrected your mistake (remember it!)
+- Debugging took a long time
 
 **DO NOT use for:**
 
-- ❌ Simple typos
-- ❌ One-time issues (API was unavailable)
-- ❌ Obvious solutions
+- Simple typos
+- One-time issues (API was unavailable)
+- Obvious solutions
 
 ---
 
@@ -42,96 +42,88 @@ Run `/learn` when:
 ### 1. Error Resolution Patterns
 
 ```markdown
+### [Error Name] — [Date]
 **Problem:** Prisma connection timeout in serverless
-**Root Cause:** Connection pool exhaustion
 **Solution:** Add `connection_limit=1` to DATABASE_URL
-**Reusable:** Yes — applies to all serverless + Prisma
+**Apply when:** Using Prisma with serverless (Lambda, Vercel)
 ```
 
 ### 2. Framework Workarounds
 
 ```markdown
+### [Workaround Name] — [Date]
 **Problem:** Next.js App Router doesn't support X
-**Workaround:** Use Y instead
-**Version:** Next.js 15.x
-**Reusable:** Until fixed in future version
+**Solution:** Use Y instead (works in Next.js 15.x)
+**Apply when:** App Router + feature X needed
 ```
 
 ### 3. Debugging Techniques
 
 ```markdown
-**Symptom:** Silent failure in production
-**Diagnosis:** Added logging at X, Y, Z points
-**Root Cause:** Environment variable not set
-**Technique:** Always check env vars first for silent failures
+### [Technique Name] — [Date]
+**Problem:** Silent failure in production
+**Solution:** Check env vars first — most common cause of silent failures
+**Apply when:** Service starts but doesn't process requests
 ```
 
 ### 4. User Corrections
 
 ```markdown
-**My Mistake:** Used deprecated API
-**Correction:** User pointed to new API
-**Lesson:** Check docs for deprecation warnings
+### [Correction Name] — [Date]
+**Problem:** Used deprecated API method
+**Solution:** Use newMethod() instead of oldMethod()
+**Apply when:** Working with LibraryX v3+
 ```
 
-### 5. Mistakes & Learnings (Self-Correcting Pattern)
+### 5. Mistakes and Learnings (Self-Correcting Pattern)
 
 **Inspired by [loki-mode](https://github.com/asklokesh/loki-mode) RARV cycle.**
 
-When something goes wrong — record the error in "Error → Learning → Prevention" format:
-
 ```markdown
-**What Failed:** [Specific error]
-**Why It Failed:** [Root cause analysis]
-**How to Prevent:** [Action to avoid in the future]
-**Timestamp:** [When this happened]
+### [Mistake Name] — [Date]
+**Problem:** Did X which caused Y failure
+**Solution:** Always do Z before X
+**Apply when:** Modifying [area] code
 ```
 
 Use when: 3+ attempts to fix one problem, user correction, tests/build broke after changes.
 
 ### Self-Correction Principle
 
-Each mistake → specific **action** to prevent it. Not "I'll be more careful" but "I'll add check X before Y".
+Each mistake becomes a specific **action** to prevent it. Not "I'll be more careful" but "I'll add check X before Y".
 
 ---
 
-## Output Format
+## Entry Format
 
-Create file in `.claude/learned/[pattern-name].md`:
+Each lesson is compact — 4 lines max:
 
 ```markdown
-# [Descriptive Pattern Name]
-
-**Extracted:** [Date]
-**Project:** [Project name or "General"]
-**Tags:** [error, workaround, debugging, etc.]
-
-## Problem
-
-[Specific problem description]
-
-## Context
-
-[When this happens — framework, version, conditions]
-
-## Solution
-
-[Solution with code example if needed]
-
-## Why It Works
-
-[Explanation of why this works]
-
-## When to Apply
-
-[Triggers — when to use this pattern]
-
-## Mistakes Log (if applicable)
-
-| What Failed | Why | How to Prevent |
-|-------------|-----|----------------|
-| [error] | [cause] | [action] |
+### [Short Title] — [Date]
+**Problem:** one-line description
+**Solution:** one-line solution
+**Apply when:** trigger condition
 ```
+
+---
+
+## Storage
+
+**Location:** `.claude/rules/lessons-learned.md` (auto-loaded every session via `.claude/rules/` mechanism)
+
+**File structure:**
+
+```yaml
+---
+description: Lessons learned from debugging, fixes, and corrections
+globs:
+  - "**/*"
+---
+# Lessons Learned
+<!-- Added by /learn command. Auto-loaded every session. -->
+```
+
+Each new lesson is **appended** to this file.
 
 ---
 
@@ -139,12 +131,16 @@ Create file in `.claude/learned/[pattern-name].md`:
 
 1. **Analyze** — Find solved problems in the session
 2. **Identify** — Select the most valuable/reusable
-3. **Draft** — Create pattern file
+3. **Draft** — Create compact entry (4 lines per lesson)
 4. **Confirm** — Show to user for confirmation
-5. **Save** — Save to `.claude/learned/`
+5. **Save** — Append to `.claude/rules/lessons-learned.md`
 
 ---
 
-## Storage
+## Pruning
 
-Primary: `.claude/learned/[pattern-name].md` (committed to git). Optional: Memory Bank and Knowledge Graph for cross-session persistence.
+When `lessons-learned.md` exceeds ~50 entries:
+
+1. Archive old/outdated lessons to `.claude/docs/lessons-archive.md`
+2. Keep only currently relevant lessons in `rules/`
+3. Inform user what was archived
