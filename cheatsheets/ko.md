@@ -14,7 +14,7 @@
 | `/refactor` | 동작 변경 없이 구조 개선 |
 | `/explain` | 코드 또는 아키텍처 작동 방식 설명 |
 | `/doc` | 문서 생성 |
-| `/learn` | 솔루션을 `.claude/learned/`에 저장 (향후 세션용) |
+| `/learn` | 교훈을 `.claude/rules/lessons-learned.md`에 저장 (자동 로드) |
 | `/context-prime` | 세션 시작 시 프로젝트 컨텍스트 로드 |
 | `/checkpoint` | 스크래치패드에 진행 상황 저장 |
 | `/handoff` | 요약 및 다음 단계와 함께 작업 인수인계 준비 |

@@ -14,7 +14,7 @@
 | `/refactor` | 改善结构而不改变行为 |
 | `/explain` | 解释代码或架构的工作原理 |
 | `/doc` | 生成文档 |
-| `/learn` | 将解决方案保存到 `.claude/learned/` 供未来会话使用 |
+| `/learn` | 将经验保存到 `.claude/rules/lessons-learned.md`（自动加载） |
 | `/context-prime` | 会话开始时加载项目上下文 |
 | `/checkpoint` | 将进度保存到暂存区 |
 | `/handoff` | 准备任务交接，包含摘要和后续步骤 |

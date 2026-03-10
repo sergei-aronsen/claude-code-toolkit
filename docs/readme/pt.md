@@ -1,4 +1,4 @@
-# Claude Toolkit
+# Claude Code Toolkit
 
 Instruções completas para desenvolvimento assistido por IA com Claude Code.
 
@@ -19,7 +19,7 @@ Stacks suportadas: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 templates** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**27 slash commands** | **7 auditorias** | **24+ guias** | Veja a [lista completa de comandos, templates, auditorias e componentes](../features.md#slash-commands-27-total).
+**29 slash commands** | **7 auditorias** | **30 guias** | Veja a [lista completa de comandos, templates, auditorias e componentes](../features.md#slash-commands-29-total).
 
 ---
 
