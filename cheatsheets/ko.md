@@ -28,6 +28,10 @@
 | `/e2e` | Playwright로 E2E 테스트 생성 |
 | `/perf` | 성능 분석: N+1, 번들, 메모리 |
 | `/deps` | 의존성 감사: 보안, 라이선스, 구버전 |
+| `/deploy` | 안전한 배포: 사전/사후 검증 포함 |
+| `/fix-prod` | 프로덕션 핫픽스: 진단, 수정, 검증 |
+| `/rollback-update` | 툴킷을 이전 버전으로 롤백 |
+| `/council` | 멀티AI 리뷰: Gemini + ChatGPT 구현 전 검토 |
 
 ---
 

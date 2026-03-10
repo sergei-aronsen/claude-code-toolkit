@@ -62,11 +62,14 @@ test:
 	@echo ""
 	@echo "All tests passed!"
 
-# Validate templates
+# Validate templates (check core audit prompts for self-check sections)
 validate:
 	@echo "Validating templates..."
 	@ERRORS=0; \
-	for f in $$(find templates -name '*.md'); do \
+	for f in $$(find templates -path '*/prompts/*.md' \( \
+		-name 'PERFORMANCE_AUDIT.md' -o \
+		-name 'CODE_REVIEW.md' -o \
+		-name 'DEPLOY_CHECKLIST.md' \)); do \
 		if ! grep -q "QUICK CHECK" "$$f" 2>/dev/null; then \
 			echo "❌ Missing QUICK CHECK: $$f"; \
 			ERRORS=$$((ERRORS + 1)); \

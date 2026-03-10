@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated README: 26 → 27 slash commands, added Supreme Council to features and quick start
+- Updated README: 26 → 29 slash commands, added Supreme Council to features and quick start
 - Updated `manifest.json` to v3.0.0
 - Updated `init-claude.sh` with council command and setup recommendation
 

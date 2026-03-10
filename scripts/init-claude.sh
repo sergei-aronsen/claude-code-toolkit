@@ -137,6 +137,9 @@ declare -a FILES=(
     "commands/perf.md:commands/perf.md"
     "commands/deps.md:commands/deps.md"
     "commands/council.md:commands/council.md"
+    "commands/deploy.md:commands/deploy.md"
+    "commands/fix-prod.md:commands/fix-prod.md"
+    "commands/rollback-update.md:commands/rollback-update.md"
 
     # Cheatsheets
     "cheatsheets/en.md:cheatsheets/en.md"
