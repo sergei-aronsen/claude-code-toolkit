@@ -89,11 +89,27 @@ See [detailed descriptions and examples](docs/features.md).
 | `playwright` | Browser automation, UI testing |
 | `sequential-thinking` | Step-by-step problem solving |
 
+> **Install globally** with `-s user` so MCP servers are available in every project, not just the current one.
+
 ```bash
-claude mcp add context7 -- npx -y @upstash/context7-mcp
-claude mcp add playwright -- npx @playwright/mcp@latest
-claude mcp add sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
+claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
+claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
 ```
+
+---
+
+## RTK — Token Optimizer (optional)
+
+[RTK](https://github.com/rtk-ai/rtk) (Rust Token Killer) — CLI proxy that reduces token consumption by 60-90% on dev commands (`git status`, `cargo test`, etc.).
+
+```bash
+brew install rtk
+rtk init -g
+```
+
+> **Note:** RTK's auto-rewrite hook may conflict with Claude Code's built-in safety checks.
+> If you encounter issues, ask Claude: *"Check RTK hook compatibility and fix any conflicts."*
 
 ---
 

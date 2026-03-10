@@ -13,11 +13,24 @@ MCP servers add new tools for Claude Code:
 
 ## Installation
 
+### Global vs Project Scope
+
+**Always install MCP servers globally** (`-s user`) so they are available across all projects:
+
+```bash
+claude mcp add -s user <server-name> -- <command>
+```
+
+Global servers are stored in `~/.claude/settings.json` and work in every project automatically. Project-level servers (`.claude/settings.local.json`) only work in that specific project and need to be set up again for each new project.
+
 ### Via Claude Code CLI
 
 ```bash
-# Add MCP server
-claude mcp add <server-name>
+# Add MCP server globally (recommended)
+claude mcp add -s user <server-name> -- <command>
+
+# Add MCP server to current project only
+claude mcp add <server-name> -- <command>
 
 # List servers
 claude mcp list
@@ -28,7 +41,7 @@ claude mcp remove <server-name>
 
 ### Via Configuration
 
-File: `~/.claude.json` (global) or `.claude/settings.local.json` (project)
+File: `~/.claude/settings.json` (global, recommended) or `.claude/settings.local.json` (project)
 
 ```json
 {
@@ -140,7 +153,38 @@ convert screenshot.png screenshot.webp
 
 ---
 
-### 3. Sequential Thinking — Complex Tasks
+### 3. Memory Bank — Memory Between Sessions
+
+Saving project context for future sessions.
+
+```json
+{
+  "memory-bank": {
+    "command": "npx",
+    "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
+    "env": {
+      "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
+    }
+  }
+}
+```
+
+**When to use:**
+
+- Save important architectural decision
+- Record "why we did it this way"
+- Pass context to new session
+
+**Examples:**
+
+```text
+"Save to memory-bank why we chose Redis over Memcached"
+"What's recorded in memory-bank about this project?"
+```
+
+---
+
+### 4. Sequential Thinking — Complex Tasks
 
 Multi-step problem solving with revision capability. Use for architectural decisions and complex analysis.
 
@@ -154,7 +198,7 @@ Multi-step problem solving with revision capability. Use for architectural decis
 }
 ```
 
-### 4. Morph Fast Tools — Fast Editing
+### 5. Morph Fast Tools — Fast Editing
 
 Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
 
@@ -167,6 +211,22 @@ Smart code search (WarpGrep) and fast file editing. Requires API key from [morph
       "MORPH_API_KEY": "your-api-key",
       "ALL_TOOLS": "true"
     }
+  }
+}
+```
+
+### 6. Knowledge Graph Memory — Knowledge Graph (for Opus)
+
+> **WARNING:** In-memory only — data lost on restart. Import from `.claude/memory/knowledge-graph.json` at session start. See [memory-persistence.md](memory-persistence.md).
+
+Builds a graph of relationships between project entities. Unlike Memory Bank (key-value facts), this stores how entities relate to each other.
+
+```json
+{
+  "memory": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"],
+    "env": {}
   }
 }
 ```
@@ -196,7 +256,7 @@ See **[memory-persistence.md](memory-persistence.md)** for the complete guide.
 
 ## Full Configuration
 
-Add to `~/.claude.json`:
+Add to `~/.claude/settings.json` (global):
 
 ```json
 {
@@ -211,9 +271,21 @@ Add to `~/.claude.json`:
       "args": ["@playwright/mcp@latest", "--browser", "chromium"],
       "env": {}
     },
+    "memory-bank": {
+      "command": "npx",
+      "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
+      "env": {
+        "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
+      }
+    },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {}
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {}
     }
   }
@@ -276,6 +348,49 @@ rm -f ~/.cache/ms-playwright/mcp-chrome-*/SingletonLock
 ```
 
 **Permanent fix** — add stop hook to `~/.claude/settings.json` to auto-kill browser on session end. See [playwright-self-testing.md](playwright-self-testing.md) for details.
+
+---
+
+## RTK — Token Optimizer (optional)
+
+[RTK](https://github.com/rtk-ai/rtk) (Rust Token Killer) is a CLI proxy that reduces LLM token consumption by 60-90% on common dev commands. It filters noise from outputs of `git status`, `cargo test`, `npm run build` and others before they reach Claude's context.
+
+### Installation
+
+```bash
+# Homebrew (recommended)
+brew install rtk
+
+# Or via curl
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+```
+
+### Setup
+
+```bash
+# Install global auto-rewrite hook
+rtk init -g
+```
+
+This installs a Claude Code hook that transparently rewrites commands (e.g., `git status` → `rtk git status`), requiring zero changes to your workflow.
+
+### Compatibility Note
+
+RTK's auto-rewrite hook may conflict with Claude Code's built-in safety checks (tool result validation, command allowlists). If you encounter unexpected behavior after installing RTK, ask Claude:
+
+```text
+"Check RTK hook compatibility with Claude Code and fix any conflicts"
+```
+
+Claude will analyze the hook configuration and resolve issues.
+
+### Useful Commands
+
+```bash
+rtk gain              # Show token savings analytics
+rtk gain --history    # Show command usage history with savings
+rtk discover          # Analyze Claude Code history for missed opportunities
+```
 
 ---
 
