@@ -131,7 +131,7 @@ your-project/
     ├── skills/                # 框架专业知识
     │   └── [framework]/SKILL.md
     ├── scratchpad/            # 工作笔记
-    └── memory/                # MCP 记忆导出
+    └── rules/                 # 自动加载的项目信息
 ```
 
 ---

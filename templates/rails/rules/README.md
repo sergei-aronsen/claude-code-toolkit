@@ -30,11 +30,13 @@ globs:
 
 This rule file will only be loaded when Claude touches files matching those globs.
 
-## Migration from .claude/memory/
+## Migration from MCP Memory
 
-If you previously used `.claude/memory/` with MCP memory bank:
+If you previously used MCP Memory Bank or Knowledge Graph:
 
 1. Move operational facts to `.claude/rules/project-context.md`
 2. Move large reference docs to `.claude/docs/`
 3. Delete `.claude/memory/` directory
-4. Remove MCP memory-bank and memory servers (optional — they still work but are no longer needed)
+4. Remove deprecated MCP servers: `claude mcp remove memory-bank && claude mcp remove memory`
+
+See `components/memory-persistence.md` for the full migration guide.

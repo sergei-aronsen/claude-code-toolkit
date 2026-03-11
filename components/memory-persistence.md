@@ -1,28 +1,34 @@
-# Knowledge Persistence — Using .claude/rules/ for Auto-Loaded Context
+# Knowledge Persistence — Native .claude/rules/ System
 
-System for maintaining project knowledge across sessions using Claude Code's built-in rules system.
+System for maintaining project knowledge across sessions using Claude Code's built-in rules mechanism.
 
-## The Old Way (MCP Memory Bank)
+## Why Native Files, Not MCP Memory Servers
 
-Previously, project context was stored in MCP servers (Memory Bank, Knowledge Graph) and manually synced to `.claude/memory/`. This required:
+MCP Memory Bank and Knowledge Graph are **deprecated** in this toolkit. Native `.claude/rules/` is the industry standard for AI coding agents because:
 
-- Manual MCP reads at session start
-- Manual sync before commits
-- Knowledge Graph re-import every session (in-memory only)
-- 3-way sync between MCP, git, and auto-memory
+| Native files (.claude/rules/) | MCP Memory Servers |
+|-------------------------------|-------------------|
+| Auto-loaded every session (deterministic) | Agent must call tool (often forgets) |
+| Git-tracked (branch = context) | Separate from git (state drift) |
+| Human-readable (open file, edit) | Black box (hard to find/fix bad facts) |
+| Zero token overhead | Tool descriptions + calls consume tokens |
+| Zero infrastructure | Node.js processes, databases |
+| Path-scoped via `globs:` | No file-aware routing |
+| Survives /compact (re-read from disk) | Lost when context resets |
 
-**Problems:** Sync was often skipped, leading to stale context. Knowledge Graph was lost on every restart.
+> **When MCP memory IS justified:** 1M+ line monorepos, multi-agent shared memory, semantic search over hundreds of decisions. For 95% of projects — native files win.
 
-## The New Way (.claude/rules/)
+---
 
-Claude Code **auto-loads** all `.md` files from `.claude/rules/` into every session. No manual reads needed.
+## Architecture
 
 ```text
 .claude/
-├── CLAUDE.md              # Workflow rules (auto-loaded)
+├── CLAUDE.md              # Workflow rules (auto-loaded, < 200 lines)
 ├── rules/                 # Project facts (auto-loaded)
 │   ├── project-context.md # Core facts — servers, architecture, services
-│   └── [domain].md        # Domain-specific rules (path-scoped)
+│   ├── [domain].md        # Domain-specific rules (path-scoped)
+│   └── lessons-learned.md # Audit log from /learn (globs: [], NOT auto-loaded)
 └── docs/                  # Reference docs (read on demand)
     ├── integrations.md
     └── decisions-log.md
@@ -38,8 +44,15 @@ Claude Code **auto-loads** all `.md` files from `.claude/rules/` into every sess
 |------|---------|
 | `.claude/CLAUDE.md` | Workflow rules, git conventions, security |
 | `.claude/rules/project-context.md` | Core project facts (servers, architecture, services) |
-| `.claude/rules/lessons-learned.md` | Debugging insights, fixes, corrections (via `/learn`) |
 | `.claude/rules/[domain].md` | Domain rules with `globs:` scope |
+
+### Tier 1b: Path-Scoped (loaded when touching matching files)
+
+| File | Loaded when | Example globs |
+|------|-------------|---------------|
+| `rules/typescript.md` | Editing `.ts`/`.tsx` files | `["**/*.ts", "**/*.tsx"]` |
+| `rules/database.md` | Editing models/migrations | `["models/**", "prisma/**"]` |
+| `rules/api.md` | Editing API routes | `["api/**", "routes/**"]` |
 
 ### Tier 2: On-Demand Reference
 
@@ -48,6 +61,12 @@ Claude Code **auto-loads** all `.md` files from `.claude/rules/` into every sess
 | `.claude/docs/integrations.md` | External services reference |
 | `.claude/docs/decisions-log.md` | Historical decisions and rationale |
 | `.claude/docs/[topic].md` | Deep reference material |
+
+### Audit Trail (not auto-loaded)
+
+| File | Purpose |
+|------|---------|
+| `.claude/rules/lessons-learned.md` | History of all lessons (`globs: []`) |
 
 ---
 
@@ -66,9 +85,9 @@ globs:
 
 Examples:
 
-- `i18n.md` — loaded when editing `lang/` or `resources/js/`
-- `go-crawler.md` — loaded when editing `tools/crawler/`
-- `playwright.md` — loaded when editing screenshot-related files
+- `typescript.md` with `globs: ["**/*.ts"]` — loaded when editing TypeScript
+- `database.md` with `globs: ["models/**", "prisma/**"]` — loaded when editing ORM code
+- `testing.md` with `globs: ["tests/**", "**/*.test.*"]` — loaded when editing tests
 
 ---
 
@@ -79,8 +98,7 @@ Examples:
 - Server IPs, architecture overview
 - Key patterns and conventions
 - Active issues and recent changes
-- Queue/worker configuration
-- Proxy setup summary
+- Domain-specific gotchas (per file type via globs)
 
 ### docs/ (on-demand, can be detailed)
 
@@ -88,7 +106,6 @@ Examples:
 - Historical decision log
 - Detailed server configuration
 - Parsing/pipeline guides
-- Worker configuration details
 
 ### CLAUDE.md (workflow only)
 
@@ -99,9 +116,25 @@ Examples:
 
 ---
 
+## How /learn Creates Scoped Rules
+
+The `/learn` command writes targeted rule files with narrow `globs:`:
+
+```text
+/learn prisma connection pooling fix
+  → creates/updates .claude/rules/database.md (globs: ["models/**", "prisma/**"])
+  → appends audit line to .claude/rules/lessons-learned.md
+```
+
+This ensures lessons are loaded **only when relevant**, not every session.
+
+---
+
 ## Migration from MCP Memory Bank
 
-### 1. Create rules/ directory
+If you previously used MCP Memory Bank or Knowledge Graph:
+
+### 1. Create directories
 
 ```bash
 mkdir -p .claude/rules .claude/docs
@@ -109,7 +142,7 @@ mkdir -p .claude/rules .claude/docs
 
 ### 2. Move operational facts
 
-Take key facts from your MCP memory bank files and consolidate into `.claude/rules/project-context.md`:
+Take key facts from MCP memory and write to `.claude/rules/project-context.md`:
 
 ```yaml
 ---
@@ -121,13 +154,9 @@ globs:
 
 ### 3. Move reference docs
 
-Move detailed reference material to `.claude/docs/`:
-
 ```bash
-# If you had these in .claude/memory/:
 mv .claude/memory/integrations.md .claude/docs/
 mv .claude/memory/decisions-log.md .claude/docs/
-mv .claude/memory/server-config.md .claude/docs/
 ```
 
 ### 4. Remove old memory
@@ -136,9 +165,7 @@ mv .claude/memory/server-config.md .claude/docs/
 rm -rf .claude/memory/
 ```
 
-### 5. Remove MCP servers (optional)
-
-Memory Bank and Knowledge Graph MCP servers are no longer needed. You can remove them:
+### 5. Remove deprecated MCP servers
 
 ```bash
 claude mcp remove memory-bank
@@ -166,8 +193,9 @@ Credentials in `.env` — see `DATABASE_*`, `API_KEY_*` variables.
 ## Best Practices
 
 1. **Keep rules/ concise** — auto-loaded into every session, affects context budget
-2. **Use path-scoped globs** — domain-specific rules load only when relevant
+2. **Use path-scoped globs** — narrowest scope wins, avoid `globs: ["**/*"]` where possible
 3. **Separate facts from reference** — rules/ for quick facts, docs/ for deep dives
-4. **Update immediately** — when facts change, update rules/ right away
-5. **No credentials in git** — only `.env` variable names, never values
-6. **Write in English** — all rules and docs in English regardless of conversation language
+4. **One rule file per domain** — not per lesson (avoid file explosion)
+5. **Update immediately** — when facts change, update rules/ right away
+6. **No credentials in git** — only `.env` variable names, never values
+7. **Write in English** — all rules and docs in English regardless of conversation language

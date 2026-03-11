@@ -79,7 +79,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 
 | Feature | Description |
 |---------|-------------|
-| **Self-Learning** | `/learn` saves one-time solutions; Skill Accumulation captures recurring patterns automatically |
+| **Self-Learning** | `/learn` saves solutions as scoped rule files with `globs:` — auto-loaded only for relevant files |
 | **Auto-Activation Hooks** | Hook intercepts prompts, scores context (keywords, intent, file paths), recommends relevant skills |
 | **Knowledge Persistence** | Project facts in `.claude/rules/` — auto-loaded every session, committed to git, available on any machine |
 | **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
@@ -97,17 +97,17 @@ See [detailed descriptions and examples](docs/features.md).
 |--------|---------|
 | `context7` | Library documentation |
 | `playwright` | Browser automation, UI testing |
-| `memory-bank` | Memory between sessions |
 | `sequential-thinking` | Step-by-step problem solving |
-| `memory` | Knowledge Graph (relationship graph) |
 
 > **Install globally** with `-s user` so MCP servers are available in every project, not just the current one.
+>
+> **Note:** Memory Bank and Knowledge Graph MCP servers are **no longer recommended**. Use `.claude/rules/` with path-scoped `globs:` instead — auto-loaded, git-tracked, zero overhead. See [memory-persistence.md](components/memory-persistence.md).
 
 **Option A** — ask Claude to do it for you:
 
 ```text
 Install these MCP servers globally (-s user):
-context7, playwright, memory-bank, sequential-thinking, memory (Knowledge Graph)
+context7, playwright, sequential-thinking
 ```
 
 **Option B** — run manually:
@@ -115,9 +115,7 @@ context7, playwright, memory-bank, sequential-thinking, memory (Knowledge Graph)
 ```bash
 claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
 claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
-claude mcp add -s user memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add -s user memory -- npx -y @modelcontextprotocol/server-memory
 ```
 
 ---

@@ -131,7 +131,7 @@ your-project/
     ├── skills/                # フレームワーク専門知識
     │   └── [framework]/SKILL.md
     ├── scratchpad/            # 作業メモ
-    └── memory/                # MCPメモリエクスポート
+    └── rules/                 # 自動読み込みプロジェクト情報
 ```
 
 ---

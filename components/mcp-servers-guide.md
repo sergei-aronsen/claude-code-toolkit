@@ -8,8 +8,7 @@ MCP servers add new tools for Claude Code:
 
 - Access to library documentation
 - Browser automation
-- Context preservation between sessions
-- Improved code search
+- Multi-step problem solving
 
 ## Installation
 
@@ -153,38 +152,7 @@ convert screenshot.png screenshot.webp
 
 ---
 
-### 3. Memory Bank — Memory Between Sessions
-
-Saving project context for future sessions.
-
-```json
-{
-  "memory-bank": {
-    "command": "npx",
-    "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
-    "env": {
-      "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
-    }
-  }
-}
-```
-
-**When to use:**
-
-- Save important architectural decision
-- Record "why we did it this way"
-- Pass context to new session
-
-**Examples:**
-
-```text
-"Save to memory-bank why we chose Redis over Memcached"
-"What's recorded in memory-bank about this project?"
-```
-
----
-
-### 4. Sequential Thinking — Complex Tasks
+### 3. Sequential Thinking — Complex Tasks
 
 Multi-step problem solving with revision capability. Use for architectural decisions and complex analysis.
 
@@ -198,7 +166,7 @@ Multi-step problem solving with revision capability. Use for architectural decis
 }
 ```
 
-### 5. Morph Fast Tools — Fast Editing
+### 4. Morph Fast Tools — Fast Editing
 
 Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
 
@@ -215,25 +183,50 @@ Smart code search (WarpGrep) and fast file editing. Requires API key from [morph
 }
 ```
 
-### 6. Knowledge Graph Memory — Knowledge Graph (for Opus)
+---
 
-> **WARNING:** In-memory only — data lost on restart. Import from `.claude/memory/knowledge-graph.json` at session start. See [memory-persistence.md](memory-persistence.md).
+## Deprecated Servers
 
-Builds a graph of relationships between project entities. Unlike Memory Bank (key-value facts), this stores how entities relate to each other.
+### Memory Bank (deprecated)
 
-```json
-{
-  "memory": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-memory"],
-    "env": {}
-  }
-}
+> **Use `.claude/rules/` instead.** See [memory-persistence.md](memory-persistence.md).
+
+Memory Bank (`@allpepper/memory-bank-mcp`) stored project context in markdown files via MCP. Problems:
+
+- Agent often forgot to call the memory tool at session start
+- State drift: memory database lived separately from git
+- Last significant commit: February 2025 (stalled development)
+- `.claude/rules/` provides the same functionality natively with auto-loading and git tracking
+
+**To remove:**
+
+```bash
+claude mcp remove memory-bank
 ```
+
+### Knowledge Graph Memory (deprecated)
+
+> **Use `.claude/rules/` instead.** See [memory-persistence.md](memory-persistence.md).
+
+Knowledge Graph (`@modelcontextprotocol/server-memory`) stored entity relationships. Problems:
+
+- **In-memory only** — all data lost on restart
+- `read_graph` dumps entire graph into context (14k+ tokens for moderate use)
+- No semantic search — only exact/substring matching
+- No project isolation — single flat graph for everything
+- `.claude/rules/` with `globs:` provides better context routing with zero overhead
+
+**To remove:**
+
+```bash
+claude mcp remove memory
+```
+
+---
 
 ## Project Knowledge Persistence
 
-**Recommended approach:** Use `.claude/rules/` for auto-loaded project context instead of MCP memory servers.
+**Use `.claude/rules/` for auto-loaded project context.** This is the industry-standard approach.
 
 ### Structure
 
@@ -241,7 +234,8 @@ Builds a graph of relationships between project entities. Unlike Memory Bank (ke
 .claude/
 ├── CLAUDE.md              # Workflow rules (auto-loaded)
 ├── rules/                 # Project facts (auto-loaded)
-│   └── project-context.md # Servers, architecture, conventions
+│   ├── project-context.md # Servers, architecture, conventions
+│   └── [domain].md        # Domain rules with globs: scope
 └── docs/                  # Reference docs (read on demand)
     └── decisions-log.md
 ```
@@ -271,21 +265,9 @@ Add to `~/.claude/settings.json` (global):
       "args": ["@playwright/mcp@latest", "--browser", "chromium"],
       "env": {}
     },
-    "memory-bank": {
-      "command": "npx",
-      "args": ["-y", "@allpepper/memory-bank-mcp@latest"],
-      "env": {
-        "MEMORY_BANK_ROOT": "~/.claude/memory-bank"
-      }
-    },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "env": {}
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
       "env": {}
     }
   }

@@ -353,12 +353,11 @@ create_lessons_learned() {
     else
         cat > "$lessons_file" << 'LESSONS'
 ---
-description: Lessons learned from debugging, fixes, and corrections
-globs:
-  - "**/*"
+description: Audit log of all lessons learned (history only, not auto-loaded)
+globs: []
 ---
-# Lessons Learned
-<!-- Added by /learn command. Auto-loaded every session. -->
+# Lessons Learned — Audit Log
+<!-- History of lessons saved by /learn. Actual rules are in scoped files (e.g., rules/database.md). -->
 LESSONS
         echo -e "  ${GREEN}✓${NC} rules/lessons-learned.md"
     fi

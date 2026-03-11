@@ -131,7 +131,7 @@ seu-projeto/
     ├── skills/                # Expertise de framework
     │   └── [framework]/SKILL.md
     ├── scratchpad/            # Notas de trabalho
-    └── memory/                # Exportação de memória MCP
+    └── rules/                 # Dados do projeto (carregamento automatico)
 ```
 
 ---

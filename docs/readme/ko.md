@@ -131,7 +131,7 @@ your-project/
     ├── skills/                # 프레임워크 전문성
     │   └── [framework]/SKILL.md
     ├── scratchpad/            # 작업 노트
-    └── memory/                # MCP 메모리 내보내기
+    └── rules/                 # 자동 로드 프로젝트 정보
 ```
 
 ---

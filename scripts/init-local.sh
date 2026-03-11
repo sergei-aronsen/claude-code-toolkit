@@ -229,12 +229,11 @@ if [ ! -f "$LESSONS_FILE" ]; then
     echo -e "${YELLOW}Creating lessons-learned seed file...${NC}"
     cat > "$LESSONS_FILE" << 'LESSONS'
 ---
-description: Lessons learned from debugging, fixes, and corrections
-globs:
-  - "**/*"
+description: Audit log of all lessons learned (history only, not auto-loaded)
+globs: []
 ---
-# Lessons Learned
-<!-- Added by /learn command. Auto-loaded every session. -->
+# Lessons Learned — Audit Log
+<!-- History of lessons saved by /learn. Actual rules are in scoped files (e.g., rules/database.md). -->
 LESSONS
     echo -e "  ${GREEN}OK${NC}"
 fi

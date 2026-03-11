@@ -12,28 +12,29 @@ Claude learns from your corrections and accumulates project knowledge.
 
 | Mechanism | What it does | When to use |
 |-----------|--------------|-------------|
-| `/learn` | Saves **one-time** problem solution | Solved non-trivial problem, found workaround |
+| `/learn` | Saves solution as **scoped rule file** with `globs:` | Solved non-trivial problem, found workaround |
 | **Skill Accumulation** | Accumulates **recurring** patterns | Claude noticed it was corrected 2+ times |
 
 **The difference:**
 
 ```text
-/learn  → "How I solved problem X"     (one-time fix)
+/learn  → "How I solved problem X"     (scoped rule file with globs)
 skill   → "How we always do Y"         (project pattern)
 ```
 
 **Example /learn:**
 
 ```text
-> /learn
+> /learn prisma connection pooling fix
 
 Analyzing session...
 Found: Prisma Serverless Connection Fix
 
 Problem: Connection timeout in Vercel Edge Functions
 Solution: Add ?connection_limit=1 to DATABASE_URL
+Scope: database (globs: ["prisma/**", "models/**"])
 
-Save to .claude/rules/lessons-learned.md? → yes
+Save to .claude/rules/database.md? → yes
 ```
 
 **Example Skill Accumulation:**
@@ -89,7 +90,7 @@ Use Skill tool to load guidelines.
 
 ## Knowledge Persistence
 
-**Problem:** Project knowledge scattered across MCP servers, local files, manual exports. Move to another computer — knowledge lost.
+**Problem:** Project knowledge scattered across local files and manual exports. Move to another computer — knowledge lost.
 
 **Solution:** Use `.claude/rules/` — files auto-loaded into every session, committed to git.
 
@@ -303,7 +304,7 @@ LOW (1)
 |---------|-------------|
 | `/verify` | Pre-commit check: build, types, lint, tests |
 | `/debug [problem]` | 4-phase debugging: root cause → hypothesis → fix → verify |
-| `/learn` | Save lessons to `.claude/rules/lessons-learned.md` (auto-loaded) |
+| `/learn` | Save lessons as scoped rule files in `.claude/rules/` (auto-loaded via globs) |
 | `/plan` | Create plan in scratchpad before implementation |
 | `/audit [type]` | Run audit (security, performance, code, design, database) |
 | `/test` | Write tests for module |

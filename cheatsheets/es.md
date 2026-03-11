@@ -14,7 +14,7 @@
 | `/refactor` | Mejorar estructura sin cambiar comportamiento |
 | `/explain` | Explicar como funciona el codigo o la arquitectura |
 | `/doc` | Generar documentacion |
-| `/learn` | Guardar leccion en `.claude/rules/lessons-learned.md` (carga automatica) |
+| `/learn` | Guardar leccion como regla scopeada en `.claude/rules/` (carga automatica via globs) |
 | `/context-prime` | Cargar contexto del proyecto al inicio de sesion |
 | `/checkpoint` | Guardar progreso en scratchpad |
 | `/handoff` | Preparar traspaso de tarea con resumen y proximos pasos |
