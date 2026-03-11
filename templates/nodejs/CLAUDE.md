@@ -285,6 +285,72 @@ On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.cl
 
 ---
 
+## Supreme Council (Optional)
+
+For high-stakes changes, use multi-AI review:
+`/council "feature description"` or `brain "feature description"`
+
+**When to use:** New features, security, refactoring, payments, breaking API changes.
+**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
+
+Full guide: `components/supreme-council.md`
+
+---
+
+## Skill Accumulation (Self-Learning)
+
+**You can learn from corrections and accumulate project knowledge.**
+
+### When to CREATE a new skill
+
+Suggest creating a skill when:
+
+- User corrected you 2+ times on the same topic
+- Discovered project-specific convention
+- User said "remember this" or "always do it this way"
+
+**Format:**
+
+```text
+Noticed a pattern: [description]
+Save as skill '[name]'?
+Will activate on: [triggers]
+```
+
+### When to UPDATE an existing skill
+
+Suggest updating when you used a skill but user corrected:
+
+```text
+New information for skill '[name]':
+Current: [what's in skill]
+New: [what was learned]
+
+Update?
+[A] Add rule [B] Replace [C] Exception [D] No
+```
+
+### Lessons from Debugging
+
+Use `/learn` to save debugging insights as scoped rule files in `.claude/rules/` (e.g., `rules/database.md` with `globs: ["models/**"]`). Rules auto-load only when working with matching files — no manual reads needed.
+
+### When NOT to suggest
+
+- One-time correction
+- Obvious things
+- User already declined
+
+### Skills files
+
+```text
+.claude/skills/
+├── skill-rules.json      # Activation rules
+└── [skill-name]/
+    └── SKILL.md          # Accumulated knowledge
+```
+
+---
+
 ## Project-Specific Notes
 
 <!-- Add known gotchas, public endpoints, and project-specific issues here -->

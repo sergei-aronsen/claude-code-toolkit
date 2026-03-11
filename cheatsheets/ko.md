@@ -18,7 +18,7 @@
 | `/context-prime` | 세션 시작 시 프로젝트 컨텍스트 로드 |
 | `/checkpoint` | 스크래치패드에 진행 상황 저장 |
 | `/handoff` | 요약 및 다음 단계와 함께 작업 인수인계 준비 |
-| `/install` | 프로젝트에 claude-guides 설치 |
+| `/update-toolkit` | Claude Code Toolkit 업데이트 |
 | `/worktree` | 병렬 브랜치를 위한 git worktrees 관리 |
 | `/migrate` | 데이터베이스 마이그레이션 생성 또는 디버깅 |
 | `/find-function` | 함수 또는 클래스 정의 검색 |
@@ -32,6 +32,7 @@
 | `/fix-prod` | 프로덕션 핫픽스: 진단, 수정, 검증 |
 | `/rollback-update` | 툴킷을 이전 버전으로 롤백 |
 | `/council` | 멀티AI 리뷰: Gemini + ChatGPT 구현 전 검토 |
+| `/helpme` | 빠른 참조 (9개 언어) |
 
 ---
 

@@ -89,7 +89,7 @@ log_success "Backup created: $BACKUP_DIR"
 TEMPLATE_URL="$REPO_URL/templates/$FRAMEWORK"
 
 # ============================================================================
-# UPDATE FILES (agents, prompts, skills, memory)
+# UPDATE FILES (agents, prompts, skills, commands, rules)
 # ============================================================================
 
 echo ""
@@ -127,18 +127,30 @@ for file in prompts/CODE_REVIEW.md prompts/DEPLOY_CHECKLIST.md prompts/DESIGN_RE
 done
 
 # Skills
-mkdir -p "$CLAUDE_DIR/skills/ai-models"
-if curl -sSL "$REPO_URL/templates/base/skills/ai-models/SKILL.md" -o "$CLAUDE_DIR/skills/ai-models/SKILL.md" 2>/dev/null; then
-    log_success "Updated: skills/ai-models/SKILL.md"
-else
-    log_warning "Skipped: skills/ai-models/SKILL.md"
-fi
+for skill in ai-models api-design database debugging docker i18n llm-patterns observability tailwind testing; do
+    mkdir -p "$CLAUDE_DIR/skills/$skill"
+    if curl -sSL "$REPO_URL/templates/base/skills/$skill/SKILL.md" -o "$CLAUDE_DIR/skills/$skill/SKILL.md" 2>/dev/null; then
+        log_success "Updated: skills/$skill/SKILL.md"
+    else
+        log_warning "Skipped: skills/$skill/SKILL.md"
+    fi
+done
 
 # Don't overwrite skill-rules.json if exists (user customizations)
 if [[ ! -f "$CLAUDE_DIR/skills/skill-rules.json" ]]; then
     curl -sSL "$REPO_URL/templates/base/skills/skill-rules.json" -o "$CLAUDE_DIR/skills/skill-rules.json" 2>/dev/null && \
         log_success "Created: skills/skill-rules.json"
 fi
+
+# Commands
+mkdir -p "$CLAUDE_DIR/commands"
+for file in plan.md tdd.md context-prime.md checkpoint.md handoff.md audit.md test.md refactor.md doc.md fix.md explain.md helpme.md verify.md debug.md learn.md update-toolkit.md worktree.md migrate.md find-function.md find-script.md docker.md api.md e2e.md perf.md deps.md council.md deploy.md fix-prod.md rollback-update.md; do
+    if curl -sSL "$REPO_URL/commands/$file" -o "$CLAUDE_DIR/commands/$file" 2>/dev/null; then
+        log_success "Updated: commands/$file"
+    else
+        log_warning "Skipped: commands/$file"
+    fi
+done
 
 # Rules templates (don't overwrite if exists)
 mkdir -p "$CLAUDE_DIR/rules"
@@ -274,7 +286,7 @@ echo ""
 echo -e "${YELLOW}What was updated:${NC}"
 echo "  • agents/       — subagent definitions"
 echo "  • prompts/      — audit templates"
-echo "  • skills/       — AI models skill"
+echo "  • skills/       — all framework skills (10 total)"
 echo "  • CLAUDE.md     — system sections (user sections preserved)"
 echo ""
 echo -e "${YELLOW}What was preserved:${NC}"

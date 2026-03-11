@@ -18,7 +18,7 @@
 | `/context-prime` | Carregar contexto do projeto no inicio da sessao |
 | `/checkpoint` | Salvar progresso no scratchpad |
 | `/handoff` | Preparar transferencia de tarefa com resumo e proximos passos |
-| `/install` | Instalar claude-guides no projeto |
+| `/update-toolkit` | Atualizar Claude Code Toolkit |
 | `/worktree` | Gerenciar git worktrees para branches paralelas |
 | `/migrate` | Criar ou depurar migracoes de banco de dados |
 | `/find-function` | Encontrar definicao de funcao ou classe |
@@ -32,6 +32,7 @@
 | `/fix-prod` | Hotfix de producao: diagnostico, correcao, verificacao |
 | `/rollback-update` | Reverter toolkit para versao anterior |
 | `/council` | Revisao multi-IA: Gemini + ChatGPT antes da implementacao |
+| `/helpme` | Referencia rapida (9 idiomas) |
 
 ---
 

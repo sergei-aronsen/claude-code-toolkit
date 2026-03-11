@@ -10,7 +10,7 @@ Create comprehensive handoff documentation for another developer or AI session.
 
 ```text
 /handoff [task name]
-```text
+```
 
 **Examples:**
 

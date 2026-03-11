@@ -6,81 +6,242 @@
       "path": ".claude/skills/ai-models/SKILL.md",
       "description": "Current AI model versions (Claude, Gemini)",
       "triggers": {
-        "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
-        "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
-        "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
+        "keywords": [
+          "anthropic",
+          "claude api",
+          "gemini",
+          "openai",
+          "llm",
+          "ai model"
+        ],
+        "intentPatterns": [
+          "add.*model",
+          "integrate.*api",
+          "connect.*claude"
+        ],
+        "filePatterns": [
+          "**/ai/**",
+          "**/llm/**",
+          "**/chat/**"
+        ]
       }
     },
     "tailwind": {
       "path": ".claude/skills/tailwind/SKILL.md",
       "description": "Tailwind CSS best practices",
       "triggers": {
-        "keywords": ["tailwind", "css", "styling", "className"],
-        "intentPatterns": ["style.*", "add.*styles", "change.*design"],
-        "filePatterns": ["**/*.css", "**/tailwind.config.*"]
+        "keywords": [
+          "tailwind",
+          "css",
+          "styling",
+          "className"
+        ],
+        "intentPatterns": [
+          "style.*",
+          "add.*styles",
+          "change.*design"
+        ],
+        "filePatterns": [
+          "**/*.css",
+          "**/tailwind.config.*"
+        ]
       }
     },
     "docker": {
       "path": ".claude/skills/docker/SKILL.md",
       "description": "Docker and container best practices",
       "triggers": {
-        "keywords": ["docker", "container", "dockerfile", "compose"],
-        "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
-        "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
+        "keywords": [
+          "docker",
+          "container",
+          "dockerfile",
+          "compose"
+        ],
+        "intentPatterns": [
+          "containerize.*",
+          "create.*docker",
+          "add.*container"
+        ],
+        "filePatterns": [
+          "Dockerfile*",
+          "docker-compose*",
+          ".dockerignore"
+        ]
       }
     },
     "testing": {
       "path": ".claude/skills/testing/SKILL.md",
       "description": "Testing patterns: TDD, mocking, coverage",
       "triggers": {
-        "keywords": ["test", "testing", "tdd", "mock", "coverage", "e2e"],
-        "intentPatterns": ["write.*test", "add.*test", "test.*"],
-        "filePatterns": ["**/*.test.*", "**/*.spec.*", "**/tests/**", "**/__tests__/**"]
+        "keywords": [
+          "test",
+          "testing",
+          "tdd",
+          "mock",
+          "coverage",
+          "e2e"
+        ],
+        "intentPatterns": [
+          "write.*test",
+          "add.*test",
+          "test.*"
+        ],
+        "filePatterns": [
+          "**/*.test.*",
+          "**/*.spec.*",
+          "**/tests/**",
+          "**/__tests__/**"
+        ]
       }
     },
     "api-design": {
       "path": ".claude/skills/api-design/SKILL.md",
       "description": "REST API design: naming, status codes, OpenAPI",
       "triggers": {
-        "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
-        "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
-        "filePatterns": ["**/api/**", "**/routes/**", "openapi.*", "swagger.*"]
+        "keywords": [
+          "api",
+          "rest",
+          "endpoint",
+          "openapi",
+          "swagger"
+        ],
+        "intentPatterns": [
+          "design.*api",
+          "create.*endpoint",
+          "add.*route"
+        ],
+        "filePatterns": [
+          "**/api/**",
+          "**/routes/**",
+          "openapi.*",
+          "swagger.*"
+        ]
       }
     },
     "database": {
       "path": ".claude/skills/database/SKILL.md",
       "description": "Database: migrations, indexes, N+1 prevention",
       "triggers": {
-        "keywords": ["database", "migration", "index", "query", "sql", "orm"],
-        "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
-        "filePatterns": ["**/migrations/**", "**/models/**", "schema.*"]
+        "keywords": [
+          "database",
+          "migration",
+          "index",
+          "query",
+          "sql",
+          "orm"
+        ],
+        "intentPatterns": [
+          "create.*migration",
+          "optimize.*query",
+          "add.*index"
+        ],
+        "filePatterns": [
+          "**/migrations/**",
+          "**/models/**",
+          "schema.*"
+        ]
       }
     },
     "observability": {
       "path": ".claude/skills/observability/SKILL.md",
       "description": "Logging, metrics, tracing, monitoring",
       "triggers": {
-        "keywords": ["logging", "metrics", "tracing", "monitoring", "observability"],
-        "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
-        "filePatterns": ["**/logging/**", "**/metrics/**", "prometheus.*"]
+        "keywords": [
+          "logging",
+          "metrics",
+          "tracing",
+          "monitoring",
+          "observability"
+        ],
+        "intentPatterns": [
+          "add.*logging",
+          "setup.*monitoring",
+          "add.*metrics"
+        ],
+        "filePatterns": [
+          "**/logging/**",
+          "**/metrics/**",
+          "prometheus.*"
+        ]
       }
     },
     "llm-patterns": {
       "path": ".claude/skills/llm-patterns/SKILL.md",
       "description": "LLM integration: RAG, streaming, tool use",
       "triggers": {
-        "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming"],
-        "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
-        "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
+        "keywords": [
+          "rag",
+          "embeddings",
+          "vector",
+          "llm",
+          "prompt",
+          "streaming"
+        ],
+        "intentPatterns": [
+          "implement.*rag",
+          "add.*embeddings",
+          "create.*chat"
+        ],
+        "filePatterns": [
+          "**/ai/**",
+          "**/llm/**",
+          "**/rag/**",
+          "**/embeddings/**"
+        ]
       }
     },
     "i18n": {
       "path": ".claude/skills/i18n/SKILL.md",
       "description": "Internationalization: translations, localization, multilanguage",
       "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "i18n",
+          "l10n",
+          "translation",
+          "localization",
+          "multilanguage",
+          "locale",
+          "internationalization"
+        ],
+        "intentPatterns": [
+          "add.*language",
+          "translate.*",
+          "multilingual.*",
+          "localize.*",
+          "support.*languages"
+        ],
+        "filePatterns": [
+          "**/lang/**",
+          "**/locales/**",
+          "**/i18n/**",
+          "**/translations/**"
+        ]
+      }
+    },
+    "debugging": {
+      "path": ".claude/skills/debugging/SKILL.md",
+      "description": "Systematic debugging and root cause analysis",
+      "triggers": {
+        "keywords": [
+          "debug",
+          "fix",
+          "error",
+          "bug",
+          "crash",
+          "stack trace",
+          "exception"
+        ],
+        "intentPatterns": [
+          "fix.*bug",
+          "debug.*issue",
+          "resolve.*error",
+          "find.*cause"
+        ],
+        "filePatterns": [
+          "*.log",
+          "**/logs/**",
+          "**/exceptions/**"
+        ]
       }
     }
   }

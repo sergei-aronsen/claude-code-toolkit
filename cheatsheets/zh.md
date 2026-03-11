@@ -18,7 +18,7 @@
 | `/context-prime` | 会话开始时加载项目上下文 |
 | `/checkpoint` | 将进度保存到暂存区 |
 | `/handoff` | 准备任务交接，包含摘要和后续步骤 |
-| `/install` | 将 claude-guides 安装到项目中 |
+| `/update-toolkit` | 更新 Claude Code Toolkit |
 | `/worktree` | 管理 git worktrees 以并行处理分支 |
 | `/migrate` | 创建或调试数据库迁移 |
 | `/find-function` | 查找函数或类定义 |
@@ -32,6 +32,7 @@
 | `/fix-prod` | 生产热修复：诊断、修复、验证 |
 | `/rollback-update` | 回滚工具包到上一版本 |
 | `/council` | 多AI审查：Gemini + ChatGPT 实施前检查 |
+| `/helpme` | 快速参考（9种语言） |
 
 ---
 

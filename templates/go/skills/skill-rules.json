@@ -6,163 +6,273 @@
       "path": ".claude/skills/ai-models/SKILL.md",
       "description": "Current versions of AI models (Claude, Gemini)",
       "triggers": {
-        "keywords": ["anthropic", "claude api", "gemini", "openai", "llm", "ai model"],
-        "intentPatterns": ["add.*model", "integrate.*api", "connect.*claude"],
-        "filePatterns": ["**/ai/**", "**/llm/**", "**/chat/**"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "anthropic",
+          "claude api",
+          "gemini",
+          "openai",
+          "llm",
+          "ai model"
+        ],
+        "intentPatterns": [
+          "add.*model",
+          "integrate.*api",
+          "connect.*claude"
+        ],
+        "filePatterns": [
+          "**/ai/**",
+          "**/llm/**",
+          "**/chat/**"
+        ]
       }
-    }
     },
     "go": {
       "path": ".claude/skills/go/SKILL.md",
       "description": "Go patterns: Gin, Chi, goroutines, error handling, testing",
       "triggers": {
-        "keywords": ["gin", "chi", "golang", "goroutine", "channel", "context", "testify"],
-        "intentPatterns": ["create.*handler", "add.*endpoint", "make.*api", "create.*middleware"],
-        "filePatterns": ["**/*.go", "cmd/**", "internal/**", "pkg/**"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "gin",
+          "chi",
+          "golang",
+          "goroutine",
+          "channel",
+          "context",
+          "testify"
+        ],
+        "intentPatterns": [
+          "create.*handler",
+          "add.*endpoint",
+          "make.*api",
+          "create.*middleware"
+        ],
+        "filePatterns": [
+          "**/*.go",
+          "cmd/**",
+          "internal/**",
+          "pkg/**"
+        ]
       }
-    }
     },
     "tailwind": {
       "path": ".claude/skills/tailwind/SKILL.md",
       "description": "Tailwind CSS: utility classes, responsive, dark mode (for templ/html templates)",
       "triggers": {
-        "keywords": ["tailwind", "css", "styling", "dark mode", "responsive", "htmx"],
-        "intentPatterns": ["style.*", "add.*styles", "make.*responsive"],
-        "filePatterns": ["**/templates/**", "**/*.templ", "**/static/**/*.css", "tailwind.config.*"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "tailwind",
+          "css",
+          "styling",
+          "dark mode",
+          "responsive",
+          "htmx"
+        ],
+        "intentPatterns": [
+          "style.*",
+          "add.*styles",
+          "make.*responsive"
+        ],
+        "filePatterns": [
+          "**/templates/**",
+          "**/*.templ",
+          "**/static/**/*.css",
+          "tailwind.config.*"
+        ]
       }
-    }
     },
     "docker": {
       "path": ".claude/skills/docker/SKILL.md",
       "description": "Docker and container best practices",
       "triggers": {
-        "keywords": ["docker", "container", "dockerfile", "compose"],
-        "intentPatterns": ["containerize.*", "create.*docker", "add.*container"],
-        "filePatterns": ["Dockerfile*", "docker-compose*", ".dockerignore"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "docker",
+          "container",
+          "dockerfile",
+          "compose"
+        ],
+        "intentPatterns": [
+          "containerize.*",
+          "create.*docker",
+          "add.*container"
+        ],
+        "filePatterns": [
+          "Dockerfile*",
+          "docker-compose*",
+          ".dockerignore"
+        ]
       }
-    }
     },
     "testing": {
       "path": ".claude/skills/testing/SKILL.md",
       "description": "Testing patterns: TDD, table-driven tests, testify",
       "triggers": {
-        "keywords": ["test", "testing", "tdd", "mock", "coverage", "testify"],
-        "intentPatterns": ["write.*test", "add.*test", "test.*"],
-        "filePatterns": ["**/*_test.go", "**/testdata/**"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "test",
+          "testing",
+          "tdd",
+          "mock",
+          "coverage",
+          "testify"
+        ],
+        "intentPatterns": [
+          "write.*test",
+          "add.*test",
+          "test.*"
+        ],
+        "filePatterns": [
+          "**/*_test.go",
+          "**/testdata/**"
+        ]
       }
-    }
     },
     "api-design": {
       "path": ".claude/skills/api-design/SKILL.md",
       "description": "REST API design: naming, status codes, OpenAPI",
       "triggers": {
-        "keywords": ["api", "rest", "endpoint", "openapi", "swagger"],
-        "intentPatterns": ["design.*api", "create.*endpoint", "add.*route"],
-        "filePatterns": ["**/api/**", "**/handler/**", "openapi.*", "swagger.*"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "api",
+          "rest",
+          "endpoint",
+          "openapi",
+          "swagger"
+        ],
+        "intentPatterns": [
+          "design.*api",
+          "create.*endpoint",
+          "add.*route"
+        ],
+        "filePatterns": [
+          "**/api/**",
+          "**/handler/**",
+          "openapi.*",
+          "swagger.*"
+        ]
       }
-    }
     },
     "database": {
       "path": ".claude/skills/database/SKILL.md",
       "description": "Database: migrations, indexes, N+1 (sqlx, gorm)",
       "triggers": {
-        "keywords": ["database", "migration", "index", "query", "sqlx", "gorm"],
-        "intentPatterns": ["create.*migration", "optimize.*query", "add.*index"],
-        "filePatterns": ["**/migrations/**", "**/models/**", "**/repository/**"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "database",
+          "migration",
+          "index",
+          "query",
+          "sqlx",
+          "gorm"
+        ],
+        "intentPatterns": [
+          "create.*migration",
+          "optimize.*query",
+          "add.*index"
+        ],
+        "filePatterns": [
+          "**/migrations/**",
+          "**/models/**",
+          "**/repository/**"
+        ]
       }
-    }
     },
     "observability": {
       "path": ".claude/skills/observability/SKILL.md",
       "description": "Logging, metrics, tracing (zap, OpenTelemetry)",
       "triggers": {
-        "keywords": ["logging", "metrics", "tracing", "monitoring", "zap", "opentelemetry"],
-        "intentPatterns": ["add.*logging", "setup.*monitoring", "add.*metrics"],
-        "filePatterns": ["**/logging/**", "**/metrics/**", "prometheus.*"]
-      },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "logging",
+          "metrics",
+          "tracing",
+          "monitoring",
+          "zap",
+          "opentelemetry"
+        ],
+        "intentPatterns": [
+          "add.*logging",
+          "setup.*monitoring",
+          "add.*metrics"
+        ],
+        "filePatterns": [
+          "**/logging/**",
+          "**/metrics/**",
+          "prometheus.*"
+        ]
       }
-    }
     },
     "llm-patterns": {
       "path": ".claude/skills/llm-patterns/SKILL.md",
       "description": "LLM integration: RAG, streaming, tool use",
       "triggers": {
-        "keywords": ["rag", "embeddings", "vector", "llm", "prompt", "streaming"],
-        "intentPatterns": ["implement.*rag", "add.*embeddings", "create.*chat"],
-        "filePatterns": ["**/ai/**", "**/llm/**", "**/rag/**", "**/embeddings/**"]
-      },
+        "keywords": [
+          "rag",
+          "embeddings",
+          "vector",
+          "llm",
+          "prompt",
+          "streaming"
+        ],
+        "intentPatterns": [
+          "implement.*rag",
+          "add.*embeddings",
+          "create.*chat"
+        ],
+        "filePatterns": [
+          "**/ai/**",
+          "**/llm/**",
+          "**/rag/**",
+          "**/embeddings/**"
+        ]
+      }
+    },
     "i18n": {
       "path": ".claude/skills/i18n/SKILL.md",
       "description": "Internationalization: translations, localization, multilanguage",
       "triggers": {
-        "keywords": ["i18n", "l10n", "translation", "localization", "multilanguage", "locale", "internationalization"],
-        "intentPatterns": ["add.*language", "translate.*", "multilingual.*", "localize.*", "support.*languages"],
-        "filePatterns": ["**/lang/**", "**/locales/**", "**/i18n/**", "**/translations/**"]
+        "keywords": [
+          "i18n",
+          "l10n",
+          "translation",
+          "localization",
+          "multilanguage",
+          "locale",
+          "internationalization"
+        ],
+        "intentPatterns": [
+          "add.*language",
+          "translate.*",
+          "multilingual.*",
+          "localize.*",
+          "support.*languages"
+        ],
+        "filePatterns": [
+          "**/lang/**",
+          "**/locales/**",
+          "**/i18n/**",
+          "**/translations/**"
+        ]
       }
-    }
+    },
+    "debugging": {
+      "path": ".claude/skills/debugging/SKILL.md",
+      "description": "Systematic debugging and root cause analysis",
+      "triggers": {
+        "keywords": [
+          "debug",
+          "fix",
+          "error",
+          "bug",
+          "crash",
+          "stack trace",
+          "exception"
+        ],
+        "intentPatterns": [
+          "fix.*bug",
+          "debug.*issue",
+          "resolve.*error",
+          "find.*cause"
+        ],
+        "filePatterns": [
+          "*.log",
+          "**/logs/**",
+          "**/exceptions/**"
+        ]
+      }
     }
   }
 }

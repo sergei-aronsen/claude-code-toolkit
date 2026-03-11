@@ -146,6 +146,15 @@ declare -a FILES=(
     # Skills
     "templates/$FRAMEWORK/skills/skill-rules.json:skills/skill-rules.json"
     "templates/$FRAMEWORK/skills/ai-models/SKILL.md:skills/ai-models/SKILL.md"
+    "templates/$FRAMEWORK/skills/api-design/SKILL.md:skills/api-design/SKILL.md"
+    "templates/$FRAMEWORK/skills/database/SKILL.md:skills/database/SKILL.md"
+    "templates/$FRAMEWORK/skills/debugging/SKILL.md:skills/debugging/SKILL.md"
+    "templates/$FRAMEWORK/skills/docker/SKILL.md:skills/docker/SKILL.md"
+    "templates/$FRAMEWORK/skills/i18n/SKILL.md:skills/i18n/SKILL.md"
+    "templates/$FRAMEWORK/skills/llm-patterns/SKILL.md:skills/llm-patterns/SKILL.md"
+    "templates/$FRAMEWORK/skills/observability/SKILL.md:skills/observability/SKILL.md"
+    "templates/$FRAMEWORK/skills/tailwind/SKILL.md:skills/tailwind/SKILL.md"
+    "templates/$FRAMEWORK/skills/testing/SKILL.md:skills/testing/SKILL.md"
 
     # Rules (auto-loaded project context)
     "templates/$FRAMEWORK/rules/README.md:rules/README.md"

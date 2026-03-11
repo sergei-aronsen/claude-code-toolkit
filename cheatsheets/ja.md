@@ -18,7 +18,7 @@
 | `/context-prime` | セッション開始時にプロジェクトコンテキストを読み込み |
 | `/checkpoint` | 進捗をスクラッチパッドに保存 |
 | `/handoff` | タスクの引き継ぎ（要約と次のステップ付き） |
-| `/install` | claude-guides をプロジェクトにインストール |
+| `/update-toolkit` | Claude Code Toolkit を更新 |
 | `/worktree` | 並行ブランチ用の git worktrees を管理 |
 | `/migrate` | データベースマイグレーションの作成・デバッグ |
 | `/find-function` | 関数やクラスの定義を検索 |
@@ -32,6 +32,7 @@
 | `/fix-prod` | 本番ホットフィックス：診断、修正、検証 |
 | `/rollback-update` | ツールキットを前のバージョンに戻す |
 | `/council` | マルチAIレビュー：Gemini + ChatGPT 実装前チェック |
+| `/helpme` | クイックリファレンス（9言語対応） |
 
 ---
 

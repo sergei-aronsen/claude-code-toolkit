@@ -28,7 +28,7 @@ Display a compact cheatsheet with all available commands, agents, audits, skills
 
 1. Parse the language argument (default: `en`)
 2. Validate the language code against supported list: `en`, `ru`, `es`, `de`, `fr`, `zh`, `ja`, `pt`, `ko`
-3. Read `.claude/cheatsheets/{lang}.md`
-4. If file not found — fallback to `.claude/cheatsheets/en.md`
+3. Read `cheatsheets/{lang}.md` (from the toolkit repo, installed to `.claude/commands/`)
+4. If file not found — fallback to `cheatsheets/en.md`
 5. Display the full content of the cheatsheet to the user
 6. Do NOT add anything — just output the cheatsheet content as-is
