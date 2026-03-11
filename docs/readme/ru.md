@@ -25,27 +25,29 @@
 
 ## Быстрый старт
 
-### 1. Security Pack (глобально, один раз)
+### 1. Глобальная настройка (один раз)
 
-Включает многоуровневую защиту. Смотрите [components/security-hardening.md](../../components/security-hardening.md) для полного руководства.
+#### a) Security Pack
+
+Многоуровневая защита. Смотрите [components/security-hardening.md](../../components/security-hardening.md) для полного руководства.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
-### 2. Установка (для каждого проекта)
+#### b) RTK — оптимизатор токенов (рекомендуется)
 
-Скрипт автоматически определяет фреймворк и копирует соответствующий шаблон.
-
-Выполните в терминале в папке проекта:
+[RTK](https://github.com/rtk-ai/rtk) сокращает потребление токенов на 60-90% на dev-командах (`git status`, `cargo test` и др.).
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+brew install rtk
+rtk init -g
 ```
 
-**Перезапустите Claude!** Для будущих обновлений используйте команду `/update-toolkit` для переустановки или обновления.
+> **Примечание:** Security Pack (шаг 1a) уже настраивает объединённый хук, который запускает safety-net и RTK последовательно.
+> См. [components/security-hardening.md](../../components/security-hardening.md) для деталей.
 
-### 3. Rate Limit Statusline (Claude Max / Pro)
+#### c) Rate Limit Statusline (Claude Max / Pro, опционально)
 
 Показывает лимиты сессии/недели в статусбаре Claude Code. Подробнее: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
@@ -53,13 +55,22 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
-### 4. Supreme Council (мульти-AI ревью, опционально)
+### 2. Установка (для каждого проекта)
 
-Gemini + ChatGPT проверяют ваши планы перед кодингом. Подробнее: [components/supreme-council.md](../../components/supreme-council.md)
+Установщик:
+
+- Предложит **выбрать ваш стек** (авто-определение рекомендуется)
+- Установит тулкит (команды, агенты, промпты, skills)
+- Настроит **Supreme Council** (мульти-AI ревью Gemini + ChatGPT)
+- Проведёт через настройку API-ключей
+
+Выполните в терминале в папке проекта:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
+
+**Перезапустите Claude!** Для будущих обновлений используйте команду `/update-toolkit`.
 
 ---
 

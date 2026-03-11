@@ -23,17 +23,45 @@ Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, 
 
 ## Quick Start
 
-### 1. Security Pack (global, once)
+### 1. Global Setup (once)
 
-Includes a defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
+#### a) Security Pack
+
+Defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
+#### b) RTK — Token Optimizer (recommended)
+
+[RTK](https://github.com/rtk-ai/rtk) reduces token consumption by 60-90% on dev commands (`git status`, `cargo test`, etc.).
+
+```bash
+brew install rtk
+rtk init -g
+```
+
+> **Note:** If RTK and cc-safety-net are separate hooks, their results conflict.
+> The Security Pack (step 1a) already configures a combined hook that runs both sequentially.
+> See [components/security-hardening.md](components/security-hardening.md) for details.
+
+#### c) Rate Limit Statusline (Claude Max / Pro, optional)
+
+Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
 ### 2. Installation (per project)
 
-The script automatically detects framework and copies the appropriate template.
+The installer will:
+
+- Ask you to **select your stack** (auto-detect recommended)
+- Install toolkit (commands, agents, prompts, skills)
+- Set up **Supreme Council** (Gemini + ChatGPT multi-AI review)
+- Guide you through API key configuration
 
 Run in terminal in the project folder:
 
@@ -44,22 +72,6 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **Restart Claude!** For future updates use `/update-toolkit` command for reinstallation or updates.
 
 > **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md) for details.
-
-### 3. Rate Limit Statusline (Claude Max / Pro)
-
-Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
-```
-
-### 4. Supreme Council (multi-AI review, optional)
-
-Gemini + ChatGPT review your plans before coding. More: [components/supreme-council.md](components/supreme-council.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
-```
 
 ---
 
@@ -107,22 +119,6 @@ claude mcp add -s user memory-bank -- npx -y @allpepper/memory-bank-mcp@latest
 claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
 claude mcp add -s user memory -- npx -y @modelcontextprotocol/server-memory
 ```
-
----
-
-## RTK — Token Optimizer (optional)
-
-[RTK](https://github.com/rtk-ai/rtk) (Rust Token Killer) — CLI proxy that reduces token consumption by 60-90% on dev commands (`git status`, `cargo test`, etc.).
-
-```bash
-brew install rtk
-rtk init -g
-```
-
-> **Known issue:** Multiple `PreToolUse` hooks with the same matcher run **in parallel**.
-> If RTK and cc-safety-net are separate hooks, their results conflict and RTK's rewrite gets lost.
-> **Fix:** Use a single combined hook that runs safety-net first, then RTK sequentially.
-> See `components/security-hardening.md` for the combined hook setup.
 
 ---
 

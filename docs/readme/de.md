@@ -25,17 +25,44 @@ Unterstuetzte Stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js
 
 ## Schnellstart
 
-### 1. Security Pack (global, einmalig)
+### 1. Globale Einrichtung (einmalig)
 
-Enthaelt ein Defense-in-Depth Sicherheits-Setup. Siehe [components/security-hardening.md](../../components/security-hardening.md) fuer die vollstaendige Anleitung.
+#### a) Security Pack
+
+Defense-in-Depth Sicherheits-Setup. Siehe [components/security-hardening.md](../../components/security-hardening.md) fuer die vollstaendige Anleitung.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
+#### b) RTK — Token-Optimierer (empfohlen)
+
+[RTK](https://github.com/rtk-ai/rtk) reduziert den Token-Verbrauch um 60-90% bei Entwicklungsbefehlen (`git status`, `cargo test`, usw.).
+
+```bash
+brew install rtk
+rtk init -g
+```
+
+> **Hinweis:** Das Security Pack (Schritt 1a) konfiguriert bereits einen kombinierten Hook, der safety-net und RTK sequenziell ausfuehrt.
+> Siehe [components/security-hardening.md](../../components/security-hardening.md) fuer Details.
+
+#### c) Rate Limit Statusline (Claude Max / Pro, optional)
+
+Zeigt Sitzungs-/Woechentliche Limits in der Statusleiste an. Mehr: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
 ### 2. Installation (pro Projekt)
 
-Das Skript erkennt automatisch das Framework und kopiert das entsprechende Template.
+Der Installer:
+
+- Fragt nach deinem **Stack** (Auto-Erkennung empfohlen)
+- Installiert das Toolkit (Befehle, Agenten, Prompts, Skills)
+- Richtet **Supreme Council** ein (Multi-AI Review mit Gemini + ChatGPT)
+- Fuehrt durch die API-Key-Konfiguration
 
 Fuehre im Terminal im Projektordner aus:
 
@@ -43,23 +70,7 @@ Fuehre im Terminal im Projektordner aus:
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
-**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl fuer Neuinstallation oder Updates.
-
-### 3. Rate Limit Statusline (Claude Max / Pro)
-
-Zeigt Sitzungs-/Woechentliche Limits in der Claude Code Statusleiste an. Mehr: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
-```
-
-### 4. Supreme Council (Multi-AI Review, optional)
-
-Gemini + ChatGPT pruefen deine Plaene vor dem Coding. Mehr: [components/supreme-council.md](../../components/supreme-council.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
-```
+**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl.
 
 ---
 

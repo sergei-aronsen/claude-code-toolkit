@@ -25,27 +25,29 @@
 
 ## 快速开始
 
-### 1. Security Pack（全局，仅需一次）
+### 1. 全局设置（仅需一次）
 
-包含纵深防御安全设置。完整指南请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
+#### a) Security Pack
+
+纵深防御安全设置。完整指南请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
-### 2. 安装（每个项目）
+#### b) RTK — Token 优化器（推荐）
 
-脚本会自动检测框架并复制相应模板。
-
-在项目文件夹的终端中运行：
+[RTK](https://github.com/rtk-ai/rtk) 在开发命令（`git status`、`cargo test` 等）上减少 60-90% 的 Token 消耗。
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+brew install rtk
+rtk init -g
 ```
 
-**重启 Claude！** 后续更新请使用 `/update-toolkit` 命令进行重新安装或更新。
+> **注意：** Security Pack（步骤 1a）已配置组合钩子，按顺序运行 safety-net 和 RTK。
+> 详情请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
 
-### 3. Rate Limit Statusline (Claude Max / Pro)
+#### c) Rate Limit Statusline（Claude Max / Pro，可选）
 
 在 Claude Code 状态栏中显示会话/周限额。更多信息：[components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
@@ -53,13 +55,22 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
-### 4. Supreme Council（多AI审查，可选）
+### 2. 安装（每个项目）
 
-Gemini + ChatGPT 在编码前审查你的计划。更多信息：[components/supreme-council.md](../../components/supreme-council.md)
+安装程序将：
+
+- 让你**选择技术栈**（推荐自动检测）
+- 安装工具包（命令、代理、提示、技能）
+- 设置 **Supreme Council**（Gemini + ChatGPT 多AI审查）
+- 引导你完成 API 密钥配置
+
+在项目文件夹的终端中运行：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
+
+**重启 Claude！** 后续更新请使用 `/update-toolkit` 命令。
 
 ---
 

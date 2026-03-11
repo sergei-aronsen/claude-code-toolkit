@@ -27,6 +27,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        --no-council)
+            SKIP_COUNCIL=true
+            shift
+            ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
             shift
@@ -39,24 +43,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Detect framework if not specified
+SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
+
+# Detect framework automatically
 detect_framework() {
-    # Laravel
     if [[ -f "artisan" ]]; then
         echo "laravel"
-    # Ruby on Rails
     elif [[ -f "bin/rails" ]] || [[ -f "config/application.rb" ]]; then
         echo "rails"
-    # Next.js
     elif [[ -f "next.config.js" ]] || [[ -f "next.config.mjs" ]] || [[ -f "next.config.ts" ]]; then
         echo "nextjs"
-    # Node.js (package.json but not Next.js)
     elif [[ -f "package.json" ]]; then
         echo "nodejs"
-    # Python
     elif [[ -f "pyproject.toml" ]] || [[ -f "requirements.txt" ]] || [[ -f "setup.py" ]]; then
         echo "python"
-    # Go
     elif [[ -f "go.mod" ]]; then
         echo "go"
     else
@@ -64,8 +64,49 @@ detect_framework() {
     fi
 }
 
+# Interactive stack selection menu
+select_framework() {
+    local detected
+    detected=$(detect_framework)
+
+    echo -e "${BLUE}Select your stack:${NC}"
+    echo -e "  ${GREEN}1)${NC} Auto-detect (Recommended) — detected: ${GREEN}$detected${NC}"
+    echo -e "  2) Laravel"
+    echo -e "  3) Ruby on Rails"
+    echo -e "  4) Next.js"
+    echo -e "  5) Node.js"
+    echo -e "  6) Python"
+    echo -e "  7) Go"
+    echo -e "  8) Base (generic)"
+    echo ""
+
+    local choice
+    read -r -p "  Enter choice [1-8] (default: 1): " choice < /dev/tty
+    choice="${choice:-1}"
+
+    case "$choice" in
+        1) FRAMEWORK="$detected" ;;
+        2) FRAMEWORK="laravel" ;;
+        3) FRAMEWORK="rails" ;;
+        4) FRAMEWORK="nextjs" ;;
+        5) FRAMEWORK="nodejs" ;;
+        6) FRAMEWORK="python" ;;
+        7) FRAMEWORK="go" ;;
+        8) FRAMEWORK="base" ;;
+        *)
+            echo -e "${YELLOW}Invalid choice, using auto-detect${NC}"
+            FRAMEWORK="$detected"
+            ;;
+    esac
+}
+
+# Select framework: CLI arg > interactive menu > auto-detect fallback
 if [[ -z "$FRAMEWORK" ]]; then
-    FRAMEWORK=$(detect_framework)
+    if [[ -e /dev/tty ]]; then
+        select_framework
+    else
+        FRAMEWORK=$(detect_framework)
+    fi
 fi
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
@@ -341,13 +382,163 @@ recommend_statusline() {
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
-# Show Supreme Council recommendation
-recommend_council() {
+# Setup Supreme Council (integrated)
+setup_council() {
+    local council_dir="$HOME/.claude/council"
+
     echo ""
-    echo -e "${BLUE}🧠 Supreme Council (optional):${NC}"
-    echo -e "  Multi-AI code review — Gemini + ChatGPT review your plans before coding."
-    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
-    echo -e "  Requires: Python 3.8+, Gemini CLI or API key, OpenAI API key"
+    echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║   Supreme Council Setup                    ║${NC}"
+    echo -e "${BLUE}║   Multi-AI Review (Gemini + ChatGPT)       ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check Python
+    if ! command -v python3 &>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC} Python 3 not found — skipping Supreme Council"
+        echo -e "  Install Python 3.8+ and run: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
+        return
+    fi
+
+    # Download brain.py
+    mkdir -p "$council_dir"
+    if curl -sSL "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
+        chmod +x "$council_dir/brain.py"
+        echo -e "  ${GREEN}✓${NC} brain.py installed"
+    else
+        echo -e "  ${RED}✗${NC} Failed to download brain.py"
+        return
+    fi
+
+    # Download README
+    curl -sSL "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || true
+
+    # Ask to configure now
+    echo ""
+    local configure
+    read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty
+    configure="${configure:-Y}"
+
+    if [[ "$configure" =~ ^[Nn]$ ]]; then
+        echo -e "  ${YELLOW}→${NC} Skipped. Run later: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
+
+        # Create empty config
+        if [[ ! -f "$council_dir/config.json" ]]; then
+            cat > "$council_dir/config.json" << 'CONFIGEOF'
+{
+  "gemini": {
+    "mode": "cli",
+    "api_key": "",
+    "model": "gemini-3-pro-preview"
+  },
+  "openai": {
+    "api_key": "",
+    "model": "gpt-5.2"
+  }
+}
+CONFIGEOF
+            chmod 600 "$council_dir/config.json"
+        fi
+        return
+    fi
+
+    # Gemini setup
+    echo ""
+    echo -e "  ${BLUE}Gemini configuration:${NC}"
+    echo -e "    ${GREEN}1)${NC} Gemini CLI — free with Google subscription (recommended)"
+    echo -e "    ${YELLOW}2)${NC} Gemini API — requires API key from AI Studio"
+    echo ""
+
+    local gemini_mode="cli"
+    local gemini_key=""
+    local gemini_choice
+    read -r -p "    Enter choice [1/2] (default: 1): " gemini_choice < /dev/tty
+    gemini_choice="${gemini_choice:-1}"
+
+    if [[ "$gemini_choice" == "2" ]]; then
+        gemini_mode="api"
+        if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+            gemini_key="$GEMINI_API_KEY"
+            echo -e "    ${GREEN}✓${NC} GEMINI_API_KEY found in environment"
+        else
+            read -r -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty
+            if [[ -z "$gemini_key" ]]; then
+                echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
+            fi
+        fi
+    else
+        echo -e "    ${BLUE}→${NC} Gemini CLI selected"
+        if ! command -v gemini &>/dev/null; then
+            echo -e "    ${YELLOW}⚠${NC} Gemini CLI not found. Install:"
+            echo -e "      npm install -g @google/gemini-cli"
+            echo -e "      Then run: gemini login"
+        else
+            echo -e "    ${GREEN}✓${NC} Gemini CLI found"
+        fi
+    fi
+
+    # OpenAI setup
+    echo ""
+    echo -e "  ${BLUE}OpenAI (ChatGPT) configuration:${NC}"
+
+    local openai_key=""
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+        openai_key="$OPENAI_API_KEY"
+        echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
+    else
+        read -r -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty
+        if [[ -z "$openai_key" ]]; then
+            echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
+            echo -e "    Get key: https://platform.openai.com/api-keys"
+        fi
+    fi
+
+    # Create config
+    if [[ ! -f "$council_dir/config.json" ]]; then
+        cat > "$council_dir/config.json" << CONFIGEOF
+{
+  "gemini": {
+    "mode": "$gemini_mode",
+    "api_key": "$gemini_key",
+    "model": "gemini-3-pro-preview"
+  },
+  "openai": {
+    "api_key": "$openai_key",
+    "model": "gpt-5.2"
+  }
+}
+CONFIGEOF
+        chmod 600 "$council_dir/config.json"
+        echo -e "  ${GREEN}✓${NC} config.json created"
+    else
+        echo -e "  ${YELLOW}⚠${NC} config.json already exists, preserving"
+    fi
+
+    # Shell alias
+    local alias_line="alias brain='python3 $council_dir/brain.py'"
+    local shell_rc
+
+    if [[ "$SHELL" == *"zsh"* ]]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"bash"* ]]; then
+        shell_rc="$HOME/.bash_profile"
+    else
+        shell_rc="$HOME/.bashrc"
+    fi
+
+    if [[ -f "$shell_rc" ]] && grep -q "alias brain=" "$shell_rc" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Alias 'brain' already exists"
+    else
+        {
+            echo ""
+            echo "# Supreme Council — multi-AI code review"
+            echo "$alias_line"
+        } >> "$shell_rc"
+        echo -e "  ${GREEN}✓${NC} Added alias 'brain' to $shell_rc"
+    fi
+
+    echo -e "  ${GREEN}✓${NC} Supreme Council configured"
+    echo -e "  Usage: ${YELLOW}/council add OAuth login with Google${NC}"
 }
 
 # Main
@@ -378,7 +569,11 @@ main() {
 
     recommend_security
     recommend_statusline
-    recommend_council
+
+    # Supreme Council setup (integrated)
+    if [[ "$SKIP_COUNCIL" != true ]]; then
+        setup_council
+    fi
 
     echo ""
     echo -e "${BLUE}🔍 Verify installation:${NC}"
@@ -429,8 +624,9 @@ Requires: macOS, jq, Claude Max/Pro.
 curl -sSL $REPO_URL/scripts/install-statusline.sh | bash
 \`\`\`
 
-🧠 **Supreme Council** — multi-AI code review (Gemini + ChatGPT review plans before coding).
-Requires: Python 3.8+, Gemini CLI or API key, OpenAI API key.
+## Supreme Council
+
+🧠 If you skipped council configuration during installation, set it up later:
 
 \`\`\`bash
 curl -sSL $REPO_URL/scripts/setup-council.sh | bash

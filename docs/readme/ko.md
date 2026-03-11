@@ -25,17 +25,44 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 
 ## 빠른 시작
 
-### 1. Security Pack (전역, 한 번만)
+### 1. 글로벌 설정 (한 번만)
 
-심층 방어 보안 설정을 포함합니다. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
+#### a) Security Pack
+
+심층 방어 보안 설정. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
+#### b) RTK — 토큰 최적화 도구 (권장)
+
+[RTK](https://github.com/rtk-ai/rtk)는 개발 명령어(`git status`, `cargo test` 등)의 토큰 소비를 60-90% 줄여줍니다.
+
+```bash
+brew install rtk
+rtk init -g
+```
+
+> **참고:** Security Pack(단계 1a)은 이미 safety-net과 RTK를 순차적으로 실행하는 통합 훅을 구성합니다.
+> 자세한 내용은 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
+
+#### c) Rate Limit Statusline (Claude Max / Pro, 선택 사항)
+
+상태 표시줄에 세션/주간 제한을 표시합니다. 자세히: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+```
+
 ### 2. 설치 (프로젝트별)
 
-스크립트가 자동으로 프레임워크를 감지하고 적절한 템플릿을 복사합니다.
+설치 프로그램이:
+
+- **스택 선택**을 요청합니다 (자동 감지 권장)
+- 툴킷을 설치합니다 (명령어, 에이전트, 프롬프트, 스킬)
+- **Supreme Council**을 설정합니다 (Gemini + ChatGPT 멀티 AI 리뷰)
+- API 키 구성을 안내합니다
 
 프로젝트 폴더의 터미널에서 실행하세요:
 
@@ -43,23 +70,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
 
-**Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하여 재설치 또는 업데이트하세요.
-
-### 3. Rate Limit Statusline (Claude Max / Pro)
-
-Claude Code 상태 표시줄에 세션/주간 제한을 표시합니다. 자세히: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
-```
-
-### 4. Supreme Council (멀티 AI 리뷰, 선택 사항)
-
-Gemini + ChatGPT가 코딩 전에 계획을 리뷰합니다. 자세히: [components/supreme-council.md](../../components/supreme-council.md)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
-```
+**Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하세요.
 
 ---
 

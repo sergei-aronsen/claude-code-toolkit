@@ -25,27 +25,29 @@ Stacks soportados: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 ## Inicio Rapido
 
-### 1. Security Pack (global, una vez)
+### 1. Configuracion Global (una vez)
 
-Incluye una configuracion de seguridad en profundidad. Consulta [components/security-hardening.md](../../components/security-hardening.md) para la guia completa.
+#### a) Security Pack
+
+Configuracion de seguridad en profundidad. Consulta [components/security-hardening.md](../../components/security-hardening.md) para la guia completa.
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
 ```
 
-### 2. Instalacion (por proyecto)
+#### b) RTK — Optimizador de Tokens (recomendado)
 
-El script detecta automaticamente el framework y copia la plantilla apropiada.
-
-Ejecuta en la terminal en la carpeta del proyecto:
+[RTK](https://github.com/rtk-ai/rtk) reduce el consumo de tokens en un 60-90% en comandos de desarrollo (`git status`, `cargo test`, etc.).
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+brew install rtk
+rtk init -g
 ```
 
-**Reinicia Claude!** Para futuras actualizaciones usa el comando `/update-toolkit` para reinstalacion o actualizaciones.
+> **Nota:** El Security Pack (paso 1a) ya configura un hook combinado que ejecuta safety-net y RTK secuencialmente.
+> Ver [components/security-hardening.md](../../components/security-hardening.md) para detalles.
 
-### 3. Rate Limit Statusline (Claude Max / Pro)
+#### c) Rate Limit Statusline (Claude Max / Pro, opcional)
 
 Muestra los limites de sesion/semanales en la barra de estado de Claude Code. Mas informacion: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
@@ -53,13 +55,22 @@ Muestra los limites de sesion/semanales en la barra de estado de Claude Code. Ma
 curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
 ```
 
-### 4. Supreme Council (revision multi-IA, opcional)
+### 2. Instalacion (por proyecto)
 
-Gemini + ChatGPT revisan tus planes antes de codificar. Mas informacion: [components/supreme-council.md](../../components/supreme-council.md)
+El instalador:
+
+- Te pedira **seleccionar tu stack** (auto-deteccion recomendada)
+- Instalara el toolkit (comandos, agentes, prompts, skills)
+- Configurara **Supreme Council** (revision multi-IA con Gemini + ChatGPT)
+- Te guiara en la configuracion de claves API
+
+Ejecuta en la terminal en la carpeta del proyecto:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
 ```
+
+**Reinicia Claude!** Para futuras actualizaciones usa el comando `/update-toolkit`.
 
 ---
 
