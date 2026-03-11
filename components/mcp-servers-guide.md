@@ -166,7 +166,40 @@ Multi-step problem solving with revision capability. Use for architectural decis
 }
 ```
 
-### 4. Morph Fast Tools — Fast Editing
+### 4. Sentry — Error Monitoring
+
+Official MCP server from Sentry. Search issues, investigate errors, view stacktraces, manage releases.
+
+**Install (remote HTTP with OAuth — nothing to install locally):**
+
+```bash
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
+```
+
+After launching Claude Code, you will be prompted to authenticate via OAuth with your Sentry organization. During setup, select only the tool groups you need to minimize token overhead.
+
+**When to use:**
+
+- Investigate production errors and exceptions
+- Search for specific error patterns
+- View issue details with stacktraces
+- Check release health and performance
+
+**Examples:**
+
+```text
+"What are the most frequent errors in the last 24 hours?"
+"Show me the stacktrace for ISSUE-12345"
+"Are there any new errors after the latest deploy?"
+```
+
+**Reauthentication:** Type `/mcp` in Claude Code, select Sentry, then "Clear authentication" or "Authenticate".
+
+> **Self-hosted Sentry:** Use stdio transport with a User Auth Token. See [Sentry MCP docs](https://docs.sentry.io/ai/mcp/).
+
+---
+
+### 5. Morph Fast Tools — Fast Editing
 
 Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
 
@@ -182,6 +215,39 @@ Smart code search (WarpGrep) and fast file editing. Requires API key from [morph
   }
 }
 ```
+
+---
+
+## Project-Specific Servers
+
+These servers should be installed **per-project** (not globally) because they require project-specific credentials.
+
+### PostgreSQL — Database Access
+
+Direct database access for schema exploration, queries, and debugging.
+
+**Install per-project** (credentials stay in `.claude/settings.local.json`):
+
+```bash
+claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres postgresql://user:password@localhost:5432/dbname
+```
+
+**When to use:**
+
+- Explore database schema and relationships
+- Debug data issues with direct queries
+- Check migration results
+- Analyze query performance
+
+**Examples:**
+
+```text
+"Show me the schema for the users table"
+"Find orders with status 'pending' older than 7 days"
+"What indexes exist on the transactions table?"
+```
+
+> **Security:** Install per-project only (`settings.local.json`), never globally. Add `settings.local.json` to `.gitignore` — it contains database credentials. Use read-only database users when possible.
 
 ---
 
@@ -250,7 +316,7 @@ See **[memory-persistence.md](memory-persistence.md)** for the complete guide.
 
 ## Full Configuration
 
-Add to `~/.claude/settings.json` (global):
+### Global (all projects) — `~/.claude/settings.json`
 
 ```json
 {
@@ -274,6 +340,27 @@ Add to `~/.claude/settings.json` (global):
 }
 ```
 
+Sentry uses remote HTTP transport — install via CLI:
+
+```bash
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
+```
+
+### Per-project (credentials) — `.claude/settings.local.json`
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:password@localhost:5432/dbname"]
+    }
+  }
+}
+```
+
+> **Note:** `.claude/settings.local.json` is gitignored by default — safe for credentials.
+
 ---
 
 ## Instructions for CLAUDE.md
@@ -295,6 +382,14 @@ Example: "Check that form on /contact works"
 ### sequential-thinking — Complex Tasks
 **When:** Multi-step analysis, architectural decisions.
 Example: "Design a notification system"
+
+### sentry — Error Monitoring
+**When:** Investigate production errors, check stacktraces, search issues.
+Example: "What errors appeared after the last deploy?"
+
+### postgres — Database Access (project-specific)
+**When:** Explore schema, debug data, check migrations.
+Example: "Show me the users table schema"
 ```
 
 ---

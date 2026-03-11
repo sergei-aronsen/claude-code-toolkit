@@ -93,30 +93,33 @@ See [detailed descriptions and examples](docs/features.md).
 
 ## MCP Servers (recommended!)
 
+### Global (all projects)
+
 | Server | Purpose |
 |--------|---------|
 | `context7` | Library documentation |
 | `playwright` | Browser automation, UI testing |
 | `sequential-thinking` | Step-by-step problem solving |
-
-> **Install globally** with `-s user` so MCP servers are available in every project, not just the current one.
->
-> **Note:** Memory Bank and Knowledge Graph MCP servers are **no longer recommended**. Use `.claude/rules/` with path-scoped `globs:` instead — auto-loaded, git-tracked, zero overhead. See [memory-persistence.md](components/memory-persistence.md).
-
-**Option A** — ask Claude to do it for you:
-
-```text
-Install these MCP servers globally (-s user):
-context7, playwright, sequential-thinking
-```
-
-**Option B** — run manually:
+| `sentry` | Error monitoring and issue investigation |
 
 ```bash
 claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
 claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
 claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
 ```
+
+### Per-project (credentials)
+
+| Server | Purpose |
+|--------|---------|
+| `postgres` | Database schema exploration and queries |
+
+```bash
+claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres postgresql://user:pass@localhost:5432/dbname
+```
+
+> **Note:** Per-project servers go to `.claude/settings.local.json` (gitignored, safe for credentials). See [mcp-servers-guide.md](components/mcp-servers-guide.md) for full details.
 
 ---
 
