@@ -113,13 +113,13 @@ claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
 
 | Server | Purpose |
 |--------|---------|
-| `postgres` | Database schema exploration and queries |
+| `dbhub` | Universal database access (PostgreSQL, MySQL, MariaDB, SQL Server, SQLite) |
 
 ```bash
-claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres postgresql://user:pass@localhost:5432/dbname
+claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:pass@localhost:5432/dbname"
 ```
 
-> **Note:** Per-project servers go to `.claude/settings.local.json` (gitignored, safe for credentials). See [mcp-servers-guide.md](components/mcp-servers-guide.md) for full details.
+> **Security:** Always use a **read-only database user** — do not rely on DBHub's app-level `--readonly` flag ([known bypasses](https://github.com/bytebase/dbhub/issues/271)). Per-project servers go to `.claude/settings.local.json` (gitignored, safe for credentials). See [mcp-servers-guide.md](components/mcp-servers-guide.md) for full details.
 
 ---
 

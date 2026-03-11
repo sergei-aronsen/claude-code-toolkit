@@ -222,14 +222,27 @@ Smart code search (WarpGrep) and fast file editing. Requires API key from [morph
 
 These servers should be installed **per-project** (not globally) because they require project-specific credentials.
 
-### PostgreSQL — Database Access
+### DBHub — Universal Database Access
 
-Direct database access for schema exploration, queries, and debugging.
+[DBHub](https://github.com/bytebase/dbhub) by Bytebase — universal MCP server for PostgreSQL, MySQL, MariaDB, SQL Server, and SQLite. Token-efficient (only 2 core tools), supports multiple simultaneous connections.
 
 **Install per-project** (credentials stay in `.claude/settings.local.json`):
 
 ```bash
-claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres postgresql://user:password@localhost:5432/dbname
+# PostgreSQL
+claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:password@localhost:5432/dbname"
+
+# MySQL
+claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "mysql://user:password@localhost:3306/dbname"
+
+# SQLite
+claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "sqlite:///path/to/db.sqlite"
+```
+
+**Multi-database config** (TOML file for multiple connections):
+
+```bash
+claude mcp add dbhub -- npx -y @bytebase/dbhub --config /path/to/dbhub.toml
 ```
 
 **When to use:**
@@ -247,7 +260,12 @@ claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres postgres
 "What indexes exist on the transactions table?"
 ```
 
-> **Security:** Install per-project only (`settings.local.json`), never globally. Add `settings.local.json` to `.gitignore` — it contains database credentials. Use read-only database users when possible.
+> **Security:**
+>
+> - Install per-project only (`settings.local.json`), never globally — it contains database credentials.
+> - **Always use a read-only database user.** Do not rely on DBHub's `--readonly` flag — it has [known bypasses](https://github.com/bytebase/dbhub/issues/271) via CTE queries. Database-level permissions are the only reliable protection.
+> - Use stdio transport (default). HTTP transport has [no authentication](https://github.com/bytebase/dbhub/issues/66) — avoid it.
+> - Set `--row-limit` and `--query-timeout` to prevent unbounded queries.
 
 ---
 
@@ -351,9 +369,9 @@ claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
 ```json
 {
   "mcpServers": {
-    "postgres": {
+    "dbhub": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://user:password@localhost:5432/dbname"]
+      "args": ["-y", "@bytebase/dbhub", "--dsn", "postgresql://user:password@localhost:5432/dbname"]
     }
   }
 }
@@ -387,9 +405,10 @@ Example: "Design a notification system"
 **When:** Investigate production errors, check stacktraces, search issues.
 Example: "What errors appeared after the last deploy?"
 
-### postgres — Database Access (project-specific)
+### dbhub — Database Access (project-specific)
 **When:** Explore schema, debug data, check migrations.
 Example: "Show me the users table schema"
+**Important:** Always use a read-only database user — do not rely on app-level read-only mode.
 ```
 
 ---
