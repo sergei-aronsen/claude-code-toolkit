@@ -1,21 +1,20 @@
 #!/bin/bash
-# init-local.sh — Initialize Claude Code configuration from local claude-guides
+# init-local.sh — Initialize Claude Code configuration from local claude-code-toolkit
 #
 # Usage:
-#   /path/to/claude-guides/scripts/init-local.sh [--dry-run] [framework]
+#   /path/to/claude-code-toolkit/scripts/init-local.sh [--dry-run] [framework]
 #
 # Frameworks: laravel, nextjs, nodejs, python, go, rails, base, auto (default)
 
 set -euo pipefail
 
-VERSION="1.1.0"
+VERSION="2.0.0"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUIDES_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Colors
-RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -23,7 +22,6 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 CLAUDE_DIR=".claude"
-PROMPTS_DIR="$CLAUDE_DIR/prompts"
 
 # Flags
 DRY_RUN=false
@@ -37,7 +35,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --version|-v)
-            echo "claude-guides v$VERSION"
+            echo "claude-code-toolkit v$VERSION (local)"
             exit 0
             ;;
         --help|-h)
@@ -62,7 +60,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "${BLUE}Claude Code Configuration Initializer v$VERSION (Local)${NC}"
+echo -e "${BLUE}Claude Code Toolkit — Local Install v$VERSION${NC}"
 echo "======================================================"
 echo -e "Source: ${YELLOW}$GUIDES_DIR${NC}"
 echo ""
@@ -73,11 +71,11 @@ detect_framework() {
         echo "laravel"
     elif [ -f "next.config.js" ] || [ -f "next.config.ts" ] || [ -f "next.config.mjs" ]; then
         echo "nextjs"
-    elif [ -f "Gemfile" ] && grep -q "rails" Gemfile 2>/dev/null; then
+    elif [ -f "bin/rails" ] || [ -f "config/application.rb" ]; then
         echo "rails"
     elif [ -f "go.mod" ]; then
         echo "go"
-    elif [ -f "manage.py" ] || [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+    elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
         echo "python"
     elif [ -f "package.json" ]; then
         echo "nodejs"
@@ -86,47 +84,37 @@ detect_framework() {
     fi
 }
 
-# Use provided framework or detect
 if [ -z "$FRAMEWORK" ]; then
     FRAMEWORK=$(detect_framework)
 fi
 
+TEMPLATE_PATH="$GUIDES_DIR/templates/$FRAMEWORK"
+BASE_PATH="$GUIDES_DIR/templates/base"
+
 echo -e "Detected framework: ${GREEN}$FRAMEWORK${NC}"
-
-# Determine template path based on framework
-case $FRAMEWORK in
-    laravel)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/laravel"
-        ;;
-    nextjs)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/nextjs"
-        ;;
-    go)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/go"
-        ;;
-    python)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/python"
-        ;;
-    rails)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/rails"
-        ;;
-    nodejs)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/nodejs"
-        ;;
-    *)
-        TEMPLATE_PATH="$GUIDES_DIR/templates/base"
-        ;;
-esac
-
-# Templates to copy
-TEMPLATES=(
-    "SECURITY_AUDIT.md"
-    "PERFORMANCE_AUDIT.md"
-    "CODE_REVIEW.md"
-    "DEPLOY_CHECKLIST.md"
-)
-
 echo ""
+
+# Helper: copy file with fallback to base template
+copy_file() {
+    local src="$1"
+    local dest="$2"
+    local label="${3:-$dest}"
+
+    mkdir -p "$(dirname "$CLAUDE_DIR/$dest")"
+
+    if [ -f "$TEMPLATE_PATH/$src" ]; then
+        cp "$TEMPLATE_PATH/$src" "$CLAUDE_DIR/$dest"
+        echo -e "  ${GREEN}✓${NC} $label"
+    elif [ -f "$BASE_PATH/$src" ]; then
+        cp "$BASE_PATH/$src" "$CLAUDE_DIR/$dest"
+        echo -e "  ${GREEN}✓${NC} $label (base)"
+    elif [ -f "$GUIDES_DIR/$src" ]; then
+        cp "$GUIDES_DIR/$src" "$CLAUDE_DIR/$dest"
+        echo -e "  ${GREEN}✓${NC} $label"
+    else
+        echo -e "  ${YELLOW}⚠${NC} $label (not found)"
+    fi
+}
 
 # Dry run mode
 if [ "$DRY_RUN" = true ]; then
@@ -134,99 +122,93 @@ if [ "$DRY_RUN" = true ]; then
     echo ""
     echo "Would create:"
     echo "  $CLAUDE_DIR/"
-    echo "  ├── prompts/"
-    for template in "${TEMPLATES[@]}"; do
-        echo "  │   └── $template"
-    done
-    echo "  ├── commands/"
-    for cmd in "$GUIDES_DIR/commands"/*.md; do
-        if [ -f "$cmd" ]; then
-            echo "  │   └── $(basename "$cmd")"
-        fi
-    done
-    echo "  ├── cheatsheets/"
-    for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
-        if [ -f "$cs" ]; then
-            echo "  │   └── $(basename "$cs")"
-        fi
-    done
-    echo "  └── reports/"
-    if [ ! -f "CLAUDE.md" ]; then
-        echo "  CLAUDE.md"
-    else
-        echo "  CLAUDE.md (already exists, would skip)"
-    fi
+    echo "  ├── prompts/      (7 audit templates)"
+    echo "  ├── commands/     (29 slash commands)"
+    echo "  ├── agents/       (4 subagent definitions)"
+    echo "  ├── skills/       (10 framework skills)"
+    echo "  ├── rules/        (auto-loaded project context)"
+    echo "  ├── cheatsheets/  (9 languages)"
+    echo "  └── scratchpad/   (working notes)"
     echo ""
     echo "Source: $TEMPLATE_PATH/"
-    echo ""
     echo -e "Run without ${CYAN}--dry-run${NC} to apply changes."
     exit 0
 fi
 
 # Create directory structure
 echo -e "${YELLOW}Creating directory structure...${NC}"
-mkdir -p "$PROMPTS_DIR"
-mkdir -p "$CLAUDE_DIR/reports"
-mkdir -p "$CLAUDE_DIR/rules"
+mkdir -p "$CLAUDE_DIR"/{prompts,commands,agents,skills,rules,cheatsheets,scratchpad}
 
-echo -e "${YELLOW}Copying templates from $TEMPLATE_PATH...${NC}"
+# ============================================================================
+# PROMPTS
+# ============================================================================
+echo ""
+echo -e "${BLUE}Copying prompts...${NC}"
+for template in SECURITY_AUDIT.md PERFORMANCE_AUDIT.md CODE_REVIEW.md \
+                DEPLOY_CHECKLIST.md DESIGN_REVIEW.md \
+                MYSQL_PERFORMANCE_AUDIT.md POSTGRES_PERFORMANCE_AUDIT.md; do
+    copy_file "prompts/$template" "prompts/$template"
+done
 
-# Copy templates
-COPIED=0
-FAILED=0
+# ============================================================================
+# AGENTS
+# ============================================================================
+echo ""
+echo -e "${BLUE}Copying agents...${NC}"
+for agent in code-reviewer.md test-writer.md planner.md security-auditor.md; do
+    copy_file "agents/$agent" "agents/$agent"
+done
 
-for template in "${TEMPLATES[@]}"; do
-    echo -n "  - $template... "
+# ============================================================================
+# SKILLS
+# ============================================================================
+echo ""
+echo -e "${BLUE}Copying skills...${NC}"
+copy_file "skills/skill-rules.json" "skills/skill-rules.json"
+for skill in ai-models api-design database debugging docker i18n llm-patterns observability tailwind testing; do
+    copy_file "skills/$skill/SKILL.md" "skills/$skill/SKILL.md"
+done
 
-    if [ -f "$TEMPLATE_PATH/prompts/$template" ]; then
-        cp "$TEMPLATE_PATH/prompts/$template" "$PROMPTS_DIR/$template"
-        echo -e "${GREEN}OK${NC}"
-        COPIED=$((COPIED + 1))
-    elif [ -f "$GUIDES_DIR/templates/base/prompts/$template" ]; then
-        cp "$GUIDES_DIR/templates/base/prompts/$template" "$PROMPTS_DIR/$template"
-        echo -e "${YELLOW}OK (base)${NC}"
-        COPIED=$((COPIED + 1))
-    else
-        echo -e "${RED}NOT FOUND${NC}"
-        FAILED=$((FAILED + 1))
+# ============================================================================
+# COMMANDS
+# ============================================================================
+echo ""
+echo -e "${BLUE}Copying commands...${NC}"
+for cmd in "$GUIDES_DIR/commands"/*.md; do
+    if [ -f "$cmd" ]; then
+        filename=$(basename "$cmd")
+        cp "$cmd" "$CLAUDE_DIR/commands/$filename"
+        echo -e "  ${GREEN}✓${NC} $filename"
     fi
 done
 
-# Copy commands if they exist
-if [ -d "$GUIDES_DIR/commands" ]; then
-    echo ""
-    echo -e "${YELLOW}Copying commands...${NC}"
-    mkdir -p "$CLAUDE_DIR/commands"
+# ============================================================================
+# CHEATSHEETS
+# ============================================================================
+echo ""
+echo -e "${BLUE}Copying cheatsheets...${NC}"
+for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
+    if [ -f "$cs" ]; then
+        filename=$(basename "$cs")
+        cp "$cs" "$CLAUDE_DIR/cheatsheets/$filename"
+        echo -e "  ${GREEN}✓${NC} $filename"
+    fi
+done
 
-    for cmd in "$GUIDES_DIR/commands"/*.md; do
-        if [ -f "$cmd" ]; then
-            filename=$(basename "$cmd")
-            cp "$cmd" "$CLAUDE_DIR/commands/$filename"
-            echo -e "  - $filename... ${GREEN}OK${NC}"
-        fi
-    done
-fi
+# ============================================================================
+# RULES
+# ============================================================================
+echo ""
+echo -e "${BLUE}Setting up rules...${NC}"
+copy_file "rules/README.md" "rules/README.md"
 
-# Copy cheatsheets if they exist
-if [ -d "$GUIDES_DIR/cheatsheets" ]; then
-    echo ""
-    echo -e "${YELLOW}Copying cheatsheets...${NC}"
-    mkdir -p "$CLAUDE_DIR/cheatsheets"
-
-    for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
-        if [ -f "$cs" ]; then
-            filename=$(basename "$cs")
-            cp "$cs" "$CLAUDE_DIR/cheatsheets/$filename"
-            echo -e "  - $filename... ${GREEN}OK${NC}"
-        fi
-    done
+if [ ! -f "$CLAUDE_DIR/rules/project-context.md" ]; then
+    copy_file "rules/project-context.md" "rules/project-context.md"
 fi
 
 # Create lessons-learned seed file
 LESSONS_FILE="$CLAUDE_DIR/rules/lessons-learned.md"
 if [ ! -f "$LESSONS_FILE" ]; then
-    echo ""
-    echo -e "${YELLOW}Creating lessons-learned seed file...${NC}"
     cat > "$LESSONS_FILE" << 'LESSONS'
 ---
 description: Audit log of all lessons learned (history only, not auto-loaded)
@@ -235,139 +217,74 @@ globs: []
 # Lessons Learned — Audit Log
 <!-- History of lessons saved by /learn. Actual rules are in scoped files (e.g., rules/database.md). -->
 LESSONS
-    echo -e "  ${GREEN}OK${NC}"
+    echo -e "  ${GREEN}✓${NC} rules/lessons-learned.md (seed)"
 fi
 
-# Create CLAUDE.md if it doesn't exist
-if [ ! -f "CLAUDE.md" ]; then
+# ============================================================================
+# SCRATCHPAD
+# ============================================================================
+if [ ! -f "$CLAUDE_DIR/scratchpad/current-task.md" ]; then
+    cat > "$CLAUDE_DIR/scratchpad/current-task.md" << 'SCRATCHPAD'
+# Current Task
+
+<!-- Plan Mode scratchpad. Updated by /plan command. -->
+SCRATCHPAD
+    echo -e "  ${GREEN}✓${NC} scratchpad/current-task.md"
+fi
+
+# ============================================================================
+# CLAUDE.md
+# ============================================================================
+if [ ! -f "$CLAUDE_DIR/CLAUDE.md" ] && [ ! -f "CLAUDE.md" ]; then
     echo ""
-    echo -e "${YELLOW}Creating CLAUDE.md...${NC}"
-
-    PROJECT_NAME=$(basename "$(pwd)")
-
-    cat > CLAUDE.md << EOF
-# $PROJECT_NAME — Claude Code Instructions
-
-## Project Overview
-
-**Framework:** $FRAMEWORK
-**Description:** [Brief description of the project]
-
----
-
-## Key Directories
-
-\`\`\`
-[List your main directories and what they contain]
-\`\`\`
-
----
-
-## Development Workflow
-
-### Running Locally
-\`\`\`bash
-# Add your local development commands
-\`\`\`
-
-### Testing
-\`\`\`bash
-# Add your test commands
-\`\`\`
-
-### Building
-\`\`\`bash
-# Add your build commands
-\`\`\`
-
----
-
-## Project-Specific Rules
-
-1. [Add project-specific coding rules]
-2. [Add architecture decisions]
-3. [Add naming conventions]
-
----
-
-## Available Prompts
-
-Run audits and reviews using the prompts in \`.claude/prompts/\`:
-
-- **Security Audit:** Read \`.claude/prompts/SECURITY_AUDIT.md\`
-- **Performance Audit:** Read \`.claude/prompts/PERFORMANCE_AUDIT.md\`
-- **Code Review:** Read \`.claude/prompts/CODE_REVIEW.md\`
-- **Deploy Checklist:** Read \`.claude/prompts/DEPLOY_CHECKLIST.md\`
-
----
-
-## Contacts
-
-- **Maintainer:** [Your name]
-- **Documentation:** [Link to docs]
-EOF
-
-    echo -e "  ${GREEN}Created CLAUDE.md${NC}"
+    echo -e "${BLUE}Creating CLAUDE.md...${NC}"
+    if [ -f "$TEMPLATE_PATH/CLAUDE.md" ]; then
+        cp "$TEMPLATE_PATH/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+    else
+        cp "$BASE_PATH/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+    fi
+    echo -e "  ${GREEN}✓${NC} CLAUDE.md"
 else
     echo ""
-    echo -e "${YELLOW}CLAUDE.md already exists, skipping...${NC}"
+    echo -e "${YELLOW}CLAUDE.md already exists, skipping${NC}"
 fi
 
-# Add to .gitignore if needed
-if [ -f ".gitignore" ]; then
-    if ! grep -q ".claude/reports" .gitignore 2>/dev/null; then
-        {
-            echo ""
-            echo "# Claude Code reports"
-            echo ".claude/reports/"
-        } >> .gitignore
-        echo -e "${YELLOW}Added .claude/reports/ to .gitignore${NC}"
+# ============================================================================
+# SETTINGS
+# ============================================================================
+if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
+    if [ -f "$TEMPLATE_PATH/settings.json" ]; then
+        cp "$TEMPLATE_PATH/settings.json" "$CLAUDE_DIR/settings.json"
+        echo -e "  ${GREEN}✓${NC} settings.json"
+    elif [ -f "$BASE_PATH/settings.json" ]; then
+        cp "$BASE_PATH/settings.json" "$CLAUDE_DIR/settings.json"
+        echo -e "  ${GREEN}✓${NC} settings.json (base)"
     fi
 fi
 
+# ============================================================================
+# SUMMARY
+# ============================================================================
 echo ""
-echo -e "${GREEN}Done!${NC}"
+echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║         Installation Complete!                             ║${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "Summary:"
-echo "  - Copied: $COPIED templates"
-if [ $FAILED -gt 0 ]; then
-    echo -e "  - Failed: ${RED}$FAILED${NC}"
-fi
+echo -e "Framework: ${CYAN}$FRAMEWORK${NC}"
 echo ""
-echo "Created structure:"
-echo "  .claude/"
-echo "  ├── prompts/"
-for template in "${TEMPLATES[@]}"; do
-    echo "  │   └── $template"
-done
-if [ -d "$CLAUDE_DIR/commands" ]; then
-    echo "  ├── commands/"
-    echo "  │   └── ..."
-fi
-if [ -d "$CLAUDE_DIR/cheatsheets" ]; then
-    echo "  ├── cheatsheets/"
-    echo "  │   └── ..."
-fi
-echo "  └── reports/"
-echo "  CLAUDE.md"
+echo "Installed:"
+echo "  • prompts/      — 7 audit templates"
+echo "  • commands/     — 29 slash commands"
+echo "  • agents/       — 4 subagent definitions"
+echo "  • skills/       — 10 framework skills"
+echo "  • rules/        — auto-loaded project context"
+echo "  • cheatsheets/  — 9 language references"
 echo ""
-echo -e "${BLUE}Next steps:${NC}"
-echo "1. Edit CLAUDE.md to add project-specific instructions"
-echo "2. Customize templates in .claude/prompts/ for your project"
-echo "3. Run audits: read the prompt file and follow instructions"
+echo -e "${YELLOW}Next steps:${NC}"
+echo "1. Edit .claude/CLAUDE.md — add project-specific info"
+echo "2. Edit .claude/rules/project-context.md — add architecture facts"
+echo "3. Restart Claude Code to apply changes"
 echo ""
-echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  Security Recommendation                       ║${NC}"
-echo -e "${BLUE}╠════════════════════════════════════════════════╣${NC}"
-echo -e "${BLUE}║${NC}  Run the security setup for global protection: ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  ${YELLOW}curl -sSL https://raw.githubusercontent.com/${NC}  ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  ${YELLOW}sergei-aronsen/claude-code-toolkit/main/${NC}     ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  ${YELLOW}scripts/setup-security.sh | bash${NC}              ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}                                                ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  This installs:                                ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  - Global security rules (~/.claude/CLAUDE.md) ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  - Combined hook (safety-net + RTK support)    ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}  - Official Anthropic plugins (4 plugins)      ${BLUE}║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}Security setup (recommended):${NC}"
+echo "  $GUIDES_DIR/scripts/setup-security.sh"
 echo ""

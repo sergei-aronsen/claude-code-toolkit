@@ -348,24 +348,36 @@ LOW (1)
 
 ---
 
-## Components (30 guides)
+## Components (29 guides)
 
 | Component | Description |
 |-----------|-------------|
 | `claude-md-guide.md` | Global vs Project CLAUDE.md: what goes where, size guidelines, anti-patterns |
 | `structured-workflow.md` | 3-phase approach: Research → Plan → Execute |
-| `smoke-tests-guide.md` | Minimal API tests (Laravel/Next.js/Node.js) |
-| `hooks-auto-activation.md` | Skills auto-activation by prompt context |
-| `skills-system.md` | Self-learning + progressive disclosure for skills |
-| `spec-driven-development.md` | Specifications before code |
-| `mcp-servers-guide.md` | Recommended MCP servers |
-| `memory-persistence.md` | Knowledge persistence with `.claude/rules/` |
 | `plan-mode-instructions.md` | Think levels: think → think hard → ultrathink |
-| `git-worktrees-guide.md` | Parallel work on branches |
+| `memory-persistence.md` | Knowledge persistence with `.claude/rules/` and path-scoped globs |
+| `security-hardening.md` | Defense-in-depth: global rules, combined hooks, Anthropic plugins |
+| `supreme-council.md` | Multi-AI review system: Gemini + ChatGPT pre-implementation check |
+| `skills-system.md` | Self-learning + progressive disclosure for skills |
+| `hooks-auto-activation.md` | Skills auto-activation by prompt context scoring |
+| `mcp-servers-guide.md` | Recommended MCP servers (context7, playwright, sequential-thinking) |
+| `production-safety.md` | Deploy safety, worker safety, bug fix approach, file targeting |
+| `git-worktrees-guide.md` | Parallel work on branches with worktree isolation |
+| `smoke-tests-guide.md` | Minimal API tests (Laravel/Next.js/Node.js) |
+| `spec-driven-development.md` | Specifications before code |
+| `bootstrap-workflow.md` | New project workflow from scratch |
+| `context-management.md` | Context window management and handoff between sessions |
+| `deployment-strategies.md` | Blue-green, canary, rolling updates |
 | `devops-highload-checklist.md` | Highload projects checklist |
 | `api-health-monitoring.md` | API endpoints monitoring |
-| `bootstrap-workflow.md` | New project workflow |
 | `github-actions-guide.md` | CI/CD workflow templates |
 | `pre-commit-hooks.md` | Husky, lint-staged, pre-commit |
-| `deployment-strategies.md` | Blue-green, canary, rolling updates |
-| `production-safety.md` | Deploy safety, worker safety, bug fix approach, file targeting |
+| `i18n-multilanguage.md` | Internationalization and multilanguage support |
+| `playwright-self-testing.md` | Visual self-testing with Playwright MCP |
+| `playwright-stability-guide.md` | Playwright MCP stability and troubleshooting |
+| `rate-limit-statusline.md` | Rate limit monitoring in Claude Code status bar |
+| `markdown-lint-rules.md` | Markdown formatting rules for documentation |
+| `report-format.md` | Standardized report formatting for audits |
+| `severity-levels.md` | Issue severity classification system |
+| `self-check-section.md` | Self-verification checklist for audits |
+| `quick-check-scripts.md` | Quick bash validation scripts for common issues |

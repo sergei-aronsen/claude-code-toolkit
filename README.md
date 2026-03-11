@@ -17,7 +17,7 @@ Comprehensive instructions for AI-assisted development with Claude Code.
 
 Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
 
-**29 slash commands** | **7 audits** | **30 guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-29-total).
+**29 slash commands** | **7 audits** | **29 guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-29-total).
 
 ---
 
