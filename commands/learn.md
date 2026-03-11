@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Extract and save problem solutions for future sessions — auto-loaded every session.
+Extract problem solutions and save them as **scoped rule files** that auto-load only for relevant files.
 
 ---
 
@@ -16,6 +16,7 @@ Extract and save problem solutions for future sessions — auto-loaded every ses
 
 - `/learn` — Analyze session and find patterns
 - `/learn prisma connection pooling fix` — Save a specific solution
+- `/learn always use UUID for public IDs` — Save an explicit instruction
 
 ---
 
@@ -28,6 +29,7 @@ Run `/learn` when:
 - Discovered non-obvious behavior
 - User corrected your mistake (remember it!)
 - Debugging took a long time
+- 3+ attempts to fix one problem
 
 **DO NOT use for:**
 
@@ -37,66 +39,37 @@ Run `/learn` when:
 
 ---
 
-## What to Extract
+## Process
 
-### 1. Error Resolution Patterns
+### Step 1 — Analyze
 
-```markdown
-### [Error Name] — [Date]
-**Problem:** Prisma connection timeout in serverless
-**Solution:** Add `connection_limit=1` to DATABASE_URL
-**Apply when:** Using Prisma with serverless (Lambda, Vercel)
-```
+Identify what was learned. Look at:
 
-### 2. Framework Workarounds
+- Recent fixes and their root causes
+- User corrections during the session
+- Non-obvious behaviors discovered
+- Patterns that took multiple attempts
 
-```markdown
-### [Workaround Name] — [Date]
-**Problem:** Next.js App Router doesn't support X
-**Solution:** Use Y instead (works in Next.js 15.x)
-**Apply when:** App Router + feature X needed
-```
+### Step 2 — Scope the Rule
 
-### 3. Debugging Techniques
+Determine which files this rule applies to. Pick the **narrowest matching scope**:
 
-```markdown
-### [Technique Name] — [Date]
-**Problem:** Silent failure in production
-**Solution:** Check env vars first — most common cause of silent failures
-**Apply when:** Service starts but doesn't process requests
-```
+| Scope | globs example | Rule file name |
+|-------|---------------|----------------|
+| Language-specific | `["**/*.ts", "**/*.tsx"]` | `rules/typescript.md` |
+| Framework-specific | `["app/**", "routes/**"]` | `rules/laravel.md` or `rules/nextjs.md` |
+| Database/ORM | `["models/**", "prisma/**", "migrations/**"]` | `rules/database.md` |
+| UI/Components | `["components/**", "pages/**"]` | `rules/ui-components.md` |
+| API/Backend | `["api/**", "controllers/**", "routes/**"]` | `rules/api.md` |
+| Testing | `["tests/**", "**/*.test.*", "**/*.spec.*"]` | `rules/testing.md` |
+| Infrastructure | `["docker*", "*.yml", "Makefile"]` | `rules/infrastructure.md` |
+| Global (last resort) | `["**/*"]` | `rules/project-lessons.md` |
 
-### 4. User Corrections
+Use **Global** only if the rule genuinely applies everywhere. Most rules have a narrower scope.
 
-```markdown
-### [Correction Name] — [Date]
-**Problem:** Used deprecated API method
-**Solution:** Use newMethod() instead of oldMethod()
-**Apply when:** Working with LibraryX v3+
-```
+### Step 3 — Write the Rule
 
-### 5. Mistakes and Learnings (Self-Correcting Pattern)
-
-**Inspired by [loki-mode](https://github.com/asklokesh/loki-mode) RARV cycle.**
-
-```markdown
-### [Mistake Name] — [Date]
-**Problem:** Did X which caused Y failure
-**Solution:** Always do Z before X
-**Apply when:** Modifying [area] code
-```
-
-Use when: 3+ attempts to fix one problem, user correction, tests/build broke after changes.
-
-### Self-Correction Principle
-
-Each mistake becomes a specific **action** to prevent it. Not "I'll be more careful" but "I'll add check X before Y".
-
----
-
-## Entry Format
-
-Each lesson is compact — 4 lines max:
+Each rule is compact — 3-4 lines max:
 
 ```markdown
 ### [Short Title] — [Date]
@@ -105,42 +78,122 @@ Each lesson is compact — 4 lines max:
 **Apply when:** trigger condition
 ```
 
----
+### Step 4 — Save to Scoped Rule File
 
-## Storage
+**Target:** `.claude/rules/[scope].md`
 
-**Location:** `.claude/rules/lessons-learned.md` (auto-loaded every session via `.claude/rules/` mechanism)
-
-**File structure:**
+If the file already exists — **append** the new rule at the end.
+If the file does not exist — **create** it with frontmatter:
 
 ```yaml
 ---
-description: Lessons learned from debugging, fixes, and corrections
+description: Lessons learned — [scope description]
 globs:
-  - "**/*"
+  - "[glob pattern]"
 ---
-# Lessons Learned
-<!-- Added by /learn command. Auto-loaded every session. -->
 ```
 
-Each new lesson is **appended** to this file.
+Example — new TypeScript rule file:
+
+```yaml
+---
+description: Lessons learned — TypeScript patterns and gotchas
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+---
+```
+
+### Step 5 — Log to Audit Trail
+
+Append a one-line summary to `.claude/rules/lessons-learned.md`:
+
+```markdown
+- [Date] [scope] — [Short title]. Rule saved to rules/[scope].md
+```
+
+This file is the **history log** — a human-readable record of all lessons.
+Its frontmatter:
+
+```yaml
+---
+description: Audit log of all lessons learned (history only)
+globs: []
+---
+```
+
+Note: `globs: []` means this file is **never auto-loaded** into context. It exists purely for human review.
+
+### Step 6 — Confirm
+
+Show the user:
+
+1. The rule you wrote
+2. The target file and globs
+3. Ask for confirmation before saving
 
 ---
 
-## Process
+## Deduplication
 
-1. **Analyze** — Find solved problems in the session
-2. **Identify** — Select the most valuable/reusable
-3. **Draft** — Create compact entry (4 lines per lesson)
-4. **Confirm** — Show to user for confirmation
-5. **Save** — Append to `.claude/rules/lessons-learned.md`
+Before writing a new rule, **read the target rule file** and check:
+
+- Is this rule already captured? If yes — skip or update
+- Does an existing rule contradict? If yes — replace with the newer one
+- Is the scope correct? A rule about Prisma should not be in `rules/typescript.md`
 
 ---
 
-## Pruning
+## Example Session
 
-When `lessons-learned.md` exceeds ~50 entries:
+User fixed a Prisma connection timeout in serverless:
 
-1. Archive old/outdated lessons to `.claude/docs/lessons-archive.md`
-2. Keep only currently relevant lessons in `rules/`
-3. Inform user what was archived
+```text
+> /learn prisma connection pooling fix
+```
+
+Agent creates `.claude/rules/database.md`:
+
+```yaml
+---
+description: Lessons learned — Database and ORM patterns
+globs:
+  - "prisma/**"
+  - "models/**"
+  - "lib/db*"
+---
+
+### Prisma Connection Timeout in Serverless — 2026-03-11
+**Problem:** Prisma connection pool exhaustion in Lambda/Vercel
+**Solution:** Add `connection_limit=1` to DATABASE_URL for serverless
+**Apply when:** Using Prisma with serverless runtime
+```
+
+Agent appends to `.claude/rules/lessons-learned.md`:
+
+```markdown
+- 2026-03-11 database — Prisma connection timeout in serverless. Rule saved to rules/database.md
+```
+
+---
+
+## Migration from Old Format
+
+If `.claude/rules/lessons-learned.md` contains old-style rules with `globs: ["**/*"]`:
+
+1. Read existing lessons
+2. Re-scope each one to the appropriate rule file
+3. Move rules to scoped files
+4. Update `lessons-learned.md` to audit-only format (`globs: []`)
+5. Confirm with user before making changes
+
+---
+
+## Key Principles
+
+- **Narrowest scope wins** — never use `globs: ["**/*"]` unless truly global
+- **One rule file per domain** — not per lesson (avoid file explosion)
+- **Append, don't rewrite** — add to existing rule files
+- **Deduplicate** — check before adding
+- **Confirm** — always show user before saving
+- **Native mechanism** — `.claude/rules/` with `globs:` is Claude Code's built-in context routing
