@@ -5,6 +5,7 @@
 | Befehl | Was er tut |
 |--------|-----------|
 | `/plan` | Implementierungsplan vor dem Coden erstellen |
+| `/design` | Architekturdesign fuer komplexe Features |
 | `/debug` | Systematisches Debugging (4 Phasen) |
 | `/verify` | Pre-Commit-Check: Build, Types, Lint, Tests |
 | `/audit` | Audit: Security, Performance, Code, Design, DB |

@@ -19,7 +19,7 @@ Stacks soportados: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 
 **7 plantillas** (basic, Laravel, Rails, Next.js, Node.js, Python, Go)
 
-**29 slash commands** | **7 auditorias** | **30 guias** | Ver la [lista completa de comandos, plantillas, auditorias y componentes](../features.md#slash-commands-29-total).
+**30 slash commands** | **7 auditorias** | **30 guias** | Ver la [lista completa de comandos, plantillas, auditorias y componentes](../features.md#slash-commands-30-total).
 
 ---
 

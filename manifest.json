@@ -27,6 +27,7 @@
       "commands/council.md",
       "commands/debug.md",
       "commands/deploy.md",
+      "commands/design.md",
       "commands/deps.md",
       "commands/doc.md",
       "commands/docker.md",

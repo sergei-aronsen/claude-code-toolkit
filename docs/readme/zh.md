@@ -19,7 +19,7 @@
 
 **7 个模板**（基础、Laravel、Rails、Next.js、Node.js、Python、Go）
 
-**29 个斜杠命令** | **7 种审计** | **30 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-29-total)。
+**30 个斜杠命令** | **7 种审计** | **30 指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-30-total)。
 
 ---
 

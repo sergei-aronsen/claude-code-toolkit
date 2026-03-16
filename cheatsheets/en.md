@@ -5,6 +5,7 @@
 | Command | What it does |
 |---------|-------------|
 | `/plan` | Create implementation plan before coding |
+| `/design` | Architecture design for complex features |
 | `/debug` | Systematic 4-phase debugging |
 | `/verify` | Pre-commit check: build, types, lint, tests |
 | `/audit` | Run audit: security, performance, code, design, db |

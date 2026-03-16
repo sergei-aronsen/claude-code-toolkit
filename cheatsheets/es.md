@@ -5,6 +5,7 @@
 | Comando | Que hace |
 |---------|---------|
 | `/plan` | Crear plan de implementacion antes de codificar |
+| `/design` | Diseno de arquitectura para features complejas |
 | `/debug` | Depuracion sistematica (4 fases) |
 | `/verify` | Verificacion pre-commit: build, types, lint, tests |
 | `/audit` | Auditoria: security, performance, code, design, db |

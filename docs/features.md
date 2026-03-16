@@ -298,7 +298,7 @@ LOW (1)
 
 ---
 
-## Slash Commands (29 total)
+## Slash Commands (30 total)
 
 | Command | Description |
 |---------|-------------|
@@ -306,6 +306,7 @@ LOW (1)
 | `/debug [problem]` | 4-phase debugging: root cause → hypothesis → fix → verify |
 | `/learn` | Save lessons as scoped rule files in `.claude/rules/` (auto-loaded via globs) |
 | `/plan` | Create plan in scratchpad before implementation |
+| `/design` | Architecture design for complex features before planning |
 | `/audit [type]` | Run audit (security, performance, code, design, database) |
 | `/test` | Write tests for module |
 | `/refactor` | Refactoring while preserving behavior |
