@@ -79,6 +79,13 @@ Perform a deep code review of the specified files/directories and create a struc
 - [ ] Table-Driven Tests — complex test logic instead of table-driven approach
 - [ ] Race Tests — missing `go test -race` for concurrent code
 
+### 📋 Plan Compliance (if plan exists)
+
+- [ ] Implementation matches the approved plan in `.claude/scratchpad/plan-*.md`?
+- [ ] No unauthorized additions — features/abstractions not in the plan?
+- [ ] No skipped items — all planned phases/steps accounted for?
+- [ ] API contracts match what was designed?
+
 ### 📝 Code Quality
 
 - [ ] Error Handling — unchecked errors, missing `%w` wrapping, bare `errors.New` without context

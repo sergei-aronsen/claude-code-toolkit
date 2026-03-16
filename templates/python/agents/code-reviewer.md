@@ -85,6 +85,13 @@ Perform a deep code review of the specified files/directories and create a struc
 - [ ] Fixtures — complex inline setup instead of reusable pytest fixtures
 - [ ] Async Tests — missing `pytest-asyncio` markers, sync assertions on coroutines
 
+### 📋 Plan Compliance (if plan exists)
+
+- [ ] Implementation matches the approved plan in `.claude/scratchpad/plan-*.md`?
+- [ ] No unauthorized additions — features/abstractions not in the plan?
+- [ ] No skipped items — all planned phases/steps accounted for?
+- [ ] API contracts match what was designed?
+
 ### 📝 Code Quality
 
 - [ ] Naming — unclear variable/function names, non-PEP8 naming

@@ -85,6 +85,13 @@ Perform a deep code review of the specified files/directories and create a struc
 - [ ] Mock Abuse — too many mocks hide real bugs, mocking implementation details
 - [ ] Async Tests — missing `await` in test assertions, unresolved promises
 
+### 📋 Plan Compliance (if plan exists)
+
+- [ ] Implementation matches the approved plan in `.claude/scratchpad/plan-*.md`?
+- [ ] No unauthorized additions — features/abstractions not in the plan?
+- [ ] No skipped items — all planned phases/steps accounted for?
+- [ ] API contracts match what was designed?
+
 ### 📝 Code Quality
 
 - [ ] Naming — unclear variable/function names

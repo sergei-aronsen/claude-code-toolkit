@@ -164,6 +164,7 @@ declare -a FILES=(
 
     # Commands
     "commands/plan.md:commands/plan.md"
+    "commands/design.md:commands/design.md"
     "commands/tdd.md:commands/tdd.md"
     "commands/context-prime.md:commands/context-prime.md"
     "commands/checkpoint.md:commands/checkpoint.md"

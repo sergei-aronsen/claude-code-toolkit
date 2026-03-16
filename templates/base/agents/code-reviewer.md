@@ -65,6 +65,13 @@ Perform comprehensive code review focusing on:
 - [ ] Test Coverage — new code has tests?
 - [ ] Edge Cases — null, empty, boundaries tested?
 
+### 📋 Plan Compliance (if plan exists)
+
+- [ ] Implementation matches the approved plan in `.claude/scratchpad/plan-*.md`?
+- [ ] No unauthorized additions — features/abstractions not in the plan?
+- [ ] No skipped items — all planned phases/steps accounted for?
+- [ ] API contracts match what was designed?
+
 ### 📝 Code Quality
 
 - [ ] Naming — clear, descriptive, consistent?

@@ -65,6 +65,13 @@ Perform a deep code review of specified files/directories and create a structure
 - [ ] Test Coverage — edge cases covered
 - [ ] Mock Abuse — too many mocks hide real bugs
 
+### 📋 Plan Compliance (if plan exists)
+
+- [ ] Implementation matches the approved plan in `.claude/scratchpad/plan-*.md`?
+- [ ] No unauthorized additions — features/abstractions not in the plan?
+- [ ] No skipped items — all planned phases/steps accounted for?
+- [ ] API contracts match what was designed?
+
 ### 📝 Code Quality
 
 - [ ] Naming — clear variable/function names

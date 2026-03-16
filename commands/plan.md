@@ -41,17 +41,23 @@ Create a detailed implementation plan BEFORE writing any code.
 - What are the acceptance criteria?
 - What questions need clarification?
 
-### 2. Research Existing Code
+### 2. Research Existing Code (Facts Only)
 
 - What files are relevant?
 - What patterns does this project use?
 - Are there similar implementations to reference?
+
+**IMPORTANT: Research = facts only.**
+Record what exists and where — file paths, function signatures, data flow.
+Do NOT include opinions, suggestions, or "this should be refactored" commentary.
+Facts with references, zero advice. Opinions belong in the Design phase.
 
 ### 3. Design Solution
 
 - How will this fit into existing architecture?
 - What new files/components are needed?
 - What existing code needs modification?
+- For complex features, consider running `/design` first
 
 ### 4. Identify Risks
 
