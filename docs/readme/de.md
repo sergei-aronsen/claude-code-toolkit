@@ -64,13 +64,13 @@ Der Installer:
 - Richtet **Supreme Council** ein (Multi-AI Review mit Gemini + ChatGPT)
 - Fuehrt durch die API-Key-Konfiguration
 
-Fuehre im Terminal im Projektordner aus:
+Fuehre im normalen Terminal (nicht in Claude Code) im Projektordner aus:
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-**Claude neu starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl.
+**Claude Code starten!** Fuer zukuenftige Updates verwende den `/update-toolkit` Befehl.
 
 ---
 

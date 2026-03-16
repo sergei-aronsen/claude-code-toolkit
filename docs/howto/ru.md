@@ -86,7 +86,7 @@ cd ~/Projects/my-app
 
 ## Шаг 3: Установи toolkit в проект
 
-Находясь **внутри папки проекта**, запусти:
+**В обычном терминале** (не внутри Claude Code), из папки проекта, запусти:
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)

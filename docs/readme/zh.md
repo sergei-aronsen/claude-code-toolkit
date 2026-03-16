@@ -64,13 +64,13 @@ bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-to
 - 设置 **Supreme Council**（Gemini + ChatGPT 多AI审查）
 - 引导你完成 API 密钥配置
 
-在项目文件夹的终端中运行：
+在常规终端（不是在 Claude Code 内部）中，从项目文件夹运行：
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-**重启 Claude！** 后续更新请使用 `/update-toolkit` 命令。
+**启动 Claude Code！** 后续更新请使用 `/update-toolkit` 命令。
 
 ---
 

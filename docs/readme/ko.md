@@ -64,13 +64,13 @@ bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-to
 - **Supreme Council**을 설정합니다 (Gemini + ChatGPT 멀티 AI 리뷰)
 - API 키 구성을 안내합니다
 
-프로젝트 폴더의 터미널에서 실행하세요:
+일반 터미널에서 (Claude Code 내부가 아닌) 프로젝트 폴더에서 실행하세요:
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-**Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하세요.
+**Claude Code를 시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하세요.
 
 ---
 

@@ -64,13 +64,13 @@ L'installateur :
 - Configure **Supreme Council** (revue multi-IA avec Gemini + ChatGPT)
 - Vous guide dans la configuration des cles API
 
-Executez dans le terminal dans le dossier du projet :
+Executez dans votre terminal habituel (pas dans Claude Code) dans le dossier du projet :
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-**Redemarrez Claude !** Pour les mises a jour futures, utilisez la commande `/update-toolkit`.
+**Lancez Claude Code !** Pour les mises a jour futures, utilisez la commande `/update-toolkit`.
 
 ---
 

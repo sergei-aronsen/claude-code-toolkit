@@ -63,13 +63,13 @@ The installer will:
 - Set up **Supreme Council** (Gemini + ChatGPT multi-AI review)
 - Guide you through API key configuration
 
-Run in terminal in the project folder:
+**Run in your regular terminal (not inside Claude Code!) in the project folder:**
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-**Restart Claude!** For future updates use `/update-toolkit` command for reinstallation or updates.
+Then **start Claude Code** in that project directory. For future updates use `/update-toolkit` command.
 
 > **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md) for details.
 
