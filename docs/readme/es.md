@@ -32,7 +32,7 @@ Stacks soportados: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**,
 Configuracion de seguridad en profundidad. Consulta [components/security-hardening.md](../../components/security-hardening.md) para la guia completa.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 #### b) RTK — Optimizador de Tokens (recomendado)
@@ -52,7 +52,7 @@ rtk init -g
 Muestra los limites de sesion/semanales en la barra de estado de Claude Code. Mas informacion: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
 ```
 
 ### 2. Instalacion (por proyecto)
@@ -67,7 +67,7 @@ El instalador:
 Ejecuta en la terminal en la carpeta del proyecto:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 **Reinicia Claude!** Para futuras actualizaciones usa el comando `/update-toolkit`.

@@ -55,7 +55,7 @@ echo ""
 # Check if .claude exists
 if [[ ! -d "$CLAUDE_DIR" ]]; then
     log_error "$CLAUDE_DIR not found. Run init-claude.sh first:"
-    echo "  curl -sSL $REPO_URL/scripts/init-claude.sh | bash"
+    echo "  bash <(curl -sSL $REPO_URL/scripts/init-claude.sh)"
     exit 1
 fi
 

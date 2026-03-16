@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code Rate Limit Statusline — Installer
-# Usage: curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+# Usage: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
 
 set -euo pipefail
 

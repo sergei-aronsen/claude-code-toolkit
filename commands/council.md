@@ -40,7 +40,7 @@ Challenge your implementation plan with Gemini (The Skeptic) and ChatGPT (The Pr
 Supreme Council must be installed:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh)
 ```
 
 **Check:**

@@ -37,7 +37,7 @@ npm install -g @anthropic-ai/claude-code
 打开常规终端（不是 Claude Code）：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 **执行结果：**
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **验证是否正常工作：**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
 ```
 
 完成。全局部分已配置好，**无需再次执行此步骤**。
@@ -89,7 +89,7 @@ cd ~/Projects/my-app
 在**项目文件夹内**运行：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 脚本会**自动检测**你的框架（Laravel、Next.js、Python、Go 等）并创建：
@@ -117,7 +117,7 @@ my-app/
 **手动指定框架：**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
 ```
 
 ---
@@ -209,7 +209,7 @@ Claude Code 启动并自动加载：
 │  ONCE PER MACHINE (Step 1)                          │
 │                                                     │
 │  Terminal:                                          │
-│  $ curl ... setup-security.sh | bash                │
+│  $ bash <(curl ... setup-security.sh)                │
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
@@ -224,7 +224,7 @@ Claude Code 启动并自动加载：
 │                                                     │
 │  Terminal:                                          │
 │  $ cd ~/Projects/my-app                             │
-│  $ curl ... init-claude.sh | bash                   │
+│  $ bash <(curl ... init-claude.sh)                   │
 │  $ # edit .claude/CLAUDE.md                         │
 │  $ git add .claude/ && git commit                   │
 │                                                     │
@@ -253,7 +253,7 @@ Claude Code 启动并自动加载：
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 或在 Claude Code 内部执行：

@@ -32,7 +32,7 @@ Claude Code를 활용한 AI 기반 개발을 위한 종합 지침서입니다.
 심층 방어 보안 설정. 전체 가이드는 [components/security-hardening.md](../../components/security-hardening.md)를 참조하세요.
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 #### b) RTK — 토큰 최적화 도구 (권장)
@@ -52,7 +52,7 @@ rtk init -g
 상태 표시줄에 세션/주간 제한을 표시합니다. 자세히: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
 ```
 
 ### 2. 설치 (프로젝트별)
@@ -67,7 +67,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 프로젝트 폴더의 터미널에서 실행하세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 **Claude를 재시작하세요!** 이후 업데이트는 `/update-toolkit` 명령어를 사용하세요.

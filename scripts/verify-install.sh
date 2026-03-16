@@ -5,7 +5,7 @@
 #
 # Usage:
 #   bash .claude/scripts/verify-install.sh
-#   Or: curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
+#   Or: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
 
 set -euo pipefail
 
@@ -377,10 +377,10 @@ echo -e "${BLUE}═════════════════════�
 if [[ $FAIL -gt 0 ]]; then
     echo ""
     echo -e "${YELLOW}To fix failed checks:${NC}"
-    echo -e "  ${CYAN}Toolkit:${NC}    curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash"
-    echo -e "  ${CYAN}Security:${NC}   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash"
-    echo -e "  ${CYAN}Statusline:${NC} curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh | bash"
-    echo -e "  ${CYAN}Council:${NC}    curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash"
+    echo -e "  ${CYAN}Toolkit:${NC}    bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)"
+    echo -e "  ${CYAN}Security:${NC}   bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)"
+    echo -e "  ${CYAN}Statusline:${NC} bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)"
+    echo -e "  ${CYAN}Council:${NC}    bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh)"
 fi
 
 echo ""

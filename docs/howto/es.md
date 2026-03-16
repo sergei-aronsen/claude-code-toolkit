@@ -37,7 +37,7 @@ Esto instala las reglas de seguridad, el hook combinado (safety-net + soporte RT
 Abre tu terminal habitual (no Claude Code):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 **Que sucede:**
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **Verifica que todo funciona:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
 ```
 
 Eso es todo. La parte global esta lista. **No necesitas repetir esto nunca mas**.
@@ -89,7 +89,7 @@ cd ~/Projects/my-app
 Estando **dentro de la carpeta del proyecto**, ejecuta:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 El script **detecta automaticamente** tu framework (Laravel, Next.js, Python, Go, etc.) y crea:
@@ -117,7 +117,7 @@ my-app/
 **Para especificar el framework explicitamente:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
 ```
 
 ---
@@ -209,7 +209,7 @@ Ahora puedes trabajar:
 │  UNA VEZ POR MAQUINA (Paso 1)                       │
 │                                                     │
 │  Terminal:                                          │
-│  $ curl ... setup-security.sh | bash                │
+│  $ bash <(curl ... setup-security.sh)                │
 │                                                     │
 │  Resultado:                                         │
 │  ~/.claude/CLAUDE.md      ← reglas de seguridad     │
@@ -224,7 +224,7 @@ Ahora puedes trabajar:
 │                                                     │
 │  Terminal:                                          │
 │  $ cd ~/Projects/my-app                             │
-│  $ curl ... init-claude.sh | bash                   │
+│  $ bash <(curl ... init-claude.sh)                   │
 │  $ # editar .claude/CLAUDE.md                       │
 │  $ git add .claude/ && git commit                   │
 │                                                     │
@@ -253,7 +253,7 @@ Cuando se publiquen nuevos comandos o plantillas:
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 O dentro de Claude Code:

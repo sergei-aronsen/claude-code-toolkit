@@ -9,7 +9,7 @@
 - Claude drafts plan, Gemini challenges justification, ChatGPT evaluates practicality
 - NOT a linter — validates whether the approach is justified, not whether the code is clean
 - Verdicts: PROCEED / SIMPLIFY / RETHINK / SKIP
-- Install: `curl -sSL .../setup-council.sh | bash`
+- Install: `bash <(curl -sSL .../setup-council.sh)`
 - Usage: `/council "add OAuth with Google"` or `brain "add OAuth with Google"`
 
 ---
@@ -108,7 +108,7 @@ Claude reads the report and decides how to proceed.
 ### Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh)
 ```
 
 The script will:

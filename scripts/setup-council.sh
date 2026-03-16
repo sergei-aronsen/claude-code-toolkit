@@ -4,7 +4,7 @@
 # Installs multi-AI code review system (Gemini + ChatGPT)
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh | bash
+#   bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-council.sh)
 
 set -euo pipefail
 

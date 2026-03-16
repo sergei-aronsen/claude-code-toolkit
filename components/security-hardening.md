@@ -39,7 +39,7 @@ Global rules that apply to every project. Covers:
 ### Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 ### How It Works
@@ -257,7 +257,7 @@ No automated system is perfect. Human review remains the final defense layer.
 ### Minimal (Layers 1-2)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 ### Full Stack (Layers 1-5)

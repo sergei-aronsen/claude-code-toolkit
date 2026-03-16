@@ -4,7 +4,7 @@
 # Installs global security rules and safety-net plugin
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+#   bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 
 set -euo pipefail
 

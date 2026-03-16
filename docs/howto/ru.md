@@ -37,7 +37,7 @@ npm install -g @anthropic-ai/claude-code
 Открой обычный терминал (не Claude Code):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 **Что произойдёт:**
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **Проверить что всё встало:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
 ```
 
 Всё. Глобальная часть готова. Это больше **никогда не нужно повторять**.
@@ -89,7 +89,7 @@ cd ~/Projects/my-app
 Находясь **внутри папки проекта**, запусти:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 Скрипт **автоматически определит** твой фреймворк (Laravel, Next.js, Python, Go и т.д.) и создаст:
@@ -117,7 +117,7 @@ my-app/
 **Чтобы указать фреймворк явно:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
 ```
 
 ---
@@ -209,7 +209,7 @@ Claude Code стартует и автоматически загружает:
 │  ОДИН РАЗ НА МАШИНУ (Шаг 1)                        │
 │                                                     │
 │  Terminal:                                          │
-│  $ curl ... setup-security.sh | bash                │
+│  $ bash <(curl ... setup-security.sh)                │
 │                                                     │
 │  Результат:                                         │
 │  ~/.claude/CLAUDE.md      ← security rules          │
@@ -224,7 +224,7 @@ Claude Code стартует и автоматически загружает:
 │                                                     │
 │  Terminal:                                          │
 │  $ cd ~/Projects/my-app                             │
-│  $ curl ... init-claude.sh | bash                   │
+│  $ bash <(curl ... init-claude.sh)                   │
 │  $ # отредактируй .claude/CLAUDE.md                 │
 │  $ git add .claude/ && git commit                   │
 │                                                     │
@@ -253,7 +253,7 @@ Claude Code стартует и автоматически загружает:
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 Или внутри Claude Code:

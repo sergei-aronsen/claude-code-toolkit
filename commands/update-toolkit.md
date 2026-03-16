@@ -76,7 +76,7 @@ curl -s https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/mai
 ## Manual Run
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 ## After Update

@@ -37,7 +37,7 @@ npm install -g @anthropic-ai/claude-code
 일반 터미널(Claude Code가 아닌)을 여세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
 ```
 
 **수행되는 작업:**
@@ -50,7 +50,7 @@ curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 **모든 것이 작동하는지 확인:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
 ```
 
 이것으로 전역 설정이 완료되었습니다. **이 작업을 다시 반복할 필요가 없습니다**.
@@ -89,7 +89,7 @@ cd ~/Projects/my-app
 **프로젝트 폴더 내에서** 다음을 실행하세요:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 스크립트가 프레임워크(Laravel, Next.js, Python, Go 등)를 **자동으로 감지**하고 다음을 생성합니다:
@@ -117,7 +117,7 @@ my-app/
 **프레임워크를 명시적으로 지정하려면:**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- laravel
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
 ```
 
 ---
@@ -209,7 +209,7 @@ Claude Code가 시작되면 자동으로 다음을 로드합니다:
 │  ONCE PER MACHINE (Step 1)                          │
 │                                                     │
 │  Terminal:                                          │
-│  $ curl ... setup-security.sh | bash                │
+│  $ bash <(curl ... setup-security.sh)                │
 │                                                     │
 │  Result:                                            │
 │  ~/.claude/CLAUDE.md      ← security rules          │
@@ -224,7 +224,7 @@ Claude Code가 시작되면 자동으로 다음을 로드합니다:
 │                                                     │
 │  Terminal:                                          │
 │  $ cd ~/Projects/my-app                             │
-│  $ curl ... init-claude.sh | bash                   │
+│  $ bash <(curl ... init-claude.sh)                   │
 │  $ # edit .claude/CLAUDE.md                         │
 │  $ git add .claude/ && git commit                   │
 │                                                     │
@@ -253,7 +253,7 @@ Claude Code가 시작되면 자동으로 다음을 로드합니다:
 
 ```bash
 cd ~/Projects/my-app
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 또는 Claude Code 내에서:

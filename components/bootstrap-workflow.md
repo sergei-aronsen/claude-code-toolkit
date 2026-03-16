@@ -79,7 +79,7 @@ Project: [name] — [brief description]
 
 ```bash
 cd your-project
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
 The script automatically detects the stack:
@@ -164,7 +164,7 @@ This loads project context and prepares Claude for work.
 ### How to update instructions to new version?
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh | bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
 ```
 
 The script updates common parts while preserving your customizations.
@@ -174,7 +174,7 @@ The script updates common parts while preserving your customizations.
 Use the base template — it's universal and works with any stack:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash -s -- base
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) base
 ```
 
 Then adapt it to your stack.

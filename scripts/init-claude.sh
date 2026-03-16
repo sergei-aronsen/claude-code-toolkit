@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Claude Code Toolkit Initialization Script
-# Usage: curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh | bash
-# Or: curl -sSL ... | bash -s -- laravel
-# Or: curl -sSL ... | bash -s -- --dry-run
+# Usage: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
+# Or: bash <(curl -sSL ...) laravel
+# Or: bash <(curl -sSL ...) --dry-run
 
 set -euo pipefail
 
@@ -378,7 +378,7 @@ recommend_security() {
     echo -e "${YELLOW}🔒 Strongly recommended: Global Security Setup${NC}"
     echo -e "  Adds security rules, safety-net plugin, and official Anthropic plugins"
     echo -e "  (code-review, commit-commands, security-guidance, frontend-design)."
-    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-security.sh | bash${NC}"
+    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-security.sh)${NC}"
 }
 
 # Show rate limit statusline recommendation
@@ -386,7 +386,7 @@ recommend_statusline() {
     echo ""
     echo -e "${BLUE}📊 Rate Limit Statusline (optional):${NC}"
     echo -e "  See session/weekly usage in the status bar."
-    echo -e "  Install: ${YELLOW}curl -sSL ${REPO_URL}/scripts/install-statusline.sh | bash${NC}"
+    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-statusline.sh)${NC}"
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
@@ -404,7 +404,7 @@ setup_council() {
     # Check Python
     if ! command -v python3 &>/dev/null; then
         echo -e "  ${YELLOW}⚠${NC} Python 3 not found — skipping Supreme Council"
-        echo -e "  Install Python 3.8+ and run: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
+        echo -e "  Install Python 3.8+ and run: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-council.sh)${NC}"
         return
     fi
 
@@ -428,7 +428,7 @@ setup_council() {
     configure="${configure:-Y}"
 
     if [[ "$configure" =~ ^[Nn]$ ]]; then
-        echo -e "  ${YELLOW}→${NC} Skipped. Run later: ${YELLOW}curl -sSL ${REPO_URL}/scripts/setup-council.sh | bash${NC}"
+        echo -e "  ${YELLOW}→${NC} Skipped. Run later: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-council.sh)${NC}"
 
         # Create empty config
         if [[ ! -f "$council_dir/config.json" ]]; then
@@ -585,7 +585,7 @@ main() {
 
     echo ""
     echo -e "${BLUE}🔍 Verify installation:${NC}"
-    echo -e "  ${YELLOW}curl -sSL ${REPO_URL}/scripts/verify-install.sh | bash${NC}"
+    echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
     echo ""
     echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
     echo ""
@@ -620,7 +620,7 @@ IMPORTANT: Show the following recommendations to the user after installation.
 Safe to re-run — merges only new sections, preserves your customizations.
 
 \`\`\`bash
-curl -sSL $REPO_URL/scripts/setup-security.sh | bash
+bash <(curl -sSL $REPO_URL/scripts/setup-security.sh)
 \`\`\`
 
 ## Optional
@@ -629,7 +629,7 @@ curl -sSL $REPO_URL/scripts/setup-security.sh | bash
 Requires: macOS, jq, Claude Max/Pro.
 
 \`\`\`bash
-curl -sSL $REPO_URL/scripts/install-statusline.sh | bash
+bash <(curl -sSL $REPO_URL/scripts/install-statusline.sh)
 \`\`\`
 
 ## Supreme Council
@@ -637,7 +637,7 @@ curl -sSL $REPO_URL/scripts/install-statusline.sh | bash
 🧠 If you skipped council configuration during installation, set it up later:
 
 \`\`\`bash
-curl -sSL $REPO_URL/scripts/setup-council.sh | bash
+bash <(curl -sSL $REPO_URL/scripts/setup-council.sh)
 \`\`\`
 
 ## Next step
