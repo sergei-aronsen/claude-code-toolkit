@@ -81,7 +81,9 @@ select_framework() {
     echo ""
 
     local choice
-    read -r -p "  Enter choice [1-8] (default: 1): " choice < /dev/tty
+    if ! read -r -p "  Enter choice [1-8] (default: 1): " choice < /dev/tty 2>/dev/null; then
+        choice="1"
+    fi
     choice="${choice:-1}"
 
     case "$choice" in
@@ -421,10 +423,12 @@ setup_council() {
     # Download README
     curl -sSL "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || true
 
-    # Ask to configure now
+    # Ask to configure now (skip in non-interactive environments)
     echo ""
     local configure
-    read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty
+    if ! read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty 2>/dev/null; then
+        configure="N"
+    fi
     configure="${configure:-Y}"
 
     if [[ "$configure" =~ ^[Nn]$ ]]; then
@@ -460,7 +464,9 @@ CONFIGEOF
     local gemini_mode="cli"
     local gemini_key=""
     local gemini_choice
-    read -r -p "    Enter choice [1/2] (default: 1): " gemini_choice < /dev/tty
+    if ! read -r -p "    Enter choice [1/2] (default: 1): " gemini_choice < /dev/tty 2>/dev/null; then
+        gemini_choice="1"
+    fi
     gemini_choice="${gemini_choice:-1}"
 
     if [[ "$gemini_choice" == "2" ]]; then
@@ -469,7 +475,7 @@ CONFIGEOF
             gemini_key="$GEMINI_API_KEY"
             echo -e "    ${GREEN}✓${NC} GEMINI_API_KEY found in environment"
         else
-            read -r -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty
+            read -r -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty 2>/dev/null || true
             if [[ -z "$gemini_key" ]]; then
                 echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             fi
@@ -494,7 +500,7 @@ CONFIGEOF
         openai_key="$OPENAI_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
     else
-        read -r -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty
+        read -r -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty 2>/dev/null || true
         if [[ -z "$openai_key" ]]; then
             echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             echo -e "    Get key: https://platform.openai.com/api-keys"
