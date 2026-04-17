@@ -145,27 +145,67 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 
 ## Traceability
 
-Phase mapping populated by roadmapper. Empty until then.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01..BUG-07 | TBD | Pending |
-| DETECT-01..DETECT-05 | TBD | Pending |
-| MANIFEST-01..MANIFEST-04 | TBD | Pending |
-| MODE-01..MODE-06 | TBD | Pending |
-| STATE-01..STATE-05 | TBD | Pending |
-| SAFETY-01..SAFETY-04 | TBD | Pending |
-| UPDATE-01..UPDATE-06 | TBD | Pending |
-| MIGRATE-01..MIGRATE-06 | TBD | Pending |
-| DOCS-01..DOCS-04 | TBD | Pending |
-| VALIDATE-01..VALIDATE-04 | TBD | Pending |
+| BUG-01 | Phase 1 | Pending |
+| BUG-02 | Phase 1 | Pending |
+| BUG-03 | Phase 1 | Pending |
+| BUG-04 | Phase 1 | Pending |
+| BUG-05 | Phase 1 | Pending |
+| BUG-06 | Phase 1 | Pending |
+| BUG-07 | Phase 1 | Pending |
+| DETECT-01 | Phase 2 | Pending |
+| DETECT-02 | Phase 2 | Pending |
+| DETECT-03 | Phase 2 | Pending |
+| DETECT-04 | Phase 2 | Pending |
+| DETECT-05 | Phase 2 | Pending |
+| MANIFEST-01 | Phase 2 | Pending |
+| MANIFEST-02 | Phase 2 | Pending |
+| MANIFEST-03 | Phase 2 | Pending |
+| MANIFEST-04 | Phase 2 | Pending |
+| STATE-01 | Phase 2 | Pending |
+| STATE-02 | Phase 2 | Pending |
+| STATE-03 | Phase 2 | Pending |
+| STATE-04 | Phase 2 | Pending |
+| STATE-05 | Phase 2 | Pending |
+| MODE-01 | Phase 3 | Pending |
+| MODE-02 | Phase 3 | Pending |
+| MODE-03 | Phase 3 | Pending |
+| MODE-04 | Phase 3 | Pending |
+| MODE-05 | Phase 3 | Pending |
+| MODE-06 | Phase 3 | Pending |
+| SAFETY-01 | Phase 3 | Pending |
+| SAFETY-02 | Phase 3 | Pending |
+| SAFETY-03 | Phase 3 | Pending |
+| SAFETY-04 | Phase 3 | Pending |
+| UPDATE-01 | Phase 4 | Pending |
+| UPDATE-02 | Phase 4 | Pending |
+| UPDATE-03 | Phase 4 | Pending |
+| UPDATE-04 | Phase 4 | Pending |
+| UPDATE-05 | Phase 4 | Pending |
+| UPDATE-06 | Phase 4 | Pending |
+| MIGRATE-01 | Phase 5 | Pending |
+| MIGRATE-02 | Phase 5 | Pending |
+| MIGRATE-03 | Phase 5 | Pending |
+| MIGRATE-04 | Phase 5 | Pending |
+| MIGRATE-05 | Phase 5 | Pending |
+| MIGRATE-06 | Phase 5 | Pending |
+| DOCS-01 | Phase 6 | Pending |
+| DOCS-02 | Phase 6 | Pending |
+| DOCS-03 | Phase 6 | Pending |
+| DOCS-04 | Phase 6 | Pending |
+| VALIDATE-01 | Phase 7 | Pending |
+| VALIDATE-02 | Phase 7 | Pending |
+| VALIDATE-03 | Phase 7 | Pending |
+| VALIDATE-04 | Phase 7 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 51 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 51 ⚠️ (will be 0 after roadmap)
+- Mapped to phases: 51
+- Unmapped: 0
 
 ---
+
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after initial definition*
+*Last updated: 2026-04-17 — traceability populated after roadmap creation*
