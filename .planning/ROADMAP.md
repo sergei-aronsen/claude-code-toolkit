@@ -37,7 +37,17 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Entering an API key containing `"` or `\` through any script prompt produces a valid, parseable config.json
   4. `setup-security.sh` creates a timestamped backup of settings.json before any mutation, and the backup is confirmed present on disk
   5. `scripts/init-local.sh --version` and `manifest.json` and CHANGELOG.md all report the same version string
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+
+- [ ] 01-01-PLAN.md — BUG-01: replace GNU `head -n -1` with POSIX `sed ${d}` in update-claude.sh smart-merge
+- [ ] 01-02-PLAN.md — BUG-02: add `< /dev/tty` guards to interactive reads in setup-council.sh + early non-interactive guard
+- [ ] 01-03-PLAN.md — BUG-05: timestamped settings.json backup + restore-on-failure in setup-security.sh
+- [ ] 01-04-PLAN.md — BUG-03: JSON-escape API keys via `python3 json.dumps` in setup-council.sh and init-claude.sh
+- [ ] 01-05-PLAN.md — BUG-06: align versions — init-local.sh reads manifest.json, CHANGELOG `[Unreleased]` entry, Makefile alignment check
+- [ ] 01-06-PLAN.md — BUG-04: prompt before `sudo apt-get install tree` in setup-council.sh + visible errors
+- [ ] 01-07-PLAN.md — BUG-07: add `design.md` to update-claude.sh loop + Makefile manifest-drift check
 
 ### Phase 2: Foundation
 **Goal**: The toolkit has a single reliable way to detect SP and GSD, a declarative manifest schema encoding conflicts, and an atomic install-state file with locking — the three pillars everything else depends on
@@ -119,7 +129,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pre-work Bug Fixes | 0/TBD | Not started | - |
+| 1. Pre-work Bug Fixes | 0/7 | Not started | - |
 | 2. Foundation | 0/TBD | Not started | - |
 | 3. Install Flow | 0/TBD | Not started | - |
 | 4. Update Flow | 0/TBD | Not started | - |
