@@ -44,10 +44,10 @@ Plans:
 - [x] 01-01-PLAN.md — BUG-01: replace GNU `head -n -1` with POSIX `sed ${d}` in update-claude.sh smart-merge
 - [x] 01-02-PLAN.md — BUG-02: add `< /dev/tty` guards to interactive reads in setup-council.sh + early non-interactive guard
 - [x] 01-03-PLAN.md — BUG-05: timestamped settings.json backup + restore-on-failure in setup-security.sh
-- [ ] 01-04-PLAN.md — BUG-03: JSON-escape API keys via `python3 json.dumps` in setup-council.sh and init-claude.sh
+- [x] 01-04-PLAN.md — BUG-03: JSON-escape API keys via `python3 json.dumps` in setup-council.sh and init-claude.sh
 - [x] 01-05-PLAN.md — BUG-06: align versions — init-local.sh reads manifest.json, CHANGELOG `[Unreleased]` entry, Makefile alignment check
 - [ ] 01-06-PLAN.md — BUG-04: prompt before `sudo apt-get install tree` in setup-council.sh + visible errors
-- [ ] 01-07-PLAN.md — BUG-07: add `design.md` to update-claude.sh loop + Makefile manifest-drift check
+- [x] 01-07-PLAN.md — BUG-07: add `design.md` to update-claude.sh loop + Makefile manifest-drift check
 
 ### Phase 2: Foundation
 **Goal**: The toolkit has a single reliable way to detect SP and GSD, a declarative manifest schema encoding conflicts, and an atomic install-state file with locking — the three pillars everything else depends on
