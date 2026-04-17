@@ -65,7 +65,7 @@ Plans:
 
 - [x] 02-01-PLAN.md — detect.sh filesystem detection + five-case POSIX test harness (DETECT-01..05)
 - [x] 02-02-PLAN.md — manifest v2 schema + validate-manifest.py + MANIFEST-03 count decision (MANIFEST-01..04)
-- [ ] 02-03-PLAN.md — scripts/lib/state.sh: atomic toolkit-install.json writes + mkdir lock with stale recovery (STATE-01..05)
+- [x] 02-03-PLAN.md — scripts/lib/state.sh: atomic toolkit-install.json writes + mkdir lock with stale recovery (STATE-01..05)
 
 ### Phase 3: Install Flow
 **Goal**: Users can install the toolkit in any of four modes via init-claude.sh and init-local.sh, with dry-run preview, mode auto-recommendation, and settings.json merged safely
