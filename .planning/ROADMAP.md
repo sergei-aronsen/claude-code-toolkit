@@ -52,7 +52,7 @@ Plans:
 ### Phase 2: Foundation
 **Goal**: The toolkit has a single reliable way to detect SP and GSD, a declarative manifest schema encoding conflicts, and an atomic install-state file with locking — the three pillars everything else depends on
 **Depends on**: Phase 1
-**Requirements**: DETECT-01, DETECT-02, DETECT-03, DETECT-04, DETECT-05, MANIFEST-01, MANIFEST-02, MANIFEST-03, MANIFEST-04, STATE-01, STATE-02, STATE-03, STATE-04, STATE-05
+**Requirements**: DETECT-01, DETECT-02, DETECT-03, DETECT-04, MANIFEST-01, MANIFEST-02, MANIFEST-03, MANIFEST-04, STATE-01, STATE-02, STATE-03, STATE-04, STATE-05
 **Success Criteria** (what must be TRUE):
   1. Sourcing detect.sh sets HAS_SP and HAS_GSD correctly for all four combinations: neither present, SP only, GSD only, both present
   2. A SP install with stale cache dir but disabled in settings.json is detected as absent (no false positive)
@@ -70,7 +70,7 @@ Plans:
 ### Phase 3: Install Flow
 **Goal**: Users can install the toolkit in any of four modes via init-claude.sh and init-local.sh, with dry-run preview, mode auto-recommendation, and settings.json merged safely
 **Depends on**: Phase 2
-**Requirements**: MODE-01, MODE-02, MODE-03, MODE-04, MODE-05, MODE-06, SAFETY-01, SAFETY-02, SAFETY-03, SAFETY-04
+**Requirements**: DETECT-05, MODE-01, MODE-02, MODE-03, MODE-04, MODE-05, MODE-06, SAFETY-01, SAFETY-02, SAFETY-03, SAFETY-04
 **Success Criteria** (what must be TRUE):
   1. Fresh install on a machine with SP+GSD detected recommends complement-full mode; user can override to any other mode before any file is written
   2. `init-claude.sh --dry-run laravel` prints a per-file [INSTALL] / [SKIP - conflicts with superpowers] list and exits 0 without touching the filesystem

@@ -9,6 +9,8 @@ Checks performed (per D-24):
   3. Every "conflicts_with" value is in the allowed vocabulary
   4. No duplicate paths across all files.* sections
   5. Every path referenced in files.* and templates.* exists on disk
+  6. Disk-to-manifest drift: files present on disk in tracked buckets
+     (commands/, templates/base/skills/*/SKILL.md) must be listed in manifest
 
 Manifest paths are install-destination paths (relative to the .claude/ target
 directory). The source files live in the toolkit repo at different locations:
@@ -171,6 +173,28 @@ def main():
         if not os.path.exists(full_path):
             fail(location + ": path does not exist on disk: " + path_value)
             errors += 1
+
+    # Check 6: disk-to-manifest drift (files on disk not in manifest)
+    manifest_paths = set(p for _, p in all_paths)
+
+    commands_dir = os.path.join(REPO_ROOT, "commands")
+    if os.path.isdir(commands_dir):
+        for name in sorted(os.listdir(commands_dir)):
+            if name.endswith(".md") and name != "README.md":
+                expected = "commands/" + name
+                if expected not in manifest_paths:
+                    fail("drift: " + expected + " exists on disk but is not in manifest files.commands")
+                    errors += 1
+
+    skills_dir = os.path.join(REPO_ROOT, "templates", "base", "skills")
+    if os.path.isdir(skills_dir):
+        for skill_name in sorted(os.listdir(skills_dir)):
+            skill_file = os.path.join(skills_dir, skill_name, "SKILL.md")
+            if os.path.isfile(skill_file):
+                expected = "skills/" + skill_name + "/SKILL.md"
+                if expected not in manifest_paths:
+                    fail("drift: " + expected + " exists on disk but is not in manifest files.skills")
+                    errors += 1
 
     if errors > 0:
         print(

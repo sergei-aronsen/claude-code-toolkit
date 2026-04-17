@@ -27,7 +27,7 @@ Filesystem-only detection of installed base plugins.
 - [ ] **DETECT-02**: `scripts/detect.sh` exposes `detect_gsd()` returning 0 if `~/.claude/get-shit-done/` exists and contains `bin/gsd-tools.cjs`
 - [ ] **DETECT-03**: Detection cross-references `~/.claude/settings.json` `enabledPlugins` (when present) to suppress stale-cache false positives
 - [ ] **DETECT-04**: `detect.sh` is sourced (not executed) so callers can read exported variables `HAS_SP`, `HAS_GSD`, `SP_VERSION`, `GSD_VERSION`
-- [ ] **DETECT-05**: Both `init-claude.sh` and `update-claude.sh` source `detect.sh` from a single canonical path; remote `curl|bash` callers download `detect.sh` to `mktemp` before sourcing
+- [ ] **DETECT-05** (moved to Phase 3): Both `init-claude.sh` and `update-claude.sh` source `detect.sh` from a single canonical path; remote `curl|bash` callers download `detect.sh` to `mktemp` before sourcing. Deferred because production wiring consumes detect.sh at install-mode selection — wiring without a consumer would leave the contract unverified (D-28, Phase 2 verifier gap 2)
 
 ### Manifest Schema
 
@@ -173,7 +173,7 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 | DETECT-02 | Phase 2 | Pending |
 | DETECT-03 | Phase 2 | Pending |
 | DETECT-04 | Phase 2 | Pending |
-| DETECT-05 | Phase 2 | Pending |
+| DETECT-05 | Phase 3 | Pending (moved from Phase 2 — production wiring consumes detect.sh at install-mode selection) |
 | MANIFEST-01 | Phase 2 | Pending |
 | MANIFEST-02 | Phase 2 | Pending |
 | MANIFEST-03 | Phase 2 | Pending |
