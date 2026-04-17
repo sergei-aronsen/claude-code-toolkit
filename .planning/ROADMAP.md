@@ -59,7 +59,13 @@ Plans:
   3. Every confirmed duplicate file in manifest.json has a conflicts_with annotation; `make validate` fails if a manifest path does not exist on disk
   4. toolkit-install.json survives a kill -9 mid-write with no truncation (next run parses it successfully or falls back to re-detection)
   5. Two concurrent runs of init-claude.sh are blocked by the mkdir lock; stale lock older than 1 hour is reclaimed with a visible warning
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 02-01-PLAN.md — detect.sh filesystem detection + five-case POSIX test harness (DETECT-01..05)
+- [ ] 02-02-PLAN.md — manifest v2 schema + validate-manifest.py + MANIFEST-03 count decision (MANIFEST-01..04)
+- [ ] 02-03-PLAN.md — scripts/lib/state.sh: atomic toolkit-install.json writes + mkdir lock with stale recovery (STATE-01..05)
 
 ### Phase 3: Install Flow
 **Goal**: Users can install the toolkit in any of four modes via init-claude.sh and init-local.sh, with dry-run preview, mode auto-recommendation, and settings.json merged safely
@@ -129,8 +135,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pre-work Bug Fixes | 0/7 | Not started | - |
-| 2. Foundation | 0/TBD | Not started | - |
+| 1. Pre-work Bug Fixes | 7/7 | Complete | 2026-04-17 |
+| 2. Foundation | 0/3 | Planned | - |
 | 3. Install Flow | 0/TBD | Not started | - |
 | 4. Update Flow | 0/TBD | Not started | - |
 | 5. Migration | 0/TBD | Not started | - |
