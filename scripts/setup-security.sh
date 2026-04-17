@@ -235,9 +235,16 @@ else:
 
 config['hooks']['PreToolUse'].append(hook_entry)
 
-with open(settings_path, 'w') as f:
-    json.dump(config, f, indent=2)
-    f.write('\n')
+import tempfile, os
+tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    os.unlink(tmp_path)
+    raise
 PYEOF
             then
                 echo -e "  ${GREEN}✓${NC} Combined hook configured (replaces separate safety-net/RTK hooks)"
@@ -335,9 +342,16 @@ for plugin in plugins:
         config['enabledPlugins'][plugin] = True
         added += 1
 
-with open(settings_path, 'w') as f:
-    json.dump(config, f, indent=2)
-    f.write('\n')
+import tempfile, os
+tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    os.unlink(tmp_path)
+    raise
 
 print(added)
 PYEOF
@@ -374,9 +388,16 @@ config['enabledPlugins'] = {
     "frontend-design@claude-plugins-official": True,
 }
 
-with open(settings_path, 'w') as f:
-    json.dump(config, f, indent=2)
-    f.write('\n')
+import tempfile, os
+tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    os.unlink(tmp_path)
+    raise
 PYEOF
             then
                 echo -e "  ${GREEN}✓${NC} Plugins added to settings.json"
