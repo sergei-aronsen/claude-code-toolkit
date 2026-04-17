@@ -199,6 +199,10 @@ if [[ -f "$SETTINGS_JSON" ]]; then
         echo -e "  Configuring combined hook in settings.json..."
 
         if command -v python3 &>/dev/null; then
+            # BUG-05: backup settings.json before mutation
+            SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
+            cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
+
             if python3 - "$SETTINGS_JSON" "$HOOK_COMMAND" << 'PYEOF' 2>/dev/null
 import json, sys
 
@@ -235,10 +239,12 @@ with open(settings_path, 'w') as f:
     json.dump(config, f, indent=2)
     f.write('\n')
 PYEOF
-then
+            then
                 echo -e "  ${GREEN}✓${NC} Combined hook configured (replaces separate safety-net/RTK hooks)"
             else
-                echo -e "  ${RED}✗${NC} Failed to configure — add manually"
+                cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
+                echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                exit 1
             fi
         else
             echo -e "  ${YELLOW}⚠${NC} python3 not found for JSON merge"
@@ -307,6 +313,10 @@ if [[ -f "$SETTINGS_JSON" ]]; then
                 PLUGINS_JSON=$(printf '"%s",' "${PLUGINS[@]}")
                 PLUGINS_JSON="[${PLUGINS_JSON%,}]"
 
+                # BUG-05: backup settings.json before mutation
+                SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
+                cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
+
                 if python3 - "$SETTINGS_JSON" "$PLUGINS_JSON" << 'PYEOF' 2>/dev/null
 import json, sys
 
@@ -331,10 +341,12 @@ with open(settings_path, 'w') as f:
 
 print(added)
 PYEOF
-then
+                then
                     echo -e "  ${GREEN}✓${NC} Plugins merged into settings.json"
                 else
-                    echo -e "  ${RED}✗${NC} Failed to merge plugins"
+                    cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
+                    echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                    exit 1
                 fi
             else
                 echo -e "  ${YELLOW}⚠${NC} python3 not found — add plugins manually to ~/.claude/settings.json"
@@ -343,6 +355,10 @@ then
     else
         # enabledPlugins key missing — add it
         if command -v python3 &>/dev/null; then
+            # BUG-05: backup settings.json before mutation
+            SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
+            cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
+
             if python3 - "$SETTINGS_JSON" << 'PYEOF' 2>/dev/null
 import json, sys
 
@@ -362,10 +378,12 @@ with open(settings_path, 'w') as f:
     json.dump(config, f, indent=2)
     f.write('\n')
 PYEOF
-then
+            then
                 echo -e "  ${GREEN}✓${NC} Plugins added to settings.json"
             else
-                echo -e "  ${RED}✗${NC} Failed to add plugins"
+                cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
+                echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                exit 1
             fi
         else
             echo -e "  ${YELLOW}⚠${NC} python3 not found — add plugins manually"
