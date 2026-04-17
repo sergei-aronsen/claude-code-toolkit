@@ -57,21 +57,25 @@ run_case "neither" \
     "false" "false"
 
 # Case 2: SP only — cache dir + settings.json with enabledPlugins true
+# shellcheck disable=SC2016
 run_case "SP only" \
     'mkdir -p "$SCRATCH/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7"; printf "{\"enabledPlugins\":{\"superpowers@claude-plugins-official\":true}}" > "$SCRATCH/.claude/settings.json"' \
     "true" "false"
 
 # Case 3: GSD only — bin/gsd-tools.cjs + VERSION file
+# shellcheck disable=SC2016
 run_case "GSD only" \
     'mkdir -p "$SCRATCH/.claude/get-shit-done/bin"; touch "$SCRATCH/.claude/get-shit-done/bin/gsd-tools.cjs"; printf "1.36.0" > "$SCRATCH/.claude/get-shit-done/VERSION"' \
     "false" "true"
 
 # Case 4: both SP and GSD installed
+# shellcheck disable=SC2016
 run_case "both" \
     'mkdir -p "$SCRATCH/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7"; mkdir -p "$SCRATCH/.claude/get-shit-done/bin"; touch "$SCRATCH/.claude/get-shit-done/bin/gsd-tools.cjs"; printf "1.36.0" > "$SCRATCH/.claude/get-shit-done/VERSION"; printf "{\"enabledPlugins\":{\"superpowers@claude-plugins-official\":true}}" > "$SCRATCH/.claude/settings.json"' \
     "true" "true"
 
 # Case 5: SP stale-cache disabled — cache dir present but enabledPlugins = false (DETECT-03 regression)
+# shellcheck disable=SC2016
 run_case "SP stale-cache disabled" \
     'mkdir -p "$SCRATCH/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7"; printf "{\"enabledPlugins\":{\"superpowers@claude-plugins-official\":false}}" > "$SCRATCH/.claude/settings.json"' \
     "false" "false"
