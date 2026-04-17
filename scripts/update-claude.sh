@@ -183,16 +183,16 @@ if [[ -f "$CLAUDE_MD" ]] && [[ -f "$CLAUDE_MD_NEW" ]]; then
     USER_SECTIONS_FILE=$(mktemp)
 
     # Extract Project Overview section
-    sed -n '/^## 🎯 Project Overview/,/^## [^P]/p' "$CLAUDE_MD" | head -n -1 > "$USER_SECTIONS_FILE.overview" 2>/dev/null || true
+    sed -n '/^## 🎯 Project Overview/,/^## [^P]/p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.overview" 2>/dev/null || true
 
     # Extract Project Structure section
-    sed -n '/^## 📁 Project Structure/,/^## /p' "$CLAUDE_MD" | head -n -1 > "$USER_SECTIONS_FILE.structure" 2>/dev/null || true
+    sed -n '/^## 📁 Project Structure/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.structure" 2>/dev/null || true
 
     # Extract Essential Commands section
-    sed -n '/^## ⚡ Essential Commands/,/^## /p' "$CLAUDE_MD" | head -n -1 > "$USER_SECTIONS_FILE.commands" 2>/dev/null || true
+    sed -n '/^## ⚡ Essential Commands/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.commands" 2>/dev/null || true
 
     # Extract Project-Specific Notes section
-    sed -n '/^## ⚠️ Project-Specific Notes/,/^## /p' "$CLAUDE_MD" | head -n -1 > "$USER_SECTIONS_FILE.notes" 2>/dev/null || true
+    sed -n '/^## ⚠️ Project-Specific Notes/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.notes" 2>/dev/null || true
 
     # If no user sections extracted, this might be first install or different format
     # In that case, just use the new template
