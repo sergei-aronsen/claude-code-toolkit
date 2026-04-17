@@ -63,6 +63,9 @@ test:
 	@echo "Test 4: detect.sh plugin detection harness"
 	@bash scripts/tests/test-detect.sh
 	@echo ""
+	@echo "Test 5: state.sh install-state + lock harness"
+	@bash scripts/tests/test-state.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
