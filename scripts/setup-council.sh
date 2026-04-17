@@ -186,15 +186,23 @@ CONFIG_FILE="$COUNCIL_DIR/config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
     echo -e "  ${YELLOW}⚠${NC} config.json already exists, preserving"
 else
+    # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
+    # shellcheck disable=SC2016
+    GEMINI_MODE_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_MODE")
+    # shellcheck disable=SC2016
+    GEMINI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_KEY")
+    # shellcheck disable=SC2016
+    OPENAI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_KEY")
+
     cat > "$CONFIG_FILE" << CONFIGEOF
 {
   "gemini": {
-    "mode": "$GEMINI_MODE",
-    "api_key": "$GEMINI_KEY",
+    "mode": $GEMINI_MODE_JSON,
+    "api_key": $GEMINI_KEY_JSON,
     "model": "gemini-3-pro-preview"
   },
   "openai": {
-    "api_key": "$OPENAI_KEY",
+    "api_key": $OPENAI_KEY_JSON,
     "model": "gpt-5.2"
   }
 }
