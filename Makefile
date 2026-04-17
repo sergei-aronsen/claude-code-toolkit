@@ -60,6 +60,9 @@ test:
 	@cd /tmp/test-claude-generic && bash $(PWD)/scripts/init-local.sh >/dev/null
 	@test -f /tmp/test-claude-generic/.claude/prompts/SECURITY_AUDIT.md && echo "✅ Generic init works"
 	@echo ""
+	@echo "Test 4: detect.sh plugin detection harness"
+	@bash scripts/tests/test-detect.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
