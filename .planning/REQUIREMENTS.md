@@ -101,6 +101,7 @@ User-facing positioning and per-template plugin docs.
 - [ ] **DOCS-05**: New `components/optional-plugins.md` documents `rtk` (rtk-ai/rtk) and `caveman` (JuliusBrussee/caveman) as recommended optional plugins, with caveats: `rtk` `ls` command is broken on non-English locales (must add `exclude_commands = ["ls"]` to `~/Library/Application Support/rtk/config.toml` — issue rtk-ai/rtk#1276); `caveman` ships only en + ru language modes (zh per upstream README, verify on install) and `compress` mode rewrites CLAUDE.md so a backup is required first
 - [ ] **DOCS-06**: `init-claude.sh` and `update-claude.sh` print a "recommended optional plugins" block at end of install (non-interactive — informational only, no auto-install) listing `rtk`, `caveman`, `superpowers`, `get-shit-done` with one-line install commands and the documented caveats
 - [ ] **DOCS-07**: `~/.claude/RTK.md` template (shipped by TK to user's `~/.claude/`) gains a "Known Issues" section that documents the `ls` exclusion config and points to upstream issue rtk-ai/rtk#1276
+- [ ] **DOCS-08**: `components/orchestration-pattern.md` (drafted from vault notes — already in repo) is reviewed, polished, added to `manifest.json` under `components`, and cross-referenced from `components/supreme-council.md` and `components/structured-workflow.md`; README "Components" section gets a short blurb pointing to it
 
 ### Validation
 
@@ -133,10 +134,12 @@ Deferred to a future release.
 
 GSD ships a "load-init-context" pattern: every workflow starts with `node $HOME/.claude/get-shit-done/bin/gsd-tools.cjs init <workflow>` returning a JSON config (`executor_model`, `verifier_model`, paths, flags) that drives subsequent subagent spawning. This is a powerful declarative-orchestration pattern that TK could adopt for its own multi-step workflows (Council debate, install matrix testing, audit pipelines).
 
-- **ORCH-FUT-01**: New `components/orchestration-pattern.md` documents the GSD init-JSON orchestration pattern and shows how to apply it in custom Claude Code commands (read-only doc, no new code in v4.0)
-- **ORCH-FUT-02**: Add `scripts/tk-tools.sh init <workflow>` returning JSON config for TK-native workflows; first consumer is Council multi-round debate (currently hardcoded in `brain.py`)
-- **ORCH-FUT-03**: Refactor `commands/council.md` to use `tk-tools.sh init council` for model selection, round count, and per-round prompt templates (no behavior change for the user, but configurable)
-- **ORCH-FUT-04**: Document migration path from hardcoded `brain.py` config to init-JSON-driven config in `CHANGELOG.md` v4.1 entry
+- **ORCH-FUT-01**: ~~Document the orchestration pattern~~ — completed early as DOCS-08 in v4.0 (`components/orchestration-pattern.md` drafted from vault notes 2026-04-14..16); v4.1 follow-up only needs cross-linking once consumers exist
+- **ORCH-FUT-02**: Ship `scripts/tk-tools.sh` with `init <workflow>` subcommand returning JSON config (`{model_profile, paths, flags, prerequisites}`) for TK-native workflows. Schema mirrors `gsd-tools.cjs init` (researcher_model, planner_model, etc.) so the pattern is portable
+- **ORCH-FUT-03**: Refactor `commands/council.md` + `scripts/council/brain.py` to consume `tk-tools.sh init council` for model selection, round count, per-round prompt templates. Behavior unchanged for the user; config moves from Python constants into `~/.claude/council/config.json`
+- **ORCH-FUT-04**: Add `scripts/tk-tools.sh agent-skills <agent>` returning the agent contract markdown (mirrors `gsd-tools.cjs agent-skills`) so future TK skills can compose subagent prompts the same way GSD workflows do
+- **ORCH-FUT-05**: Worktree-isolation helper in `scripts/tk-tools.sh worktree {create|merge|cleanup} <branch>` for any future TK workflow that spawns subagents modifying shared files (vault pattern: `2026-04-15-git-worktree-isolation-for-subagent-execution-with-merge-back-to-main.md`)
+- **ORCH-FUT-06**: Document migration path from hardcoded `brain.py` config to init-JSON-driven config in `CHANGELOG.md` v4.1 entry, with backwards-compat shim that reads the old constants if `config.json` is missing
 
 ## Out of Scope
 
@@ -209,6 +212,7 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 | DOCS-05 | Phase 6 | Pending |
 | DOCS-06 | Phase 6 | Pending |
 | DOCS-07 | Phase 6 | Pending |
+| DOCS-08 | Phase 6 | Pending (component drafted, polish + manifest wiring left) |
 | VALIDATE-01 | Phase 7 | Pending |
 | VALIDATE-02 | Phase 7 | Pending |
 | VALIDATE-03 | Phase 7 | Pending |
@@ -216,11 +220,11 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 
 **Coverage:**
 
-- v1 requirements: 54 total
-- Mapped to phases: 54
+- v1 requirements: 55 total
+- Mapped to phases: 55
 - Unmapped: 0
 
 ---
 
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 — added DOCS-05/06/07 (rtk + caveman recommendations) and ORCH-FUT-* v2 backlog*
+*Last updated: 2026-04-17 — added DOCS-05/06/07/08 (rtk + caveman + orchestration-pattern), refined ORCH-FUT-* v2 backlog with vault references*

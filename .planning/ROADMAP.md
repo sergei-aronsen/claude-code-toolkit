@@ -91,13 +91,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 6: Documentation
 **Goal**: README positions the toolkit as a complement, every template documents required base plugins, CHANGELOG.md has a complete 4.0.0 entry, and recommended optional plugins (rtk, caveman) are documented with caveats
 **Depends on**: Phase 5
-**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05, DOCS-06, DOCS-07
+**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05, DOCS-06, DOCS-07, DOCS-08
 **Success Criteria** (what must be TRUE):
   1. README install section shows both standalone and complement paths with one paragraph of guidance each
   2. All 7 templates/*/CLAUDE.md files contain a "Required Base Plugins" section with SP and GSD install instructions
   3. CHANGELOG.md [4.0.0] entry lists every BREAKING CHANGE: mode behavior, removed duplicates, manifest schema bump
   4. docs/INSTALL.md (or README section) documents all 12 cells of the install matrix (4 modes x fresh/upgrade/re-run) with expected behavior per cell
   5. components/optional-plugins.md exists and documents rtk + caveman with their caveats (rtk-ls bug + exclusion config, caveman language limits, compress-mode CLAUDE.md backup warning); init-claude.sh prints the optional-plugins block at end of install; ~/.claude/RTK.md template carries the Known Issues section pointing to upstream issue #1276
+  6. components/orchestration-pattern.md is finalized, registered in manifest.json under components, and cross-referenced from supreme-council.md and structured-workflow.md; README "Components" section links to it
 **Plans**: TBD
 
 ### Phase 7: Validation
