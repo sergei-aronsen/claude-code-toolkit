@@ -20,6 +20,13 @@ REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 CLAUDE_DIR="$HOME/.claude"
 COUNCIL_DIR="$CLAUDE_DIR/council"
 
+# Guard: exit cleanly when stdin is not a terminal (CI / curl | bash without pty)
+if [[ ! -r /dev/tty ]]; then
+    echo -e "${RED}✗${NC} This script requires an interactive terminal."
+    echo -e "  Run it directly (or via \`bash <(curl -sSL ...)\`), not \`curl | bash\`."
+    exit 1
+fi
+
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Supreme Council Setup                     ║${NC}"
 echo -e "${BLUE}║     Multi-AI Code Review (Gemini + ChatGPT)   ║${NC}"
@@ -90,7 +97,9 @@ echo ""
 GEMINI_MODE="cli"
 GEMINI_KEY=""
 
-read -r -p "  Enter choice [1/2] (default: 1): " GEMINI_CHOICE
+if ! read -r -p "  Enter choice [1/2] (default: 1): " GEMINI_CHOICE < /dev/tty 2>/dev/null; then
+    GEMINI_CHOICE="1"
+fi
 GEMINI_CHOICE="${GEMINI_CHOICE:-1}"
 
 if [[ "$GEMINI_CHOICE" == "2" ]]; then
@@ -100,7 +109,8 @@ if [[ "$GEMINI_CHOICE" == "2" ]]; then
         echo -e "  ${GREEN}✓${NC} GEMINI_API_KEY found in environment"
     else
         echo -e "  ${YELLOW}⚠${NC} GEMINI_API_KEY not set in environment"
-        read -r -p "  Enter Gemini API key (or press Enter to skip): " GEMINI_KEY
+        read -rs -p "  Enter Gemini API key (or press Enter to skip): " GEMINI_KEY < /dev/tty 2>/dev/null || true
+        echo ""
         if [[ -z "$GEMINI_KEY" ]]; then
             echo -e "  ${YELLOW}⚠${NC} You'll need to add it later to config.json"
         fi
@@ -131,7 +141,8 @@ if [[ -n "${OPENAI_API_KEY:-}" ]]; then
     echo -e "  ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
 else
     echo -e "  ${YELLOW}⚠${NC} OPENAI_API_KEY not set in environment"
-    read -r -p "  Enter OpenAI API key (or press Enter to skip): " OPENAI_KEY
+    read -rs -p "  Enter OpenAI API key (or press Enter to skip): " OPENAI_KEY < /dev/tty 2>/dev/null || true
+    echo ""
     if [[ -z "$OPENAI_KEY" ]]; then
         echo -e "  ${YELLOW}⚠${NC} You'll need to add it later to config.json"
         echo -e "  Get key: https://platform.openai.com/api-keys"
