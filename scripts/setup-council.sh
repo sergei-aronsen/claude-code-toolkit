@@ -20,6 +20,13 @@ REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 CLAUDE_DIR="$HOME/.claude"
 COUNCIL_DIR="$CLAUDE_DIR/council"
 
+# Guard: exit cleanly when stdin is not a terminal (CI / curl | bash without pty)
+if [[ ! -r /dev/tty ]]; then
+    echo -e "${RED}✗${NC} This script requires an interactive terminal."
+    echo -e "  Run it directly (or via \`bash <(curl -sSL ...)\`), not \`curl | bash\`."
+    exit 1
+fi
+
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Supreme Council Setup                     ║${NC}"
 echo -e "${BLUE}║     Multi-AI Code Review (Gemini + ChatGPT)   ║${NC}"
