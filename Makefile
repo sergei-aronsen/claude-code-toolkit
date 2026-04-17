@@ -83,6 +83,13 @@ validate:
 		echo "Found $$ERRORS errors"; \
 		exit 1; \
 	fi
+	@MANIFEST_VER=$$(grep -m1 '"version"' manifest.json | sed 's/.*"version": *"\([^"]*\)".*/\1/'); \
+		CHANGELOG_VER=$$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/'); \
+		if [ "$$MANIFEST_VER" != "$$CHANGELOG_VER" ]; then \
+			echo "❌ Version mismatch: manifest.json=$$MANIFEST_VER, CHANGELOG.md=$$CHANGELOG_VER"; \
+			exit 1; \
+		fi; \
+		echo "✅ Version aligned: $$MANIFEST_VER"
 	@echo "✅ All templates valid"
 
 # Clean temporary files
