@@ -60,6 +60,9 @@ test:
 	@cd /tmp/test-claude-generic && bash $(PWD)/scripts/init-local.sh >/dev/null
 	@test -f /tmp/test-claude-generic/.claude/prompts/SECURITY_AUDIT.md && echo "✅ Generic init works"
 	@echo ""
+	@echo "Test 4: detect.sh plugin detection harness"
+	@bash scripts/tests/test-detect.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
@@ -83,7 +86,38 @@ validate:
 		echo "Found $$ERRORS errors"; \
 		exit 1; \
 	fi
+	@MANIFEST_VER=$$(grep -m1 '"version"' manifest.json | sed 's/.*"version": *"\([^"]*\)".*/\1/'); \
+		CHANGELOG_VER=$$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/'); \
+		if [ "$$MANIFEST_VER" != "$$CHANGELOG_VER" ]; then \
+			echo "❌ Version mismatch: manifest.json=$$MANIFEST_VER, CHANGELOG.md=$$CHANGELOG_VER"; \
+			exit 1; \
+		fi; \
+		echo "✅ Version aligned: $$MANIFEST_VER"
+	@ERRORS=0; \
+		MANIFEST_CMDS=$$(grep '"commands/' manifest.json | sed 's|.*"commands/\([^"]*\)".*|\1|'); \
+		LOOP_LINE=$$(awk '/mkdir -p "\$$CLAUDE_DIR\/commands"/{getline; print; exit}' scripts/update-claude.sh); \
+		LOOP_CMDS=$$(echo "$$LOOP_LINE" | sed 's/.*for file in //; s/; do.*//'); \
+		for cmd in $$LOOP_CMDS; do \
+			if ! echo "$$MANIFEST_CMDS" | grep -qx "$$cmd"; then \
+				echo "❌ update-claude.sh lists '$$cmd' not in manifest.json files.commands"; \
+				ERRORS=$$((ERRORS + 1)); \
+			fi; \
+		done; \
+		for cmd in $$MANIFEST_CMDS; do \
+			if ! echo "$$LOOP_CMDS" | tr ' ' '\n' | grep -qx "$$cmd"; then \
+				echo "❌ manifest.json files.commands has '$$cmd' missing from update-claude.sh loop"; \
+				ERRORS=$$((ERRORS + 1)); \
+			fi; \
+		done; \
+		if [ $$ERRORS -gt 0 ]; then \
+			echo "Found $$ERRORS commands drift errors"; \
+			exit 1; \
+		fi; \
+		echo "✅ update-claude.sh commands match manifest.json"
 	@echo "✅ All templates valid"
+	@echo "Validating manifest.json schema..."
+	@python3 scripts/validate-manifest.py
+	@echo "✅ Manifest schema valid"
 
 # Clean temporary files
 clean:
