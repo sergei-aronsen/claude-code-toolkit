@@ -70,8 +70,18 @@ if ! command -v tree &>/dev/null; then
         brew install tree 2>/dev/null
         echo -e "  ${GREEN}✓${NC} tree installed via Homebrew"
     elif command -v apt-get &>/dev/null; then
-        sudo apt-get update -qq && sudo apt-get install -y -qq tree 2>/dev/null
-        echo -e "  ${GREEN}✓${NC} tree installed via apt"
+        echo -e "  ${YELLOW}⚠${NC} tree not installed. To install manually, run:"
+        echo -e "      ${YELLOW}Run: sudo apt-get install tree${NC}"
+        INSTALL_TREE=""
+        if ! read -r -p "  Proceed? [y/N]: " INSTALL_TREE < /dev/tty 2>/dev/null; then
+            INSTALL_TREE="N"
+        fi
+        if [[ "${INSTALL_TREE:-N}" =~ ^[Yy]$ ]]; then
+            echo -e "  ${YELLOW}⚠${NC} tree not found — brain.py structure analysis will be skipped"
+            echo -e "  Run the command above in a separate terminal, then re-run setup-council.sh if you want tree support."
+        else
+            echo -e "  ${YELLOW}⚠${NC} tree not found — brain.py structure analysis will be skipped"
+        fi
     else
         echo -e "  ${YELLOW}⚠${NC} Could not install tree automatically"
         echo -e "  Install manually: https://mama.indstate.edu/users/ice/tree/"
