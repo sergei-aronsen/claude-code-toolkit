@@ -273,7 +273,9 @@ else
 fi
 
 # Check Python can parse brain.py
-if python3 -c "import ast; ast.parse(open('$COUNCIL_DIR/brain.py').read())" 2>/dev/null; then
+# shellcheck disable=SC2016
+if python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' \
+    "$COUNCIL_DIR/brain.py" 2>/dev/null; then
     echo -e "  ${GREEN}✓${NC} brain.py syntax valid"
     PASS=$((PASS + 1))
 else
