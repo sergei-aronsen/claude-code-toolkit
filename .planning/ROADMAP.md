@@ -64,7 +64,7 @@ Plans:
 Plans:
 
 - [x] 02-01-PLAN.md — detect.sh filesystem detection + five-case POSIX test harness (DETECT-01..05)
-- [ ] 02-02-PLAN.md — manifest v2 schema + validate-manifest.py + MANIFEST-03 count decision (MANIFEST-01..04)
+- [x] 02-02-PLAN.md — manifest v2 schema + validate-manifest.py + MANIFEST-03 count decision (MANIFEST-01..04)
 - [ ] 02-03-PLAN.md — scripts/lib/state.sh: atomic toolkit-install.json writes + mkdir lock with stale recovery (STATE-01..05)
 
 ### Phase 3: Install Flow
