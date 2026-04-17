@@ -8,11 +8,19 @@
 
 set -euo pipefail
 
-VERSION="2.0.0"
-
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUIDES_DIR="$(dirname "$SCRIPT_DIR")"
+
+# BUG-06: single source of truth — manifest.json
+MANIFEST_FILE="$GUIDES_DIR/manifest.json"
+if command -v jq &>/dev/null && [[ -f "$MANIFEST_FILE" ]]; then
+    VERSION=$(jq -r '.version' "$MANIFEST_FILE")
+elif [[ -f "$MANIFEST_FILE" ]]; then
+    VERSION=$(grep -m1 '"version"' "$MANIFEST_FILE" | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+else
+    VERSION="unknown"
+fi
 
 # Colors
 GREEN='\033[0;32m'
