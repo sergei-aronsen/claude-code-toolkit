@@ -144,7 +144,7 @@ fi
 
 # Commands
 mkdir -p "$CLAUDE_DIR/commands"
-for file in plan.md tdd.md context-prime.md checkpoint.md handoff.md audit.md test.md refactor.md doc.md fix.md explain.md helpme.md verify.md debug.md learn.md update-toolkit.md worktree.md migrate.md find-function.md find-script.md docker.md api.md e2e.md perf.md deps.md council.md deploy.md fix-prod.md rollback-update.md; do
+for file in api.md audit.md checkpoint.md context-prime.md council.md debug.md deploy.md design.md deps.md doc.md docker.md e2e.md explain.md find-function.md find-script.md fix-prod.md fix.md handoff.md helpme.md learn.md migrate.md perf.md plan.md refactor.md rollback-update.md tdd.md test.md update-toolkit.md verify.md worktree.md; do
     if curl -sSL "$REPO_URL/commands/$file" -o "$CLAUDE_DIR/commands/$file" 2>/dev/null; then
         log_success "Updated: commands/$file"
     else
