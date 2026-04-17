@@ -35,7 +35,7 @@ Extend `manifest.json` to declare per-file conflicts. Single source of truth —
 
 - [ ] **MANIFEST-01**: Each entry under `files.*` switches from bare string to object with `path`, optional `conflicts_with: ["superpowers" | "get-shit-done"]`, optional `requires_base: [...]`
 - [ ] **MANIFEST-02**: Bump `manifest.version` field (separate from product version) to `2` to signal schema change; old scripts must refuse to run against v2 manifest
-- [ ] **MANIFEST-03**: Each of the 7 confirmed hard duplicates is annotated with `conflicts_with` (debug, tdd, worktree, verify, checkpoint, handoff, learn, audit, context-prime, plan, debugging skill, code-reviewer agent, planner agent — total ≥10 entries)
+- [ ] **MANIFEST-03**: Each of the 7 confirmed hard duplicates (live scan against SP 5.0.7) is annotated with `conflicts_with`. The original 13-entry seed list (D-16) was fully evaluated; 7 confirmed SP equivalents, 6 TK-unique entries remain without `conflicts_with`.
 - [ ] **MANIFEST-04**: `make validate` extends to verify every file path in manifest exists, every directory of files referenced has its files in manifest (no drift), and `conflicts_with` values are limited to the known plugin names
 
 ### Install Modes

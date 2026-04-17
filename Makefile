@@ -115,6 +115,9 @@ validate:
 		fi; \
 		echo "✅ update-claude.sh commands match manifest.json"
 	@echo "✅ All templates valid"
+	@echo "Validating manifest.json schema..."
+	@python3 scripts/validate-manifest.py
+	@echo "✅ Manifest schema valid"
 
 # Clean temporary files
 clean:
