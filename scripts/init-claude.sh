@@ -510,15 +510,24 @@ CONFIGEOF
 
     # Create config
     if [[ ! -f "$council_dir/config.json" ]]; then
+        # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
+        local gemini_mode_json gemini_key_json openai_key_json
+        # shellcheck disable=SC2016
+        gemini_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_mode")
+        # shellcheck disable=SC2016
+        gemini_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_key")
+        # shellcheck disable=SC2016
+        openai_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_key")
+
         cat > "$council_dir/config.json" << CONFIGEOF
 {
   "gemini": {
-    "mode": "$gemini_mode",
-    "api_key": "$gemini_key",
+    "mode": $gemini_mode_json,
+    "api_key": $gemini_key_json,
     "model": "gemini-3-pro-preview"
   },
   "openai": {
-    "api_key": "$openai_key",
+    "api_key": $openai_key_json,
     "model": "gpt-5.2"
   }
 }
