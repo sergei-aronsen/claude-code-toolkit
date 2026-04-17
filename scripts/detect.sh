@@ -52,10 +52,16 @@ detect_superpowers() {
     # DETECT-03: Cross-reference settings.json to suppress stale-cache false positives.
     # Key "superpowers@claude-plugins-official" set to false means SP is disabled.
     # Missing key (older Claude Code) or value true both pass through.
+    # NOTE: jq's // operator treats both null AND false as alternatives, so we use
+    # has() to distinguish "key absent" (missing) from "key present but false".
     if [[ -f "$SETTINGS_JSON" ]] && command -v jq &>/dev/null; then
         local enabled
-        enabled=$(jq -r '.enabledPlugins["superpowers@claude-plugins-official"] // "missing"' \
-            "$SETTINGS_JSON" 2>/dev/null || echo "missing")
+        enabled=$(jq -r '
+            if (.enabledPlugins | type) == "object" and (.enabledPlugins | has("superpowers@claude-plugins-official"))
+            then .enabledPlugins["superpowers@claude-plugins-official"] | tostring
+            else "missing"
+            end
+        ' "$SETTINGS_JSON" 2>/dev/null || echo "missing")
         if [[ "$enabled" == "false" ]]; then
             HAS_SP=false
             SP_VERSION=""
@@ -82,5 +88,7 @@ detect_gsd() {
     export HAS_GSD GSD_VERSION
 }
 
-detect_superpowers
+# Call both functions. detect_superpowers returns 1 when SP is absent — the || true ensures
+# that sourcing this file into a set -e context does not abort the caller on a normal "not found".
+detect_superpowers || true
 detect_gsd
