@@ -103,7 +103,7 @@ Plans:
 
 - [x] 04-01-PLAN.md — state load + v3.x synthesis + mode-drift detect + in-place mode-switch (UPDATE-01 / D-50/D-51/D-52) + Wave 0 test scaffolding
 - [x] 04-02-PLAN.md — manifest-driven iteration; new/removed/modified file handling; delete hand-lists at update-claude.sh:117-188 (UPDATE-02/03/04 / D-53/D-54/D-55/D-56)
-- [ ] 04-03-PLAN.md — tree backup <unix-ts>-<pid> + 4-group summary + no-op detection + rollback-update.md doc update (UPDATE-05/06 / D-57/D-58/D-59)
+- [x] 04-03-PLAN.md — tree backup <unix-ts>-<pid> + 4-group summary + no-op detection + rollback-update.md doc update (UPDATE-05/06 / D-57/D-58/D-59)
 
 ### Phase 5: Migration
 **Goal**: Existing v3.x users with SP or GSD installed can safely remove duplicate TK files via a dedicated migration script that shows a three-way diff, backs up everything first, and requires per-file confirmation
