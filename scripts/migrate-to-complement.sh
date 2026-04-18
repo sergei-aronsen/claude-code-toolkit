@@ -61,8 +61,10 @@ LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
 TK_TMPL_TMP=$(mktemp "${TMPDIR:-/tmp}/tk-tmpl.XXXXXX")
-# Plan 05-03 will prepend `release_lock;` to this trap once the lock is acquired.
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
+# EXIT trap: release_lock first (ignore failure if not yet sourced), then clean tempfiles.
+# release_lock is defined by lib/state.sh which is sourced after the mktemps below.
+# Guard with `|| true` so EXIT firing before the source does not produce a shell error.
+trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
 
 # ───────── detect.sh soft-fail (with test seam) ─────────
 if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
@@ -180,6 +182,28 @@ echo ""
 RECOMMENDED=$(recommend_mode)
 log_info "Detected: HAS_SP=$HAS_SP HAS_GSD=$HAS_GSD → recommended mode: ${CYAN}$RECOMMENDED${NC}"
 
+# ───────── idempotence early-exit (MIGRATE-06 / D-78) ─────────
+# Two-signal AND: (a) state.mode != standalone AND (b) compute_skip_set ∩ filesystem empty.
+# Self-healing: manual state rollback with duplicates already gone still exits cleanly.
+STATE_MODE_CURRENT="standalone"
+if [[ -f "$STATE_FILE" ]]; then
+    # shellcheck disable=SC2015
+    STATE_MODE_CURRENT=$(jq -r '.mode // "standalone"' "$STATE_FILE" 2>/dev/null || echo "standalone")
+fi
+if [[ "$STATE_MODE_CURRENT" != "standalone" ]]; then
+    _IDEMPOTENT_SKIP=$(compute_skip_set "$STATE_MODE_CURRENT" "$MANIFEST_TMP")
+    _INTERSECTION_HIT=false
+    while IFS= read -r _r; do
+        [[ -z "$_r" ]] && continue
+        if [[ -f "$CLAUDE_DIR/$_r" ]]; then _INTERSECTION_HIT=true; break; fi
+    done < <(jq -r '.[]' <<<"$_IDEMPOTENT_SKIP")
+    if [[ "$_INTERSECTION_HIT" == "false" ]]; then
+        echo "Already migrated to $STATE_MODE_CURRENT. Nothing to do."
+        exit 0
+    fi
+    unset _IDEMPOTENT_SKIP _INTERSECTION_HIT _r
+fi
+
 # ───────── enumerate duplicates ─────────
 SKIP_SET_JSON=$(compute_skip_set "$RECOMMENDED" "$MANIFEST_TMP")
 DUPLICATES=()
@@ -235,6 +259,9 @@ if [[ $DRY_RUN -eq 1 ]]; then
     log_info "--dry-run: the files above would be removed. No backup, no state rewrite. Exiting."
     exit 0
 fi
+
+# ───────── acquire mutation lock (Phase 2 D-08..D-11) ─────────
+acquire_lock || { log_error "Another TK install/update is in progress. Exiting."; exit 1; }
 
 # ───────── backup (MIGRATE-04) — BEFORE any rm ─────────
 BACKUP_DIR="$HOME/.claude-backup-pre-migrate-$(date -u +%s)"
@@ -326,13 +353,59 @@ for i in "${!DUPLICATES[@]}"; do
     prompt_duplicate_file "${DUPLICATES[$i]}" "${TK_HASHES[$i]}" "${DISK_HASHES[$i]}"
 done
 
-# ───────── summary (final state rewrite + lock wiring are Plan 05-03's responsibility) ─────────
+# ───────── state rewrite (MIGRATE-05 / D-79) ─────────
+# Build installed_files CSV (absolute paths so write_state computes sha256s).
+# Strategy: enumerate every manifest.files.*.path that is NOT in the migrated set
+# AND is currently present on disk → that's the post-migration installed set.
+FINAL_INSTALLED_CSV=""
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    # Skip if this path was removed during migration
+    _WAS_MIGRATED=false
+    for mp in "${MIGRATED_PATHS[@]:-}"; do
+        [[ "$mp" == "$rel" ]] && { _WAS_MIGRATED=true; break; }
+    done
+    [[ "$_WAS_MIGRATED" == "true" ]] && continue
+    # Include only if still present on disk
+    [[ -f "$CLAUDE_DIR/$rel" ]] || continue
+    [[ -n "$FINAL_INSTALLED_CSV" ]] && FINAL_INSTALLED_CSV+=","
+    FINAL_INSTALLED_CSV+="$CLAUDE_DIR/$rel"
+done < <(jq -r '.files | to_entries[] | .value[] | .path' "$MANIFEST_TMP")
+unset _WAS_MIGRATED
+
+# Build skipped_files CSV in path:reason form (KEPT_PATHS already has this shape)
+FINAL_SKIPPED_CSV=""
+for entry in "${KEPT_PATHS[@]:-}"; do
+    [[ -z "$entry" ]] && continue
+    [[ -n "$FINAL_SKIPPED_CSV" ]] && FINAL_SKIPPED_CSV+=","
+    FINAL_SKIPPED_CSV+="$entry"
+done
+
+# Post-migration mode: D-79 — always recommend_mode regardless of partial/full acceptance
+POST_MODE=$(recommend_mode)
+
+# 8th positional arg is synth_flag="false" — this is a production migration write,
+# NOT a synthesis. Plan 05-01's schema v2 extension is consumed here.
+write_state "$POST_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false"
+
+# ───────── four-group summary ─────────
 echo ""
-log_info "Per-file phase complete. State rewrite + idempotence guard arrive in Plan 05-03."
-echo "MIGRATED ${#MIGRATED_PATHS[@]}"
+echo "Migration Summary"
+echo "─────────────────"
+printf '%bMIGRATED %d%b\n' "$GREEN" "${#MIGRATED_PATHS[@]}" "$NC"
 for p in "${MIGRATED_PATHS[@]:-}"; do [[ -z "$p" ]] && continue; echo "  $p"; done
-echo "KEPT ${#KEPT_PATHS[@]}"
-for p in "${KEPT_PATHS[@]:-}"; do [[ -z "$p" ]] && continue; echo "  $p"; done
-echo "BACKED UP to $BACKUP_DIR"
+printf '%bKEPT %d%b\n' "$YELLOW" "${#KEPT_PATHS[@]}" "$NC"
+for entry in "${KEPT_PATHS[@]:-}"; do
+    [[ -z "$entry" ]] && continue
+    rp="${entry%%:*}"
+    rr="${entry#*:}"
+    printf '  %s (%s)\n' "$rp" "$rr"
+done
+printf '%bBACKED UP%b to %s (1 directory)\n' "$CYAN" "$NC" "$BACKUP_DIR"
+printf '%bMODE%b %s → %s\n' "$BLUE" "$NC" "$STATE_MODE_CURRENT" "$POST_MODE"
+
 echo ""
+if [[ $VERBOSE -eq 1 ]]; then
+    log_info "State written to: $STATE_FILE"
+fi
 log_warning "⚠ Restart Claude Code to apply changes."
