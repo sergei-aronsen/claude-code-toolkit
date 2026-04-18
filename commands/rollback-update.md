@@ -10,8 +10,17 @@ Rollback to a previous version of Claude Code Toolkit after a failed or unwanted
 /rollback-update
 /rollback-update list
 /rollback-update latest
-/rollback-update 20260203-120000
+/rollback-update 1713456789-42315
 ```
+
+## Backup Naming (v4.0+)
+
+Starting with v4.0.0, `update-claude.sh` writes backups to `.claude-backup-<unix-ts>-<pid>/`
+(e.g. `.claude-backup-1713456789-42315/`) instead of the v3.x `<YYYYMMDD-HHMMSS>` format.
+This prevents naming collisions when two updates run in the same second.
+
+The listing glob `.claude-backup-*` still matches both formats, so this command works
+unchanged on v3.x backups and v4.0+ backups alike.
 
 ## Actions
 
@@ -27,9 +36,9 @@ ls -la .claude-backup-* 2>/dev/null | head -20
 
 ```text
 Available backups:
-  .claude-backup-20260203-120000/  (2 hours ago)
-  .claude-backup-20260202-180000/  (1 day ago)
-  .claude-backup-20260201-090000/  (2 days ago)
+  .claude-backup-1713456789-42315/  (2 hours ago)
+  .claude-backup-1713434567-38901/  (1 day ago)
+  .claude-backup-1713348167-31044/  (2 days ago)
 ```
 
 ### /rollback latest
@@ -38,6 +47,7 @@ Rollback to the most recent backup:
 
 ```bash
 # Find latest backup
+# Glob matches both v3.x (YYYYMMDD-HHMMSS) and v4.0+ (unix-ts-pid) formats.
 LATEST=$(ls -d .claude-backup-* 2>/dev/null | sort -r | head -1)
 
 if [[ -n "$LATEST" ]]; then
@@ -59,7 +69,7 @@ fi
 Rollback to a specific backup:
 
 ```bash
-BACKUP=".claude-backup-20260203-120000"
+BACKUP=".claude-backup-1713456789-42315"
 
 if [[ -d "$BACKUP" ]]; then
     mv .claude .claude-pre-rollback-$(date +%Y%m%d-%H%M%S)
@@ -111,13 +121,13 @@ rm -rf .claude-backup-* .claude-pre-rollback-*
 ```text
 Available backups:
 
-  .claude-backup-20260203-153022/  (30 min ago)  ← latest
-  .claude-backup-20260203-120000/  (3 hours ago)
-  .claude-backup-20260202-180000/  (1 day ago)
+  .claude-backup-1713458422-42315/  (30 min ago)  ← latest
+  .claude-backup-1713456789-38901/  (3 hours ago)
+  .claude-backup-1713434567-31044/  (1 day ago)
 
 Which backup to restore?
 - "latest" for most recent
-- Or specify timestamp (e.g., "20260203-120000")
+- Or specify backup name (e.g., "1713456789-42315")
 ```
 
 **User:** `latest`
@@ -125,13 +135,13 @@ Which backup to restore?
 **Claude:**
 
 ```bash
-mv .claude .claude-pre-rollback-20260203-160000
-cp -r .claude-backup-20260203-153022 .claude
+mv .claude .claude-pre-rollback-1713460022-55123
+cp -r .claude-backup-1713458422-42315 .claude
 ```
 
 ```text
-✓ Rolled back to: .claude-backup-20260203-153022
-✓ Current state saved to: .claude-pre-rollback-20260203-160000
+✓ Rolled back to: .claude-backup-1713458422-42315
+✓ Current state saved to: .claude-pre-rollback-1713460022-55123
 
 ⚠ Restart Claude Code to apply changes
 ```
