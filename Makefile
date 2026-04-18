@@ -87,6 +87,9 @@ test:
 	@echo "Test 12: migrate three-way diff + user-mod detection"
 	@bash scripts/tests/test-migrate-diff.sh
 	@echo ""
+	@echo "Test 13: migrate full flow (accept/decline/partial/lock/backup-fail)"
+	@bash scripts/tests/test-migrate-flow.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
