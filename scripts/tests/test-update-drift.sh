@@ -281,6 +281,100 @@ scenario_mode_switch_transaction_integrity() {
 }
 
 # ─────────────────────────────────────────────────
+# Scenario 6: D-77 migrate hint fires when triple-AND holds (Plan 05-01)
+# ─────────────────────────────────────────────────
+scenario_migrate_hint_emits() {
+    echo ""
+    echo "Scenario 6: D-77 migrate hint — emits when state=standalone + HAS_SP=true + duplicate present"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/s6"
+    mkdir -p "$SCR/.claude/commands" "$SCR/.claude/rules"
+    # Seed a file that is a duplicate per manifest-update-v2.json (commands/debug.md has
+    # conflicts_with:["superpowers"] in that fixture) — so compute_skip_set(complement-sp)
+    # will include it and the filesystem-intersection check will fire.
+    echo "DEBUG-CONTENT" > "$SCR/.claude/commands/debug.md"
+    echo "RULES-CONTENT" > "$SCR/.claude/rules/README.md"
+
+    # ── Pre-flight: assert the fixture itself still carries the assumption this
+    # scenario depends on (commands/debug.md with conflicts_with containing "superpowers").
+    # If Phase 4 or a future refactor changes the fixture shape, this fails LOUDLY here
+    # rather than the "Legacy duplicates detected" grep silently passing or failing.
+    # Fixture shape verified 2026-04-18: .files is an object of category->array-of-entries.
+    jq -e '[.files | to_entries[] | .value[]? | select((.path // "") == "commands/debug.md" and ((.conflicts_with // []) | contains(["superpowers"])))] | length > 0' "$MANIFEST_FIXTURE" >/dev/null \
+        || { echo "  ✗ PRE-FLIGHT FAIL: $MANIFEST_FIXTURE missing commands/debug.md with conflicts_with=[\"superpowers\"] — fixture drift, fix the fixture or the selector"; FAIL=$((FAIL + 1)); return; }
+
+    # Pre-seed state with mode=standalone (HAS_SP=false during seed, so mode=standalone).
+    TK_UPDATE_HOME="$SCR" \
+    TK_UPDATE_LIB_DIR="$LIB_DIR" \
+    TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+    HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
+    bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 || true
+
+    # Now run with HAS_SP=true — triple-AND should hold and the hint should print.
+    local OUT
+    OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
+          TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+          HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
+          bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --no-offer-mode-switch --no-prune 2>&1 || true)
+
+    if echo "$OUT" | grep -q "Legacy duplicates detected"; then
+        PASS=$((PASS + 1)); echo "  ✓ D-77 hint emitted (triple-AND holds)"
+    else
+        FAIL=$((FAIL + 1)); echo "  ✗ D-77 hint NOT emitted"
+        echo "    output was: $OUT"
+    fi
+    if echo "$OUT" | grep -q "./scripts/migrate-to-complement.sh"; then
+        PASS=$((PASS + 1)); echo "  ✓ D-77 hint points at migrate-to-complement.sh"
+    else
+        FAIL=$((FAIL + 1)); echo "  ✗ D-77 hint missing migrate-to-complement.sh reference"
+    fi
+}
+
+# ─────────────────────────────────────────────────
+# Scenario 7: D-77 migrate hint suppressed when filesystem-intersection is empty
+# ─────────────────────────────────────────────────
+scenario_migrate_hint_suppressed() {
+    echo ""
+    echo "Scenario 7: D-77 migrate hint — suppressed when no duplicates on disk"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/s7"
+    # Seed ONLY non-conflicting files (rules/README.md is not in any conflicts_with).
+    mkdir -p "$SCR/.claude/rules"
+    echo "RULES-CONTENT" > "$SCR/.claude/rules/README.md"
+
+    # Use empty file-src so the seed run does NOT download SP-conflict files from remote.
+    # Scenario 1 uses the same pattern. Without this, update-claude.sh downloads every
+    # manifest path on the seed run and the "no duplicates on disk" precondition fails.
+    local EMPTY_SRC="$SCR/.empty-src"
+    mkdir -p "$EMPTY_SRC"
+
+    # Pre-seed state with mode=standalone
+    TK_UPDATE_HOME="$SCR" \
+    TK_UPDATE_LIB_DIR="$LIB_DIR" \
+    TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+    TK_UPDATE_FILE_SRC="$EMPTY_SRC" \
+    HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
+    bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 || true
+
+    # Run with HAS_SP=true but no duplicates on disk → hint should NOT fire.
+    local OUT
+    OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
+          TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+          TK_UPDATE_FILE_SRC="$EMPTY_SRC" \
+          HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
+          bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --no-offer-mode-switch --no-prune 2>&1 || true)
+
+    if echo "$OUT" | grep -q "Legacy duplicates detected"; then
+        FAIL=$((FAIL + 1)); echo "  ✗ D-77 hint emitted when it should be suppressed"
+        echo "    output was: $OUT"
+    else
+        PASS=$((PASS + 1)); echo "  ✓ D-77 hint suppressed (no filesystem intersection)"
+    fi
+}
+
+# ─────────────────────────────────────────────────
 # Run all scenarios
 # ─────────────────────────────────────────────────
 scenario_v3x_upgrade_path
@@ -288,6 +382,8 @@ scenario_mode_drift_accept
 scenario_mode_drift_decline
 scenario_mode_drift_curlbash
 scenario_mode_switch_transaction_integrity
+scenario_migrate_hint_emits
+scenario_migrate_hint_suppressed
 
 echo ""
 echo "========================================"
