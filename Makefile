@@ -72,6 +72,9 @@ test:
 	@echo "Test 7: --dry-run grouped output + zero filesystem writes"
 	@bash scripts/tests/test-dry-run.sh
 	@echo ""
+	@echo "Test 8: settings.json safe merge - foreign keys, backup, restore"
+	@bash scripts/tests/test-safe-merge.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
