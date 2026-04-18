@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "version": "test-migrate",
+  "updated": "2026-04-18",
+  "description": "Phase 5 fixture — 7 SP duplicate entries with sp_equivalent fields + 1 GSD entry + 1 non-conflicting control. DO NOT install from this.",
+  "files": {
+    "agents": [
+      { "path": "agents/code-reviewer.md", "conflicts_with": ["superpowers"] }
+    ],
+    "commands": [
+      { "path": "commands/debug.md",    "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/systematic-debugging/SKILL.md" },
+      { "path": "commands/plan.md",     "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/writing-plans/SKILL.md" },
+      { "path": "commands/tdd.md",      "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/test-driven-development/SKILL.md" },
+      { "path": "commands/verify.md",   "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/verification-before-completion/SKILL.md" },
+      { "path": "commands/worktree.md", "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/using-git-worktrees/SKILL.md" },
+      { "path": "commands/learn.md",    "conflicts_with": ["get-shit-done"] },
+      { "path": "commands/helpme.md" }
+    ],
+    "skills": [
+      { "path": "skills/debugging/SKILL.md", "conflicts_with": ["superpowers"],
+        "sp_equivalent": "skills/systematic-debugging/SKILL.md" }
+    ],
+    "rules": [
+      { "path": "rules/README.md" }
+    ]
+  },
+  "templates": {
+    "base": { "path": "templates/base" }
+  }
+}
