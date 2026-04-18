@@ -5,6 +5,21 @@
 
 set -euo pipefail
 
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-01 — flag parsing (before color constants)
+# ─────────────────────────────────────────────────
+NO_BANNER=0
+OFFER_MODE_SWITCH="interactive"
+for arg in "$@"; do
+    case "$arg" in
+        --no-banner) NO_BANNER=1 ;;
+        --offer-mode-switch=yes)                      OFFER_MODE_SWITCH="yes" ;;
+        --offer-mode-switch=no|--no-offer-mode-switch) OFFER_MODE_SWITCH="no" ;;
+        --offer-mode-switch=interactive)              OFFER_MODE_SWITCH="interactive" ;;
+        *) ;;
+    esac
+done
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -14,25 +29,29 @@ NC='\033[0m'
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
+# shellcheck disable=SC2034  # MANIFEST_URL kept as legacy reference; Plan 04-02 removes it
 MANIFEST_URL="$REPO_URL/manifest.json"
 
 # ─────────────────────────────────────────────────
-# Phase 3 — DETECT-05 wiring (D-31)
-# Source detect.sh into a temp file. Phase 3 only makes HAS_SP/HAS_GSD/SP_VERSION/GSD_VERSION
-# available to the rest of update-claude.sh. Phase 4 (UPDATE-01) will branch on them.
-# Soft-fail allowed here: update-claude.sh must remain runnable even if the network is flaky;
-# if download fails, set HAS_SP/HAS_GSD to false so Phase 4 logic can detect "unknown".
+# Phase 4 (Plan 04-01) — extend DETECT-05 wiring with lib/install.sh + lib/state.sh + remote manifest
+# (replaces the Phase 3 soft-fail-only block)
 # ─────────────────────────────────────────────────
 DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
-trap 'rm -f "$DETECT_TMP"' EXIT
-if curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
+LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
+LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
+MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
+
+# detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
+# Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
+if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
+    : # env vars already set by caller (test seam or CI override) — skip detect.sh
+elif curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
     # shellcheck source=/dev/null
     source "$DETECT_TMP"
 else
     echo -e "${YELLOW}⚠${NC} Could not fetch detect.sh — plugin detection unavailable"
-    # HAS_SP/HAS_GSD/SP_VERSION/GSD_VERSION are fallback defaults consumed by Phase 4 —
-    # silence shellcheck SC2034 (variables appear unused in Phase 3 scope).
-    # shellcheck disable=SC2034
+    # shellcheck disable=SC2034  # consumed by recommend_mode in lib/install.sh
     HAS_SP=false
     # shellcheck disable=SC2034
     HAS_GSD=false
@@ -41,6 +60,54 @@ else
     # shellcheck disable=SC2034
     GSD_VERSION=""
 fi
+
+# lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
+# TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP"; do
+    lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
+    if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
+        cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
+    elif ! curl -sSLf "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
+        echo -e "${RED}✗${NC} Failed to fetch scripts/lib/$lib_name — update cannot proceed"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$lib_path"
+done
+
+# Remote manifest — HARD-fail; TK_UPDATE_MANIFEST_OVERRIDE bypasses network for tests
+MANIFEST_SRC="${TK_UPDATE_MANIFEST_OVERRIDE:-}"
+if [[ -n "$MANIFEST_SRC" && -f "$MANIFEST_SRC" ]]; then
+    cp "$MANIFEST_SRC" "$MANIFEST_TMP"
+else
+    if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
+        echo -e "${RED}✗${NC} Failed to fetch manifest.json — update cannot proceed"
+        exit 1
+    fi
+fi
+MANIFEST_VER=$(jq -r '.manifest_version' "$MANIFEST_TMP" 2>/dev/null || echo "")
+if [[ "$MANIFEST_VER" != "2" ]]; then
+    echo -e "${RED}✗${NC} manifest.json has manifest_version=${MANIFEST_VER:-unknown}; update-claude.sh expects v2"
+    exit 1
+fi
+REMOTE_TOOLKIT_VERSION=$(jq -r '.version' "$MANIFEST_TMP")
+# shellcheck disable=SC2034  # REMOTE_TOOLKIT_VERSION consumed by Plan 04-03 no-op check
+: "$REMOTE_TOOLKIT_VERSION"
+
+# B2: manifest content-hash for no-op check (NOT the toolkit version string)
+# shellcheck disable=SC2034  # MANIFEST_HASH consumed by Plan 04-03 no-op check and final write_state
+MANIFEST_HASH=$(sha256_file "$MANIFEST_TMP")
+
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-01 — CLAUDE_DIR / STATE_FILE override for test seams (TK_UPDATE_HOME)
+# ─────────────────────────────────────────────────
+if [[ -n "${TK_UPDATE_HOME:-}" ]]; then
+    CLAUDE_DIR="$TK_UPDATE_HOME/.claude"
+fi
+# shellcheck disable=SC2034  # STATE_FILE consumed by read_state/write_state in lib/state.sh
+STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+# shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh (Plan 04-03 wires the lock)
+LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -69,14 +136,33 @@ detect_framework() {
     fi
 }
 
+# synthesize_v3_state <manifest_path>
+# D-50: scan $CLAUDE_DIR for manifest-declared files, build installed_csv of absolute paths,
+# call lib/state.sh::write_state. Prints ONE info line explaining the synthesis.
+synthesize_v3_state() {
+    local manifest_file="$1"
+    local mode installed_csv=""
+    mode=$(recommend_mode)
+    while IFS= read -r path; do
+        if [[ -f "$CLAUDE_DIR/$path" ]]; then
+            if [[ -n "$installed_csv" ]]; then installed_csv+=","; fi
+            installed_csv+="$CLAUDE_DIR/$path"
+        fi
+    done < <(jq -r '.files | to_entries[] | .value[] | .path' "$manifest_file")
+    log_info "First update after v3.x — synthesized install state from filesystem (mode=$mode)."
+    write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" ""
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
 
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║         Claude Code Toolkit — Smart Update                 ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
+if [[ $NO_BANNER -eq 0 ]]; then
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║         Claude Code Toolkit — Smart Update                 ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+fi
 
 # Check if .claude exists
 if [[ ! -d "$CLAUDE_DIR" ]]; then
@@ -85,19 +171,113 @@ if [[ ! -d "$CLAUDE_DIR" ]]; then
     exit 1
 fi
 
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-01 — D-50 state load / v3.x synthesis
+# ─────────────────────────────────────────────────
+if [[ ! -f "$STATE_FILE" ]]; then
+    synthesize_v3_state "$MANIFEST_TMP"
+fi
+if ! STATE_JSON=$(read_state); then
+    log_error "toolkit-install.json unreadable at $STATE_FILE — re-synthesizing"
+    # Preserve corrupt file for debug (RESEARCH Pitfall 10)
+    if [[ -f "$STATE_FILE" ]]; then
+        cp "$STATE_FILE" "${STATE_FILE}.corrupt.$(date -u +%s)"
+    fi
+    synthesize_v3_state "$MANIFEST_TMP"
+    STATE_JSON=$(read_state) || { log_error "synthesis failed — abort"; exit 1; }
+fi
+STATE_MODE=$(jq -r '.mode' <<<"$STATE_JSON")
+# shellcheck disable=SC2034  # STATE_VERSION is schema version (1); kept for diagnostics
+STATE_VERSION=$(jq -r '.version // "unknown"' <<<"$STATE_JSON")
+# B2: manifest content hash from prior run — absent on freshly-synthesized v3.x state
+# shellcheck disable=SC2034  # STATE_MANIFEST_HASH consumed by Plan 04-03 is_update_noop condition
+STATE_MANIFEST_HASH=$(jq -r '.manifest_hash // "unknown"' <<<"$STATE_JSON")
+
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-01 — D-51 drift detect + D-52 in-place mode switch
+# ─────────────────────────────────────────────────
+RECOMMENDED=$(recommend_mode)
+ADD_FROM_SWITCH_JSON='[]'
+REMOVED_BY_SWITCH_JSON='[]'
+
+execute_mode_switch() {
+    local new_mode="$1"
+    local installed_abs installed_rel all_paths new_skip files_to_remove_abs files_to_add
+    # installed_abs: absolute paths from state (as written by write_state)
+    installed_abs=$(jq -c '[.installed_files[].path]' <<<"$STATE_JSON")
+    # installed_rel: relative suffix of each installed path for skip-set comparison
+    # (skip set contains relative paths like "commands/plan.md")
+    installed_rel=$(jq -c --arg base "$CLAUDE_DIR/" \
+                        '[.installed_files[].path | ltrimstr($base)]' <<<"$STATE_JSON")
+    all_paths=$(jq -c '[.files | to_entries[] | .value[] | .path]' "$MANIFEST_TMP")
+    if ! new_skip=$(compute_skip_set "$new_mode" "$MANIFEST_TMP"); then
+        log_error "compute_skip_set failed for mode=$new_mode — aborting switch"
+        return 1
+    fi
+
+    # files_to_remove_abs: absolute paths of installed files whose relative path is in skip set
+    files_to_remove_abs=$(jq -nc \
+                               --argjson iabs "$installed_abs" \
+                               --argjson irel "$installed_rel" \
+                               --argjson s    "$new_skip" \
+                               '[ range($irel | length) |
+                                  . as $idx |
+                                  $irel[$idx] as $r |
+                                  $iabs[$idx] as $a |
+                                  select($s | index($r) != null) |
+                                  $a ]')
+    files_to_add=$(jq -nc --argjson a "$all_paths" --argjson s "$new_skip" --argjson i "$installed_rel" \
+                          '(($a - $s) - $i)')
+
+    # Delete the now-conflicting files (use absolute path directly)
+    while IFS= read -r abs_path; do
+        [[ -z "$abs_path" ]] && continue
+        if [[ -f "$abs_path" ]]; then
+            rm -f "$abs_path"
+            log_info "mode-switch removed: ${abs_path#"$CLAUDE_DIR/"}"
+        fi
+    done < <(jq -r '.[]' <<<"$files_to_remove_abs")
+
+    # shellcheck disable=SC2034  # ADD_FROM_SWITCH_JSON consumed by Plan 04-02 download loop
+    ADD_FROM_SWITCH_JSON="$files_to_add"
+    # shellcheck disable=SC2034  # REMOVED_BY_SWITCH_JSON consumed by Plan 04-03 summary
+    REMOVED_BY_SWITCH_JSON="$files_to_remove_abs"
+    STATE_MODE="$new_mode"
+
+    # Update in-memory STATE_JSON: update mode and remove switched-out files
+    STATE_JSON=$(jq --arg m "$new_mode" --argjson rm "$files_to_remove_abs" \
+                    '.mode = $m |
+                     .installed_files = [.installed_files[] |
+                                         select(.path as $p | ($rm | index($p)) == null)]' \
+                    <<<"$STATE_JSON")
+    log_info "mode-switch: recorded mode is now $STATE_MODE (removed $(jq length <<<"$files_to_remove_abs") file(s), $(jq length <<<"$files_to_add") file(s) staged for install)"
+}
+
+if [[ "$STATE_MODE" != "$RECOMMENDED" ]]; then
+    printf 'Current:     %s\n'                           "$STATE_MODE"
+    printf 'Recommended: %s (based on detected SP+GSD)\n' "$RECOMMENDED"
+    local_switch_decision="N"
+    case "$OFFER_MODE_SWITCH" in
+        yes) local_switch_decision="y" ;;
+        no)  local_switch_decision="N" ;;
+        interactive)
+            if ! read -r -p "Switch to $RECOMMENDED? [y/N]: " local_switch_decision < /dev/tty 2>/dev/null; then
+                local_switch_decision="N"  # fail-closed under curl|bash
+            fi
+            ;;
+    esac
+    case "${local_switch_decision:-N}" in
+        y|Y) execute_mode_switch "$RECOMMENDED" ;;
+        *)   log_info "Keeping current mode $STATE_MODE — duplicates may be installed/removed accordingly" ;;
+    esac
+fi
+
 # Detect framework
 FRAMEWORK=$(detect_framework)
 log_info "Detected framework: ${CYAN}$FRAMEWORK${NC}"
 
-# Download manifest
-log_info "Fetching manifest..."
-MANIFEST=$(curl -sSL "$MANIFEST_URL" 2>/dev/null)
-if [[ -z "$MANIFEST" ]]; then
-    log_error "Failed to fetch manifest"
-    exit 1
-fi
-
-REMOTE_VERSION=$(echo "$MANIFEST" | grep -o '"version": "[^"]*"' | head -1 | cut -d'"' -f4)
+# REMOTE_VERSION alias for legacy summary block below (Plan 04-03 replaces the summary)
+REMOTE_VERSION="$REMOTE_TOOLKIT_VERSION"
 log_info "Remote version: ${CYAN}$REMOTE_VERSION${NC}"
 
 # Check local version
@@ -107,10 +287,12 @@ if [[ -f "$CLAUDE_DIR/.toolkit-version" ]]; then
 fi
 log_info "Local version: ${CYAN}$LOCAL_VERSION${NC}"
 
-# Backup
-BACKUP_DIR=".claude-backup-$(date +%Y%m%d-%H%M%S)"
-cp -r "$CLAUDE_DIR" "$BACKUP_DIR"
-log_success "Backup created: $BACKUP_DIR"
+# Backup (legacy v3.x format — Plan 04-03 replaces with D-57 PID-suffix tree backup)
+if [[ -z "${TK_UPDATE_SKIP_LEGACY_BACKUP:-}" ]]; then
+    BACKUP_DIR=".claude-backup-$(date +%Y%m%d-%H%M%S)"
+    cp -r "$CLAUDE_DIR" "$BACKUP_DIR"
+    log_success "Backup created: $BACKUP_DIR"
+fi
 
 TEMPLATE_URL="$REPO_URL/templates/$FRAMEWORK"
 
@@ -307,7 +489,9 @@ echo -e "${GREEN}║         Update Complete!                                   
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "Version: ${CYAN}$LOCAL_VERSION${NC} → ${CYAN}$REMOTE_VERSION${NC}"
-echo -e "Backup:  ${CYAN}$BACKUP_DIR${NC}"
+if [[ -z "${TK_UPDATE_SKIP_LEGACY_BACKUP:-}" ]]; then
+    echo -e "Backup:  ${CYAN}${BACKUP_DIR:-none}${NC}"
+fi
 echo ""
 echo -e "${YELLOW}What was updated:${NC}"
 echo "  • agents/       — subagent definitions"

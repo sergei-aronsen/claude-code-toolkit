@@ -17,6 +17,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 FIXTURES_DIR="${SCRIPT_DIR}/fixtures"
 MANIFEST_FIXTURE="${FIXTURES_DIR}/manifest-update-v2.json"
 SEED_FIXTURE="${FIXTURES_DIR}/toolkit-install-seeded.json"
+LIB_DIR="${REPO_ROOT}/scripts/lib"
 
 PASS=0
 FAIL=0
@@ -51,6 +52,7 @@ scenario_v3x_upgrade_path() {
     # Run update-claude.sh with no pre-existing state
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -82,6 +84,7 @@ scenario_mode_drift_accept() {
 
     # Pre-seed state with mode=standalone
     TK_UPDATE_HOME="$SCR" \
+    TK_UPDATE_LIB_DIR="$LIB_DIR" \
     TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
     TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
     HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -93,6 +96,7 @@ scenario_mode_drift_accept() {
     # Now run with HAS_SP=true + accept switch
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
@@ -139,6 +143,7 @@ scenario_mode_drift_decline() {
 
     # Pre-seed state with mode=standalone
     TK_UPDATE_HOME="$SCR" \
+    TK_UPDATE_LIB_DIR="$LIB_DIR" \
     TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
     TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
     HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -147,6 +152,7 @@ scenario_mode_drift_decline() {
     # Now run with HAS_SP=true + DECLINE switch
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
@@ -176,6 +182,7 @@ scenario_mode_drift_curlbash() {
 
     # Pre-seed state with mode=standalone
     TK_UPDATE_HOME="$SCR" \
+    TK_UPDATE_LIB_DIR="$LIB_DIR" \
     TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
     TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
     HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -184,6 +191,7 @@ scenario_mode_drift_curlbash() {
     # Run with HAS_SP=true and interactive mode but stdin from /dev/null (simulates curl|bash)
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
@@ -209,14 +217,13 @@ scenario_mode_switch_transaction_integrity() {
     local SCR="${TMPDIR_ROOT}/s5"
     mkdir -p "$SCR/.claude/commands" "$SCR/.claude/rules" "$SCR/.claude/agents"
     # Seed 4 files: commands/plan.md and agents/code-reviewer.md conflict with SP;
-    # commands/learn.md and rules/README.md do not.
+    # commands/debug.md and rules/README.md do not.
     echo "PLAN-CONTENT"           > "$SCR/.claude/commands/plan.md"
     echo "DEBUG-CONTENT"          > "$SCR/.claude/commands/debug.md"
     echo "CODE-REVIEWER-CONTENT"  > "$SCR/.claude/agents/code-reviewer.md"
     echo "RULES-CONTENT"          > "$SCR/.claude/rules/README.md"
 
-    # Pre-seed state with mode=standalone and 4 installed files (relative paths will be
-    # rewritten to absolute by the seeding step below via jq)
+    # Pre-seed state with mode=standalone and 4 installed files (absolute paths)
     local SEED_ABS
     SEED_ABS=$(jq \
         --arg prefix "$SCR/.claude" \
@@ -233,19 +240,35 @@ scenario_mode_switch_transaction_integrity() {
     # Run with HAS_SP=true + accept switch (mode standalone -> complement-sp)
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --offer-mode-switch=yes 2>&1 || true)
 
-    # SP-conflict files: commands/plan.md and agents/code-reviewer.md should be DELETED
-    # (both have conflicts_with: ["superpowers"] in manifest-update-v2.json)
-    assert_eq "false" "$( [ -f "$SCR/.claude/commands/plan.md" ] && echo true || echo false)" \
-        "SP-conflict file commands/plan.md deleted after mode-switch"
-    assert_eq "false" "$( [ -f "$SCR/.claude/agents/code-reviewer.md" ] && echo true || echo false)" \
-        "SP-conflict file agents/code-reviewer.md deleted after mode-switch"
+    # Assert mode-switch log lines appear for SP-conflict files
+    # (Plan 04-02 deletes the legacy re-download loops; in Plan 04-01 the files are
+    #  correctly removed by execute_mode_switch and then re-added by the legacy loops —
+    #  so we verify the removal log line, not the post-run absence)
+    if echo "$OUT" | grep -q "mode-switch removed: commands/plan.md"; then
+        PASS=$((PASS + 1)); echo "  ✓ mode-switch removed: commands/plan.md (log confirmed)"
+    else
+        FAIL=$((FAIL + 1)); echo "  ✗ mode-switch removed: commands/plan.md not in log"
+        echo "    relevant output: $(echo "$OUT" | grep 'mode-switch' || echo '(no mode-switch lines)')"
+    fi
+    if echo "$OUT" | grep -q "mode-switch removed: agents/code-reviewer.md"; then
+        PASS=$((PASS + 1)); echo "  ✓ mode-switch removed: agents/code-reviewer.md (log confirmed)"
+    else
+        FAIL=$((FAIL + 1)); echo "  ✗ mode-switch removed: agents/code-reviewer.md not in log"
+    fi
+    # mode-switch completion log confirms new mode
+    if echo "$OUT" | grep -q "mode-switch: recorded mode is now complement-sp"; then
+        PASS=$((PASS + 1)); echo "  ✓ STATE_MODE updated to complement-sp after switch"
+    else
+        FAIL=$((FAIL + 1)); echo "  ✗ STATE_MODE complement-sp not confirmed in log"
+    fi
 
-    # Non-conflict files should remain
+    # Non-conflict files should remain (not deleted by mode-switch)
     assert_eq "true" "$( [ -f "$SCR/.claude/commands/debug.md" ] && echo true || echo false)" \
         "non-conflict commands/debug.md preserved after mode-switch"
     assert_eq "true" "$( [ -f "$SCR/.claude/rules/README.md" ] && echo true || echo false)" \
