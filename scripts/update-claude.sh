@@ -305,6 +305,16 @@ fi
 #                     NEVER set in production; CI/test use only.
 # ─────────────────────────────────────────────────
 
+# Normalize installed_files paths to relative (strip CLAUDE_DIR/ prefix).
+# write_state stores absolute paths when called with absolute installed_csv;
+# compute_file_diffs_obj compares against manifest's relative paths — both must match.
+# execute_mode_switch (above) already completed and needed the absolute paths, so we
+# normalize here, after the drift/mode-switch block.
+STATE_JSON=$(jq --arg base "$CLAUDE_DIR/" \
+    '.installed_files = [.installed_files[] |
+         .path = (.path | ltrimstr($base))]' \
+    <<<"$STATE_JSON")
+
 # Accumulator arrays (consumed by Plan 04-03 summary printer)
 # shellcheck disable=SC2034  # consumed by Plan 04-03 summary printer
 INSTALLED_PATHS=()

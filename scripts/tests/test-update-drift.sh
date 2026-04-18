@@ -268,9 +268,12 @@ scenario_mode_switch_transaction_integrity() {
         FAIL=$((FAIL + 1)); echo "  ✗ STATE_MODE complement-sp not confirmed in log"
     fi
 
-    # Non-conflict files should remain (not deleted by mode-switch)
-    assert_eq "true" "$( [ -f "$SCR/.claude/commands/debug.md" ] && echo true || echo false)" \
-        "non-conflict commands/debug.md preserved after mode-switch"
+    # SP-conflict files (debug.md has conflicts_with:["superpowers"] in manifest-update-v2.json)
+    # should be deleted by mode-switch; rules/README.md has no conflicts_with — should remain.
+    # (Plan 04-01 used log-line assertions here because legacy re-download loops would re-create
+    # deleted files. Plan 04-02 removes those loops, so file-absence assertions are now stable.)
+    assert_eq "false" "$( [ -f "$SCR/.claude/commands/debug.md" ] && echo true || echo false)" \
+        "SP-conflict commands/debug.md deleted by mode-switch (conflicts_with:superpowers)"
     assert_eq "true" "$( [ -f "$SCR/.claude/rules/README.md" ] && echo true || echo false)" \
         "non-conflict rules/README.md preserved after mode-switch"
 }
