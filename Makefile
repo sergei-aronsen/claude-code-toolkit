@@ -84,6 +84,9 @@ test:
 	@echo "Test 11: update summary + no-op + backup path"
 	@bash scripts/tests/test-update-summary.sh
 	@echo ""
+	@echo "Test 12: migrate three-way diff + user-mod detection"
+	@bash scripts/tests/test-migrate-diff.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
