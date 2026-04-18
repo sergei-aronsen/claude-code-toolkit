@@ -77,7 +77,14 @@ Plans:
   3. Running init-claude.sh with SP present does not install any file whose conflicts_with includes superpowers
   4. After install, settings.json retains all hooks previously installed by SP or GSD; only TK-owned entries are added or replaced
   5. settings.json backup with unix-ts suffix exists on disk before any mutation; failed merge restores from backup before exiting non-zero
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 03-01-PLAN.md — DETECT-05 wiring (init/update scripts source detect.sh) + scripts/lib/install.sh skeleton
+- [ ] 03-02-PLAN.md — MODE-01..06 (--mode flag, interactive prompt, jq skip-list, dry-run grouped output, init-local parity, mode-change prompt)
+- [ ] 03-03-PLAN.md — SAFETY-01..04 (atomic settings.json merge, _tk_owned marker, append-both hook policy, one-time backup, restore-on-failure)
+
 **UI hint**: no
 
 ### Phase 4: Update Flow
@@ -137,7 +144,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Pre-work Bug Fixes | 7/7 | Complete | 2026-04-17 |
 | 2. Foundation | 0/3 | Planned | - |
-| 3. Install Flow | 0/TBD | Not started | - |
+| 3. Install Flow | 0/3 | Planned | - |
 | 4. Update Flow | 0/TBD | Not started | - |
 | 5. Migration | 0/TBD | Not started | - |
 | 6. Documentation | 0/TBD | Not started | - |
