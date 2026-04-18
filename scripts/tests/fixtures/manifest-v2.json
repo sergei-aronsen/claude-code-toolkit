@@ -1,0 +1,34 @@
+{
+  "manifest_version": 2,
+  "version": "test",
+  "updated": "2026-04-18",
+  "description": "Test fixture for test-modes.sh / test-dry-run.sh - DO NOT install from this",
+  "files": {
+    "agents": [
+      { "path": "agents/code-reviewer.md", "conflicts_with": ["superpowers"] },
+      { "path": "agents/test-writer.md" }
+    ],
+    "commands": [
+      { "path": "commands/debug.md",   "conflicts_with": ["superpowers"] },
+      { "path": "commands/plan.md",    "conflicts_with": ["superpowers"] },
+      { "path": "commands/tdd.md",     "conflicts_with": ["superpowers"] },
+      { "path": "commands/verify.md",  "conflicts_with": ["superpowers"] },
+      { "path": "commands/worktree.md","conflicts_with": ["superpowers"] },
+      { "path": "commands/audit.md" },
+      { "path": "commands/learn.md",   "conflicts_with": ["get-shit-done"] }
+    ],
+    "skills": [
+      { "path": "skills/debugging/SKILL.md", "conflicts_with": ["superpowers"] },
+      { "path": "skills/api-design/SKILL.md" }
+    ],
+    "rules": [
+      { "path": "rules/README.md" }
+    ],
+    "prompts": [
+      { "path": "prompts/SECURITY_AUDIT.md" }
+    ]
+  },
+  "templates": {
+    "base": { "path": "templates/base" }
+  }
+}

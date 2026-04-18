@@ -66,6 +66,12 @@ test:
 	@echo "Test 5: state.sh install-state + lock harness"
 	@bash scripts/tests/test-state.sh
 	@echo ""
+	@echo "Test 6: lib/install.sh - mode skip-set correctness"
+	@bash scripts/tests/test-modes.sh
+	@echo ""
+	@echo "Test 7: --dry-run grouped output + zero filesystem writes"
+	@bash scripts/tests/test-dry-run.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
