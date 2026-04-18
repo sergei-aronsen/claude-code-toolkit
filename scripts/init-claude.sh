@@ -31,6 +31,13 @@ while [[ $# -gt 0 ]]; do
             SKIP_COUNCIL=true
             shift
             ;;
+        --mode)
+            if [[ -z "${2:-}" ]]; then
+                echo -e "${RED}--mode requires a value${NC}"; exit 1
+            fi
+            MODE="$2"; shift 2 ;;
+        --force)             FORCE=true;             shift ;;
+        --force-mode-change) FORCE_MODE_CHANGE=true; shift ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
             shift
@@ -44,6 +51,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
+MODE="${MODE:-}"
+FORCE="${FORCE:-false}"
+FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
 
 # ─────────────────────────────────────────────────
 # Phase 3 — DETECT-05 wiring (D-30, D-31)
@@ -81,9 +91,53 @@ if [[ "$MANIFEST_VER" != "2" ]]; then
     echo -e "${RED}✗${NC} manifest.json has manifest_version=${MANIFEST_VER:-unknown}; this installer expects v2"
     exit 1
 fi
-# MANIFEST_FILE is consumed by Plan 03-02 (compute_skip_set) — silence shellcheck SC2034.
-# shellcheck disable=SC2034
 MANIFEST_FILE="$MANIFEST_TMP"
+
+# Validate --mode value if provided (D-33). MODES is sourced from lib/install.sh.
+if [[ -n "$MODE" ]]; then
+    valid=false
+    # shellcheck disable=SC2153  # MODES is defined in lib/install.sh (sourced above)
+    for m in "${MODES[@]}"; do [[ "$m" == "$MODE" ]] && valid=true; done
+    if [[ "$valid" != "true" ]]; then
+        echo -e "${RED}Invalid --mode value: $MODE${NC}"
+        echo "Valid modes: ${MODES[*]}"
+        exit 1
+    fi
+fi
+
+# D-41: re-run delegation. If toolkit-install.json exists and --force absent,
+# print delegation message and exit 0. --force bypasses for intentional re-installs.
+if [[ -f "$HOME/.claude/toolkit-install.json" ]] && [[ "$FORCE" != "true" ]]; then
+    echo "Install already present at ~/.claude/. Use 'update-claude.sh' to refresh or 'init-claude.sh --force' to reinstall."
+    exit 0
+fi
+
+# D-42: mode-change prompt. Fires only when re-installing (--force) with explicit --mode
+# that differs from the recorded mode. --force-mode-change skips the prompt entirely.
+# Under curl|bash without /dev/tty, fails closed (exits 0 without changes).
+if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$HOME/.claude/toolkit-install.json" ]]; then
+    RECORDED_MODE=$(jq -r '.mode // ""' "$HOME/.claude/toolkit-install.json" 2>/dev/null || echo "")
+    if [[ -n "$RECORDED_MODE" ]] && [[ "$RECORDED_MODE" != "$MODE" ]]; then
+        if [[ "$FORCE_MODE_CHANGE" == "true" ]]; then
+            echo "Switching mode: $RECORDED_MODE -> $MODE (--force-mode-change)"
+            cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+        else
+            mc_choice=""
+            if ! read -r -p "Switching $RECORDED_MODE -> $MODE will rewrite the install. Backup current state and proceed? [y/N]: " mc_choice < /dev/tty 2>/dev/null; then
+                mc_choice=""
+            fi
+            case "${mc_choice:-N}" in
+                y|Y)
+                    cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+                    ;;
+                *)
+                    echo "Aborted. Pass --force-mode-change to bypass the prompt under curl|bash."
+                    exit 0
+                    ;;
+            esac
+        fi
+    fi
+fi
 
 # Detect framework automatically
 detect_framework() {
@@ -142,6 +196,47 @@ select_framework() {
     esac
 }
 
+# D-32: interactive mode prompt with auto-recommendation
+select_mode() {
+    local recommended
+    recommended=$(recommend_mode)
+    echo -e "${BLUE}Detected plugins:${NC}"
+    if [[ "$HAS_SP" == "true" ]]; then
+        echo -e "  ${GREEN}OK${NC} superpowers (${SP_VERSION:-unknown})"
+    else
+        echo -e "  ${YELLOW}--${NC} superpowers not detected"
+    fi
+    if [[ "$HAS_GSD" == "true" ]]; then
+        echo -e "  ${GREEN}OK${NC} get-shit-done (${GSD_VERSION:-unknown})"
+    else
+        echo -e "  ${YELLOW}--${NC} get-shit-done not detected"
+    fi
+    echo ""
+    echo -e "  Recommended: ${GREEN}$recommended${NC}"
+    echo -e "  1) standalone  2) complement-sp  3) complement-gsd  4) complement-full"
+    echo ""
+    local choice
+    if ! read -r -p "  Install mode (default: $recommended): " choice < /dev/tty 2>/dev/null; then
+        choice=""
+    fi
+    case "${choice:-}" in
+        1) MODE="standalone" ;;
+        2) MODE="complement-sp" ;;
+        3) MODE="complement-gsd" ;;
+        4) MODE="complement-full" ;;
+        *) MODE="$recommended" ;;
+    esac
+}
+
+# D-34: warn on --mode vs auto-recommendation mismatch but proceed (user flag wins)
+warn_mode_mismatch() {
+    local recommended
+    recommended=$(recommend_mode)
+    if [[ -n "$MODE" ]] && [[ "$MODE" != "$recommended" ]]; then
+        echo "WARNING: detected plugins recommend '$recommended' but --mode '$MODE' was specified - proceeding with $MODE" >&2
+    fi
+}
+
 # Select framework: CLI arg > interactive menu > auto-detect fallback
 if [[ -z "$FRAMEWORK" ]]; then
     if [[ -e /dev/tty ]]; then
@@ -151,12 +246,25 @@ if [[ -z "$FRAMEWORK" ]]; then
     fi
 fi
 
+# Mode selection: --mode flag wins; otherwise interactive prompt; under curl|bash
+# without /dev/tty, recommend_mode is used (the read inside select_mode fails -> default).
+if [[ -z "$MODE" ]]; then
+    if [[ -e /dev/tty ]] && [[ "$DRY_RUN" != "true" ]]; then
+        select_mode
+    else
+        MODE=$(recommend_mode)
+    fi
+else
+    warn_mode_mismatch
+fi
+
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Claude Code Toolkit — Initialization     ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "📁 Framework detected: ${GREEN}$FRAMEWORK${NC}"
 echo -e "📂 Target directory: ${GREEN}$CLAUDE_DIR${NC}"
+echo -e "Install mode: ${GREEN}$MODE${NC}"
 echo ""
 
 if [[ "$DRY_RUN" == true ]]; then
@@ -164,77 +272,14 @@ if [[ "$DRY_RUN" == true ]]; then
     echo ""
 fi
 
-# Files to download
-declare -a FILES=(
-    # Core
+# Framework-specific extras (NOT in manifest.json files.*; templates.* domain).
+# These are always installed regardless of mode (no conflicts_with entries).
+declare -a EXTRA_FILES=(
+    # Core template files
     "templates/$FRAMEWORK/CLAUDE.md:CLAUDE.md"
     "templates/$FRAMEWORK/settings.json:settings.json"
 
-    # Prompts (from template's prompts folder)
-    "templates/$FRAMEWORK/prompts/SECURITY_AUDIT.md:prompts/SECURITY_AUDIT.md"
-    "templates/$FRAMEWORK/prompts/PERFORMANCE_AUDIT.md:prompts/PERFORMANCE_AUDIT.md"
-    "templates/$FRAMEWORK/prompts/CODE_REVIEW.md:prompts/CODE_REVIEW.md"
-    "templates/$FRAMEWORK/prompts/DEPLOY_CHECKLIST.md:prompts/DEPLOY_CHECKLIST.md"
-    "templates/$FRAMEWORK/prompts/DESIGN_REVIEW.md:prompts/DESIGN_REVIEW.md"
-    "templates/$FRAMEWORK/prompts/MYSQL_PERFORMANCE_AUDIT.md:prompts/MYSQL_PERFORMANCE_AUDIT.md"
-    "templates/$FRAMEWORK/prompts/POSTGRES_PERFORMANCE_AUDIT.md:prompts/POSTGRES_PERFORMANCE_AUDIT.md"
-
-    # Agents (from template)
-    "templates/$FRAMEWORK/agents/code-reviewer.md:agents/code-reviewer.md"
-    "templates/$FRAMEWORK/agents/test-writer.md:agents/test-writer.md"
-    "templates/$FRAMEWORK/agents/planner.md:agents/planner.md"
-    "templates/$FRAMEWORK/agents/security-auditor.md:agents/security-auditor.md"
-
-    # Skills
-    "templates/$FRAMEWORK/skills/skill-rules.json:skills/skill-rules.json"
-    "templates/$FRAMEWORK/skills/ai-models/SKILL.md:skills/ai-models/SKILL.md"
-    "templates/$FRAMEWORK/skills/api-design/SKILL.md:skills/api-design/SKILL.md"
-    "templates/$FRAMEWORK/skills/database/SKILL.md:skills/database/SKILL.md"
-    "templates/$FRAMEWORK/skills/debugging/SKILL.md:skills/debugging/SKILL.md"
-    "templates/$FRAMEWORK/skills/docker/SKILL.md:skills/docker/SKILL.md"
-    "templates/$FRAMEWORK/skills/i18n/SKILL.md:skills/i18n/SKILL.md"
-    "templates/$FRAMEWORK/skills/llm-patterns/SKILL.md:skills/llm-patterns/SKILL.md"
-    "templates/$FRAMEWORK/skills/observability/SKILL.md:skills/observability/SKILL.md"
-    "templates/$FRAMEWORK/skills/tailwind/SKILL.md:skills/tailwind/SKILL.md"
-    "templates/$FRAMEWORK/skills/testing/SKILL.md:skills/testing/SKILL.md"
-
-    # Rules (auto-loaded project context)
-    "templates/$FRAMEWORK/rules/README.md:rules/README.md"
-    "templates/$FRAMEWORK/rules/project-context.md:rules/project-context.md"
-
-    # Commands
-    "commands/plan.md:commands/plan.md"
-    "commands/design.md:commands/design.md"
-    "commands/tdd.md:commands/tdd.md"
-    "commands/context-prime.md:commands/context-prime.md"
-    "commands/checkpoint.md:commands/checkpoint.md"
-    "commands/handoff.md:commands/handoff.md"
-    "commands/audit.md:commands/audit.md"
-    "commands/test.md:commands/test.md"
-    "commands/refactor.md:commands/refactor.md"
-    "commands/doc.md:commands/doc.md"
-    "commands/fix.md:commands/fix.md"
-    "commands/explain.md:commands/explain.md"
-    "commands/helpme.md:commands/helpme.md"
-    "commands/verify.md:commands/verify.md"
-    "commands/debug.md:commands/debug.md"
-    "commands/learn.md:commands/learn.md"
-    "commands/update-toolkit.md:commands/update-toolkit.md"
-    "commands/worktree.md:commands/worktree.md"
-    "commands/migrate.md:commands/migrate.md"
-    "commands/find-function.md:commands/find-function.md"
-    "commands/find-script.md:commands/find-script.md"
-    "commands/docker.md:commands/docker.md"
-    "commands/api.md:commands/api.md"
-    "commands/e2e.md:commands/e2e.md"
-    "commands/perf.md:commands/perf.md"
-    "commands/deps.md:commands/deps.md"
-    "commands/council.md:commands/council.md"
-    "commands/deploy.md:commands/deploy.md"
-    "commands/fix-prod.md:commands/fix-prod.md"
-    "commands/rollback-update.md:commands/rollback-update.md"
-
-    # Cheatsheets
+    # Cheatsheets (9 languages)
     "cheatsheets/en.md:cheatsheets/en.md"
     "cheatsheets/ru.md:cheatsheets/ru.md"
     "cheatsheets/es.md:cheatsheets/es.md"
@@ -246,34 +291,34 @@ declare -a FILES=(
     "cheatsheets/ko.md:cheatsheets/ko.md"
 )
 
-# Add framework-specific files
+# Add framework-specific expert agents + skills (NOT in manifest.json)
 if [[ "$FRAMEWORK" == "laravel" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/laravel/agents/laravel-expert.md:agents/laravel-expert.md"
         "templates/laravel/skills/laravel/SKILL.md:skills/laravel/SKILL.md"
     )
 elif [[ "$FRAMEWORK" == "nextjs" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/nextjs/agents/nextjs-expert.md:agents/nextjs-expert.md"
         "templates/nextjs/skills/nextjs/SKILL.md:skills/nextjs/SKILL.md"
     )
 elif [[ "$FRAMEWORK" == "nodejs" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/nodejs/agents/nodejs-expert.md:agents/nodejs-expert.md"
         "templates/nodejs/skills/nodejs/SKILL.md:skills/nodejs/SKILL.md"
     )
 elif [[ "$FRAMEWORK" == "python" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/python/agents/python-expert.md:agents/python-expert.md"
         "templates/python/skills/python/SKILL.md:skills/python/SKILL.md"
     )
 elif [[ "$FRAMEWORK" == "go" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/go/agents/go-expert.md:agents/go-expert.md"
         "templates/go/skills/go/SKILL.md:skills/go/SKILL.md"
     )
 elif [[ "$FRAMEWORK" == "rails" ]]; then
-    FILES+=(
+    EXTRA_FILES+=(
         "templates/rails/agents/rails-expert.md:agents/rails-expert.md"
         "templates/rails/skills/rails/SKILL.md:skills/rails/SKILL.md"
     )
@@ -306,34 +351,97 @@ create_structure() {
     done
 }
 
-# Download files
+# Download extras (files NOT in manifest.json — CLAUDE.md, settings.json, cheatsheets,
+# framework-specific experts). These always install regardless of mode; they have no
+# conflicts_with entries because they are per-framework, not per-plugin.
+download_extras() {
+    local file_spec src dest full_dest full_url parent_dir base_src
+    for file_spec in "${EXTRA_FILES[@]}"; do
+        IFS=':' read -r src dest <<< "$file_spec"
+        full_dest="$CLAUDE_DIR/$dest"
+        full_url="$REPO_URL/$src"
+        parent_dir=$(dirname "$full_dest")
+
+        mkdir -p "$parent_dir"
+        if curl -sSL "$full_url" -o "$full_dest" 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} $dest"
+        else
+            echo -e "  ${YELLOW}⚠${NC} $dest (using base template)"
+            # Try base template as fallback
+            base_src="${src/templates\/$FRAMEWORK/templates\/base}"
+            curl -sSL "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || true
+        fi
+    done
+}
+
+# Download files — manifest-driven with mode-aware skip-list (MODE-04, MODE-06).
+# When --dry-run, prints grouped [INSTALL]/[SKIP] output and exits before any write.
 download_files() {
     echo ""
     echo -e "${BLUE}📥 Downloading files...${NC}"
 
-    for file_spec in "${FILES[@]}"; do
-        IFS=':' read -r src dest <<< "$file_spec"
-        local full_dest="$CLAUDE_DIR/$dest"
-        local full_url="$REPO_URL/$src"
+    # Compute skip-list (returns JSON array of paths to SKIP)
+    SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
 
-        # Create parent directory
-        local parent_dir
-        parent_dir=$(dirname "$full_dest")
+    # Dry-run: print grouped output and exit before any filesystem write
+    if [[ "$DRY_RUN" == "true" ]]; then
+        print_dry_run_grouped "$MANIFEST_FILE" "$MODE"
+        exit 0
+    fi
 
-        if [[ "$DRY_RUN" == true ]]; then
-            echo "  Would download: $src → $full_dest"
-        else
-            mkdir -p "$parent_dir"
-            if curl -sSL "$full_url" -o "$full_dest" 2>/dev/null; then
-                echo -e "  ${GREEN}✓${NC} $dest"
-            else
-                echo -e "  ${YELLOW}⚠${NC} $dest (using base template)"
-                # Try base template as fallback
-                local base_src="${src/templates\/$FRAMEWORK/templates\/base}"
-                curl -sSL "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || true
-            fi
+    # Source lib/state.sh into a temp file (needed for write_state / acquire_lock)
+    LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX")
+    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    if ! curl -sSLf "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
+        echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$LIB_STATE_TMP"
+    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    acquire_lock || exit 1
+
+    # Iterate manifest.files.* — download all entries NOT in skip-list
+    local path bucket skip reason full_dest full_url
+    INSTALLED_PATHS=()
+    SKIPPED_PATHS=()
+    while IFS= read -r entry; do
+        path=$(jq -r '.path' <<< "$entry")
+        bucket=$(jq -r '.bucket' <<< "$entry")
+        skip=$(jq -r '.skip' <<< "$entry")
+        reason=$(jq -r '.reason' <<< "$entry")
+        if [[ "$skip" == "true" ]]; then
+            echo -e "  ${YELLOW}--${NC} $bucket/$path (skipped: conflicts_with:$reason)"
+            SKIPPED_PATHS+=("$bucket/$path:conflicts_with:$reason")
+            continue
         fi
-    done
+        full_dest="$CLAUDE_DIR/$path"
+        full_url="$REPO_URL/$path"
+        mkdir -p "$(dirname "$full_dest")"
+        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null; then
+            echo -e "  ${GREEN}OK${NC} $path"
+            INSTALLED_PATHS+=("$full_dest")
+        else
+            echo -e "  ${YELLOW}!!${NC} $path (download failed)"
+        fi
+    done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '
+        .files | to_entries[] |
+        .key as $b | .value[] |
+        { bucket: $b, path: .path,
+          skip: ([.path] | inside($skip)),
+          reason: ((.conflicts_with // []) | join(",")) }
+    ' "$MANIFEST_FILE")
+
+    # Download framework-specific extras (CLAUDE.md, settings.json, cheatsheets, experts)
+    echo ""
+    echo -e "${BLUE}📥 Framework extras...${NC}"
+    download_extras
+
+    # Persist install state (state.sh)
+    INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
+    SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
+    write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
+    release_lock
 }
 
 # Create .gitignore
