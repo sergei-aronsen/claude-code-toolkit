@@ -31,6 +31,22 @@ NC='\033[0m'
 
 CLAUDE_DIR=".claude"
 
+# ─────────────────────────────────────────────────
+# Phase 3 — DETECT-05 wiring (D-30 local form)
+# Source detect.sh and lib/install.sh from script-relative paths.
+# ─────────────────────────────────────────────────
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/detect.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/install.sh"
+
+# Manifest version guard (Phase 2 D-01)
+MANIFEST_VER=$(jq -r '.manifest_version' "$MANIFEST_FILE" 2>/dev/null || echo "")
+if [[ "$MANIFEST_VER" != "2" ]]; then
+    echo "ERROR: manifest.json has manifest_version=${MANIFEST_VER:-unknown}; this installer expects v2" >&2
+    exit 1
+fi
+
 # Flags
 DRY_RUN=false
 FRAMEWORK=""

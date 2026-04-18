@@ -45,6 +45,46 @@ done
 
 SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
 
+# ─────────────────────────────────────────────────
+# Phase 3 — DETECT-05 wiring (D-30, D-31)
+# Source detect.sh and lib/install.sh from the remote repo into temp files.
+# trap registered BEFORE curl so a failed download still cleans up the empty tmp file.
+# ─────────────────────────────────────────────────
+DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
+LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP"' EXIT
+
+if ! curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
+    exit 1
+fi
+if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/install.sh — aborting"
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$DETECT_TMP"
+# shellcheck source=/dev/null
+source "$LIB_INSTALL_TMP"
+
+# Manifest version guard (Phase 2 D-01 — hard-fail on schema mismatch). Uses manifest_version
+# field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
+# manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
+MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP"' EXIT
+if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
+    exit 1
+fi
+MANIFEST_VER=$(jq -r '.manifest_version' "$MANIFEST_TMP" 2>/dev/null || echo "")
+if [[ "$MANIFEST_VER" != "2" ]]; then
+    echo -e "${RED}✗${NC} manifest.json has manifest_version=${MANIFEST_VER:-unknown}; this installer expects v2"
+    exit 1
+fi
+# MANIFEST_FILE is consumed by Plan 03-02 (compute_skip_set) — silence shellcheck SC2034.
+# shellcheck disable=SC2034
+MANIFEST_FILE="$MANIFEST_TMP"
+
 # Detect framework automatically
 detect_framework() {
     if [[ -f "artisan" ]]; then
