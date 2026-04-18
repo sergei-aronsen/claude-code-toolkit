@@ -731,6 +731,8 @@ write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
 # B2: write_state does not accept a manifest_hash arg — post-process atomically.
 # This allows the next run's no-op check to compare manifest content hashes.
 STATE_TMP="${STATE_FILE}.tmp.$$"
+# Register STATE_TMP cleanup before writing so SIGKILL between jq and mv leaves no orphan.
+trap 'rm -f "$STATE_TMP"; release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
 jq --arg mh "$MANIFEST_HASH" '. + { manifest_hash: $mh }' "$STATE_FILE" > "$STATE_TMP"
 mv "$STATE_TMP" "$STATE_FILE"
 
