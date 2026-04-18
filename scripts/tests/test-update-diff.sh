@@ -106,7 +106,6 @@ scenario_new_file_auto_install() {
 
     TK_UPDATE_HOME="$SCR" \
       TK_UPDATE_LIB_DIR="$LIB_DIR" \
-      TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
       TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
       TK_UPDATE_FILE_SRC="$FILE_SRC" \
       HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -147,7 +146,6 @@ scenario_new_file_filtered_by_skip_set() {
 
     TK_UPDATE_HOME="$SCR" \
       TK_UPDATE_LIB_DIR="$LIB_DIR" \
-      TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
       TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
       TK_UPDATE_FILE_SRC="$FILE_SRC" \
       HAS_SP=true HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -196,7 +194,6 @@ scenario_removed_file_accept() {
 
     TK_UPDATE_HOME="$SCR" \
       TK_UPDATE_LIB_DIR="$LIB_DIR" \
-      TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
       TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
       TK_UPDATE_FILE_SRC="$FILE_SRC" \
       HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -242,7 +239,6 @@ scenario_removed_file_decline() {
 
     TK_UPDATE_HOME="$SCR" \
       TK_UPDATE_LIB_DIR="$LIB_DIR" \
-      TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
       TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
       TK_UPDATE_FILE_SRC="$FILE_SRC" \
       HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -308,8 +304,7 @@ scenario_modified_file_overwrite() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
-          TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+              TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           TK_UPDATE_FILE_SRC="$FILE_SRC" \
           HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" \
@@ -375,7 +370,6 @@ scenario_modified_file_keep() {
     # No /dev/tty in test env → fail-closed → 'N' → file unchanged
     TK_UPDATE_HOME="$SCR" \
       TK_UPDATE_LIB_DIR="$LIB_DIR" \
-      TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
       TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
       TK_UPDATE_FILE_SRC="$FILE_SRC" \
       HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
@@ -437,8 +431,7 @@ scenario_modified_file_diff() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
-          TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+              TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           TK_UPDATE_FILE_SRC="$FILE_SRC" \
           HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" \

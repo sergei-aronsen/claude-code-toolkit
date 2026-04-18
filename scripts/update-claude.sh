@@ -157,6 +157,98 @@ synthesize_v3_state() {
     write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" ""
 }
 
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-03 — helper functions
+# ─────────────────────────────────────────────────
+
+# compute_modified_actual
+# D-59 pre-dispatch: iterate MODIFIED_CANDIDATES; collect only paths where on-disk
+# sha256 differs from stored sha256. Pure read-only — no prompts, no side effects.
+# Consumes: $MODIFIED_CANDIDATES (JSON array), $STATE_JSON, $CLAUDE_DIR
+# Emits (stdout): JSON array of relative paths with real hash divergence.
+compute_modified_actual() {
+    local out="[]"
+    while IFS= read -r rel; do
+        [[ -z "$rel" ]] && continue
+        local stored actual local_path
+        local_path="$CLAUDE_DIR/$rel"
+        stored=$(jq -r --arg p "$rel" \
+            '.installed_files[] | select(.path == $p) | .sha256 // ""' \
+            <<<"$STATE_JSON")
+        # Pitfall 11: empty stored hash — unknown install-time state; skip
+        [[ -z "$stored" ]] && continue
+        [[ ! -f "$local_path" ]] && continue
+        actual=$(sha256_file "$local_path" 2>/dev/null || echo "")
+        [[ -z "$actual" ]] && continue
+        if [[ "$actual" != "$stored" ]]; then
+            out=$(jq --arg p "$rel" '. + [$p]' <<<"$out")
+        fi
+    done < <(jq -r '.[]' <<<"$MODIFIED_CANDIDATES")
+    printf '%s' "$out"
+}
+
+# is_update_noop
+# D-59: returns 0 (no-op) if all 5 conditions hold; 1 otherwise.
+# B2: compares manifest content hash, NOT toolkit version string.
+is_update_noop() {
+    [[ "$STATE_MODE" == "$RECOMMENDED" ]] || return 1
+    [[ "$(jq length <<<"$NEW_FILES")" -eq 0 ]] || return 1
+    [[ "$(jq length <<<"$REMOVED_FROM_MANIFEST")" -eq 0 ]] || return 1
+    [[ "$(jq length <<<"$MODIFIED_ACTUAL")" -eq 0 ]] || return 1
+    [[ "$(jq length <<<"$ADD_FROM_SWITCH_JSON")" -eq 0 ]] || return 1
+    [[ "$(jq length <<<"$REMOVED_BY_SWITCH_JSON")" -eq 0 ]] || return 1
+    # B2: STATE_VERSION is schema version (1); REMOTE_TOOLKIT_VERSION is "3.0.0" — they NEVER match.
+    # Compare manifest content hash instead.
+    [[ "$STATE_MANIFEST_HASH" == "$MANIFEST_HASH" ]] || return 1
+    return 0
+}
+
+# print_update_summary <backup_dir>
+# D-58: print four-group post-run summary (INSTALLED / UPDATED / SKIPPED / REMOVED).
+# Colors auto-disabled when stdout is not a tty (matches Phase 3 D-36 / Plan 03-02 ANSI pattern).
+print_update_summary() {
+    local backup_dir="$1"
+    local _G _C _Y _R _NC
+    if [ -t 1 ]; then
+        _G='\033[0;32m'; _C='\033[0;36m'; _Y='\033[1;33m'; _R='\033[0;31m'; _NC='\033[0m'
+    else
+        _G=''; _C=''; _Y=''; _R=''; _NC=''
+    fi
+    local n_ins n_upd n_skp n_rem
+    n_ins=${#INSTALLED_PATHS[@]}
+    n_upd=${#UPDATED_PATHS[@]}
+    n_skp=${#SKIPPED_PATHS[@]}
+    n_rem=${#REMOVED_PATHS[@]}
+
+    echo ""
+    echo "Update Summary"
+    echo "──────────────"
+    printf '%bINSTALLED %d%b\n' "$_G" "$n_ins" "$_NC"
+    for p in "${INSTALLED_PATHS[@]:-}"; do
+        [[ -z "$p" ]] && continue
+        printf '  %s (new in manifest)\n' "$p"
+    done
+    printf '%bUPDATED %d%b\n' "$_C" "$n_upd" "$_NC"
+    for p in "${UPDATED_PATHS[@]:-}"; do
+        [[ -z "$p" ]] && continue
+        printf '  %s (remote hash changed)\n' "$p"
+    done
+    printf '%bSKIPPED %d%b\n' "$_Y" "$n_skp" "$_NC"
+    for entry in "${SKIPPED_PATHS[@]:-}"; do
+        [[ -z "$entry" ]] && continue
+        # entry format: "path:reason" — render as "  path (reason)"
+        local rp rr
+        rp="${entry%%:*}"
+        rr="${entry#*:}"
+        printf '  %s (%s)\n' "$rp" "$rr"
+    done
+    printf '%bREMOVED %d%b (backed up to %s)\n' "$_R" "$n_rem" "$_NC" "$backup_dir"
+    for p in "${REMOVED_PATHS[@]:-}"; do
+        [[ -z "$p" ]] && continue
+        printf '  %s\n' "$p"
+    done
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -281,23 +373,7 @@ FRAMEWORK=$(detect_framework)
 log_info "Detected framework: ${CYAN}$FRAMEWORK${NC}"
 TEMPLATE_URL="$REPO_URL/templates/$FRAMEWORK"
 
-# REMOTE_VERSION alias for legacy summary block below (Plan 04-03 replaces the summary)
-REMOTE_VERSION="$REMOTE_TOOLKIT_VERSION"
-log_info "Remote version: ${CYAN}$REMOTE_VERSION${NC}"
-
-# Check local version
-LOCAL_VERSION="unknown"
-if [[ -f "$CLAUDE_DIR/.toolkit-version" ]]; then
-    LOCAL_VERSION=$(cat "$CLAUDE_DIR/.toolkit-version")
-fi
-log_info "Local version: ${CYAN}$LOCAL_VERSION${NC}"
-
-# Backup (legacy v3.x format — Plan 04-03 replaces with D-57 PID-suffix tree backup)
-if [[ -z "${TK_UPDATE_SKIP_LEGACY_BACKUP:-}" ]]; then
-    BACKUP_DIR=".claude-backup-$(date +%Y%m%d-%H%M%S)"
-    cp -r "$CLAUDE_DIR" "$BACKUP_DIR"
-    log_success "Backup created: $BACKUP_DIR"
-fi
+log_info "Remote version: ${CYAN}$REMOTE_TOOLKIT_VERSION${NC}"
 
 # ─────────────────────────────────────────────────
 # Phase 4 Plan 04-02 — UPDATE-02/03/04 manifest-driven diff + dispatch
@@ -334,6 +410,27 @@ NEW_FILES=$(jq -nc --argjson a "$(jq -c '.new' <<<"$DIFFS_JSON")" \
 REMOVED_FROM_MANIFEST=$(jq -c '.removed' <<<"$DIFFS_JSON")
 MODIFIED_CANDIDATES=$(jq -c '.modified_candidates' <<<"$DIFFS_JSON")
 
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-03 — D-59 no-op early-exit
+# Pre-dispatch read-only hash check to determine if anything actually changed.
+# ─────────────────────────────────────────────────
+MODIFIED_ACTUAL=$(compute_modified_actual)
+if is_update_noop; then
+    echo "Already up-to-date. Nothing to do."
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
+# Lock registered before backup; EXIT trap consolidates cleanup.
+# ─────────────────────────────────────────────────
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
+acquire_lock || exit 1
+
+BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
+cp -R "$CLAUDE_DIR" "$BACKUP_DIR"
+log_success "Backup created: $BACKUP_DIR"
+
 echo ""
 log_info "Updating toolkit files..."
 
@@ -343,10 +440,15 @@ while IFS= read -r rel; do
     dest="$CLAUDE_DIR/$rel"
     mkdir -p "$(dirname "$dest")"
     install_status=1
-    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production)
-    if [[ -n "${TK_UPDATE_FILE_SRC:-}" && -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
-        cp "$TK_UPDATE_FILE_SRC/$rel" "$dest"
-        install_status=$?
+    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production).
+    # When set, ONLY copy from the seam dir; never fall through to curl (hermetic boundary).
+    if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
+        if [[ -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
+            cp "$TK_UPDATE_FILE_SRC/$rel" "$dest"
+            install_status=$?
+        else
+            install_status=1  # missing from seam dir = treat as download failure
+        fi
     else
         if curl -sSLf "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
             install_status=0
@@ -445,9 +547,17 @@ prompt_modified_file() {
     fi
     # Modified — fetch remote for comparison/overwrite
     remote_tmp=$(mktemp "${TMPDIR:-/tmp}/remote.XXXXXX")
-    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production)
-    if [[ -n "${TK_UPDATE_FILE_SRC:-}" && -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
-        cp "$TK_UPDATE_FILE_SRC/$rel" "$remote_tmp"
+    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production).
+    # When set, ONLY copy from the seam dir; never fall through to curl (hermetic boundary).
+    if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
+        if [[ -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
+            cp "$TK_UPDATE_FILE_SRC/$rel" "$remote_tmp"
+        else
+            log_warning "Cannot fetch remote $rel for compare (not in TK_UPDATE_FILE_SRC); skipping"
+            rm -f "$remote_tmp"
+            SKIPPED_PATHS+=("$rel:remote_fetch_failed")
+            return 0
+        fi
     else
         if ! curl -sSLf "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
             log_warning "Cannot fetch remote $rel for compare; skipping"
@@ -480,7 +590,7 @@ prompt_modified_file() {
 while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
     prompt_modified_file "$rel"
-done < <(jq -r '.[]' <<<"$MODIFIED_CANDIDATES")
+done < <(jq -r '.[]' <<<"$MODIFIED_ACTUAL")
 
 # ============================================================================
 # SMART MERGE CLAUDE.md
@@ -586,39 +696,45 @@ else
     rm -f "$CLAUDE_MD_NEW"
 fi
 
-# ============================================================================
-# SAVE VERSION
-# ============================================================================
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-03 — persist final state atomically
+# ─────────────────────────────────────────────────
 
-echo "$REMOTE_VERSION" > "$CLAUDE_DIR/.toolkit-version"
+# Build the post-dispatch installed_files CSV (absolute paths so write_state hashes them).
+# Keep survivors from pre-run state minus anything removed this run,
+# then append newly installed paths.
+FINAL_INSTALLED_CSV=""
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    # skip if removed this run
+    if printf '%s\n' "${REMOVED_PATHS[@]:-}" | grep -Fxq "$rel"; then continue; fi
+    [[ -n "$FINAL_INSTALLED_CSV" ]] && FINAL_INSTALLED_CSV+=","
+    FINAL_INSTALLED_CSV+="$CLAUDE_DIR/$rel"
+done < <(jq -r '.installed_files[].path' <<<"$STATE_JSON")
+for rel in "${INSTALLED_PATHS[@]:-}"; do
+    [[ -z "$rel" ]] && continue
+    [[ -n "$FINAL_INSTALLED_CSV" ]] && FINAL_INSTALLED_CSV+=","
+    FINAL_INSTALLED_CSV+="$CLAUDE_DIR/$rel"
+done
 
-# ============================================================================
-# SUMMARY
-# ============================================================================
+# Build skipped CSV (entries already in path:reason form)
+FINAL_SKIPPED_CSV=""
+for entry in "${SKIPPED_PATHS[@]:-}"; do
+    [[ -z "$entry" ]] && continue
+    [[ -n "$FINAL_SKIPPED_CSV" ]] && FINAL_SKIPPED_CSV+=","
+    FINAL_SKIPPED_CSV+="$entry"
+done
 
-echo ""
-echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║         Update Complete!                                   ║${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo -e "Version: ${CYAN}$LOCAL_VERSION${NC} → ${CYAN}$REMOTE_VERSION${NC}"
-if [[ -z "${TK_UPDATE_SKIP_LEGACY_BACKUP:-}" ]]; then
-    echo -e "Backup:  ${CYAN}${BACKUP_DIR:-none}${NC}"
-fi
-echo ""
-echo -e "${YELLOW}What was updated:${NC}"
-echo "  • agents/       — subagent definitions"
-echo "  • prompts/      — audit templates"
-echo "  • skills/       — all framework skills (10 total)"
-echo "  • CLAUDE.md     — system sections (user sections preserved)"
-echo ""
-echo -e "${YELLOW}What was preserved:${NC}"
-echo "  • Project Overview, Structure, Commands"
-echo "  • Project-Specific Notes, Known Gotchas"
-echo "  • settings.json, settings.local.json"
-echo "  • rules/ content (if existed)"
-echo "  • skills/skill-rules.json (if existed)"
-echo ""
-echo -e "${CYAN}Changelog:${NC} https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/CHANGELOG.md"
+write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
+            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV"
+
+# B2: write_state does not accept a manifest_hash arg — post-process atomically.
+# This allows the next run's no-op check to compare manifest content hashes.
+STATE_TMP="${STATE_FILE}.tmp.$$"
+jq --arg mh "$MANIFEST_HASH" '. + { manifest_hash: $mh }' "$STATE_FILE" > "$STATE_TMP"
+mv "$STATE_TMP" "$STATE_FILE"
+
+print_update_summary "$BACKUP_DIR"
+
 echo ""
 echo -e "${YELLOW}⚠ Restart Claude Code to apply changes${NC}"

@@ -49,12 +49,16 @@ scenario_v3x_upgrade_path() {
     echo "DEBUG-CONTENT"  > "$SCR/.claude/commands/debug.md"
     echo "RULES-CONTENT"  > "$SCR/.claude/rules/README.md"
 
-    # Run update-claude.sh with no pre-existing state
+    # Run update-claude.sh with no pre-existing state.
+    # Use an empty file-src so downloads produce no extra installed files — makes
+    # the installed_files count deterministic (exactly 3 seeded files, all in manifest).
+    local EMPTY_SRC="$SCR/.empty-src"
+    mkdir -p "$EMPTY_SRC"
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+          TK_UPDATE_FILE_SRC="$EMPTY_SRC" \
           HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --no-offer-mode-switch 2>&1 || true)
 
@@ -65,7 +69,9 @@ scenario_v3x_upgrade_path() {
     assert_eq "standalone" "$synth_mode" "synthesized mode = standalone (no SP/GSD)"
     local synth_count
     synth_count=$(jq -r '.installed_files | length' "$SCR/.claude/toolkit-install.json" 2>/dev/null || echo "0")
-    # 3 files seeded, all are in manifest-update-v2.json -> synthesis picks up all 3
+    # 3 files seeded, all are in manifest-update-v2.json; empty file-src = no new downloads.
+    # Plan 04-03: write_state is called at end of update with final installed CSV,
+    # so count reflects post-update state (3 originals survive, 0 new downloads).
     assert_eq "3" "$synth_count" "installed_files records all seeded files"
 }
 
@@ -97,7 +103,6 @@ scenario_mode_drift_accept() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --offer-mode-switch=yes 2>&1 || true)
@@ -153,7 +158,6 @@ scenario_mode_drift_decline() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --offer-mode-switch=no 2>&1 || true)
@@ -192,7 +196,6 @@ scenario_mode_drift_curlbash() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --offer-mode-switch=interactive \
@@ -241,7 +244,6 @@ scenario_mode_switch_transaction_integrity() {
     local OUT
     OUT=$(TK_UPDATE_HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
-          TK_UPDATE_SKIP_LEGACY_BACKUP=1 \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
           bash "$REPO_ROOT/scripts/update-claude.sh" --no-banner --offer-mode-switch=yes 2>&1 || true)
