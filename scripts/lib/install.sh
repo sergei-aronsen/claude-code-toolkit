@@ -224,3 +224,23 @@ except Exception:
     raise
 PYEOF
 }
+
+# compute_file_diffs_obj <state_json> <manifest_path> <mode>
+# Stdout: ONE JSON object { new: [...], removed: [...], modified_candidates: [...] } describing:
+#   new                 = (manifest.files.*.path - state.installed_files[].path) - compute_skip_set(mode)
+#   removed             = state.installed_files[].path - manifest.files.*.path
+#   modified_candidates = state.installed_files[].path ∩ manifest.files.*.path
+# Returns 0 on success, 1 on unknown mode (compute_skip_set error forwarded).
+# Consumers parse via jq -c '.new' / '.removed' / '.modified_candidates'.
+# (Single-object form chosen over 3-line form per RESEARCH.md §Common Pitfalls: bash 3.2 safe, one fewer jq invocation.)
+compute_file_diffs_obj() {
+    local state_json="$1" manifest_path="$2" mode="$3"
+    local mp ip sp
+    mp=$(jq -c '[.files | to_entries[] | .value[] | .path]' "$manifest_path") || return 1
+    ip=$(jq -c '[.installed_files[].path]' <<<"$state_json")                  || return 1
+    sp=$(compute_skip_set "$mode" "$manifest_path")                             || return 1
+    jq -nc --argjson m "$mp" --argjson i "$ip" --argjson s "$sp" \
+         '{ new: (($m - $i) - $s),
+            removed: ($i - $m),
+            modified_candidates: [$i[] | select(. as $x | $m | index($x) != null)] }'
+}
