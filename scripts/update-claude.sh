@@ -547,6 +547,8 @@ prompt_modified_file() {
     fi
     # Modified — fetch remote for comparison/overwrite
     remote_tmp=$(mktemp "${TMPDIR:-/tmp}/remote.XXXXXX")
+    # shellcheck disable=SC2064  # intentional: variable captured at trap registration time
+    trap "rm -f '$remote_tmp'" RETURN
     # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production).
     # When set, ONLY copy from the seam dir; never fall through to curl (hermetic boundary).
     if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
@@ -554,14 +556,12 @@ prompt_modified_file() {
             cp "$TK_UPDATE_FILE_SRC/$rel" "$remote_tmp"
         else
             log_warning "Cannot fetch remote $rel for compare (not in TK_UPDATE_FILE_SRC); skipping"
-            rm -f "$remote_tmp"
             SKIPPED_PATHS+=("$rel:remote_fetch_failed")
             return 0
         fi
     else
         if ! curl -sSLf "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
             log_warning "Cannot fetch remote $rel for compare; skipping"
-            rm -f "$remote_tmp"
             SKIPPED_PATHS+=("$rel:remote_fetch_failed")
             return 0
         fi
@@ -575,13 +575,11 @@ prompt_modified_file() {
             y|Y)
                 cp "$remote_tmp" "$local_path"
                 UPDATED_PATHS+=("$rel")
-                rm -f "$remote_tmp"
                 return 0 ;;
             d|D)
                 diff -u "$local_path" "$remote_tmp" || true ;;
             *)
                 SKIPPED_PATHS+=("$rel:locally_modified")
-                rm -f "$remote_tmp"
                 return 0 ;;
         esac
     done
