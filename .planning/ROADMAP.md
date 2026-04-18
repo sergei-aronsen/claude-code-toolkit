@@ -101,7 +101,7 @@ Plans:
 
 Plans:
 
-- [ ] 04-01-PLAN.md — state load + v3.x synthesis + mode-drift detect + in-place mode-switch (UPDATE-01 / D-50/D-51/D-52) + Wave 0 test scaffolding
+- [x] 04-01-PLAN.md — state load + v3.x synthesis + mode-drift detect + in-place mode-switch (UPDATE-01 / D-50/D-51/D-52) + Wave 0 test scaffolding
 - [ ] 04-02-PLAN.md — manifest-driven iteration; new/removed/modified file handling; delete hand-lists at update-claude.sh:117-188 (UPDATE-02/03/04 / D-53/D-54/D-55/D-56)
 - [ ] 04-03-PLAN.md — tree backup <unix-ts>-<pid> + 4-group summary + no-op detection + rollback-update.md doc update (UPDATE-05/06 / D-57/D-58/D-59)
 
