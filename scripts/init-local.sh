@@ -22,13 +22,6 @@ else
     VERSION="unknown"
 fi
 
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
 CLAUDE_DIR=".claude"
 
 # ─────────────────────────────────────────────────
@@ -39,6 +32,34 @@ CLAUDE_DIR=".claude"
 source "$SCRIPT_DIR/detect.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/install.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/state.sh"
+
+# Colors (auto-disabled when stdout is not a tty, per D-36). Reassigned AFTER
+# all library sources because lib/state.sh + detect.sh + lib/install.sh define
+# their own RED/GREEN/YELLOW/BLUE/NC unconditionally.
+if [ -t 1 ]; then
+    # shellcheck disable=SC2034  # RED consumed by sourced libs on failure paths
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    NC='\033[0m'
+else
+    # shellcheck disable=SC2034
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    CYAN=''
+    NC=''
+fi
+# D-43: per-project state file (NOT global $HOME/.claude/...) — reassigned AFTER
+# source per RESEARCH.md Pitfall 7 (functions read $STATE_FILE at call time, not
+# at definition). Read by write_state / acquire_lock inside lib/state.sh.
+# shellcheck disable=SC2034  # consumed by write_state in lib/state.sh
+STATE_FILE=".claude/toolkit-install.json"
 
 # Manifest version guard (Phase 2 D-01)
 MANIFEST_VER=$(jq -r '.manifest_version' "$MANIFEST_FILE" 2>/dev/null || echo "")
@@ -50,6 +71,9 @@ fi
 # Flags
 DRY_RUN=false
 FRAMEWORK=""
+MODE=""
+FORCE=false
+FORCE_MODE_CHANGE=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -58,19 +82,30 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        --mode)
+            if [[ -z "${2:-}" ]]; then
+                echo "ERROR: --mode requires a value" >&2; exit 1
+            fi
+            MODE="$2"; shift 2 ;;
+        --force)             FORCE=true;             shift ;;
+        --force-mode-change) FORCE_MODE_CHANGE=true; shift ;;
         --version|-v)
             echo "claude-code-toolkit v$VERSION (local)"
             exit 0
             ;;
         --help|-h)
-            echo "Usage: init-local.sh [--dry-run] [framework]"
+            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [framework]"
             echo ""
             echo "Frameworks: laravel, nextjs, nodejs, python, go, rails, base"
+            echo "Modes: standalone, complement-sp, complement-gsd, complement-full"
             echo ""
             echo "Options:"
-            echo "  --dry-run    Show what would be created"
-            echo "  --version    Show version"
-            echo "  --help       Show this help"
+            echo "  --dry-run             Show what would be created"
+            echo "  --mode <name>         Override auto-recommended install mode"
+            echo "  --force               Re-install even if state file exists"
+            echo "  --force-mode-change   Bypass the mode-change confirmation prompt"
+            echo "  --version             Show version"
+            echo "  --help                Show this help"
             exit 0
             ;;
         -*)
@@ -83,6 +118,51 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Validate --mode value if provided (D-33). MODES is sourced from lib/install.sh.
+if [[ -n "$MODE" ]]; then
+    valid=false
+    # shellcheck disable=SC2153  # MODES is defined in lib/install.sh (sourced above)
+    for m in "${MODES[@]}"; do [[ "$m" == "$MODE" ]] && valid=true; done
+    if [[ "$valid" != "true" ]]; then
+        echo "ERROR: invalid --mode value: $MODE" >&2
+        echo "Valid modes: ${MODES[*]}" >&2
+        exit 1
+    fi
+fi
+
+# D-41 (per-project equivalent): re-run delegation
+if [[ -f ".claude/toolkit-install.json" ]] && [[ "$FORCE" != "true" ]]; then
+    echo "Install already present at .claude/. Use 'update-claude.sh' to refresh or 'init-local.sh --force' to reinstall."
+    exit 0
+fi
+
+# D-42: mode-change prompt (per-project). Fires only when re-installing (--force)
+# with explicit --mode that differs from the recorded mode. --force-mode-change
+# skips the prompt. Fails closed under curl|bash without /dev/tty.
+if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f ".claude/toolkit-install.json" ]]; then
+    RECORDED_MODE=$(jq -r '.mode // ""' ".claude/toolkit-install.json" 2>/dev/null || echo "")
+    if [[ -n "$RECORDED_MODE" ]] && [[ "$RECORDED_MODE" != "$MODE" ]]; then
+        if [[ "$FORCE_MODE_CHANGE" == "true" ]]; then
+            echo "Switching mode: $RECORDED_MODE -> $MODE (--force-mode-change)"
+            cp ".claude/toolkit-install.json" ".claude/toolkit-install.json.bak.$(date +%s)"
+        else
+            mc_choice=""
+            if ! read -r -p "Switching $RECORDED_MODE -> $MODE will rewrite the install. Backup current state and proceed? [y/N]: " mc_choice < /dev/tty 2>/dev/null; then
+                mc_choice=""
+            fi
+            case "${mc_choice:-N}" in
+                y|Y)
+                    cp ".claude/toolkit-install.json" ".claude/toolkit-install.json.bak.$(date +%s)"
+                    ;;
+                *)
+                    echo "Aborted. Pass --force-mode-change to bypass the prompt under curl|bash."
+                    exit 0
+                    ;;
+            esac
+        fi
+    fi
+fi
 
 echo -e "${BLUE}Claude Code Toolkit — Local Install v$VERSION${NC}"
 echo "======================================================"
@@ -115,7 +195,14 @@ fi
 TEMPLATE_PATH="$GUIDES_DIR/templates/$FRAMEWORK"
 BASE_PATH="$GUIDES_DIR/templates/base"
 
+# Mode selection: --mode wins; otherwise pick recommend_mode (per-project install
+# typically does not need the full interactive prompt that init-claude.sh provides).
+if [[ -z "$MODE" ]]; then
+    MODE=$(recommend_mode)
+fi
+
 echo -e "Detected framework: ${GREEN}$FRAMEWORK${NC}"
+echo -e "Install mode: ${GREEN}$MODE${NC}"
 echo ""
 
 # Helper: copy file with fallback to base template
@@ -140,22 +227,10 @@ copy_file() {
     fi
 }
 
-# Dry run mode
+# Dry-run mode: grouped [INSTALL]/[SKIP]/Total output from lib/install.sh.
+# Zero filesystem writes (MODE-06).
 if [ "$DRY_RUN" = true ]; then
-    echo -e "${CYAN}DRY RUN MODE — No changes will be made${NC}"
-    echo ""
-    echo "Would create:"
-    echo "  $CLAUDE_DIR/"
-    echo "  ├── prompts/      (7 audit templates)"
-    echo "  ├── commands/     (30 slash commands)"
-    echo "  ├── agents/       (4 subagent definitions)"
-    echo "  ├── skills/       (10 framework skills)"
-    echo "  ├── rules/        (auto-loaded project context)"
-    echo "  ├── cheatsheets/  (9 languages)"
-    echo "  └── scratchpad/   (working notes)"
-    echo ""
-    echo "Source: $TEMPLATE_PATH/"
-    echo -e "Run without ${CYAN}--dry-run${NC} to apply changes."
+    print_dry_run_grouped "$MANIFEST_FILE" "$MODE"
     exit 0
 fi
 
@@ -164,50 +239,54 @@ echo -e "${YELLOW}Creating directory structure...${NC}"
 mkdir -p "$CLAUDE_DIR"/{prompts,commands,agents,skills,rules,cheatsheets,scratchpad}
 
 # ============================================================================
-# PROMPTS
+# MANIFEST-DRIVEN INSTALL (MODE-04 + MODE-05)
 # ============================================================================
-echo ""
-echo -e "${BLUE}Copying prompts...${NC}"
-for template in SECURITY_AUDIT.md PERFORMANCE_AUDIT.md CODE_REVIEW.md \
-                DEPLOY_CHECKLIST.md DESIGN_REVIEW.md \
-                MYSQL_PERFORMANCE_AUDIT.md POSTGRES_PERFORMANCE_AUDIT.md; do
-    copy_file "prompts/$template" "prompts/$template"
-done
+# Compute skip-list and acquire lock. LOCK_DIR is global per state.sh, but
+# STATE_FILE was overridden above to the per-project location (D-43).
+SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
+acquire_lock || exit 1
+trap 'release_lock' EXIT
 
-# ============================================================================
-# AGENTS
-# ============================================================================
 echo ""
-echo -e "${BLUE}Copying agents...${NC}"
-for agent in code-reviewer.md test-writer.md planner.md security-auditor.md; do
-    copy_file "agents/$agent" "agents/$agent"
-done
+echo -e "${BLUE}Installing files (mode: $MODE)...${NC}"
 
-# ============================================================================
-# SKILLS
-# ============================================================================
-echo ""
-echo -e "${BLUE}Copying skills...${NC}"
-copy_file "skills/skill-rules.json" "skills/skill-rules.json"
-for skill in ai-models api-design database debugging docker i18n llm-patterns observability tailwind testing; do
-    copy_file "skills/$skill/SKILL.md" "skills/$skill/SKILL.md"
-done
-
-# ============================================================================
-# COMMANDS
-# ============================================================================
-echo ""
-echo -e "${BLUE}Copying commands...${NC}"
-for cmd in "$GUIDES_DIR/commands"/*.md; do
-    if [ -f "$cmd" ]; then
-        filename=$(basename "$cmd")
-        cp "$cmd" "$CLAUDE_DIR/commands/$filename"
-        echo -e "  ${GREEN}✓${NC} $filename"
+INSTALLED_PATHS=()
+SKIPPED_PATHS=()
+while IFS= read -r entry; do
+    path=$(jq -r '.path' <<< "$entry")
+    bucket=$(jq -r '.bucket' <<< "$entry")
+    skip=$(jq -r '.skip' <<< "$entry")
+    reason=$(jq -r '.reason' <<< "$entry")
+    if [[ "$skip" == "true" ]]; then
+        echo -e "  ${YELLOW}--${NC} $bucket/$path (skipped: conflicts_with:$reason)"
+        SKIPPED_PATHS+=("$bucket/$path:conflicts_with:$reason")
+        continue
     fi
-done
+    full_dest="$CLAUDE_DIR/$path"
+    src_local=""
+    # Prefer framework-specific template, then base, then repo root (mirrors copy_file fallback)
+    if [[ -f "$TEMPLATE_PATH/$path" ]]; then src_local="$TEMPLATE_PATH/$path"
+    elif [[ -f "$BASE_PATH/$path" ]];     then src_local="$BASE_PATH/$path"
+    elif [[ -f "$GUIDES_DIR/$path" ]];    then src_local="$GUIDES_DIR/$path"
+    fi
+    if [[ -n "$src_local" ]]; then
+        mkdir -p "$(dirname "$full_dest")"
+        cp "$src_local" "$full_dest"
+        echo -e "  ${GREEN}OK${NC} $path"
+        INSTALLED_PATHS+=("$full_dest")
+    else
+        echo -e "  ${YELLOW}!!${NC} $path (not found)"
+    fi
+done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '
+    .files | to_entries[] |
+    .key as $b | .value[] |
+    { bucket: $b, path: .path,
+      skip: ([.path] | inside($skip)),
+      reason: ((.conflicts_with // []) | join(",")) }
+' "$MANIFEST_FILE")
 
 # ============================================================================
-# CHEATSHEETS
+# CHEATSHEETS (not in manifest — always installed)
 # ============================================================================
 echo ""
 echo -e "${BLUE}Copying cheatsheets...${NC}"
@@ -218,17 +297,6 @@ for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
         echo -e "  ${GREEN}✓${NC} $filename"
     fi
 done
-
-# ============================================================================
-# RULES
-# ============================================================================
-echo ""
-echo -e "${BLUE}Setting up rules...${NC}"
-copy_file "rules/README.md" "rules/README.md"
-
-if [ ! -f "$CLAUDE_DIR/rules/project-context.md" ]; then
-    copy_file "rules/project-context.md" "rules/project-context.md"
-fi
 
 # Create lessons-learned seed file
 LESSONS_FILE="$CLAUDE_DIR/rules/lessons-learned.md"
@@ -285,6 +353,14 @@ if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
         echo -e "  ${GREEN}✓${NC} settings.json (base)"
     fi
 fi
+
+# ============================================================================
+# STATE (per-project STATE_FILE was overridden above to .claude/toolkit-install.json)
+# ============================================================================
+INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
+SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
+write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
+release_lock
 
 # ============================================================================
 # SUMMARY
