@@ -97,7 +97,13 @@ Plans:
   3. A file removed from manifest.json since last install is detected and offered for deletion with backup and confirmation
   4. Post-update summary shows exactly four groups: INSTALLED N, UPDATED M, SKIPPED P (with reason per file), REMOVED Q (backed up to path)
   5. Running update twice in the same second does not produce a naming collision in backup dirs
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 04-01-PLAN.md — state load + v3.x synthesis + mode-drift detect + in-place mode-switch (UPDATE-01 / D-50/D-51/D-52) + Wave 0 test scaffolding
+- [ ] 04-02-PLAN.md — manifest-driven iteration; new/removed/modified file handling; delete hand-lists at update-claude.sh:117-188 (UPDATE-02/03/04 / D-53/D-54/D-55/D-56)
+- [ ] 04-03-PLAN.md — tree backup <unix-ts>-<pid> + 4-group summary + no-op detection + rollback-update.md doc update (UPDATE-05/06 / D-57/D-58/D-59)
 
 ### Phase 5: Migration
 **Goal**: Existing v3.x users with SP or GSD installed can safely remove duplicate TK files via a dedicated migration script that shows a three-way diff, backs up everything first, and requires per-file confirmation
@@ -145,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Pre-work Bug Fixes | 7/7 | Complete | 2026-04-17 |
 | 2. Foundation | 0/3 | Planned | - |
 | 3. Install Flow | 0/3 | Planned | - |
-| 4. Update Flow | 0/TBD | Not started | - |
+| 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/TBD | Not started | - |
 | 6. Documentation | 0/TBD | Not started | - |
 | 7. Validation | 0/TBD | Not started | - |
