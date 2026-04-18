@@ -3,7 +3,7 @@
 # Claude Code Toolkit — Install Flow Library
 # Source this file. Do NOT execute it directly.
 # Exposes: MODES, recommend_mode, compute_skip_set, print_dry_run_grouped,
-#          backup_settings_once
+#          backup_settings_once, merge_settings_python, merge_plugins_python
 # Globals: TK_SETTINGS_BACKUP (set by backup_settings_once on first call per run)
 #
 # IMPORTANT: No errexit/pipefail — sourced libraries must not alter caller error mode.
@@ -122,4 +122,105 @@ print_dry_run_grouped() {
 
     echo ""
     echo "Total: $install_count install, $skip_count skip"
+}
+
+# merge_settings_python <settings_path> <hook_command>
+# Atomic merge of a TK-owned PreToolUse Bash hook into settings.json.
+# - Reads existing JSON via json.load
+# - Partitions PreToolUse entries by _tk_owned marker (D-38)
+# - Preserves foreign entries verbatim (SAFETY-02 / D-39 append-both)
+# - Replaces existing TK entry in place on re-run (idempotent)
+# - Atomic write via tempfile.mkstemp + os.replace (SAFETY-01 / D-37)
+# - Honors TK_TEST_INJECT_FAILURE=1 for test 8c (raises RuntimeError before write)
+# Returns: 0 on success, non-zero on python3 failure (caller should restore from $TK_SETTINGS_BACKUP).
+merge_settings_python() {
+    local settings_path="$1" hook_command="$2"
+    python3 - "$settings_path" "$hook_command" <<'PYEOF'
+import json, os, sys, tempfile
+
+settings_path, hook_command = sys.argv[1], sys.argv[2]
+
+# Test hook for SAFETY-03 / scenario 8c — fail BEFORE any write
+if os.environ.get('TK_TEST_INJECT_FAILURE'):
+    raise RuntimeError("injected failure for test 8c")
+
+# Read existing settings; create skeleton if missing (TK invoked on a fresh ~/.claude/)
+if os.path.exists(settings_path):
+    with open(settings_path, 'r') as f:
+        config = json.load(f)
+else:
+    config = {}
+
+# Partition existing PreToolUse entries by _tk_owned marker (D-38)
+existing = config.get('hooks', {}).get('PreToolUse', [])
+foreign_entries = [e for e in existing if not e.get('_tk_owned')]
+
+# Build the new TK entry; marker invisible to Claude Code hook execution (RESEARCH Option A)
+new_tk_entry = {
+    'matcher': 'Bash',
+    '_tk_owned': True,
+    'hooks': [{'type': 'command', 'command': hook_command}],
+}
+
+# Append-both policy (D-39): foreign entries first (fire first in array order), TK last
+config.setdefault('hooks', {})['PreToolUse'] = foreign_entries + [new_tk_entry]
+
+# Atomic write (D-37): mkstemp on same filesystem as target -> rename(2) is atomic on POSIX
+out_dir = os.path.dirname(os.path.abspath(settings_path)) or '.'
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix='settings.', suffix='.tmp')
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
+}
+
+# merge_plugins_python <settings_path> <plugin_csv>
+# Same atomic merge for enabledPlugins; preserves existing entries; only ADDS missing plugins.
+# plugin_csv format: "name1@scope,name2@scope,..."
+# Honors TK_TEST_INJECT_FAILURE=1 for symmetry with merge_settings_python.
+merge_plugins_python() {
+    local settings_path="$1" plugin_csv="$2"
+    python3 - "$settings_path" "$plugin_csv" <<'PYEOF'
+import json, os, sys, tempfile
+
+settings_path, plugin_csv = sys.argv[1], sys.argv[2]
+
+if os.environ.get('TK_TEST_INJECT_FAILURE'):
+    raise RuntimeError("injected failure for test 8c (plugins)")
+
+if os.path.exists(settings_path):
+    with open(settings_path, 'r') as f:
+        config = json.load(f)
+else:
+    config = {}
+
+config.setdefault('enabledPlugins', {})
+for plugin in [p.strip() for p in plugin_csv.split(',') if p.strip()]:
+    if plugin not in config['enabledPlugins']:
+        config['enabledPlugins'][plugin] = True
+
+out_dir = os.path.dirname(os.path.abspath(settings_path)) or '.'
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix='settings.', suffix='.tmp')
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
 }
