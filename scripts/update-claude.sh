@@ -154,7 +154,7 @@ synthesize_v3_state() {
         fi
     done < <(jq -r '.files | to_entries[] | .value[] | .path' "$manifest_file")
     log_info "First update after v3.x — synthesized install state from filesystem (mode=$mode)."
-    write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" ""
+    write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" "" "true"
 }
 
 # ─────────────────────────────────────────────────
@@ -288,6 +288,24 @@ STATE_VERSION=$(jq -r '.version // "unknown"' <<<"$STATE_JSON")
 # B2: manifest content hash from prior run — absent on freshly-synthesized v3.x state
 # shellcheck disable=SC2034  # STATE_MANIFEST_HASH consumed by Plan 04-03 is_update_noop condition
 STATE_MANIFEST_HASH=$(jq -r '.manifest_hash // "unknown"' <<<"$STATE_JSON")
+
+# ─────────────────────────────────────────────────
+# Phase 5 Plan 05-01 — D-77 migrate hint (standalone + SP/GSD present + duplicate on disk)
+# Read-only probe. No state mutation, no exit. Normal update flow continues below.
+# ─────────────────────────────────────────────────
+if [[ "$STATE_MODE" == "standalone" && \
+      ( "$HAS_SP" == "true" || "$HAS_GSD" == "true" ) ]]; then
+    _HINT_HIT=false
+    _HINT_SKIP_JSON=$(compute_skip_set "$(recommend_mode)" "$MANIFEST_TMP")
+    while IFS= read -r _rel; do
+        [[ -z "$_rel" ]] && continue
+        if [[ -f "$CLAUDE_DIR/$_rel" ]]; then _HINT_HIT=true; break; fi
+    done < <(jq -r '.[]' <<<"$_HINT_SKIP_JSON")
+    if [[ "$_HINT_HIT" == "true" ]]; then
+        echo -e "${CYAN}ℹ${NC} Legacy duplicates detected (SP/GSD installed, mode=standalone). Run: ./scripts/migrate-to-complement.sh"
+    fi
+    unset _HINT_HIT _HINT_SKIP_JSON _rel
+fi
 
 # ─────────────────────────────────────────────────
 # Phase 4 Plan 04-01 — D-51 drift detect + D-52 in-place mode switch
