@@ -42,13 +42,14 @@ read_state() {
 
 write_state() {
     local mode="$1" has_sp="$2" sp_ver="$3" has_gsd="$4" gsd_ver="$5"
-    local installed_csv="$6" skipped_csv="$7"
+    local installed_csv="$6" skipped_csv="$7" synth_flag="${8:-false}"
     mkdir -p "$(dirname "$STATE_FILE")"
-    python3 - "$mode" "$has_sp" "$sp_ver" "$has_gsd" "$gsd_ver" "$installed_csv" "$skipped_csv" "$STATE_FILE" <<'PYEOF'
+    python3 - "$mode" "$has_sp" "$sp_ver" "$has_gsd" "$gsd_ver" \
+             "$installed_csv" "$skipped_csv" "$synth_flag" "$STATE_FILE" <<'PYEOF'
 import json, os, sys, tempfile, hashlib
 from datetime import datetime, timezone
 
-mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, state_path = sys.argv[1:9]
+mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, synth_flag, state_path = sys.argv[1:10]
 
 def sha256(p):
     with open(p, "rb") as f:
@@ -83,8 +84,9 @@ if skipped_csv:
             skipped.append({"path": entry, "reason": ""})
 
 state = {
-    "version": 1,
+    "version": 2,
     "mode": mode,
+    "synthesized_from_filesystem": synth_flag == "true",
     "detected": {
         "superpowers": {"present": has_sp == "true", "version": sp_ver},
         "gsd":         {"present": has_gsd == "true", "version": gsd_ver},
