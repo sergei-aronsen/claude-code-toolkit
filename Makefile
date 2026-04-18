@@ -90,6 +90,9 @@ test:
 	@echo "Test 13: migrate full flow (accept/decline/partial/lock/backup-fail)"
 	@bash scripts/tests/test-migrate-flow.sh
 	@echo ""
+	@echo "Test 14: migrate idempotence + self-heal"
+	@bash scripts/tests/test-migrate-idempotent.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)

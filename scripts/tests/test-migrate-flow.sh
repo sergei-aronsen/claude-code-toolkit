@@ -32,6 +32,7 @@ assert_eq() {
     fi
 }
 
+# shellcheck disable=SC2329  # kept for parity with test-migrate-diff.sh helper surface; may be used by future scenarios
 assert_contains() {
     local needle="$1" haystack="$2" msg="$3"
     if echo "$haystack" | grep -q -- "$needle"; then
