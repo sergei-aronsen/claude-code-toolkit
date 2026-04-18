@@ -336,8 +336,10 @@ execute_mode_switch() {
 
     # shellcheck disable=SC2034  # ADD_FROM_SWITCH_JSON consumed by Plan 04-02 download loop
     ADD_FROM_SWITCH_JSON="$files_to_add"
+    # Normalize to relative paths (strip CLAUDE_DIR/ prefix) so REMOVED_PATHS guard at
+    # FINAL_INSTALLED_CSV builder uses consistent relative-path comparison (WR-02).
     # shellcheck disable=SC2034  # REMOVED_BY_SWITCH_JSON consumed by Plan 04-03 summary
-    REMOVED_BY_SWITCH_JSON="$files_to_remove_abs"
+    REMOVED_BY_SWITCH_JSON=$(jq -c --arg base "$CLAUDE_DIR/" '[.[] | ltrimstr($base)]' <<<"$files_to_remove_abs")
     STATE_MODE="$new_mode"
 
     # Update in-memory STATE_JSON: update mode and remove switched-out files
