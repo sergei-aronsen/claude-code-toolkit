@@ -81,9 +81,9 @@ Plans:
 
 Plans:
 
-- [ ] 03-01-PLAN.md — DETECT-05 wiring (init/update scripts source detect.sh) + scripts/lib/install.sh skeleton
-- [ ] 03-02-PLAN.md — MODE-01..06 (--mode flag, interactive prompt, jq skip-list, dry-run grouped output, init-local parity, mode-change prompt)
-- [ ] 03-03-PLAN.md — SAFETY-01..04 (atomic settings.json merge, _tk_owned marker, append-both hook policy, one-time backup, restore-on-failure)
+- [x] 03-01-PLAN.md — DETECT-05 wiring (init/update scripts source detect.sh) + scripts/lib/install.sh skeleton
+- [x] 03-02-PLAN.md — MODE-01..06 (--mode flag, interactive prompt, jq skip-list, dry-run grouped output, init-local parity, mode-change prompt)
+- [x] 03-03-PLAN.md — SAFETY-01..04 (atomic settings.json merge, _tk_owned marker, append-both hook policy, one-time backup, restore-on-failure)
 
 **UI hint**: no
 
