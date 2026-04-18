@@ -114,27 +114,11 @@ validate:
 			exit 1; \
 		fi; \
 		echo "✅ Version aligned: $$MANIFEST_VER"
-	@ERRORS=0; \
-		MANIFEST_CMDS=$$(grep '"commands/' manifest.json | sed 's|.*"commands/\([^"]*\)".*|\1|'); \
-		LOOP_LINE=$$(awk '/mkdir -p "\$$CLAUDE_DIR\/commands"/{getline; print; exit}' scripts/update-claude.sh); \
-		LOOP_CMDS=$$(echo "$$LOOP_LINE" | sed 's/.*for file in //; s/; do.*//'); \
-		for cmd in $$LOOP_CMDS; do \
-			if ! echo "$$MANIFEST_CMDS" | grep -qx "$$cmd"; then \
-				echo "❌ update-claude.sh lists '$$cmd' not in manifest.json files.commands"; \
-				ERRORS=$$((ERRORS + 1)); \
-			fi; \
-		done; \
-		for cmd in $$MANIFEST_CMDS; do \
-			if ! echo "$$LOOP_CMDS" | tr ' ' '\n' | grep -qx "$$cmd"; then \
-				echo "❌ manifest.json files.commands has '$$cmd' missing from update-claude.sh loop"; \
-				ERRORS=$$((ERRORS + 1)); \
-			fi; \
-		done; \
-		if [ $$ERRORS -gt 0 ]; then \
-			echo "Found $$ERRORS commands drift errors"; \
-			exit 1; \
-		fi; \
-		echo "✅ update-claude.sh commands match manifest.json"
+	@if ! grep -q 'compute_file_diffs_obj' scripts/update-claude.sh; then \
+		echo "❌ update-claude.sh does not source compute_file_diffs_obj — manifest-driven path missing"; \
+		exit 1; \
+	fi
+	@echo "✅ update-claude.sh is manifest-driven (no hand-maintained file lists)"
 	@echo "✅ All templates valid"
 	@echo "Validating manifest.json schema..."
 	@python3 scripts/validate-manifest.py

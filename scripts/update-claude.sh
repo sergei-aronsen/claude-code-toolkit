@@ -10,12 +10,16 @@ set -euo pipefail
 # ─────────────────────────────────────────────────
 NO_BANNER=0
 OFFER_MODE_SWITCH="interactive"
+PRUNE_MODE="interactive"
 for arg in "$@"; do
     case "$arg" in
         --no-banner) NO_BANNER=1 ;;
-        --offer-mode-switch=yes)                      OFFER_MODE_SWITCH="yes" ;;
+        --offer-mode-switch=yes)                       OFFER_MODE_SWITCH="yes" ;;
         --offer-mode-switch=no|--no-offer-mode-switch) OFFER_MODE_SWITCH="no" ;;
-        --offer-mode-switch=interactive)              OFFER_MODE_SWITCH="interactive" ;;
+        --offer-mode-switch=interactive)               OFFER_MODE_SWITCH="interactive" ;;
+        --prune=yes)                                   PRUNE_MODE="yes" ;;
+        --prune=no|--no-prune)                         PRUNE_MODE="no" ;;
+        --prune=interactive)                           PRUNE_MODE="interactive" ;;
         *) ;;
     esac
 done
@@ -275,6 +279,7 @@ fi
 # Detect framework
 FRAMEWORK=$(detect_framework)
 log_info "Detected framework: ${CYAN}$FRAMEWORK${NC}"
+TEMPLATE_URL="$REPO_URL/templates/$FRAMEWORK"
 
 # REMOTE_VERSION alias for legacy summary block below (Plan 04-03 replaces the summary)
 REMOTE_VERSION="$REMOTE_TOOLKIT_VERSION"
@@ -294,80 +299,178 @@ if [[ -z "${TK_UPDATE_SKIP_LEGACY_BACKUP:-}" ]]; then
     log_success "Backup created: $BACKUP_DIR"
 fi
 
-TEMPLATE_URL="$REPO_URL/templates/$FRAMEWORK"
+# ─────────────────────────────────────────────────
+# Phase 4 Plan 04-02 — UPDATE-02/03/04 manifest-driven diff + dispatch
+# TK_UPDATE_FILE_SRC: test seam — when set, reads file content from local dir instead of curl.
+#                     NEVER set in production; CI/test use only.
+# ─────────────────────────────────────────────────
 
-# ============================================================================
-# UPDATE FILES (agents, prompts, skills, commands, rules)
-# ============================================================================
+# Accumulator arrays (consumed by Plan 04-03 summary printer)
+# shellcheck disable=SC2034  # consumed by Plan 04-03 summary printer
+INSTALLED_PATHS=()
+# shellcheck disable=SC2034  # consumed by Plan 04-03 summary printer
+UPDATED_PATHS=()
+# shellcheck disable=SC2034  # consumed by Plan 04-03 summary printer
+SKIPPED_PATHS=()    # entries are "path:reason" strings
+# shellcheck disable=SC2034  # consumed by Plan 04-03 summary printer
+REMOVED_PATHS=()
+
+DIFFS_JSON=$(compute_file_diffs_obj "$STATE_JSON" "$MANIFEST_TMP" "$STATE_MODE")
+
+# Merge switch-staged additions into NEW_FILES (deduped)
+NEW_FILES=$(jq -nc --argjson a "$(jq -c '.new' <<<"$DIFFS_JSON")" \
+                     --argjson b "$ADD_FROM_SWITCH_JSON" \
+                     '[($a + $b) | unique | .[]]')
+REMOVED_FROM_MANIFEST=$(jq -c '.removed' <<<"$DIFFS_JSON")
+MODIFIED_CANDIDATES=$(jq -c '.modified_candidates' <<<"$DIFFS_JSON")
 
 echo ""
 log_info "Updating toolkit files..."
 
-# Agents
-for file in agents/code-reviewer.md agents/planner.md agents/security-auditor.md agents/test-writer.md; do
-    mkdir -p "$CLAUDE_DIR/$(dirname "$file")"
-    if curl -sSL "$TEMPLATE_URL/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
-        log_success "Updated: $file"
+# ── New files (D-54) — auto-install silently ──
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    dest="$CLAUDE_DIR/$rel"
+    mkdir -p "$(dirname "$dest")"
+    install_status=1
+    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production)
+    if [[ -n "${TK_UPDATE_FILE_SRC:-}" && -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/$rel" "$dest"
+        install_status=$?
     else
-        # Try base template
-        if curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
-            log_success "Updated: $file (from base)"
+        if curl -sSLf "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
+            install_status=0
         else
-            log_warning "Skipped: $file"
+            install_status=1
         fi
     fi
-done
-
-# Prompts
-for file in prompts/CODE_REVIEW.md prompts/DEPLOY_CHECKLIST.md prompts/DESIGN_REVIEW.md \
-            prompts/MYSQL_PERFORMANCE_AUDIT.md prompts/PERFORMANCE_AUDIT.md \
-            prompts/POSTGRES_PERFORMANCE_AUDIT.md prompts/SECURITY_AUDIT.md; do
-    mkdir -p "$CLAUDE_DIR/$(dirname "$file")"
-    if curl -sSL "$TEMPLATE_URL/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
-        log_success "Updated: $file"
+    if [[ $install_status -eq 0 ]]; then
+        INSTALLED_PATHS+=("$rel")
+        log_success "Installed: $rel"
     else
-        if curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null; then
-            log_success "Updated: $file (from base)"
-        else
-            log_warning "Skipped: $file"
-        fi
+        log_warning "Download failed: $rel"
+        SKIPPED_PATHS+=("$rel:download_failed")
     fi
-done
+done < <(jq -r '.[]' <<<"$NEW_FILES")
 
-# Skills
-for skill in ai-models api-design database debugging docker i18n llm-patterns observability tailwind testing; do
-    mkdir -p "$CLAUDE_DIR/skills/$skill"
-    if curl -sSL "$REPO_URL/templates/base/skills/$skill/SKILL.md" -o "$CLAUDE_DIR/skills/$skill/SKILL.md" 2>/dev/null; then
-        log_success "Updated: skills/$skill/SKILL.md"
-    else
-        log_warning "Skipped: skills/$skill/SKILL.md"
-    fi
-done
+# ── Skip-set tracking (W2 fix: only paths that WOULD be new but are filtered by mode) ──
+# Formula: (manifest - installed) ∩ skip_set  i.e. would-be-new files filtered out by mode.
+# Previously-installed files in skip_set are handled by the removed-files path, not here.
+SKIP_SET_JSON=$(compute_skip_set "$STATE_MODE" "$MANIFEST_TMP")
+MANIFEST_FILES_JSON=$(jq -c '[.files | to_entries[] | .value[] | .path]' "$MANIFEST_TMP")
+INSTALLED_PATHS_JSON=$(jq -c '[.installed_files[].path]' <<<"$STATE_JSON")
+SKIPPED_BY_MODE_JSON=$(jq -nc \
+    --argjson manifest "$MANIFEST_FILES_JSON" \
+    --argjson installed "$INSTALLED_PATHS_JSON" \
+    --argjson skipset "$SKIP_SET_JSON" \
+    '($manifest - $installed) - (($manifest - $installed) - $skipset)')
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    reason=$(jq -r --arg p "$rel" '
+        .files | to_entries[] | .value[] | select(.path == $p) |
+        (.conflicts_with // [] | join(","))
+    ' "$MANIFEST_TMP")
+    SKIPPED_PATHS+=("$rel:conflicts_with:${reason:-unknown}")
+done < <(jq -r '.[]' <<<"$SKIPPED_BY_MODE_JSON")
 
-# Don't overwrite skill-rules.json if exists (user customizations)
-if [[ ! -f "$CLAUDE_DIR/skills/skill-rules.json" ]]; then
-    curl -sSL "$REPO_URL/templates/base/skills/skill-rules.json" -o "$CLAUDE_DIR/skills/skill-rules.json" 2>/dev/null && \
-        log_success "Created: skills/skill-rules.json"
+# ── Removed files (D-55) — batch prompt ──
+REMOVED_COUNT=$(jq length <<<"$REMOVED_FROM_MANIFEST")
+if [[ "$REMOVED_COUNT" -gt 0 ]]; then
+    echo "The following files were removed from manifest.json since last install:"
+    jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST" | sed 's/^/  /'
+    local_prune_decision="N"
+    case "$PRUNE_MODE" in
+        yes) local_prune_decision="y" ;;
+        no)  local_prune_decision="N" ;;
+        interactive)
+            if ! read -r -p "Delete $REMOVED_COUNT files removed from manifest? [y/N]: " local_prune_decision < /dev/tty 2>/dev/null; then
+                local_prune_decision="N"
+            fi
+            ;;
+    esac
+    case "${local_prune_decision:-N}" in
+        y|Y)
+            while IFS= read -r rel; do
+                [[ -z "$rel" ]] && continue
+                if [[ -f "$CLAUDE_DIR/$rel" ]]; then
+                    rm -f "$CLAUDE_DIR/$rel"
+                    REMOVED_PATHS+=("$rel")
+                fi
+            done < <(jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST")
+            ;;
+        *)
+            while IFS= read -r rel; do
+                [[ -z "$rel" ]] && continue
+                SKIPPED_PATHS+=("$rel:removal_declined")
+            done < <(jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST")
+            ;;
+    esac
 fi
 
-# Commands
-mkdir -p "$CLAUDE_DIR/commands"
-for file in api.md audit.md checkpoint.md context-prime.md council.md debug.md deploy.md design.md deps.md doc.md docker.md e2e.md explain.md find-function.md find-script.md fix-prod.md fix.md handoff.md helpme.md learn.md migrate.md perf.md plan.md refactor.md rollback-update.md tdd.md test.md update-toolkit.md verify.md worktree.md; do
-    if curl -sSL "$REPO_URL/commands/$file" -o "$CLAUDE_DIR/commands/$file" 2>/dev/null; then
-        log_success "Updated: commands/$file"
-    else
-        log_warning "Skipped: commands/$file"
-    fi
-done
+# Mode-switch-removed files already deleted on disk by Plan 04-01's execute_mode_switch;
+# surface them in the summary (they belong in REMOVED_PATHS per D-58).
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    REMOVED_PATHS+=("$rel")
+done < <(jq -r '.[]' <<<"$REMOVED_BY_SWITCH_JSON")
 
-# Rules templates (don't overwrite if exists)
-mkdir -p "$CLAUDE_DIR/rules"
-for file in rules/README.md rules/project-context.md; do
-    if [[ ! -f "$CLAUDE_DIR/$file" ]]; then
-        curl -sSL "$REPO_URL/templates/base/$file" -o "$CLAUDE_DIR/$file" 2>/dev/null && \
-            log_success "Created: $file"
+# ── Modified files (D-56) — per-file [y/N/d] prompt ──
+prompt_modified_file() {
+    local rel="$1" local_path remote_tmp stored actual
+    local_path="$CLAUDE_DIR/$rel"
+    stored=$(jq -r --arg p "$rel" '.installed_files[] | select(.path == $p) | .sha256 // ""' <<<"$STATE_JSON")
+    # Pitfall 11: empty stored hash = unknown install-time state -> skip silently
+    if [[ -z "$stored" ]]; then
+        return 0
     fi
-done
+    # Missing on disk — state thinks it's installed but file is gone; don't prompt
+    if [[ ! -f "$local_path" ]]; then
+        SKIPPED_PATHS+=("$rel:missing_on_disk")
+        return 0
+    fi
+    actual=$(sha256_file "$local_path") || { SKIPPED_PATHS+=("$rel:hash_failed"); return 0; }
+    # Identical — no action, no log
+    if [[ "$actual" == "$stored" ]]; then
+        return 0
+    fi
+    # Modified — fetch remote for comparison/overwrite
+    remote_tmp=$(mktemp "${TMPDIR:-/tmp}/remote.XXXXXX")
+    # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production)
+    if [[ -n "${TK_UPDATE_FILE_SRC:-}" && -f "$TK_UPDATE_FILE_SRC/$rel" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/$rel" "$remote_tmp"
+    else
+        if ! curl -sSLf "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
+            log_warning "Cannot fetch remote $rel for compare; skipping"
+            rm -f "$remote_tmp"
+            SKIPPED_PATHS+=("$rel:remote_fetch_failed")
+            return 0
+        fi
+    fi
+    while :; do
+        local choice=""
+        if ! read -r -p "File $rel modified locally. Overwrite? [y/N/d]: " choice < /dev/tty 2>/dev/null; then
+            choice="N"
+        fi
+        case "${choice:-N}" in
+            y|Y)
+                cp "$remote_tmp" "$local_path"
+                UPDATED_PATHS+=("$rel")
+                rm -f "$remote_tmp"
+                return 0 ;;
+            d|D)
+                diff -u "$local_path" "$remote_tmp" || true ;;
+            *)
+                SKIPPED_PATHS+=("$rel:locally_modified")
+                rm -f "$remote_tmp"
+                return 0 ;;
+        esac
+    done
+}
+
+while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    prompt_modified_file "$rel"
+done < <(jq -r '.[]' <<<"$MODIFIED_CANDIDATES")
 
 # ============================================================================
 # SMART MERGE CLAUDE.md
