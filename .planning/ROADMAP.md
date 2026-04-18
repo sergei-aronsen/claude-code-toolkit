@@ -120,7 +120,7 @@ Plans:
 Plans:
 
 - [x] 05-01-PLAN.md — state schema v2 (synthesized_from_filesystem) + manifest sp_equivalent escape hatch (D-71, 6 of 7 SP duplicates) + update-claude.sh D-77 migrate hint + test-update-drift.sh hint scenario
-- [ ] 05-02-PLAN.md — migrate-to-complement.sh core: three-way diff (D-70/D-71/D-72) + two-signal user-mod detection (D-73) + [y/N/d] prompt (D-74) + full backup (MIGRATE-04) + Test 12 diff harness + fixtures
+- [x] 05-02-PLAN.md — migrate-to-complement.sh core: three-way diff (D-70/D-71/D-72) + two-signal user-mod detection (D-73) + [y/N/d] prompt (D-74) + full backup (MIGRATE-04) + Test 12 diff harness + fixtures
 - [ ] 05-03-PLAN.md — lock acquisition + idempotence early-exit (D-78) + state rewrite (MIGRATE-05/D-79) + four-group summary + Tests 13 (flow) and 14 (idempotent)
 
 ### Phase 6: Documentation
