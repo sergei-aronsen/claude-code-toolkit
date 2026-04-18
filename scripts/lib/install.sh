@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# Claude Code Toolkit — Install Flow Library
+# Source this file. Do NOT execute it directly.
+# Exposes: MODES, recommend_mode, compute_skip_set, print_dry_run_grouped,
+#          backup_settings_once
+# Globals: TK_SETTINGS_BACKUP (set by backup_settings_once on first call per run)
+#
+# IMPORTANT: No errexit/pipefail — sourced libraries must not alter caller error mode.
+#            All diagnostics go to stderr (>&2). Functions returning values use stdout.
+
+# shellcheck disable=SC2034
+RED='\033[0;31m'
+# shellcheck disable=SC2034
+YELLOW='\033[1;33m'
+# shellcheck disable=SC2034
+NC='\033[0m'
+
+# Mode constants (D-33). Order matches the interactive prompt 1..4 in init-claude.sh.
+MODES=("standalone" "complement-sp" "complement-gsd" "complement-full")
+
+# recommend_mode — pure function over $HAS_SP and $HAS_GSD (set by detect.sh).
+# Stdout: one of the four mode strings.
+recommend_mode() {
+    if   [[ "${HAS_SP:-false}"  == "true" && "${HAS_GSD:-false}" == "true" ]]; then echo "complement-full"
+    elif [[ "${HAS_SP:-false}"  == "true" ]];                                  then echo "complement-sp"
+    elif [[ "${HAS_GSD:-false}" == "true" ]];                                  then echo "complement-gsd"
+    else                                                                            echo "standalone"
+    fi
+}
+
+# compute_skip_set <mode> <manifest_path>
+# Stdout: JSON array of paths to SKIP. Errors go to stderr; returns 1 on bad mode or missing jq.
+# (Verified against current manifest.json with jq 1.7.1 per RESEARCH.md Pattern 5.)
+compute_skip_set() {
+    local mode="$1" manifest_path="$2"
+    local skip_json
+    case "$mode" in
+        standalone)         skip_json='[]' ;;
+        complement-sp)      skip_json='["superpowers"]' ;;
+        complement-gsd)     skip_json='["get-shit-done"]' ;;
+        complement-full)    skip_json='["superpowers","get-shit-done"]' ;;
+        *)
+            echo "ERROR: unknown mode: $mode" >&2
+            return 1 ;;
+    esac
+    if ! jq --version >/dev/null 2>&1; then
+        echo "ERROR: jq not found — required for install mode filtering" >&2
+        return 1
+    fi
+    jq --argjson skip "$skip_json" \
+      '[.files | to_entries[] | .value[] |
+        select((.conflicts_with // []) as $cw |
+               ($skip | any(. as $s | $cw | contains([$s])))) |
+        .path]' \
+      "$manifest_path"
+}
+
+# backup_settings_once <settings_path>
+# Sets TK_SETTINGS_BACKUP global on first successful call. No-op on subsequent calls in same run.
+# No-op when settings file does not exist.
+backup_settings_once() {
+    local settings_path="$1"
+    [[ -n "${TK_SETTINGS_BACKUP:-}" ]] && return 0
+    [[ ! -f "$settings_path" ]] && return 0
+    TK_SETTINGS_BACKUP="${settings_path}.bak.$(date +%s)"
+    cp "$settings_path" "$TK_SETTINGS_BACKUP"
+}
+
+# print_dry_run_grouped <manifest_path> <mode>
+# STUB — full implementation lands in Plan 03-02. Returns 0 to keep make shellcheck green.
+print_dry_run_grouped() {
+    echo "TODO: Plan 03-02 implements grouped dry-run output (manifest=$1 mode=$2)" >&2
+    return 0
+}
