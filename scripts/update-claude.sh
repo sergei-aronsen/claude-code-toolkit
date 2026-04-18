@@ -412,6 +412,12 @@ NEW_FILES=$(jq -nc --argjson a "$(jq -c '.new' <<<"$DIFFS_JSON")" \
 REMOVED_FROM_MANIFEST=$(jq -c '.removed' <<<"$DIFFS_JSON")
 MODIFIED_CANDIDATES=$(jq -c '.modified_candidates' <<<"$DIFFS_JSON")
 
+# Reset switch accumulators: ADD_FROM_SWITCH_JSON is now fully represented in NEW_FILES;
+# REMOVED_BY_SWITCH_JSON removals are reflected in STATE_JSON after execute_mode_switch.
+# Resetting prevents is_update_noop conditions 5/6 from double-counting (WR-04).
+ADD_FROM_SWITCH_JSON='[]'
+REMOVED_BY_SWITCH_JSON='[]'
+
 # ─────────────────────────────────────────────────
 # Phase 4 Plan 04-03 — D-59 no-op early-exit
 # Pre-dispatch read-only hash check to determine if anything actually changed.
