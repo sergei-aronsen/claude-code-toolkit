@@ -26,6 +26,7 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ Markdown linting toolchain (markdownlint + shellcheck + custom validate) — `Makefile`
 - ✓ CI quality gate via GitHub Actions — `.github/workflows/quality.yml`
 - ✓ Codebase map produced and committed in `.planning/codebase/`
+- ✓ `update-claude.sh` re-evaluates detection on every run, surfaces mode drift, diffs against manifest, and prints 4-group summary — Validated in Phase 4: update-flow (UPDATE-01..06)
 
 ### Active
 
@@ -37,7 +38,6 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - [ ] Auto-recommend mode based on detection; user can override
 - [ ] Skip-list per mode: which TK files NOT to install when each base is present
 - [ ] Persist install state to `~/.claude/toolkit-install.json` (mode, detected versions, installed files, skipped files, timestamp)
-- [ ] `update-claude.sh` reads install.json, re-evaluates if base plugins appeared/disappeared since last install
 - [ ] Extend `manifest.json` per-file with `requires_base: ["superpowers" | "get-shit-done" | null]` and `conflicts_with: [...]`
 - [ ] `setup-security.sh` safely merges into `~/.claude/settings.json` (backup + JSON merge, never overwrite SP hooks)
 - [ ] Migration path for existing v3.x users: `update-toolkit` detects SP/GSD post-fact and offers to remove duplicates with backup
@@ -116,4 +116,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after initialization*
+*Last updated: 2026-04-18 — Phase 4 (update-flow) complete. UPDATE-01..06 satisfied. 2 human-tty verification items pending in 04-HUMAN-UAT.md.*
