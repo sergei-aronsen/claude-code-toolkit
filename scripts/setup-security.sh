@@ -5,6 +5,13 @@
 #
 # Usage:
 #   bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
+#
+# SAFETY-04 INVARIANT: TK only ever writes to (a) permissions.deny entries TK authored,
+# (b) hooks.PreToolUse[*] entries marked with _tk_owned: true, and (c) TK's own env block.
+# Every other key in ~/.claude/settings.json is read-only to TK - never created, never updated,
+# never deleted. The merge_settings_python helper in scripts/lib/install.sh enforces this by
+# partitioning existing hook entries into foreign_entries (preserved verbatim) and tk_entries
+# (replaced in place). See .planning/phases/03-install-flow/03-CONTEXT.md decisions D-37..D-40.
 
 set -euo pipefail
 
@@ -21,6 +28,23 @@ CLAUDE_DIR="$HOME/.claude"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SETTINGS_JSON="$CLAUDE_DIR/settings.json"
 MARKER="# Global Security Rules"
+
+# Source lib/install.sh for backup_settings_once + merge_settings_python helpers (Phase 3 D-37..D-40).
+# Remote curl|bash callers download to mktemp; local callers source from a known path next to this script.
+LIB_INSTALL_TMP=""
+if [[ -f "$(dirname "$0")/lib/install.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$(dirname "$0")/lib/install.sh"
+else
+    LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
+    trap 'rm -f "$LIB_INSTALL_TMP"' EXIT
+    if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
+        echo -e "${RED}Failed to download lib/install.sh - aborting${NC}"
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$LIB_INSTALL_TMP"
+fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Claude Code Security Setup                ║${NC}"
@@ -199,58 +223,21 @@ if [[ -f "$SETTINGS_JSON" ]]; then
         echo -e "  Configuring combined hook in settings.json..."
 
         if command -v python3 &>/dev/null; then
-            # BUG-05: backup settings.json before mutation
-            SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
-            cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
+            # SAFETY-03 / D-40: one backup per run via shared sentinel
+            backup_settings_once "$SETTINGS_JSON"
 
-            if python3 - "$SETTINGS_JSON" "$HOOK_COMMAND" << 'PYEOF' 2>/dev/null
-import json, sys
-
-settings_path = sys.argv[1]
-hook_command = sys.argv[2]
-
-with open(settings_path, 'r') as f:
-    config = json.load(f)
-
-hook_entry = {
-    'matcher': 'Bash',
-    'hooks': [{
-        'type': 'command',
-        'command': hook_command
-    }]
-}
-
-if 'hooks' not in config:
-    config['hooks'] = {}
-
-# Replace all existing Bash PreToolUse hooks (safety-net, rtk-rewrite)
-# with the single combined hook to avoid parallel conflicts
-if 'PreToolUse' in config.get('hooks', {}):
-    config['hooks']['PreToolUse'] = [
-        entry for entry in config['hooks']['PreToolUse']
-        if entry.get('matcher') != 'Bash'
-    ]
-else:
-    config['hooks']['PreToolUse'] = []
-
-config['hooks']['PreToolUse'].append(hook_entry)
-
-import tempfile, os
-tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
-try:
-    with os.fdopen(tmp_fd, 'w') as f:
-        json.dump(config, f, indent=2)
-        f.write('\n')
-    os.replace(tmp_path, settings_path)
-except Exception:
-    os.unlink(tmp_path)
-    raise
-PYEOF
-            then
-                echo -e "  ${GREEN}✓${NC} Combined hook configured (replaces separate safety-net/RTK hooks)"
+            # SAFETY-01 / SAFETY-02 / D-37 / D-38 / D-39: atomic merge with append-both,
+            # _tk_owned marker, foreign-hook preservation
+            if merge_settings_python "$SETTINGS_JSON" "$HOOK_COMMAND"; then
+                echo -e "  ${GREEN}✓${NC} Combined hook configured (foreign hooks preserved per SAFETY-02)"
             else
-                cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
-                echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                # SAFETY-03 restore-on-failure
+                if [[ -n "${TK_SETTINGS_BACKUP:-}" ]] && [[ -f "$TK_SETTINGS_BACKUP" ]]; then
+                    cp "$TK_SETTINGS_BACKUP" "$SETTINGS_JSON"
+                    echo -e "  ${RED}✗${NC} JSON merge failed - restored from backup: $TK_SETTINGS_BACKUP"
+                else
+                    echo -e "  ${RED}✗${NC} JSON merge failed and NO backup available"
+                fi
                 exit 1
             fi
         else
@@ -266,6 +253,7 @@ else
     "PreToolUse": [
       {
         "matcher": "Bash",
+        "_tk_owned": true,
         "hooks": [
           {
             "type": "command",
@@ -315,51 +303,18 @@ if [[ -f "$SETTINGS_JSON" ]]; then
         if [[ "$ALL_PRESENT" == true ]]; then
             echo -e "  ${GREEN}✓${NC} All official plugins already enabled"
         else
-            # Merge missing plugins
+            # Merge missing plugins via shared helper
             if command -v python3 &>/dev/null; then
-                PLUGINS_JSON=$(printf '"%s",' "${PLUGINS[@]}")
-                PLUGINS_JSON="[${PLUGINS_JSON%,}]"
-
-                # BUG-05: backup settings.json before mutation
-                SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
-                cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
-
-                if python3 - "$SETTINGS_JSON" "$PLUGINS_JSON" << 'PYEOF' 2>/dev/null
-import json, sys
-
-settings_path = sys.argv[1]
-plugins = json.loads(sys.argv[2])
-
-with open(settings_path, 'r') as f:
-    config = json.load(f)
-
-if 'enabledPlugins' not in config:
-    config['enabledPlugins'] = {}
-
-added = 0
-for plugin in plugins:
-    if plugin not in config['enabledPlugins']:
-        config['enabledPlugins'][plugin] = True
-        added += 1
-
-import tempfile, os
-tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
-try:
-    with os.fdopen(tmp_fd, 'w') as f:
-        json.dump(config, f, indent=2)
-        f.write('\n')
-    os.replace(tmp_path, settings_path)
-except Exception:
-    os.unlink(tmp_path)
-    raise
-
-print(added)
-PYEOF
-                then
+                # SAFETY-03 / D-40: backup once per run (skipped if Step 3 already backed up)
+                backup_settings_once "$SETTINGS_JSON"
+                PLUGIN_CSV=$(IFS=,; echo "${PLUGINS[*]}")
+                if merge_plugins_python "$SETTINGS_JSON" "$PLUGIN_CSV"; then
                     echo -e "  ${GREEN}✓${NC} Plugins merged into settings.json"
                 else
-                    cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
-                    echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                    if [[ -n "${TK_SETTINGS_BACKUP:-}" ]] && [[ -f "$TK_SETTINGS_BACKUP" ]]; then
+                        cp "$TK_SETTINGS_BACKUP" "$SETTINGS_JSON"
+                        echo -e "  ${RED}✗${NC} JSON merge failed - restored from backup: $TK_SETTINGS_BACKUP"
+                    fi
                     exit 1
                 fi
             else
@@ -367,43 +322,18 @@ PYEOF
             fi
         fi
     else
-        # enabledPlugins key missing — add it
+        # enabledPlugins key missing - add it via shared helper
         if command -v python3 &>/dev/null; then
-            # BUG-05: backup settings.json before mutation
-            SETTINGS_BACKUP="${SETTINGS_JSON}.bak.$(date +%s)"
-            cp "$SETTINGS_JSON" "$SETTINGS_BACKUP"
-
-            if python3 - "$SETTINGS_JSON" << 'PYEOF' 2>/dev/null
-import json, sys
-
-settings_path = sys.argv[1]
-
-with open(settings_path, 'r') as f:
-    config = json.load(f)
-
-config['enabledPlugins'] = {
-    "code-review@claude-plugins-official": True,
-    "commit-commands@claude-plugins-official": True,
-    "security-guidance@claude-plugins-official": True,
-    "frontend-design@claude-plugins-official": True,
-}
-
-import tempfile, os
-tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(settings_path))
-try:
-    with os.fdopen(tmp_fd, 'w') as f:
-        json.dump(config, f, indent=2)
-        f.write('\n')
-    os.replace(tmp_path, settings_path)
-except Exception:
-    os.unlink(tmp_path)
-    raise
-PYEOF
-            then
+            # SAFETY-03 / D-40: backup once per run (skipped if Step 3 already backed up)
+            backup_settings_once "$SETTINGS_JSON"
+            PLUGIN_CSV=$(IFS=,; echo "${PLUGINS[*]}")
+            if merge_plugins_python "$SETTINGS_JSON" "$PLUGIN_CSV"; then
                 echo -e "  ${GREEN}✓${NC} Plugins added to settings.json"
             else
-                cp "$SETTINGS_BACKUP" "$SETTINGS_JSON"
-                echo -e "  ${RED}✗${NC} JSON merge failed — restored from backup: $SETTINGS_BACKUP"
+                if [[ -n "${TK_SETTINGS_BACKUP:-}" ]] && [[ -f "$TK_SETTINGS_BACKUP" ]]; then
+                    cp "$TK_SETTINGS_BACKUP" "$SETTINGS_JSON"
+                    echo -e "  ${RED}✗${NC} JSON merge failed - restored from backup: $TK_SETTINGS_BACKUP"
+                fi
                 exit 1
             fi
         else
