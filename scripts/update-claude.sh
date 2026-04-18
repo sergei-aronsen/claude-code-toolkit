@@ -16,6 +16,32 @@ REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/m
 CLAUDE_DIR=".claude"
 MANIFEST_URL="$REPO_URL/manifest.json"
 
+# ─────────────────────────────────────────────────
+# Phase 3 — DETECT-05 wiring (D-31)
+# Source detect.sh into a temp file. Phase 3 only makes HAS_SP/HAS_GSD/SP_VERSION/GSD_VERSION
+# available to the rest of update-claude.sh. Phase 4 (UPDATE-01) will branch on them.
+# Soft-fail allowed here: update-claude.sh must remain runnable even if the network is flaky;
+# if download fails, set HAS_SP/HAS_GSD to false so Phase 4 logic can detect "unknown".
+# ─────────────────────────────────────────────────
+DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
+trap 'rm -f "$DETECT_TMP"' EXIT
+if curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
+    # shellcheck source=/dev/null
+    source "$DETECT_TMP"
+else
+    echo -e "${YELLOW}⚠${NC} Could not fetch detect.sh — plugin detection unavailable"
+    # HAS_SP/HAS_GSD/SP_VERSION/GSD_VERSION are fallback defaults consumed by Phase 4 —
+    # silence shellcheck SC2034 (variables appear unused in Phase 3 scope).
+    # shellcheck disable=SC2034
+    HAS_SP=false
+    # shellcheck disable=SC2034
+    HAS_GSD=false
+    # shellcheck disable=SC2034
+    SP_VERSION=""
+    # shellcheck disable=SC2034
+    GSD_VERSION=""
+fi
+
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
