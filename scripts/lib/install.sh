@@ -68,8 +68,58 @@ backup_settings_once() {
 }
 
 # print_dry_run_grouped <manifest_path> <mode>
-# STUB — full implementation lands in Plan 03-02. Returns 0 to keep make shellcheck green.
+# Prints one [INSTALL]/[SKIP - conflicts_with:<plugin>] line per file in manifest.files.*,
+# followed by a Total: footer. ANSI colors auto-disable when stdout is not a tty (D-36).
+# Zero filesystem writes. Returns 0.
 print_dry_run_grouped() {
-    echo "TODO: Plan 03-02 implements grouped dry-run output (manifest=$1 mode=$2)" >&2
-    return 0
+    local manifest_path="$1" mode="$2"
+    local _GREEN _YELLOW _NC
+    if [ -t 1 ]; then
+        _GREEN='\033[0;32m'; _YELLOW='\033[1;33m'; _NC='\033[0m'
+    else
+        _GREEN=''; _YELLOW=''; _NC=''
+    fi
+
+    # Build the same skip_json as compute_skip_set (kept inline so the jq filter
+    # can produce the {bucket, path, skip, reason} stream in one pass).
+    local skip_json
+    case "$mode" in
+        standalone)         skip_json='[]' ;;
+        complement-sp)      skip_json='["superpowers"]' ;;
+        complement-gsd)     skip_json='["get-shit-done"]' ;;
+        complement-full)    skip_json='["superpowers","get-shit-done"]' ;;
+        *)
+            echo "ERROR: unknown mode: $mode" >&2
+            return 1 ;;
+    esac
+    if ! jq --version >/dev/null 2>&1; then
+        echo "ERROR: jq not found - required for dry-run output" >&2
+        return 1
+    fi
+
+    local install_count=0 skip_count=0
+    while IFS= read -r line; do
+        local bucket path skip reason
+        bucket=$(printf '%s' "$line" | jq -r '.bucket')
+        path=$(printf '%s'   "$line" | jq -r '.path')
+        skip=$(printf '%s'   "$line" | jq -r '.skip')
+        reason=$(printf '%s' "$line" | jq -r '.reason')
+        if [ "$skip" = "true" ]; then
+            printf '%b[SKIP - conflicts_with:%s]%b %s/%s\n' "$_YELLOW" "$reason" "$_NC" "$bucket" "$path"
+            skip_count=$((skip_count + 1))
+        else
+            printf '%b[INSTALL]%b %s/%s\n' "$_GREEN" "$_NC" "$bucket" "$path"
+            install_count=$((install_count + 1))
+        fi
+    done < <(jq -c --argjson skip "$skip_json" '
+        .files | to_entries[] |
+        .key as $b | .value[] |
+        { bucket: $b, path: .path,
+          skip: ((.conflicts_with // []) as $cw |
+                 ($skip | any(. as $s | $cw | contains([$s])))),
+          reason: ((.conflicts_with // []) | join(",")) }
+    ' "$manifest_path")
+
+    echo ""
+    echo "Total: $install_count install, $skip_count skip"
 }
