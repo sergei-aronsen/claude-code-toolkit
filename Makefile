@@ -75,6 +75,15 @@ test:
 	@echo "Test 8: settings.json safe merge - foreign keys, backup, restore"
 	@bash scripts/tests/test-safe-merge.sh
 	@echo ""
+	@echo "Test 9: update drift + v3.x synthesis + mode-switch"
+	@bash scripts/tests/test-update-drift.sh
+	@echo ""
+	@echo "Test 10: update file-diff (new/removed/modified)"
+	@bash scripts/tests/test-update-diff.sh
+	@echo ""
+	@echo "Test 11: update summary + no-op + backup path"
+	@bash scripts/tests/test-update-summary.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)

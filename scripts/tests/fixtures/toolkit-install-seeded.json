@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "mode": "standalone",
+  "detected": {
+    "superpowers": {"present": false, "version": ""},
+    "gsd":         {"present": false, "version": ""}
+  },
+  "installed_files": [
+    { "path": "commands/plan.md",   "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "installed_at": "2026-04-15T12:00:00Z" },
+    { "path": "commands/debug.md",  "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "installed_at": "2026-04-15T12:00:00Z" },
+    { "path": "commands/audit.md",  "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "installed_at": "2026-04-15T12:00:00Z" },
+    { "path": "rules/README.md",    "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "installed_at": "2026-04-15T12:00:00Z" }
+  ],
+  "skipped_files": [],
+  "installed_at": "2026-04-15T12:00:00Z"
+}

@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "version": "test-update",
+  "updated": "2026-04-18",
+  "description": "Phase 4 fixture — +2 new paths, -1 removed path, 1 hash-bumped vs manifest-v2.json. DO NOT install from this.",
+  "files": {
+    "agents": [
+      { "path": "agents/code-reviewer.md", "conflicts_with": ["superpowers"] },
+      { "path": "agents/test-writer.md" },
+      { "path": "agents/security-auditor.md" },
+      { "path": "agents/planner.md" }
+    ],
+    "commands": [
+      { "path": "commands/debug.md",   "conflicts_with": ["superpowers"] },
+      { "path": "commands/plan.md",    "conflicts_with": ["superpowers"] },
+      { "path": "commands/tdd.md",     "conflicts_with": ["superpowers"] },
+      { "path": "commands/verify.md",  "conflicts_with": ["superpowers"] },
+      { "path": "commands/worktree.md","conflicts_with": ["superpowers"] },
+      { "path": "commands/learn.md",   "conflicts_with": ["get-shit-done"] },
+      { "path": "commands/new-in-v2.md" }
+    ],
+    "skills": [
+      { "path": "skills/debugging/SKILL.md", "conflicts_with": ["superpowers"] },
+      { "path": "skills/api-design/SKILL.md" },
+      { "path": "skills/new-skill/SKILL.md", "conflicts_with": ["superpowers"] }
+    ],
+    "rules": [
+      { "path": "rules/README.md" }
+    ],
+    "prompts": [
+      { "path": "prompts/SECURITY_AUDIT.md" }
+    ]
+  },
+  "templates": {
+    "base": { "path": "templates/base" }
+  }
+}
