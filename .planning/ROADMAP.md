@@ -115,7 +115,13 @@ Plans:
   3. The entire current install is backed up to ~/.claude-backup-pre-migrate-<unix-ts>/ and its path is printed before any file is removed
   4. Running the migration script twice on an already-migrated install prints "nothing to do" and exits 0
   5. toolkit-install.json is rewritten to reflect the new complement-* mode and updated installed_files list after migration completes
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 05-01-PLAN.md — state schema v2 (synthesized_from_filesystem) + manifest sp_equivalent escape hatch (D-71, 6 of 7 SP duplicates) + update-claude.sh D-77 migrate hint + test-update-drift.sh hint scenario
+- [ ] 05-02-PLAN.md — migrate-to-complement.sh core: three-way diff (D-70/D-71/D-72) + two-signal user-mod detection (D-73) + [y/N/d] prompt (D-74) + full backup (MIGRATE-04) + Test 12 diff harness + fixtures
+- [ ] 05-03-PLAN.md — lock acquisition + idempotence early-exit (D-78) + state rewrite (MIGRATE-05/D-79) + four-group summary + Tests 13 (flow) and 14 (idempotent)
 
 ### Phase 6: Documentation
 **Goal**: README positions the toolkit as a complement, every template documents required base plugins, CHANGELOG.md has a complete 4.0.0 entry, and recommended optional plugins (rtk, caveman) are documented with caveats
@@ -152,6 +158,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Foundation | 0/3 | Planned | - |
 | 3. Install Flow | 0/3 | Planned | - |
 | 4. Update Flow | 0/3 | Planned | - |
-| 5. Migration | 0/TBD | Not started | - |
+| 5. Migration | 0/3 | Planned | - |
 | 6. Documentation | 0/TBD | Not started | - |
 | 7. Validation | 0/TBD | Not started | - |
