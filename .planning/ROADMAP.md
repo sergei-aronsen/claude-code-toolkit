@@ -134,7 +134,13 @@ Plans:
   4. docs/INSTALL.md (or README section) documents all 12 cells of the install matrix (4 modes x fresh/upgrade/re-run) with expected behavior per cell
   5. components/optional-plugins.md exists and documents rtk + caveman with their caveats (rtk-ls bug + exclusion config, caveman language limits, compress-mode CLAUDE.md backup warning); init-claude.sh prints the optional-plugins block at end of install; ~/.claude/RTK.md template carries the Known Issues section pointing to upstream issue #1276
   6. components/orchestration-pattern.md is finalized, registered in manifest.json under components, and cross-referenced from supreme-council.md and structured-workflow.md; README "Components" section links to it
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+- [ ] 06-01-PLAN.md — DOCS-01/02/03/04: README complement-first positioning + CHANGELOG [4.0.0] with BREAKING CHANGES + 7x Required Base Plugins template blocks + docs/INSTALL.md 12-cell matrix
+- [ ] 06-02-PLAN.md — DOCS-05/07 (asset halves): components/optional-plugins.md (upstream-verified rtk/caveman/SP/GSD caveats) + templates/global/RTK.md (fallback with rtk-ai/rtk#1276 Known Issues)
+- [ ] 06-03-PLAN.md — DOCS-05/06/07/08 (wiring + polish): manifest.json files.components registration + orchestration-pattern.md mdlint fix + cross-refs + scripts/lib/optional-plugins.sh + init/update wiring + setup-security.sh RTK.md install guard + test-setup-security-rtk.sh
 
 ### Phase 7: Validation
 **Goal**: All 12 install matrix cells are manually smoke-tested and pass, make check passes clean, all version references are aligned, and 4.0.0 is ready to tag
@@ -159,5 +165,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Install Flow | 0/3 | Planned | - |
 | 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/3 | Planned | - |
-| 6. Documentation | 0/TBD | Not started | - |
+| 6. Documentation | 0/3 | Planned | - |
 | 7. Validation | 0/TBD | Not started | - |
