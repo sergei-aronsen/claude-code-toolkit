@@ -5,7 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.0] - TBD
+
+### BREAKING CHANGES
+
+- **Default install behavior changes when SP and/or GSD are detected.** Previously (v3.x) all
+  54 TK files installed unconditionally. v4.0 auto-selects `complement-*` mode and skips 7 files
+  (6 commands/skills + 1 agent) that duplicate SP functionality. Users who relied on TK's
+  `/debug`, `/plan`, `/tdd`, `/verify`, `/worktree`, `skills/debugging`, or TK-owned
+  `agents/code-reviewer.md` will instead use SP's equivalents. Override: `--mode standalone`.
+- **7 files are no longer installed in `complement-sp` mode:** `agents/code-reviewer.md`,
+  `commands/debug.md`, `commands/plan.md`, `commands/tdd.md`, `commands/verify.md`,
+  `commands/worktree.md`, `skills/debugging/SKILL.md`. Users relying on TK's copies must use
+  SP's equivalents.
+- **`manifest.json` schema bumped from v1 (implicit) to v2 (explicit `manifest_version: 2`).**
+  Old v3.x install scripts refuse to run against a v2 manifest. Users running an old installer
+  against the v4.0 repo see a hard error: `manifest.json has manifest_version=2; this installer
+  expects v1`.
+- **`toolkit-install.json` state schema bumped v1 → v2.** v1 installs read correctly via
+  `jq '... // false'` backwards-compat default on the new `synthesized_from_filesystem` field,
+  but v1 tooling reading the new field directly will see `null`.
+- **`scripts/init-local.sh` no longer hardcodes version.** Reads from `manifest.json` at runtime
+  via `jq`. The `VERSION="2.0.0"` constant is removed from line 11.
+- **`scripts/update-claude.sh` no longer hand-iterates a file list.** The iterated list now comes
+  from `manifest.json`. Custom TK installs that relied on update-claude.sh skipping certain files
+  will see those files installed on next update (if listed in manifest).
+- **`~/.claude/settings.json` is now merged additively.** `setup-security.sh` no longer overwrites
+  the file — it reads, merges only TK-owned keys (permissions.deny, hooks.PreToolUse, env block),
+  and writes via atomic temp-file rename.
+- **Post-update summary format changed** from unstructured log lines to a 4-group block
+  (`INSTALLED N`, `UPDATED M`, `SKIPPED P (with reason)`, `REMOVED Q (backed up to path)`).
+  Users who scrape update output must adjust. Backup directories are now suffixed with PID
+  (`~/.claude-backup-<unix-ts>-<pid>/`) to prevent same-second collision.
+
+### Added
+
+- `scripts/detect.sh` — filesystem detection of `superpowers` and `get-shit-done`; sources
+  `HAS_SP`, `HAS_GSD`, `SP_VERSION`, `GSD_VERSION` environment variables.
+- `scripts/lib/install.sh` — `recommend_mode`, `compute_skip_set`, `MODES` array for
+  mode-aware installs.
+- `scripts/lib/state.sh` — atomic `write_state`, `acquire_lock`, `release_lock`, `sha256_file`
+  for install-state management.
+- `scripts/migrate-to-complement.sh` — one-time migration for v3.x users with SP/GSD installed;
+  three-column hash diff, `[y/N/d]` per-file prompt, `cp -R` full backup, idempotent.
+- `~/.claude/toolkit-install.json` — install state file: mode, detected bases, installed files
+  with sha256 hashes, skipped files with reasons. Schema v2 adds `synthesized_from_filesystem`.
+- 4 install modes: `standalone`, `complement-sp`, `complement-gsd`, `complement-full`.
+- `--mode <name>` flag on `init-claude.sh` and `init-local.sh` — overrides auto-detected mode
+  with interactive prompt and auto-recommendation.
+- `--dry-run` flag on `init-claude.sh` — previews `[INSTALL]`/`[SKIP]` per file without writing.
+- `--offer-mode-switch=yes|no|interactive`, `--prune=yes|no|interactive`, `--no-banner` flags
+  on `update-claude.sh`.
+- `conflicts_with`, `sp_equivalent`, `requires_base` fields on per-file manifest entries.
+- `make validate-manifest.py` check — every manifest path exists, `conflicts_with` values are
+  from the known plugin set.
+- Makefile test targets: 14 test groups (up from 0), all hermetic — covering detect, install,
+  state, update drift, update diff, update summary, migrate diff, migrate flow, migrate idempotence.
+- `components/orchestration-pattern.md` — lean orchestrator + fat subagents pattern.
+- `components/optional-plugins.md` — rtk, caveman, superpowers, get-shit-done recommendations
+  with verified caveats.
+- `templates/global/RTK.md` — fallback RTK notes with rtk-ai/rtk#1276 caveat and workaround.
+- `## Required Base Plugins` section in all 7 `templates/*/CLAUDE.md` files — discloses SP/GSD
+  dependency and install commands so new users set up the full complement stack first.
+- `manifest.json` `inventory.components` bucket (non-install metadata for Phase 6 components).
+- `Makefile validate-base-plugins` drift guard — verifies all 7 templates carry the section
+  heading on every `make check`.
+
+### Changed
+
+- `scripts/init-claude.sh` — refactored to 4-mode dispatch; sources `detect.sh` +
+  `lib/install.sh` from `$REPO_URL` on remote installs; respects `--mode` override;
+  manifest-schema-v2 guard hard-fails on v1 manifests.
+- `scripts/init-local.sh` — same mode-aware logic as `init-claude.sh`; reads version from
+  `manifest.json` at runtime (removes `VERSION="2.0.0"` hardcode).
+- `scripts/update-claude.sh` — rewritten for re-detection on every run, mode-drift surfacing,
+  manifest-driven iteration, 4-group summary, D-77 migrate hint when complement migration
+  is appropriate.
+- `scripts/setup-security.sh` — safe `~/.claude/settings.json` merge with timestamped backup
+  (`settings.json.bak.<unix-ts>`); restore-on-merge-failure.
+- `scripts/setup-council.sh` — `< /dev/tty` guards on every interactive `read`; silent
+  `read -rs` for API-key prompts; `python3 json.dumps()` for API-key heredoc interpolation.
+- `README.md` — repositioned as "complement to superpowers + get-shit-done"; install section
+  shows standalone + complement modes with one paragraph of guidance per mode.
+- `manifest.json` — schema v2 (`manifest_version: 2`); 7 entries gain `conflicts_with`; 6
+  entries gain `sp_equivalent`.
+
+### Fixed
+
+- BUG-01: BSD-incompatible `head -n -1` in `scripts/update-claude.sh` smart-merge replaced
+  with POSIX `sed '$d'`. Silent CLAUDE.md truncation on macOS fixed.
+- BUG-02: `< /dev/tty` guards on every interactive `read` in `scripts/setup-council.sh`;
+  silent `read -rs` for API-key prompts. Fixes curl|bash prompts being consumed as stream.
+- BUG-03: `python3 json.dumps` JSON-escapes API keys containing `"`, `\`, newline in
+  heredoc-written `config.json`. Fixes malformed Council config.
+- BUG-04: Silent `sudo apt-get install tree` in `setup-council.sh` replaced with interactive
+  prompt and visible error path.
+- BUG-05: `setup-security.sh` timestamped backup of `~/.claude/settings.json` before every
+  mutation; restore-on-merge-failure.
+- BUG-06: `scripts/init-local.sh` reads version from `manifest.json`; `make validate`
+  enforces manifest ↔ CHANGELOG version alignment.
+- BUG-07: `commands/design.md` added to `update-claude.sh` loop (structurally fixed in
+  Phase 4: update loop now iterates manifest, not a hand-list).
+
+### Migration from v3.x
+
+See [docs/INSTALL.md](docs/INSTALL.md) for the install matrix and `scripts/migrate-to-complement.sh`
+for the automated migration path (per-file confirmation, full backup before any removal).
 
 ### Fixed
 
