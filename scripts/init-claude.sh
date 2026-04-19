@@ -62,7 +62,8 @@ FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
 # ─────────────────────────────────────────────────
 DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP"' EXIT
+LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX")
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_OPTIONAL_PLUGINS_TMP"' EXIT
 
 if ! curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
@@ -72,16 +73,22 @@ if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/install.sh — aborting"
     exit 1
 fi
+if ! curl -sSLf "$REPO_URL/scripts/lib/optional-plugins.sh" -o "$LIB_OPTIONAL_PLUGINS_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/optional-plugins.sh — aborting"
+    exit 1
+fi
 # shellcheck source=/dev/null
 source "$DETECT_TMP"
 # shellcheck source=/dev/null
 source "$LIB_INSTALL_TMP"
+# shellcheck source=/dev/null
+source "$LIB_OPTIONAL_PLUGINS_TMP"
 
 # Manifest version guard (Phase 2 D-01 — hard-fail on schema mismatch). Uses manifest_version
 # field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
 # manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP"' EXIT
 if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
     echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
     exit 1
@@ -391,14 +398,14 @@ download_files() {
 
     # Source lib/state.sh into a temp file (needed for write_state / acquire_lock)
     LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX")
-    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
     if ! curl -sSLf "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
         echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
         exit 1
     fi
     # shellcheck source=/dev/null
     source "$LIB_STATE_TMP"
-    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
     acquire_lock || exit 1
 
     # Iterate manifest.files.* — download all entries NOT in skip-list
@@ -741,6 +748,7 @@ main() {
 
     recommend_security
     recommend_statusline
+    recommend_optional_plugins
 
     # Supreme Council setup (integrated)
     if [[ "$SKIP_COUNCIL" != true ]]; then

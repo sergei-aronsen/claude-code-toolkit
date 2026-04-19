@@ -43,8 +43,9 @@ MANIFEST_URL="$REPO_URL/manifest.json"
 DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
+LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP"' EXIT
 
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
@@ -67,7 +68,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -761,6 +762,7 @@ jq --arg mh "$MANIFEST_HASH" '. + { manifest_hash: $mh }' "$STATE_FILE" > "$STAT
 mv "$STATE_TMP" "$STATE_FILE"
 
 print_update_summary "$BACKUP_DIR"
+recommend_optional_plugins
 
 echo ""
 echo -e "${YELLOW}⚠ Restart Claude Code to apply changes${NC}"
