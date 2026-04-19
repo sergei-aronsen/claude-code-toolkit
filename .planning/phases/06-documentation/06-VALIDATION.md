@@ -1,8 +1,8 @@
 ---
 phase: 6
 slug: documentation
-status: draft
-nyquist_compliant: false
+status: ratified
+nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-19
 ---
@@ -38,16 +38,18 @@ created: 2026-04-19
 
 | Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------------|-----------|-------------------|-------------|--------|
-| 06-01-01 | 01 | 1 | DOCS-01 | N/A (docs-only) | mdlint + manual review | `markdownlint README.md` | ✅ | ⬜ pending |
-| 06-01-02 | 01 | 1 | DOCS-03 | N/A | mdlint + manifest version alignment | `markdownlint CHANGELOG.md && make validate` | ✅ | ⬜ pending |
-| 06-01-03 | 01 | 1 | DOCS-02 (×7 templates) | N/A | grep + mdlint | `for f in templates/*/CLAUDE.md; do grep -q '^## Required Base Plugins' "$f" \|\| echo "MISSING: $f"; done` | ✅ (7 templates) | ⬜ pending |
-| 06-01-04 | 01 | 1 | DOCS-04 | N/A | mdlint | `markdownlint docs/INSTALL.md` | ❌ new | ⬜ pending |
-| 06-02-01 | 02 | 1 | DOCS-05 | Upstream facts verified 2026-04-18 | mdlint + manual fact-check | `markdownlint components/optional-plugins.md` | ❌ new | ⬜ pending |
-| 06-02-02 | 02 | 1 | DOCS-07 | N/A | mdlint | `markdownlint templates/global/RTK.md` | ❌ new | ⬜ pending |
-| 06-02-03 | 02 | 1 | DOCS-05 / DOCS-08 (manifest register) | N/A | manifest schema validate | `python3 scripts/validate-manifest.py` | ✅ (modify) | ⬜ pending |
-| 06-03-01 | 03 | 2 | DOCS-08 (polish + cross-refs) | N/A | mdlint + grep | `markdownlint components/orchestration-pattern.md && grep -q orchestration-pattern components/supreme-council.md components/structured-workflow.md README.md` | ✅ (modify) | ⬜ pending |
-| 06-03-02 | 03 | 2 | DOCS-06 | No auto-install; informational stdout only | shellcheck + stdout inspection | `bash scripts/init-claude.sh --dry-run 2>&1 \| grep -c "Recommended optional plugins"` | ✅ (modify) | ⬜ pending |
-| 06-03-03 | 03 | 2 | DOCS-07 (RTK.md install wiring) | Guard: never clobber existing RTK.md | shellcheck + integration test | `bash scripts/tests/test-setup-security-rtk.sh` (net-new) | ❌ new test | ⬜ pending |
+| 06-01-01 | 01 | 1 | DOCS-03 | N/A | mdlint + manifest version alignment | `npx markdownlint-cli CHANGELOG.md && make validate` | ✅ (modify) | ⬜ pending |
+| 06-01-02 | 01 | 1 | DOCS-01 | N/A (docs-only) | mdlint + grep | `npx markdownlint-cli README.md && grep -q 'Standalone install' README.md` | ✅ (modify) | ⬜ pending |
+| 06-01-03 | 01 | 1 | DOCS-02 (×7 templates) | N/A | grep + mdlint + CONTEXT-locked install string check | `for f in templates/*/CLAUDE.md; do grep -q '^## Required Base Plugins' "$f" && grep -q 'superpowers@claude-plugins-official' "$f" && grep -q 'raw.githubusercontent.com/gsd-build/get-shit-done' "$f"; done` | ✅ (7 templates) | ⬜ pending |
+| 06-01-04 | 01 | 1 | DOCS-04 | N/A | mdlint + mode-name grep | `npx markdownlint-cli docs/INSTALL.md && grep -q complement-full docs/INSTALL.md` | ❌ new | ⬜ pending |
+| 06-01-05 | 01 | 1 | DOCS-02 (drift guard) | N/A | Makefile target | `make validate-base-plugins` | ✅ (modify) | ⬜ pending |
+| 06-02-01 | 02 | 1 | DOCS-05-asset | Upstream facts verified 2026-04-18 | mdlint + grep | `npx markdownlint-cli components/optional-plugins.md && grep -q 'verified_upstream: 2026-04-18' components/optional-plugins.md && grep -q 'wenyan' components/optional-plugins.md` | ❌ new | ⬜ pending |
+| 06-02-02 | 02 | 1 | DOCS-07-asset | N/A | mdlint + grep | `npx markdownlint-cli templates/global/RTK.md && grep -q 'rtk-ai/rtk#1276' templates/global/RTK.md` | ❌ new | ⬜ pending |
+| 06-03-01 | 03 | 2 | DOCS-05-register / DOCS-08 (manifest) | N/A | manifest schema validate | `jq -e '.inventory.components \| length == 2' manifest.json && python3 scripts/validate-manifest.py` | ✅ (modify) | ⬜ pending |
+| 06-03-02 | 03 | 2 | N/A (plan hygiene) | N/A | VALIDATION.md self-consistency | `grep -q 'nyquist_compliant: true' .planning/phases/06-documentation/06-VALIDATION.md` | ✅ (modify) | ⬜ pending |
+| 06-03-03 | 03 | 2 | DOCS-08 (content polish + cross-refs) | N/A | mdlint + grep | `npx markdownlint-cli components/orchestration-pattern.md && grep -q 'orchestration-pattern' components/supreme-council.md components/structured-workflow.md README.md` | ✅ (modify) | ⬜ pending |
+| 06-03-04 | 03 | 2 | DOCS-06 | No auto-install; informational stdout only | shellcheck + function-availability + stdout capture | `bash -c 'source scripts/lib/optional-plugins.sh && recommend_optional_plugins 2>&1 \| grep -q "Recommended optional plugins"'` | ✅ (modify) | ⬜ pending |
+| 06-03-05 | 03 | 2 | DOCS-07-install | Guard: never clobber existing RTK.md | shellcheck + integration test + Makefile Test 15 | `bash scripts/tests/test-setup-security-rtk.sh && make test` | ❌ new test | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -59,8 +61,8 @@ All wave-0 infrastructure already exists: markdownlint + shellcheck + `make vali
 
 One new test helper recommended by research (NOT a Wave 0 blocker):
 
-- [ ] `scripts/tests/test-setup-security-rtk.sh` — validates RTK.md install guard (DOCS-07); authored inside Plan 06-03 Task 3.
-- [ ] Optional `make validate-base-plugins` target — greps all 7 templates for `## Required Base Plugins` section (Pitfall 10 prevention); added inside Plan 06-01 Task 3 if implementer elects.
+- [x] `scripts/tests/test-setup-security-rtk.sh` — validates RTK.md install guard (DOCS-07); authored inside Plan 06-03 Task 5.
+- [x] `make validate-base-plugins` target — greps all 7 templates for `## Required Base Plugins` section (Pitfall 10 prevention); added inside Plan 06-01 Task 5.
 
 *Existing infrastructure covers all phase requirements.*
 
@@ -84,6 +86,6 @@ One new test helper recommended by research (NOT a Wave 0 blocker):
 - [x] Wave 0 covers all MISSING references (existing `make` infrastructure + one net-new test script inside Plan 06-03)
 - [x] No watch-mode flags (docs phase — static lint, not reactive)
 - [x] Feedback latency < 60s for full phase gate
-- [ ] `nyquist_compliant: true` set in frontmatter (pending planner confirmation that task IDs in Per-Task map align with the final PLAN.md files)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending (planner to flip `nyquist_compliant: true` after task IDs are locked in `06-01-PLAN.md`, `06-02-PLAN.md`, `06-03-PLAN.md`).
+**Approval:** approved after BLOCKING-3 resolution by 06-03-02 (2026-04-19).
