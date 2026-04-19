@@ -231,11 +231,11 @@ scenario_partial() {
 # ─────────────────────────────────────────────────
 # Scenario 4: backup failure aborts before any rm
 # ─────────────────────────────────────────────────
-# Strategy: set HOME to a path whose parent doesn't exist, so the cp -R for
-# backup (which uses $HOME/.claude-backup-pre-migrate-*) fails. Meanwhile
-# CLAUDE_DIR uses TK_MIGRATE_HOME=$SCR, so enumerate/diff/acquire_lock all
-# succeed — only the backup cp -R fails. This decouples backup failure from
-# lock acquisition (which needs CLAUDE_DIR's parent to be writable).
+# Strategy: after the UAT-3-B01 fix, BACKUP_DIR = dirname(CLAUDE_DIR) = $SCR.
+# Make $SCR read-only (chmod 555) so the cp -R cannot create the
+# `$SCR/.claude-backup-pre-migrate-*` sibling directory. Lock acquisition
+# works inside the pre-existing writable `$SCR/.claude/` subdirectory, so only
+# the backup step fails — decoupling backup failure from lock acquisition.
 scenario_backup_failure_aborts() {
     echo ""
     echo "Scenario 4: backup failure → no files removed, exit 1"
@@ -251,14 +251,14 @@ scenario_backup_failure_aborts() {
     seed_standalone_state "$SCR/.claude/toolkit-install.json" \
         "commands/debug.md" "debug-content"
 
-    # HOME points at a non-existent parent → cp -R "$CLAUDE_DIR" "$HOME/.claude-backup-..."
-    # will fail because the parent directory cannot be created. Lock acquisition
-    # uses CLAUDE_DIR=$TK_MIGRATE_HOME/.claude which is writable, so it succeeds.
-    local BAD_HOME="$SCR/nonexistent-parent/home"
-    # Note: BAD_HOME does NOT exist — cp -R to $BAD_HOME/.claude-backup-... fails.
+    # Freeze $SCR: existing children remain read/writable, new siblings cannot
+    # be created → `$SCR/.claude-backup-pre-migrate-*` mkdir inside cp -R fails.
+    chmod 555 "$SCR"
+    # Always restore permissions so the trap/cleanup can remove $TMPDIR_ROOT
+    # even if the test aborts mid-scenario.
+    trap 'chmod 755 "$SCR" 2>/dev/null || true' RETURN
 
     local EXIT=0
-    HOME="$BAD_HOME" \
     TK_MIGRATE_HOME="$SCR" \
     TK_MIGRATE_LIB_DIR="$LIB_DIR" \
     TK_MIGRATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
@@ -266,6 +266,11 @@ scenario_backup_failure_aborts() {
     TK_MIGRATE_SP_CACHE_DIR="$SP_CACHE_FIXTURE_FULL" \
     HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
     bash "$REPO_ROOT/scripts/migrate-to-complement.sh" --yes >/dev/null 2>&1 || EXIT=$?
+
+    # Restore write permissions before running assertions (assertions may need
+    # to inspect files inside $SCR; also trap on RETURN handles this but run
+    # it eagerly so later find/rm in this function work normally).
+    chmod 755 "$SCR"
 
     # migrate should have exited non-zero because cp -R backup failed
     if [ "$EXIT" != "0" ]; then
@@ -276,11 +281,9 @@ scenario_backup_failure_aborts() {
     # MIGRATE-04 invariant: backup failure must NOT remove any files
     assert_eq "true" "$( [ -f "$SCR/.claude/commands/debug.md" ] && echo true || echo false)" \
         "no files removed after backup failure (MIGRATE-04 invariant)"
-    # No backup dir created at the real TMPDIR_ROOT level either.
-    # BAD_HOME path never existed, so find returns nonzero — guard with || true
-    # so pipefail doesn't abort the test.
+    # No partial backup dir was left behind inside $SCR.
     local BACKUPS
-    BACKUPS=$( (find "$BAD_HOME" -maxdepth 1 -type d -name ".claude-backup-pre-migrate-*" 2>/dev/null || true) | wc -l | tr -d " ")
+    BACKUPS=$(find "$SCR" -maxdepth 1 -type d -name ".claude-backup-pre-migrate-*" | wc -l | tr -d " ")
     assert_eq "0" "$BACKUPS" "no partial backup dir left behind"
 }
 
@@ -365,6 +368,49 @@ scenario_concurrent_lock() {
 }
 
 # ─────────────────────────────────────────────────
+# Scenario 7: backup path honors TK_MIGRATE_HOME without requiring HOME override
+#   Regression guard for UAT-3-B01 — before the fix, BACKUP_DIR was hardcoded to
+#   $HOME/.claude-backup-*, leaking test data into the developer's real HOME.
+#   After the fix, BACKUP_DIR is derived from CLAUDE_DIR via dirname.
+# ─────────────────────────────────────────────────
+scenario_backup_respects_tk_migrate_home() {
+    echo ""
+    echo "Scenario 7: BACKUP_DIR derives from CLAUDE_DIR (TK_MIGRATE_HOME alone, no HOME override)"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/s7"
+    local REAL_HOME_SURROGATE="${TMPDIR_ROOT}/s7-real-home"
+    mkdir -p "$SCR/.claude/commands" "$REAL_HOME_SURROGATE"
+    echo "debug-content" > "$SCR/.claude/commands/debug.md"
+
+    local FILE_SRC="$SCR/tk-files"
+    mkdir -p "$FILE_SRC/commands"
+    echo "debug-content" > "$FILE_SRC/commands/debug.md"
+
+    seed_standalone_state "$SCR/.claude/toolkit-install.json" \
+        "commands/debug.md" "debug-content"
+
+    # Override HOME to a surrogate path that is NOT SCR. This simulates a
+    # consumer that sets TK_MIGRATE_HOME only and leaves HOME pointing at the
+    # real developer home. The fix makes backup follow CLAUDE_DIR, not HOME.
+    HOME="$REAL_HOME_SURROGATE" \
+    TK_MIGRATE_HOME="$SCR" \
+    TK_MIGRATE_LIB_DIR="$LIB_DIR" \
+    TK_MIGRATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+    TK_MIGRATE_FILE_SRC="$FILE_SRC" \
+    TK_MIGRATE_SP_CACHE_DIR="$SP_CACHE_FIXTURE_FULL" \
+    HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
+    bash "$REPO_ROOT/scripts/migrate-to-complement.sh" --yes >/dev/null 2>&1 || true
+
+    # Backup must land under TK_MIGRATE_HOME, NOT under the HOME surrogate.
+    local IN_TK_HOME IN_REAL_HOME
+    IN_TK_HOME=$(find "$SCR" -maxdepth 1 -type d -name ".claude-backup-pre-migrate-*" | wc -l | tr -d " ")
+    IN_REAL_HOME=$(find "$REAL_HOME_SURROGATE" -maxdepth 1 -type d -name ".claude-backup-pre-migrate-*" | wc -l | tr -d " ")
+
+    assert_eq "1" "$IN_TK_HOME" "backup lands under TK_MIGRATE_HOME ($SCR)"
+    assert_eq "0" "$IN_REAL_HOME" "no backup leaks into HOME surrogate ($REAL_HOME_SURROGATE)"
+}
+
+# ─────────────────────────────────────────────────
 # Run all scenarios
 # ─────────────────────────────────────────────────
 scenario_accept_all
@@ -373,6 +419,7 @@ scenario_partial
 scenario_backup_failure_aborts
 scenario_synth_flag_false
 scenario_concurrent_lock
+scenario_backup_respects_tk_migrate_home
 
 echo ""
 echo "========================================"

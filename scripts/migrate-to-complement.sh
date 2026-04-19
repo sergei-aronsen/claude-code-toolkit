@@ -264,7 +264,10 @@ fi
 acquire_lock || { log_error "Another TK install/update is in progress. Exiting."; exit 1; }
 
 # ───────── backup (MIGRATE-04) — BEFORE any rm ─────────
-BACKUP_DIR="$HOME/.claude-backup-pre-migrate-$(date -u +%s)"
+# Derive from CLAUDE_DIR so TK_MIGRATE_HOME seam is honored (UAT-3-B01).
+# Production: CLAUDE_DIR=$HOME/.claude → backup at $HOME/.claude-backup-...  (unchanged).
+# Test seam:  CLAUDE_DIR=$TK_MIGRATE_HOME/.claude → backup stays inside the test HOME.
+BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-migrate-$(date -u +%s)"
 log_info "Creating backup at $BACKUP_DIR (this may take a moment)…"
 if ! cp -R "$CLAUDE_DIR" "$BACKUP_DIR"; then
     log_error "Backup failed — aborting migration without removing any files"
