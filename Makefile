@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins clean install
 
 # Default target
 help:
@@ -14,7 +14,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate
+check: lint validate validate-base-plugins
 	@echo "All checks passed!"
 
 # Install dependencies
@@ -132,6 +132,15 @@ validate:
 	@echo "Validating manifest.json schema..."
 	@python3 scripts/validate-manifest.py
 	@echo "✅ Manifest schema valid"
+
+# Validate Required Base Plugins section presence across all 7 templates (Pitfall 10 drift guard)
+validate-base-plugins:
+	@echo "Validating Required Base Plugins section across 7 templates..."
+	@MISSING=0; for f in templates/base/CLAUDE.md templates/laravel/CLAUDE.md templates/rails/CLAUDE.md templates/nextjs/CLAUDE.md templates/nodejs/CLAUDE.md templates/python/CLAUDE.md templates/go/CLAUDE.md; do \
+		grep -q "^## Required Base Plugins" "$$f" || { echo "❌ $$f missing Required Base Plugins section"; MISSING=$$((MISSING+1)); }; \
+	done; \
+	if [ $$MISSING -gt 0 ]; then exit 1; fi; \
+	echo "✅ All 7 templates carry ## Required Base Plugins"
 
 # Clean temporary files
 clean:
