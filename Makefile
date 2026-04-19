@@ -93,6 +93,9 @@ test:
 	@echo "Test 14: migrate idempotence + self-heal"
 	@bash scripts/tests/test-migrate-idempotent.sh
 	@echo ""
+	@echo "Test 15: setup-security.sh RTK.md install guard"
+	@bash scripts/tests/test-setup-security-rtk.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)

@@ -46,6 +46,27 @@ else
     source "$LIB_INSTALL_TMP"
 fi
 
+# Install RTK.md fallback notes to ~/.claude/RTK.md (guard: never clobber existing)
+install_rtk_notes() {
+    local src_rtk
+    src_rtk="$(dirname "$0")/../templates/global/RTK.md"
+    local dst_rtk="$HOME/.claude/RTK.md"
+
+    if [[ ! -f "$src_rtk" ]]; then
+        echo "ℹ Skipping RTK.md install — source file not found (offline / partial install)"
+        return 0
+    fi
+
+    if [[ -f "$dst_rtk" ]]; then
+        echo -e "  ℹ ~/.claude/RTK.md already exists (rtk init -g or prior TK install); leaving untouched."
+        echo -e "  See components/optional-plugins.md for the rtk-ai/rtk#1276 caveat."
+        return 0
+    fi
+
+    cp "$src_rtk" "$dst_rtk"
+    echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (points to components/optional-plugins.md for rtk-ai/rtk#1276)"
+}
+
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Claude Code Security Setup                ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════╝${NC}"
@@ -123,6 +144,8 @@ else
     fi
 fi
 
+echo ""
+install_rtk_notes
 echo ""
 
 # ─────────────────────────────────────────────────
