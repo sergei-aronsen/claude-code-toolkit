@@ -9,6 +9,22 @@
 **Type:** [SaaS/API/Dashboard/etc.]
 **Description:** [Brief description]
 
+## Required Base Plugins
+
+This toolkit is designed to **complement** two Claude Code plugins. Install them first for
+the full experience; TK will auto-detect them and skip duplicate files.
+
+| Plugin | Purpose | Install |
+|--------|---------|---------|
+| `superpowers` (obra) | Skills (debugging, plans, TDD, verification, worktrees), `code-reviewer` agent | `claude plugin install superpowers@claude-plugins-official` |
+| `get-shit-done` (gsd-build) | Phase-based workflow: `/gsd-plan-phase`, `/gsd-execute-phase`, and more | `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` |
+
+> **Without these plugins** TK still installs in `standalone` mode — you get every TK file,
+> but you'll miss SP's systematic debugging and GSD's phase workflow. See
+> [optional-plugins.md](https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/components/optional-plugins.md)
+> for the full rationale (components are repo-root assets — they are NOT installed into
+> `.claude/`, so use the absolute GitHub blob URL).
+
 ---
 
 ## 📌 Compact Instructions
