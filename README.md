@@ -54,24 +54,48 @@ Shows session/weekly limits in the Claude Code status bar. More: [components/rat
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
 ```
 
-### 2. Installation (per project)
+## Install Modes
 
-The installer will:
+TK auto-detects whether `superpowers` (obra) and `get-shit-done` (gsd-build) are installed and
+chooses one of four modes: `standalone`, `complement-sp`, `complement-gsd`, or `complement-full`.
+Each framework template documents its required base plugins in `## Required Base Plugins` — see
+e.g. [templates/base/CLAUDE.md](templates/base/CLAUDE.md). For the full 12-cell install matrix
+and step-by-step guidance, see [docs/INSTALL.md](docs/INSTALL.md).
 
-- Ask you to **select your stack** (auto-detect recommended)
-- Install toolkit (commands, agents, prompts, skills)
-- Set up **Supreme Council** (Gemini + ChatGPT multi-AI review)
-- Guide you through API key configuration
+### Standalone install
 
-**Run in your regular terminal (not inside Claude Code!) in the project folder:**
+You don't have `superpowers` or `get-shit-done` installed (or you've explicitly opted out).
+TK installs all 54 files — the full-fat default. Run in your regular terminal (not inside
+Claude Code!) in the project folder:
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
 ```
 
-Then **start Claude Code** in that project directory. For future updates use `/update-toolkit` command.
+Then start Claude Code in that project directory. For future updates use `/update-toolkit`.
 
-> **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md) for details.
+### Complement install
+
+You have one or both of `superpowers` (obra) and `get-shit-done` (gsd-build) installed. TK
+auto-detects them and skips the 7 files that would duplicate SP functionality, keeping the ~47
+unique TK contributions (Council, framework CLAUDE.md templates, components library, cheatsheets,
+framework-specific skills). Use the same install command — TK auto-selects the `complement-*`
+mode. To override, pass `--mode standalone` (or any other mode name):
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) --mode complement-full
+```
+
+### Upgrading from v3.x
+
+v3.x users who installed SP or GSD after TK should run `scripts/migrate-to-complement.sh` to
+remove duplicate files with per-file confirmation and a full pre-migration backup. See
+[docs/INSTALL.md](docs/INSTALL.md) for the full 12-cell matrix and step-by-step guidance.
+
+> **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it
+> to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal
+> preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md)
+> for details.
 
 ---
 
@@ -125,14 +149,16 @@ claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:pass@loc
 
 ## Structure After Installation
 
+Files marked † conflict with `superpowers` — omitted in `complement-sp` and `complement-full` modes.
+
 ```text
 your-project/
 └── .claude/
     ├── CLAUDE.md              # Main instructions (adapt for your project)
     ├── settings.json          # Hooks, permissions
     ├── commands/              # Slash commands
-    │   ├── verify.md
-    │   ├── debug.md
+    │   ├── verify.md          # † omitted in complement-sp/full
+    │   ├── debug.md           # † omitted in complement-sp/full
     │   └── ...
     ├── prompts/               # Audits
     │   ├── SECURITY_AUDIT.md
@@ -142,7 +168,7 @@ your-project/
     │   ├── MYSQL_PERFORMANCE_AUDIT.md
     │   └── POSTGRES_PERFORMANCE_AUDIT.md
     ├── agents/                # Subagents
-    │   ├── code-reviewer.md
+    │   ├── code-reviewer.md   # † omitted in complement-sp/full
     │   ├── test-writer.md
     │   └── planner.md
     ├── skills/                # Framework expertise
