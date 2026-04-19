@@ -200,41 +200,57 @@ The subagent reads only what it needs, and the orchestrator's prompt stays tiny.
 
 Minimum viable adaptation in a custom command at `commands/your-command.md`:
 
-```markdown
-# /your-command — One-line description
+### 1. Load context
 
-## Process
+Call your toolkit's `init` helper at the start of the command. It returns a JSON blob with model
+names, paths, and flags — no hardcoded values in the command itself.
 
-1. **Load context.**
-   ```bash
-   INIT=$(node "$HOME/.claude/your-toolkit/bin/your-tools.cjs" init your-workflow)
-   ```
-   Parse JSON for model names, paths, flags.
-
-2. **Spawn subagents in parallel.**
-   For each independent work unit, spawn a subagent with:
-   - `subagent_type: <agent>` (defined in `~/.claude/agents/`)
-   - `model: <from INIT>`
-   - `prompt:` includes `<files_to_read>`, the work unit, and a `<quality_gate>` checklist
-   - `run_in_background: true` so they parallelize
-
-3. **Collect confirmations.**
-   Wait for each subagent. Read confirmation strings only — never the full transcript.
-
-4. **Commit atomically.**
-   ```bash
-   node "$HOME/.claude/your-toolkit/bin/your-tools.cjs" commit "your: short message" --files <produced-files>
-   ```
-
-5. **Present next-up.**
-   Tell the user what to run next.
+```bash
+INIT=$(node "$HOME/.claude/your-toolkit/bin/your-tools.cjs" init your-workflow)
 ```
 
-The pattern is portable — `gsd-tools.cjs` is the GSD-specific implementation, but a `tk-tools.sh` or any other init helper following the same JSON contract would work identically.
+Parse the JSON for `researcher_model`, `planner_model`, `phase_dir`, and any other fields your
+workflow needs.
+
+### 2. Spawn subagents in parallel
+
+For each independent work unit, spawn a subagent using the Agent tool. Pass these fields:
+
+- `subagent_type` — agent name defined in `~/.claude/agents/`
+- `model` — value from the INIT blob (sonnet for cheap analysis, opus for hard reasoning)
+- `prompt` — includes a `<files_to_read>` block, the work unit description, and a quality-gate
+  checklist of "must be true before returning"
+- `run_in_background: true` — lets the runtime parallelize all spawns in the same message
+
+Group work units into waves: independent units in the same wave; dependent units in subsequent
+waves.
+
+### 3. Collect confirmations
+
+Wait for each subagent. Read the confirmation string only — never the full subagent transcript.
+The orchestrator's context grows by ~20 lines per subagent regardless of how much work was done.
+
+### 4. Commit atomically
+
+After each wave completes, commit the produced artifacts in a single commit so every wave is a
+stable resume point.
+
+```bash
+node "$HOME/.claude/your-toolkit/bin/your-tools.cjs" commit "your: short message" \
+    --files .planning/output/*.md
+```
+
+### 5. Present next-up
+
+Tell the user what command to run next. Keep the orchestrator's final message short — it has
+already delegated the heavy work.
+
+The pattern is portable — `gsd-tools.cjs` is the GSD-specific implementation, but a
+`tk-tools.sh` or any other init helper following the same JSON contract works identically.
 
 ---
 
-## See also
+## See Also
 
 - `components/supreme-council.md` — TK's existing multi-AI orchestration via `brain.py`. Refactoring it to use this init-JSON pattern is on the v4.1 roadmap (`ORCH-FUT-02`, `ORCH-FUT-03`).
 - `components/structured-workflow.md` — single-agent 3-phase discipline (RIPER-5). Complements this pattern: structured-workflow disciplines a single context, orchestration-pattern scales beyond one context.

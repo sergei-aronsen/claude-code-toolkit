@@ -189,3 +189,14 @@ your-project/
 | Node.js | ✅ | ✅ | `package.json` (without next.config) |
 | Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
 | Go | ✅ | ✅ | `go.mod` |
+
+---
+
+## Components
+
+Reusable Markdown sections for composing custom `CLAUDE.md` files. Components are repo-root
+assets — they are **not** installed into `.claude/`; reference them by absolute GitHub URL.
+
+**Orchestration pattern** — see [components/orchestration-pattern.md](components/orchestration-pattern.md)
+for the lean-orchestrator + fat-subagents design Council and GSD workflows both use.
+Helps any custom slash command scale beyond a single context window.

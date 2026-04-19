@@ -271,3 +271,9 @@ For high-stakes changes, use multi-AI plan validation:
 
 Full guide: `components/supreme-council.md`
 ```
+
+## See Also
+
+- [orchestration-pattern.md](./orchestration-pattern.md) — lean-orchestrator + fat-subagents
+  pattern that Council implements. Explains why `brain.py` spawns Gemini and ChatGPT as
+  parallel subagents rather than calling them sequentially from one context.

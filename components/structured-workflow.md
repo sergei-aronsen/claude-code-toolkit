@@ -251,3 +251,9 @@ Plan Mode (Shift+Tab x 2)
 ## Example Flow
 
 Typical session: RESEARCH (find files, study patterns, check deps) then PLAN (write plan to scratchpad, wait for user OK) then EXECUTE (implement step-by-step, verify each step, commit).
+
+## See Also
+
+- [orchestration-pattern.md](./orchestration-pattern.md) — scaling multi-step workflows
+  **beyond a single agent's context window**. Structured Workflow disciplines a single
+  context; orchestration-pattern delegates across many fresh contexts. Complementary patterns.
