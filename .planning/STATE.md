@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-19T10:49:09.839Z"
+stopped_at: Completed 06-documentation/06-02-PLAN.md
+last_updated: "2026-04-19T12:33:18.196Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_plans: 22
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 05 — migration
+**Current focus:** Phase 06 — documentation
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Executing Phase 05
+Phase: 06 (documentation) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-19
 
 Progress: [█░░░░░░░░░] 14%
@@ -54,6 +54,7 @@ Progress: [█░░░░░░░░░] 14%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 06-documentation P02 | 15 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 - Init: Phase 1 must complete before any complement-mode logic — BUG-01 (BSD head) would corrupt merge logic built on top of it
 - Init: STATE-04 (SHA256 hashes) is a hard dependency for MIGRATE phase — migration cannot safely detect user-modified files without it
 - Init: SAFETY (settings.json merge) folded into Phase 3 alongside MODE — independent but shares install flow delivery boundary
+- [Phase 06-documentation]: caveman ships en+wenyan (NOT en+ru); auto-backup is single-generation — git commit is durable backup
+- [Phase 06-documentation]: rtk #1276: user workaround (exclude_commands=[ls]) distinct from upstream intended fix (LC_ALL=C)
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-18T20:50:57.998Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-migration/05-CONTEXT.md
+Last session: 2026-04-19T12:33:18.193Z
+Stopped at: Completed 06-documentation/06-02-PLAN.md
+Resume file: None

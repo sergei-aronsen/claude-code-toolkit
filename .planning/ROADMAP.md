@@ -138,8 +138,8 @@ Plans:
 
 Plans:
 
-- [ ] 06-01-PLAN.md — DOCS-01/02/03/04: README complement-first positioning + CHANGELOG [4.0.0] with BREAKING CHANGES + 7x Required Base Plugins template blocks + docs/INSTALL.md 12-cell matrix
-- [ ] 06-02-PLAN.md — DOCS-05/07 (asset halves): components/optional-plugins.md (upstream-verified rtk/caveman/SP/GSD caveats) + templates/global/RTK.md (fallback with rtk-ai/rtk#1276 Known Issues)
+- [x] 06-01-PLAN.md — DOCS-01/02/03/04: README complement-first positioning + CHANGELOG [4.0.0] with BREAKING CHANGES + 7x Required Base Plugins template blocks + docs/INSTALL.md 12-cell matrix
+- [x] 06-02-PLAN.md — DOCS-05/07 (asset halves): components/optional-plugins.md (upstream-verified rtk/caveman/SP/GSD caveats) + templates/global/RTK.md (fallback with rtk-ai/rtk#1276 Known Issues)
 - [ ] 06-03-PLAN.md — DOCS-05/06/07/08 (wiring + polish): manifest.json files.components registration + orchestration-pattern.md mdlint fix + cross-refs + scripts/lib/optional-plugins.sh + init/update wiring + setup-security.sh RTK.md install guard + test-setup-security-rtk.sh
 
 ### Phase 7: Validation
@@ -165,5 +165,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Install Flow | 0/3 | Planned | - |
 | 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/3 | Planned | - |
-| 6. Documentation | 0/3 | Planned | - |
+| 6. Documentation | 2/3 | In Progress|  |
 | 7. Validation | 0/TBD | Not started | - |
