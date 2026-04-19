@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-documentation/06-02-PLAN.md
-last_updated: "2026-04-19T12:33:18.196Z"
+stopped_at: Completed 06-documentation/06-03-PLAN.md
+last_updated: "2026-04-19T12:51:41.060Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 22
-  completed_plans: 21
-  percent: 95
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (documentation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-19
 
@@ -55,6 +55,7 @@ Progress: [█░░░░░░░░░] 14%
 
 *Updated after each plan completion*
 | Phase 06-documentation P02 | 15 | 2 tasks | 2 files |
+| Phase 06-documentation P03 | 20 | 5 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - Init: SAFETY (settings.json merge) folded into Phase 3 alongside MODE — independent but shares install flow delivery boundary
 - [Phase 06-documentation]: caveman ships en+wenyan (NOT en+ru); auto-backup is single-generation — git commit is durable backup
 - [Phase 06-documentation]: rtk #1276: user workaround (exclude_commands=[ls]) distinct from upstream intended fix (LC_ALL=C)
+- [Phase 06-documentation]: inventory.components added as top-level manifest key (not files.components) to avoid install-loop side-effect in install.sh:239
+- [Phase 06-documentation]: optional-plugins.sh sourced lib with color guards; called in init-claude.sh between recommend_statusline and setup_council
+- [Phase 06-documentation]: RTK.md install guard: never clobber existing ~/.claude/RTK.md regardless of generation (rtk-init, tk-prior, user-edited)
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-19T12:33:18.193Z
-Stopped at: Completed 06-documentation/06-02-PLAN.md
+Last session: 2026-04-19T12:51:41.057Z
+Stopped at: Completed 06-documentation/06-03-PLAN.md
 Resume file: None

@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Install Flow** - Refactor init-claude.sh + init-local.sh for 4-mode installs, dry-run, and safe settings merge
 - [ ] **Phase 4: Update Flow** - Refactor update-claude.sh to re-evaluate state, surface drift, and apply mode-aware skip-lists
 - [ ] **Phase 5: Migration** - Ship migrate-to-complement.sh for existing v3.x users with three-way diff and per-file confirmation
-- [ ] **Phase 6: Documentation** - Reposition README, update all 7 templates, write CHANGELOG 4.0.0 breaking changes entry
+- [x] **Phase 6: Documentation** - Reposition README, update all 7 templates, write CHANGELOG 4.0.0 breaking changes entry (completed 2026-04-19)
 - [ ] **Phase 7: Validation** - Run full 12-cell install matrix, align all version references, gate 4.0.0 release
 
 ## Phase Details
@@ -140,7 +140,7 @@ Plans:
 
 - [x] 06-01-PLAN.md — DOCS-01/02/03/04: README complement-first positioning + CHANGELOG [4.0.0] with BREAKING CHANGES + 7x Required Base Plugins template blocks + docs/INSTALL.md 12-cell matrix
 - [x] 06-02-PLAN.md — DOCS-05/07 (asset halves): components/optional-plugins.md (upstream-verified rtk/caveman/SP/GSD caveats) + templates/global/RTK.md (fallback with rtk-ai/rtk#1276 Known Issues)
-- [ ] 06-03-PLAN.md — DOCS-05/06/07/08 (wiring + polish): manifest.json files.components registration + orchestration-pattern.md mdlint fix + cross-refs + scripts/lib/optional-plugins.sh + init/update wiring + setup-security.sh RTK.md install guard + test-setup-security-rtk.sh
+- [x] 06-03-PLAN.md — DOCS-05/06/07/08 (wiring + polish): manifest.json files.components registration + orchestration-pattern.md mdlint fix + cross-refs + scripts/lib/optional-plugins.sh + init/update wiring + setup-security.sh RTK.md install guard + test-setup-security-rtk.sh
 
 ### Phase 7: Validation
 **Goal**: All 12 install matrix cells are manually smoke-tested and pass, make check passes clean, all version references are aligned, and 4.0.0 is ready to tag
@@ -165,5 +165,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Install Flow | 0/3 | Planned | - |
 | 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/3 | Planned | - |
-| 6. Documentation | 2/3 | In Progress|  |
+| 6. Documentation | 3/3 | Complete   | 2026-04-19 |
 | 7. Validation | 0/TBD | Not started | - |

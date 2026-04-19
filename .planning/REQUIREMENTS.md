@@ -99,9 +99,9 @@ User-facing positioning and per-template plugin docs.
 - [ ] **DOCS-03**: `CHANGELOG.md` `[4.0.0]` entry documents BREAKING CHANGES (default mode behavior changed; duplicates removed in complement modes; manifest schema bumped)
 - [ ] **DOCS-04**: `docs/INSTALL.md` (or section in README) documents the install matrix (4 modes × {fresh, upgrade, re-run}) with what each cell does
 - [ ] **DOCS-05**: New `components/optional-plugins.md` documents `rtk` (rtk-ai/rtk) and `caveman` (JuliusBrussee/caveman) as recommended optional plugins, with caveats verified against upstream on 2026-04-18: `rtk` `ls` command is broken on non-English locales — user-side workaround is `exclude_commands = ["ls"]` in `~/Library/Application Support/rtk/config.toml` (upstream issue rtk-ai/rtk#1276 OPEN; upstream's intended fix is internal `LC_ALL=C`, not the exclusion workaround — document the distinction honestly); `caveman` ships **en + wenyan** (Classical Chinese) language modes — not en + ru — and `caveman-compress` **auto-backs up** CLAUDE.md to `CLAUDE.original.md` (no manual backup required; document the auto-backup invariant but warn users the backup is single-generation and is overwritten on re-compress)
-- [ ] **DOCS-06**: `init-claude.sh` and `update-claude.sh` print a "recommended optional plugins" block at end of install (non-interactive — informational only, no auto-install) listing `rtk`, `caveman`, `superpowers`, `get-shit-done` with one-line install commands and the documented caveats
+- [x] **DOCS-06**: `init-claude.sh` and `update-claude.sh` print a "recommended optional plugins" block at end of install (non-interactive — informational only, no auto-install) listing `rtk`, `caveman`, `superpowers`, `get-shit-done` with one-line install commands and the documented caveats
 - [ ] **DOCS-07**: `~/.claude/RTK.md` template (shipped by TK to user's `~/.claude/`) gains a "Known Issues" section that documents the `ls` exclusion config and points to upstream issue rtk-ai/rtk#1276
-- [ ] **DOCS-08**: `components/orchestration-pattern.md` (drafted from vault notes — already in repo) is reviewed, polished, added to `manifest.json` under `components`, and cross-referenced from `components/supreme-council.md` and `components/structured-workflow.md`; README "Components" section gets a short blurb pointing to it
+- [x] **DOCS-08**: `components/orchestration-pattern.md` (drafted from vault notes — already in repo) is reviewed, polished, added to `manifest.json` under `components`, and cross-referenced from `components/supreme-council.md` and `components/structured-workflow.md`; README "Components" section gets a short blurb pointing to it
 
 ### Validation
 
@@ -210,7 +210,7 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 | DOCS-03 | Phase 6 | Pending |
 | DOCS-04 | Phase 6 | Pending |
 | DOCS-05 | Phase 6 | Pending |
-| DOCS-06 | Phase 6 | Pending |
+| DOCS-06 | Phase 6 | Complete |
 | DOCS-07 | Phase 6 | Pending |
 | DOCS-08 | Phase 6 | Pending (component drafted, polish + manifest wiring left) |
 | VALIDATE-01 | Phase 7 | Pending |
