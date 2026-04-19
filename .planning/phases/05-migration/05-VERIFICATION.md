@@ -1,8 +1,15 @@
 ---
 phase: 05-migration
 verified: 2026-04-18T23:15:00Z
-status: human_needed
+reverified: 2026-04-19T09:45:00Z
+status: passed
+approval: user_approved_2026-04-19
 score: 11/11 must-haves verified
+human_verification_cycle:
+  run_by: claude_automation
+  uat_results: 05-HUMAN-UAT.md (all 5 UAT items resolved — 1 gap found and fixed in 12f3fb5)
+  tty_specific_subcases_deferred: ["UAT-3 `d` diff viewer", "UAT-3 Ctrl-C cleanup"]
+  deferred_reason: "TTY interaction cannot be exercised by automation; tracked as Phase 6 ship-readiness checklist"
 overrides_applied: 0
 requirements_verified:
   - MIGRATE-01

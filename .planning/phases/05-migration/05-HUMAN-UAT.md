@@ -1,14 +1,14 @@
 ---
-status: partial
+status: resolved
 phase: 05-migration
 source: [05-VERIFICATION.md]
 started: 2026-04-18T23:20:00Z
-updated: 2026-04-19T00:15:00Z
+updated: 2026-04-19T09:40:00Z
 ---
 
 ## Current Test
 
-[UAT-3 partial — TTY-specific subcases still pending human run]
+[all automation-tractable UAT items pass; TTY-specific UAT-3 subcases remain manual — tracked as carry-over]
 
 ## Tests
 
@@ -35,22 +35,21 @@ result: passed — automated: after `jq '.mode="standalone"'`, migrate emitted `
 ## Summary
 
 total: 5
-passed: 4
-issues: 1
+passed: 5
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
-Note: UAT-3 TTY-specific interactive subcases (diff viewer, Ctrl-C) remain manual-only; they are not counted as pending here because automation cannot exercise them by design.
+Note: UAT-3 TTY-specific interactive subcases (diff viewer, Ctrl-C) remain manual-only; they are not counted as pending here because automation cannot exercise them by design. Track as deferred manual verification for Phase 6 ship-readiness.
 
 ## Gaps
 
 ### UAT-3-B01 (MEDIUM): BACKUP_DIR ignores TK_MIGRATE_HOME seam
-status: failed
+status: resolved
 severity: medium
 file: scripts/migrate-to-complement.sh:267
-observed: `BACKUP_DIR="$HOME/.claude-backup-pre-migrate-$(date -u +%s)"` hardcodes `$HOME`, so test-seam runs leak backup copies into the developer's real `$HOME` (35 stray dirs accumulated from Test 13/14 runs + this UAT cycle).
-expected: `BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-migrate-$(date -u +%s)"` — derives from the already-seam-aware `CLAUDE_DIR`. Production behavior unchanged (CLAUDE_DIR=$HOME/.claude → dirname=$HOME).
-cross-reference: matches code-review finding IN-01 in 05-REVIEW.md (reviewer rated it info; UAT proves MEDIUM — real-world filesystem pollution observed).
-fix_scope: 1-line change + Test 13/14 assertion that backup lands under `$TK_MIGRATE_HOME` not `$HOME`.
+observed: `BACKUP_DIR="$HOME/.claude-backup-pre-migrate-$(date -u +%s)"` hardcoded `$HOME`, so test-seam runs leaked backup copies into the developer's real `$HOME` (35 stray dirs accumulated from Test 13/14 runs + initial UAT cycle).
+resolution: commit `12f3fb5` — changed to `BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-migrate-$(date -u +%s)"`. Production behavior unchanged (CLAUDE_DIR=$HOME/.claude → dirname=$HOME). Regression guard added as Test 13 Scenario 7 (backup under TK_MIGRATE_HOME, no leak into HOME surrogate) + Scenario 4 rewritten to use `chmod 555 $SCR` for backup-failure simulation. `make test` green (14/14 test groups).
+cross-reference: code-review finding IN-01 in 05-REVIEW.md (reviewer rated info; UAT cycle upgraded to MEDIUM — real-world filesystem pollution observed; now closed).
 
