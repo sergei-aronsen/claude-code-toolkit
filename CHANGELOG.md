@@ -112,16 +112,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 See [docs/INSTALL.md](docs/INSTALL.md) for the install matrix and `scripts/migrate-to-complement.sh`
 for the automated migration path (per-file confirmation, full backup before any removal).
 
-### Fixed
-
-- BUG-01: Replace GNU-only `head -n -1` with POSIX `sed '$d'` in `scripts/update-claude.sh` smart-merge (preserves user CLAUDE.md sections on macOS/BSD)
-- BUG-02: Add `< /dev/tty` guards to all interactive `read` calls in `scripts/setup-council.sh` + early non-interactive guard; switch API-key prompts to silent `read -rs`
-- BUG-03: JSON-escape API key values via `python3 json.dumps` before heredoc write in `scripts/setup-council.sh` and `scripts/init-claude.sh` (keys containing `"`, `\`, newline now produce valid config.json)
-- BUG-04: Remove silent `sudo apt-get` for `tree` install in `scripts/setup-council.sh`; prompt user interactively and handle skip gracefully
-- BUG-05: Timestamped backup of `~/.claude/settings.json` before every mutation in `scripts/setup-security.sh`; restore from backup on python3 merge failure and exit non-zero
-- BUG-06: Read toolkit version from `manifest.json` at runtime in `scripts/init-local.sh`; remove hardcoded `VERSION="2.0.0"`; add `make validate` manifest ↔ CHANGELOG alignment check
-- BUG-07: Add `design.md` (and any other manifest-drifted commands) to `scripts/update-claude.sh` install loop; add `make validate` check that loop filenames match `manifest.json` commands
-
 ## [3.0.0] - 2026-02-16
 
 ### Added
