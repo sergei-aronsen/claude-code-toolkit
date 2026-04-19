@@ -174,6 +174,27 @@ def main():
             fail(location + ": path does not exist on disk: " + path_value)
             errors += 1
 
+    # Check 7: inventory.components[] — repo-root asset registry (NOT installed into .claude/)
+    inventory_section = manifest.get("inventory", {})
+    inventory_components = inventory_section.get("components", [])
+    for idx, entry in enumerate(inventory_components):
+        location = "inventory.components[" + str(idx) + "]"
+        if not isinstance(entry, dict):
+            fail(location + ": entry must be an object, got " + type(entry).__name__)
+            errors += 1
+            continue
+        for required_field in ("path", "description"):
+            if required_field not in entry:
+                fail(location + ': missing required "' + required_field + '" key')
+                errors += 1
+        path_value = entry.get("path")
+        if path_value:
+            # Inventory paths are repo-root-relative (no SOURCE_MAP translation)
+            full_path = os.path.join(REPO_ROOT, path_value)
+            if not os.path.exists(full_path):
+                fail(location + ": path does not exist on disk: " + path_value)
+                errors += 1
+
     # Check 6: disk-to-manifest drift (files on disk not in manifest)
     manifest_paths = set(p for _, p in all_paths)
 

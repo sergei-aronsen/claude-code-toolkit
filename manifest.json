@@ -99,6 +99,19 @@
     ]
   },
 
+  "inventory": {
+    "components": [
+      {
+        "path": "components/optional-plugins.md",
+        "description": "Recommended optional plugins (rtk, caveman, superpowers, get-shit-done) with caveats; verified upstream 2026-04-18"
+      },
+      {
+        "path": "components/orchestration-pattern.md",
+        "description": "Generic orchestration pattern (lean-orchestrator + fat-subagents); cross-referenced from supreme-council.md and structured-workflow.md"
+      }
+    ]
+  },
+
   "claude_md_sections": {
     "system": [
       "📌 Compact Instructions",
