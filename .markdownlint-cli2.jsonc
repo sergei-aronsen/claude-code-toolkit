@@ -1,0 +1,25 @@
+// markdownlint-cli2 config — consumed by DavidAnson/markdownlint-cli2-action in CI
+// and by local `markdownlint-cli2` invocations. The inline-compat `.markdownlint.json`
+// is preserved for `markdownlint` (cli v1) which is what `make mdlint` uses.
+{
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD033": false,
+    "MD041": false,
+    "MD060": false,
+    "MD024": {
+      "siblings_only": true
+    },
+    "MD029": {
+      "style": "ordered"
+    }
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules/**",
+    ".planning/**",
+    ".claude/**",
+    "CLAUDE.md"
+  ]
+}

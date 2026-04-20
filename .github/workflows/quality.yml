@@ -32,7 +32,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@455b6612a7b7a80f28be9e019b70abdd11696e4e # v14
         with:
           globs: '**/*.md'
-          config: '.markdownlint.json'
+          config: '.markdownlint-cli2.jsonc'
 
   validate-templates:
     name: Validate Templates
