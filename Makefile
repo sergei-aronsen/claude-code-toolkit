@@ -96,6 +96,9 @@ test:
 	@echo "Test 15: setup-security.sh RTK.md install guard"
 	@bash scripts/tests/test-setup-security-rtk.sh
 	@echo ""
+	@echo "Test 16: full install matrix"
+	@bash scripts/tests/test-matrix.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
