@@ -1,0 +1,11 @@
+node_modules/
+.planning/
+.claude/
+
+# CLAUDE.md contains GSD auto-injected blocks (marked with <!-- GSD:*-start -->)
+# that assemble STACK/CONVENTIONS/ARCHITECTURE from .planning/codebase/*.md.
+# The injected sections carry MD022/MD032/MD036 violations because the upstream
+# templates pack headings+lists without the required blank lines. Treating this
+# as injection-template tech debt — file stays in repo for Claude sessions but
+# is excluded from lint until the injection templates are fixed.
+CLAUDE.md

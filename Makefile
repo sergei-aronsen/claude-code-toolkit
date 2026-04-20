@@ -36,7 +36,7 @@ shellcheck:
 # Markdown lint
 mdlint:
 	@echo "Running markdownlint..."
-	@markdownlint '**/*.md' --ignore node_modules && echo "✅ Markdownlint passed"
+	@markdownlint '**/*.md' --ignore-path .markdownlintignore && echo "✅ Markdownlint passed"
 
 # Test init scripts
 test:
