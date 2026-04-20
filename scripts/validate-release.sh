@@ -90,6 +90,89 @@ require_lib "${LIB_DIR}/state.sh"
 detect_superpowers 2>/dev/null || true
 detect_gsd 2>/dev/null || true
 
+# ─── Sandbox helpers (D-04, D-06) ────────────────────────────────────────────
+REPO_ROOT_ABS="$REPO_ROOT"
+PRE_40_COMMIT="e9411201db9dde6a0676a5a5b09fb80d8893e507"
+declare -a CELL_WORKTREES=()
+
+sandbox_setup() {
+    local cell_name="$1"
+    local cell_home="/tmp/tk-matrix-${cell_name}-$(date +%s)"
+    rm -rf "$cell_home"
+    mkdir -p "$cell_home/.claude"
+    echo "$cell_home"
+}
+
+stage_sp_cache() {
+    local cell_home="$1" ver="${2:-5.0.7}"
+    local cache_root="$cell_home/.claude/plugins/cache/claude-plugins-official/superpowers/$ver"
+    mkdir -p "$cache_root/agents"
+    cat > "$cache_root/agents/code-reviewer.md" <<'AGENT'
+# SP code-reviewer agent (stub fixture for matrix cell)
+AGENT
+}
+
+stage_gsd_cache() {
+    local cell_home="$1"
+    mkdir -p "$cell_home/.claude/get-shit-done/bin"
+    cat > "$cell_home/.claude/get-shit-done/bin/gsd-tools.cjs" <<'GSD'
+#!/usr/bin/env node
+// Stub GSD fixture for matrix cell
+GSD
+    chmod +x "$cell_home/.claude/get-shit-done/bin/gsd-tools.cjs"
+}
+
+snapshot_foreign_settings() {
+    local settings="$1"
+    if [ -f "$settings" ]; then
+        jq '{hooks: .hooks, enabledPlugins: .enabledPlugins, user_setting_unrelated: .user_setting_unrelated}' \
+            "$settings" 2>/dev/null || echo '{}'
+    else
+        echo '{}'
+    fi
+}
+
+seed_foreign_settings() {
+    local cell_home="$1"
+    local sj="$cell_home/.claude/settings.json"
+    mkdir -p "$(dirname "$sj")"
+    cat > "$sj" <<'JSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "echo [SP] pretooluse"}]}
+    ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  },
+  "user_setting_unrelated": "preserved-by-user",
+  "permissions": {"deny": []}
+}
+JSON
+}
+
+# CELL_WT_PATH is the out-parameter set by setup_v3x_worktree.
+# Cannot use $() subshell capture — array mutation inside $() does not propagate.
+CELL_WT_PATH=""
+
+setup_v3x_worktree() {
+    local wt="/tmp/tk-matrix-worktree-$$-$(date +%s)"
+    rm -rf "$wt"
+    git -C "$REPO_ROOT_ABS" worktree add --detach "$wt" "$PRE_40_COMMIT" >/dev/null 2>&1
+    CELL_WORKTREES+=("$wt")
+    CELL_WT_PATH="$wt"
+}
+
+cleanup_v3x_worktrees() {
+    for wt in "${CELL_WORKTREES[@]:-}"; do
+        [ -n "$wt" ] && git -C "$REPO_ROOT_ABS" worktree remove "$wt" >/dev/null 2>&1 || true
+    done
+    CELL_WORKTREES=()
+}
+
+trap cleanup_v3x_worktrees EXIT
+
 # ─── Invariant 2: toolkit-install.json schema + content ─────────────────────
 # assert_state_schema <state_file> <expected_mode>
 assert_state_schema() {
@@ -190,6 +273,193 @@ run_cell() {
     echo "${GREEN}PASS: ${cell_name}${NC}"
 }
 
+# ─── Cell body functions (13 cells) ─────────────────────────────────────────
+
+# Cell 1/13: standalone-fresh
+cell_standalone_fresh() {
+    local CH rc
+    CH=$(sandbox_setup "standalone-fresh")
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode standalone >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "init-local.sh --mode standalone exits 0"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "standalone"
+    assert_skiplist_clean "$CH" "standalone"
+}
+
+# Cell 2/13: standalone-upgrade
+cell_standalone_upgrade() {
+    local CH WT rc
+    CH=$(sandbox_setup "standalone-upgrade")
+    setup_v3x_worktree; WT="$CELL_WT_PATH"
+    ( cd "$CH" && HOME="$CH" bash "$WT/scripts/init-local.sh" >/dev/null 2>&1 ) || true
+    HOME="$CH" \
+        TK_UPDATE_HOME="$CH" \
+        TK_UPDATE_LIB_DIR="$LIB_DIR" \
+        TK_UPDATE_MANIFEST_OVERRIDE="$REPO_ROOT_ABS/manifest.json" \
+        TK_UPDATE_FILE_SRC="$REPO_ROOT_ABS" \
+        HAS_SP=false HAS_GSD=false SP_VERSION="" GSD_VERSION="" \
+        bash "$REPO_ROOT_ABS/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 && rc=0 || rc=$?
+    assert_eq "0" "$rc" "update-claude.sh after v3.x install exits 0"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "standalone"
+    assert_skiplist_clean "$CH" "standalone"
+}
+
+# Cell 3/13: standalone-rerun
+# Idempotency: install then re-run init-local.sh; state must survive intact.
+# No-op semantics (backup count) are covered by Test 11 (test-update-summary.sh).
+cell_standalone_rerun() {
+    local CH rc
+    CH=$(sandbox_setup "standalone-rerun")
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode standalone >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "first init-local.sh --mode standalone exits 0"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode standalone >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "re-run init-local.sh exits 0 (idempotent)"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "standalone"
+    assert_skiplist_clean "$CH" "standalone"
+}
+
+# Cell 4/13: complement-sp-fresh
+cell_complement_sp_fresh() {
+    local CH rc
+    CH=$(sandbox_setup "complement-sp-fresh")
+    stage_sp_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-sp >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "init-local.sh --mode complement-sp exits 0"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-sp"
+    assert_skiplist_clean "$CH" "complement-sp"
+    assert_no_agent_collision "$CH"
+}
+
+# Cell 5/13: complement-sp-upgrade
+# Note: v3.x install places code-reviewer.md on disk; update-claude.sh with SP detected
+# does NOT remove it (user must run migrate-to-complement.sh). Agent-collision is expected
+# pre-migration and is NOT asserted here (D-11 applies to fresh+rerun cells only).
+cell_complement_sp_upgrade() {
+    local CH WT rc
+    CH=$(sandbox_setup "complement-sp-upgrade")
+    setup_v3x_worktree; WT="$CELL_WT_PATH"
+    stage_sp_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$WT/scripts/init-local.sh" >/dev/null 2>&1 ) || true
+    HOME="$CH" \
+        TK_UPDATE_HOME="$CH" \
+        TK_UPDATE_LIB_DIR="$LIB_DIR" \
+        TK_UPDATE_MANIFEST_OVERRIDE="$REPO_ROOT_ABS/manifest.json" \
+        TK_UPDATE_FILE_SRC="$REPO_ROOT_ABS" \
+        HAS_SP=true HAS_GSD=false SP_VERSION="5.0.7" GSD_VERSION="" \
+        bash "$REPO_ROOT_ABS/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 && rc=0 || rc=$?
+    assert_eq "0" "$rc" "update-claude.sh with SP detected exits 0"
+    assert_eq "object" "$(jq -r '.detected | type' "$CH/.claude/toolkit-install.json")" "state.detected present"
+}
+
+# Cell 6/13: complement-sp-rerun
+cell_complement_sp_rerun() {
+    local CH
+    CH=$(sandbox_setup "complement-sp-rerun")
+    stage_sp_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-sp >/dev/null 2>&1 ) || true
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-sp >/dev/null 2>&1 ) || true
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-sp"
+    assert_skiplist_clean "$CH" "complement-sp"
+    assert_no_agent_collision "$CH"
+}
+
+# Cell 7/13: complement-gsd-fresh
+cell_complement_gsd_fresh() {
+    local CH rc
+    CH=$(sandbox_setup "complement-gsd-fresh")
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-gsd >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "init-local.sh --mode complement-gsd exits 0"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-gsd"
+    assert_skiplist_clean "$CH" "complement-gsd"
+}
+
+# Cell 8/13: complement-gsd-upgrade
+cell_complement_gsd_upgrade() {
+    local CH WT rc
+    CH=$(sandbox_setup "complement-gsd-upgrade")
+    setup_v3x_worktree; WT="$CELL_WT_PATH"
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$WT/scripts/init-local.sh" >/dev/null 2>&1 ) || true
+    HOME="$CH" \
+        TK_UPDATE_HOME="$CH" \
+        TK_UPDATE_LIB_DIR="$LIB_DIR" \
+        TK_UPDATE_MANIFEST_OVERRIDE="$REPO_ROOT_ABS/manifest.json" \
+        TK_UPDATE_FILE_SRC="$REPO_ROOT_ABS" \
+        HAS_SP=false HAS_GSD=true SP_VERSION="" GSD_VERSION="1.0.0" \
+        bash "$REPO_ROOT_ABS/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 && rc=0 || rc=$?
+    assert_eq "0" "$rc" "update-claude.sh with GSD detected exits 0"
+    assert_eq "object" "$(jq -r '.detected | type' "$CH/.claude/toolkit-install.json")" "state.detected present"
+}
+
+# Cell 9/13: complement-gsd-rerun
+cell_complement_gsd_rerun() {
+    local CH
+    CH=$(sandbox_setup "complement-gsd-rerun")
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-gsd >/dev/null 2>&1 ) || true
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-gsd >/dev/null 2>&1 ) || true
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-gsd"
+    assert_skiplist_clean "$CH" "complement-gsd"
+}
+
+# Cell 10/13: complement-full-fresh
+cell_complement_full_fresh() {
+    local CH rc
+    CH=$(sandbox_setup "complement-full-fresh")
+    stage_sp_cache "$CH"
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-full >/dev/null 2>&1 ) && rc=0 || rc=$?
+    assert_eq "0" "$rc" "init-local.sh --mode complement-full exits 0"
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-full"
+    assert_skiplist_clean "$CH" "complement-full"
+    assert_no_agent_collision "$CH"
+}
+
+# Cell 11/13: complement-full-upgrade
+# Note: v3.x install places code-reviewer.md on disk; update-claude.sh with SP+GSD detected
+# does NOT remove it (user must run migrate-to-complement.sh). Agent-collision is expected
+# pre-migration and is NOT asserted here (D-11 applies to fresh+rerun cells only).
+cell_complement_full_upgrade() {
+    local CH WT rc
+    CH=$(sandbox_setup "complement-full-upgrade")
+    setup_v3x_worktree; WT="$CELL_WT_PATH"
+    stage_sp_cache "$CH"
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$WT/scripts/init-local.sh" >/dev/null 2>&1 ) || true
+    HOME="$CH" \
+        TK_UPDATE_HOME="$CH" \
+        TK_UPDATE_LIB_DIR="$LIB_DIR" \
+        TK_UPDATE_MANIFEST_OVERRIDE="$REPO_ROOT_ABS/manifest.json" \
+        TK_UPDATE_FILE_SRC="$REPO_ROOT_ABS" \
+        HAS_SP=true HAS_GSD=true SP_VERSION="5.0.7" GSD_VERSION="1.0.0" \
+        bash "$REPO_ROOT_ABS/scripts/update-claude.sh" --no-banner --no-offer-mode-switch >/dev/null 2>&1 && rc=0 || rc=$?
+    assert_eq "0" "$rc" "update-claude.sh with SP+GSD detected exits 0"
+    assert_eq "object" "$(jq -r '.detected | type' "$CH/.claude/toolkit-install.json")" "state.detected present"
+}
+
+# Cell 12/13: complement-full-rerun
+cell_complement_full_rerun() {
+    local CH
+    CH=$(sandbox_setup "complement-full-rerun")
+    stage_sp_cache "$CH"
+    stage_gsd_cache "$CH"
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-full >/dev/null 2>&1 ) || true
+    ( cd "$CH" && HOME="$CH" bash "$REPO_ROOT_ABS/scripts/init-local.sh" --mode complement-full >/dev/null 2>&1 ) || true
+    assert_state_schema "$CH/.claude/toolkit-install.json" "complement-full"
+    assert_skiplist_clean "$CH" "complement-full"
+    assert_no_agent_collision "$CH"
+}
+
+# Cell 13/13: translation-sync
+cell_translation_sync() {
+    local drift_exit
+    (
+        cd "$REPO_ROOT_ABS"
+        make translation-drift >/dev/null 2>&1
+    ) && drift_exit=0 || drift_exit=$?
+    assert_eq "0" "$drift_exit" "make translation-drift exits 0 (all translations within ±20% of README.md)"
+}
+
 # ─── Self-test: exercise helpers against synthetic fixtures ──────────────────
 self_test() {
     local TMP
@@ -285,22 +555,64 @@ JSON
     exit 0
 }
 
-# ─── CLI dispatcher ──────────────────────────────────────────────────────────
+# ─── CLI dispatcher ─────────────────────────────────────────────────────────
+CELLS=(
+    standalone-fresh standalone-upgrade standalone-rerun
+    complement-sp-fresh complement-sp-upgrade complement-sp-rerun
+    complement-gsd-fresh complement-gsd-upgrade complement-gsd-rerun
+    complement-full-fresh complement-full-upgrade complement-full-rerun
+    translation-sync
+)
+
+cell_fn_for() {
+    echo "cell_$(echo "$1" | tr '-' '_')"
+}
+
 case "${1:-}" in
     --self-test)
         self_test
         ;;
+    --list)
+        for c in "${CELLS[@]}"; do echo "$c"; done
+        exit 0
+        ;;
     --cell)
-        echo "ERROR: --cell <name> not wired yet (Plan 07-03)" >&2
-        exit 2
+        [ -z "${2:-}" ] && { echo "ERROR: --cell requires a name" >&2; exit 2; }
+        cell="$2"
+        match=0
+        for c in "${CELLS[@]}"; do [ "$c" = "$cell" ] && match=1; done
+        if [ "$match" = "0" ]; then
+            echo "ERROR: unknown cell: $cell" >&2
+            echo "Known cells:" >&2
+            for c in "${CELLS[@]}"; do echo "  $c" >&2; done
+            exit 2
+        fi
+        run_cell "$cell" "$(cell_fn_for "$cell")"
+        echo ""
+        echo "Results: ${PASS} passed, ${FAIL} failed"
+        [ "$FAIL" -gt 0 ] && exit 1
+        exit 0
+        ;;
+    --all)
+        for c in "${CELLS[@]}"; do
+            run_cell "$c" "$(cell_fn_for "$c")"
+        done
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Matrix complete: ${PASS} assertions passed, ${FAIL} failed across ${#CELLS[@]} cells"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        [ "$FAIL" -gt 0 ] && exit 1
+        exit 0
         ;;
     "")
         cat <<USAGE
 Usage: bash scripts/validate-release.sh <command>
 
 Commands:
-  --self-test      Exercise invariant helpers against synthetic fixtures (Plan 07-01).
-  --cell <name>    Run a single matrix cell (Plan 07-03 -- not yet wired).
+  --self-test      Exercise invariant helpers against synthetic fixtures.
+  --list           Print all 13 cell names, one per line.
+  --cell <name>    Run a single matrix cell.
+  --all            Run all 13 cells fail-fast.
 
 Phase 7 v4.0.0 release validation runner.
 USAGE
