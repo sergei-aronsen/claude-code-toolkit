@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static clean install
 
 # Default target
 help:
@@ -14,7 +14,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static
 	@echo "All checks passed!"
 
 # Install dependencies
@@ -144,6 +144,72 @@ validate-base-plugins:
 	done; \
 	if [ $$MISSING -gt 0 ]; then exit 1; fi; \
 	echo "✅ All 7 templates carry ## Required Base Plugins"
+
+# Version alignment (D-09) — manifest.json == CHANGELOG.md top release == init-local.sh --version
+version-align:
+	@echo "Checking version alignment (manifest.json <-> CHANGELOG.md <-> init-local.sh)..."
+	@MANIFEST_VER=$$(jq -r '.version' manifest.json); \
+	CHANGELOG_VER=$$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/'); \
+	SCRIPT_VER=$$(bash scripts/init-local.sh --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
+	ERRORS=0; \
+	if [ -z "$$MANIFEST_VER" ] || [ "$$MANIFEST_VER" = "null" ]; then \
+		echo "❌ manifest.json has no .version field"; ERRORS=$$((ERRORS+1)); \
+	fi; \
+	if [ -z "$$CHANGELOG_VER" ]; then \
+		echo "❌ CHANGELOG.md has no '## [X.Y.Z]' header"; ERRORS=$$((ERRORS+1)); \
+	fi; \
+	if [ -z "$$SCRIPT_VER" ]; then \
+		echo "❌ scripts/init-local.sh --version produced no version string"; ERRORS=$$((ERRORS+1)); \
+	fi; \
+	if [ "$$MANIFEST_VER" != "$$CHANGELOG_VER" ]; then \
+		echo "❌ manifest.json=$$MANIFEST_VER, CHANGELOG.md=$$CHANGELOG_VER"; ERRORS=$$((ERRORS+1)); \
+	fi; \
+	if [ "$$MANIFEST_VER" != "$$SCRIPT_VER" ]; then \
+		echo "❌ manifest.json=$$MANIFEST_VER, init-local.sh --version=$$SCRIPT_VER"; ERRORS=$$((ERRORS+1)); \
+	fi; \
+	if [ "$$ERRORS" -gt 0 ]; then exit 1; fi; \
+	echo "✅ Version aligned: $$MANIFEST_VER"
+
+# Translation drift (D-10) — docs/readme/*.md line count within ±20% of README.md.
+# Phase 7.1 contract: translations must fit this gate.
+translation-drift:
+	@echo "Checking README translation drift (±20% line count tolerance)..."
+	@if [ ! -f README.md ]; then echo "❌ README.md missing at repo root"; exit 1; fi
+	@README_LINES=$$(wc -l < README.md | tr -d ' '); \
+	MIN=$$(( README_LINES * 80 / 100 )); \
+	MAX=$$(( README_LINES * 120 / 100 )); \
+	ERRORS=0; \
+	for f in docs/readme/de.md docs/readme/es.md docs/readme/fr.md docs/readme/ja.md \
+	          docs/readme/ko.md docs/readme/pt.md docs/readme/ru.md docs/readme/zh.md; do \
+		if [ ! -f "$$f" ]; then \
+			echo "❌ Missing translation: $$f"; ERRORS=$$((ERRORS+1)); continue; \
+		fi; \
+		LINES=$$(wc -l < "$$f" | tr -d ' '); \
+		if [ "$$LINES" -lt "$$MIN" ] || [ "$$LINES" -gt "$$MAX" ]; then \
+			echo "❌ $$f: $$LINES lines outside ±20% of README.md $$README_LINES (tolerance $$MIN-$$MAX)"; \
+			ERRORS=$$((ERRORS+1)); \
+		fi; \
+	done; \
+	if [ "$$ERRORS" -gt 0 ]; then exit 1; fi; \
+	echo "✅ All 8 translations within ±20% of README.md ($$README_LINES lines)"
+
+# Static agent-collision check (D-11 static layer — VALIDATE-03 precondition).
+# Asserts every agents/*.md in manifest that is shadowed by superpowers carries
+# conflicts_with: ["superpowers"] so the install-time skip-set filter catches it.
+# Pure jq — no install required.
+agent-collision-static:
+	@echo "Checking agents/* conflicts_with annotations (VALIDATE-03 static gate)..."
+	@SP_CONFLICT_AGENTS=$$(jq -r '[.files.agents[] | select((.conflicts_with // []) | index("superpowers"))] | length' manifest.json); \
+	if [ -z "$$SP_CONFLICT_AGENTS" ] || [ "$$SP_CONFLICT_AGENTS" = "null" ]; then \
+		echo "❌ jq query failed against manifest.json"; exit 1; \
+	fi; \
+	if [ "$$SP_CONFLICT_AGENTS" -lt 1 ]; then \
+		echo "❌ manifest.json has zero agents annotated conflicts_with: [\"superpowers\"] — VALIDATE-03 regression"; \
+		echo "   At minimum, agents/code-reviewer.md must be annotated (SP ships code-reviewer agent)."; \
+		exit 1; \
+	fi; \
+	SP_CONFLICT_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("superpowers")) | .path] | length' manifest.json); \
+	echo "✅ Static agent-collision check: $$SP_CONFLICT_FILES files annotated conflicts_with SP ($$SP_CONFLICT_AGENTS agents, others commands/skills)"
 
 # Clean temporary files
 clean:
