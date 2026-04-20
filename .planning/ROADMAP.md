@@ -142,6 +142,22 @@ Plans:
 - [x] 06-02-PLAN.md — DOCS-05/07 (asset halves): components/optional-plugins.md (upstream-verified rtk/caveman/SP/GSD caveats) + templates/global/RTK.md (fallback with rtk-ai/rtk#1276 Known Issues)
 - [x] 06-03-PLAN.md — DOCS-05/06/07/08 (wiring + polish): manifest.json files.components registration + orchestration-pattern.md mdlint fix + cross-refs + scripts/lib/optional-plugins.sh + init/update wiring + setup-security.sh RTK.md install guard + test-setup-security-rtk.sh
 
+### Phase 06.1: README translations sync (INSERTED)
+
+**Goal**: Bring 8 non-English README translations (`docs/readme/{de,es,fr,ja,ko,pt,ru,zh}.md`) into sync with Phase 6's complement-first English rewrite. Reverses Phase 6 CONTEXT.md's `defer-to-v4.1` decision so v4.0 ships with consistent translations. Blocker for Phase 7 Plan 07-04 release gate — `make translation-drift` must pass.
+**Depends on**: Phase 6
+**Requirements**: TRANS-01, TRANS-02, TRANS-03, TRANS-04 (new — to add to REQUIREMENTS.md at plan time)
+**Success Criteria** (what must be TRUE):
+  1. All 8 translations land in ±20% line-count tolerance of `README.md` (currently 202 lines → band 161–242)
+  2. `make translation-drift` exits 0 after Phase 06.1 completion
+  3. Each translation reflects the "complement to `superpowers` + `get-shit-done`" positioning and carries the "Required Base Plugins" section in its target language
+  4. `make mdlint` remains green (no regressions from translation edits)
+**Plans**: 0 plans (TBD)
+
+Plans:
+
+- [ ] TBD (run `/gsd-plan-phase 06.1` to break down)
+
 ### Phase 7: Validation
 **Goal**: All 12 install matrix cells are manually smoke-tested and pass, make check passes clean, all version references are aligned, and 4.0.0 is ready to tag
 **Depends on**: Phase 6

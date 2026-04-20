@@ -74,6 +74,10 @@ Recent decisions affecting current work:
 - [Phase 06-documentation]: optional-plugins.sh sourced lib with color guards; called in init-claude.sh between recommend_statusline and setup_council
 - [Phase 06-documentation]: RTK.md install guard: never clobber existing ~/.claude/RTK.md regardless of generation (rtk-init, tk-prior, user-edited)
 
+### Roadmap Evolution
+
+- 2026-04-20: Phase 06.1 inserted after Phase 6 — "README translations sync" (URGENT). Reverses Phase 6 CONTEXT.md `defer-to-v4.1` decision; blocker for Phase 7 Plan 07-04 release gate via `make translation-drift`.
+
 ### Pending Todos
 
 None yet.
