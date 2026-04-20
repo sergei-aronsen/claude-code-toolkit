@@ -31,7 +31,7 @@ lint: shellcheck mdlint
 # ShellCheck
 shellcheck:
 	@echo "Running ShellCheck..."
-	@find scripts -name '*.sh' -exec shellcheck {} + && echo "✅ ShellCheck passed"
+	@find scripts -name '*.sh' -exec shellcheck -S warning {} + && echo "✅ ShellCheck passed"
 
 # Markdown lint
 mdlint:

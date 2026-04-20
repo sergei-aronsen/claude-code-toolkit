@@ -97,7 +97,8 @@ declare -a CELL_WORKTREES=()
 
 sandbox_setup() {
     local cell_name="$1"
-    local cell_home="/tmp/tk-matrix-${cell_name}-$(date +%s)"
+    local cell_home
+    cell_home="/tmp/tk-matrix-${cell_name}-$(date +%s)"
     rm -rf "$cell_home"
     mkdir -p "$cell_home/.claude"
     echo "$cell_home"
@@ -157,7 +158,8 @@ JSON
 CELL_WT_PATH=""
 
 setup_v3x_worktree() {
-    local wt="/tmp/tk-matrix-worktree-$$-$(date +%s)"
+    local wt
+    wt="/tmp/tk-matrix-worktree-$$-$(date +%s)"
     rm -rf "$wt"
     git -C "$REPO_ROOT_ABS" worktree add --detach "$wt" "$PRE_40_COMMIT" >/dev/null 2>&1
     CELL_WORKTREES+=("$wt")
