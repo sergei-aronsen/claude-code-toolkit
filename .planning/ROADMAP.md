@@ -173,7 +173,7 @@ Plans:
 
 - [x] 07-01-PLAN.md — scripts/validate-release.sh skeleton + 4-invariant helpers + run_cell fail-fast wrapper (VALIDATE-01/02/03)
 - [x] 07-02-PLAN.md — Makefile version-align + translation-drift + agent-collision-static targets wired into make check (VALIDATE-03/04)
-- [ ] 07-03-PLAN.md — 13 matrix cell bodies + docs/RELEASE-CHECKLIST.md + scripts/tests/test-matrix.sh (VALIDATE-01/02/03)
+- [x] 07-03-PLAN.md — 13 matrix cell bodies + docs/RELEASE-CHECKLIST.md + scripts/tests/test-matrix.sh (VALIDATE-01/02/03)
 - [ ] 07-04-PLAN.md — release gate: pre-flight + CHANGELOG date flip + ready-to-tag sign-off (VALIDATE-04)
 
 ## Progress
@@ -189,4 +189,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/3 | Planned | - |
 | 6. Documentation | 3/3 | Complete   | 2026-04-19 |
-| 7. Validation | 2/4 | In Progress|  |
+| 7. Validation | 3/4 | In Progress|  |
