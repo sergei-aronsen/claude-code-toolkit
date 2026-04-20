@@ -28,10 +28,15 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ Codebase map produced and committed in `.planning/codebase/`
 - ✓ `update-claude.sh` re-evaluates detection on every run, surfaces mode drift, diffs against manifest, and prints 4-group summary — Validated in Phase 4: update-flow (UPDATE-01..06)
 - ✓ `migrate-to-complement.sh` enumerates v3.x duplicates, shows three-way diff, backs up before removal, requires per-file confirmation, rewrites state to `complement-*` mode, is idempotent — Validated in Phase 5: migration (MIGRATE-01..06)
+- ✓ README repositions toolkit as "plays nicely with `superpowers` + `get-shit-done`" — Validated in Phase 6: documentation (DOCS-01)
+- ✓ Each `templates/*/CLAUDE.md` documents required base plugins and how this toolkit layers on top — Validated in Phase 6: documentation (DOCS-02)
+- ✓ Bump version to `4.0.0` and document breaking changes in `CHANGELOG.md` — Validated in Phase 6: documentation (DOCS-03)
+- ✓ `docs/INSTALL.md` 12-cell install matrix (4 modes × 3 scenarios) — Validated in Phase 6: documentation (DOCS-04)
+- ✓ Recommended optional plugins documented (rtk, caveman, superpowers, get-shit-done) with caveats and upstream verification — Validated in Phase 6: documentation (DOCS-05, DOCS-06, DOCS-07, DOCS-08)
 
 ### Active
 
-<!-- v4.0 milestone: Toolkit complement mode. Hypotheses until shipped. -->
+<!-- v4.0 milestone: Phase 7 — Validation. -->
 
 - [ ] Detect installed `superpowers` (filesystem path: `~/.claude/plugins/cache/claude-plugins-official/superpowers/`)
 - [ ] Detect installed `get-shit-done` (filesystem path: `~/.claude/get-shit-done/`)
@@ -41,10 +46,7 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - [ ] Persist install state to `~/.claude/toolkit-install.json` (mode, detected versions, installed files, skipped files, timestamp)
 - [ ] Extend `manifest.json` per-file with `requires_base: ["superpowers" | "get-shit-done" | null]` and `conflicts_with: [...]`
 - [ ] `setup-security.sh` safely merges into `~/.claude/settings.json` (backup + JSON merge, never overwrite SP hooks)
-- [ ] Each `templates/*/CLAUDE.md` documents required base plugins and how this toolkit layers on top
-- [ ] README repositions toolkit as "plays nicely with `superpowers` + `get-shit-done`"
 - [ ] Verify install/update flows in all 4 modes (smoke test or manual matrix)
-- [ ] Bump version to `4.0.0` and document breaking changes in `CHANGELOG.md`
 
 ### Out of Scope
 
