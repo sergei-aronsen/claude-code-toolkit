@@ -157,7 +157,7 @@ Plans:
 Plans:
 
 - [x] 06.1-01-PLAN.md — sync Romance + Germanic README translations (es, pt, fr, de) + append TRANS-01..04 to REQUIREMENTS.md
-- [ ] 06.1-02-PLAN.md — sync East Asian CJK README translations (zh, ja, ko)
+- [x] 06.1-02-PLAN.md — sync East Asian CJK README translations (zh, ja, ko)
 - [ ] 06.1-03-PLAN.md — sync Russian README translation (maintainer-native)
 
 ### Phase 7: Validation

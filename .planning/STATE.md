@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06.1-01-PLAN.md (es/pt/fr/de translations + TRANS-01..04)
-last_updated: "2026-04-21T08:27:26.505Z"
+stopped_at: Completed 06.1-02-PLAN.md (zh/ja/ko CJK translations)
+last_updated: "2026-04-21T08:35:09.174Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 29
-  completed_plans: 26
-  percent: 90
+  completed_plans: 27
+  percent: 93
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06.1 (readme-translations) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-21
 
@@ -58,6 +58,7 @@ Progress: [█░░░░░░░░░] 14%
 | Phase 06-documentation P02 | 15 | 2 tasks | 2 files |
 | Phase 06-documentation P03 | 20 | 5 tasks | 13 files |
 | Phase 06.1 P01 | 25 | 6 tasks | 5 files |
+| Phase 06.1 P02 | 20 | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 06-documentation]: optional-plugins.sh sourced lib with color guards; called in init-claude.sh between recommend_statusline and setup_council
 - [Phase 06-documentation]: RTK.md install guard: never clobber existing ~/.claude/RTK.md regardless of generation (rtk-init, tk-prior, user-edited)
 - [Phase 06.1]: Verbatim code fences + formal registers for es/pt/fr/de; German tight prose achieved 201 lines under 242 ceiling
+- [Phase 06.1]: zh/ja/ko READMEs fully rewritten to v4.0 complement-first with Install Modes and split MCP section
 
 ### Roadmap Evolution
 
@@ -103,6 +105,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-21T08:27:26.501Z
-Stopped at: Completed 06.1-01-PLAN.md (es/pt/fr/de translations + TRANS-01..04)
+Last session: 2026-04-21T08:35:09.166Z
+Stopped at: Completed 06.1-02-PLAN.md (zh/ja/ko CJK translations)
 Resume file: None
