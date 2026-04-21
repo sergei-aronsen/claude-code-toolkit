@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Migration** - Ship migrate-to-complement.sh for existing v3.x users with three-way diff and per-file confirmation
 - [x] **Phase 6: Documentation** - Reposition README, update all 7 templates, write CHANGELOG 4.0.0 breaking changes entry (completed 2026-04-19)
 - [x] **Phase 06.1: README translations sync** - 8 non-English READMEs synced to v4.0 complement-first, `make translation-drift` green (completed 2026-04-21)
-- [ ] **Phase 7: Validation** - Run full 12-cell install matrix, align all version references, gate 4.0.0 release
+- [x] **Phase 7: Validation** - Run full 12-cell install matrix, align all version references, gate 4.0.0 release (completed 2026-04-21)
 
 ## Phase Details
 
@@ -177,7 +177,7 @@ Plans:
 - [x] 07-01-PLAN.md — scripts/validate-release.sh skeleton + 4-invariant helpers + run_cell fail-fast wrapper (VALIDATE-01/02/03)
 - [x] 07-02-PLAN.md — Makefile version-align + translation-drift + agent-collision-static targets wired into make check (VALIDATE-03/04)
 - [x] 07-03-PLAN.md — 13 matrix cell bodies + docs/RELEASE-CHECKLIST.md + scripts/tests/test-matrix.sh (VALIDATE-01/02/03)
-- [ ] 07-04-PLAN.md — release gate: pre-flight + CHANGELOG date flip + ready-to-tag sign-off (VALIDATE-04)
+- [x] 07-04-PLAN.md — release gate: pre-flight + CHANGELOG date flip + ready-to-tag sign-off (VALIDATE-04)
 
 ## Progress
 
@@ -193,4 +193,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Migration | 0/3 | Planned | - |
 | 6. Documentation | 3/3 | Complete   | 2026-04-19 |
 | 06.1. README translations sync | 3/3 | Complete | 2026-04-21 |
-| 7. Validation | 3/4 | In Progress|  |
+| 7. Validation | 4/4 | Complete   | 2026-04-21 |
