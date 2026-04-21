@@ -34,9 +34,33 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `docs/INSTALL.md` 12-cell install matrix (4 modes × 3 scenarios) — Validated in Phase 6: documentation (DOCS-04)
 - ✓ Recommended optional plugins documented (rtk, caveman, superpowers, get-shit-done) with caveats and upstream verification — Validated in Phase 6: documentation (DOCS-05, DOCS-06, DOCS-07, DOCS-08)
 
+## Current Milestone: v4.1 Polish & Upstream
+
+**Goal:** Harden the v4.0 release cycle with bats-based matrix automation, backup hygiene, detection enhancements, and UX polish — plus file upstream GSD CLI issues discovered during v4.0.
+
+**Target features:**
+
+- Release quality (bats-based install matrix, docs cell-parity check, `--collect-all` for `validate-release.sh`)
+- Backup hygiene (`--clean-backups` flag, threshold warnings)
+- Detection enhancements (`claude plugin list` integration, plugin version skew detection)
+- Upstream GSD CLI issues (file in `gsd-build/get-shit-done`, do NOT patch in this repo)
+- UX polish (chezmoi-grade styled `--dry-run` diff)
+
 ### Active
 
-_No active requirements — v4.0 shipped. Define v4.1 scope via `/gsd-new-milestone`._
+<!-- v4.1 milestone: Polish & Upstream -->
+
+- [ ] **REL-01** — Migrate install matrix from bash `validate-release.sh` to bats (TEST-01 carryover)
+- [ ] **REL-02** — Auto-check cell parity between `docs/INSTALL.md` and `docs/RELEASE-CHECKLIST.md`
+- [ ] **REL-03** — Add `--collect-all` fail mode to `scripts/validate-release.sh` (default stays fail-fast)
+- [ ] **BACKUP-01** — `--clean-backups` flag for `scripts/update-claude.sh` (carryover)
+- [ ] **BACKUP-02** — Warn when backup directory count exceeds threshold (carryover)
+- [ ] **DETECT-06** — Integrate `claude plugin list` as detection input alongside filesystem check
+- [ ] **DETECT-07** — Detect SP/GSD version skew between install time and current, emit warning
+- [ ] **UPSTREAM-01** — File issue in `gsd-build/get-shit-done` for `audit-open` ReferenceError (`gsd-tools.cjs:786`)
+- [ ] **UPSTREAM-02** — File issue in `gsd-build/get-shit-done` for `milestone complete` accomplishment-extraction noise
+- [ ] **UPSTREAM-03** — File issue in `gsd-build/get-shit-done` for missing auto-sync of ROADMAP checkboxes on plan completion
+- [ ] **UX-01** — chezmoi-grade styled diff output for `--dry-run` mode
 
 <details>
 <summary>v4.0 requirements moved to Validated (shipped 2026-04-21)</summary>
@@ -58,7 +82,7 @@ _No active requirements — v4.0 shipped. Define v4.1 scope via `/gsd-new-milest
 - Re-implementing `superpowers` or `get-shit-done` features in TK — duplicates the source-of-truth, hard to keep in sync
 - Auto-installing SP/GSD on user's behalf — user controls their plugin set; we only suggest
 - Migrating users without consent — every change to user filesystem requires explicit `[y/N]` prompt and backup
-- Detection via `claude plugin list` (CLI) as primary path — filesystem detection is more reliable and CLI-independent (CLI may be used as a future enhancement, not v4.0)
+- Detection via `claude plugin list` (CLI) as primary path — filesystem detection remains primary in v4.1; CLI is added as a secondary input (DETECT-06), never sole source
 - Splitting Council into a separate plugin — Council is TK's killer feature, splitting adds maintenance overhead with no clear win
 - Backwards-compat shims to keep deprecated TK commands working alongside SP/GSD equivalents — clean break, conventional commits with `BREAKING CHANGE:` footers
 
@@ -139,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-21 after v4.0 milestone — Complement Mode shipped. All phases 1–7 + 6.1 complete (29/29 plans). Repo at ready-to-tag state; `git tag -a v4.0.0` is the user's manual step outside the milestone.*
+*Last updated: 2026-04-21 — v4.0 Complement Mode shipped and tagged (v4.0.0). v4.1 Polish & Upstream milestone started — 11 requirements across 4 phases (8–11).*

@@ -3,7 +3,14 @@
 ## Milestones
 
 - ✅ **v4.0 Complement Mode** — Phases 1–7 + 6.1 (shipped 2026-04-21). See `.planning/milestones/v4.0-ROADMAP.md`.
-- 📋 **Next milestone** — run `/gsd-new-milestone` to define v4.1 scope.
+- 🚧 **v4.1 Polish & Upstream** — Phases 8–11 (in progress, started 2026-04-21).
+
+## Overview (v4.1)
+
+v4.1 hardens the v4.0 release cycle. No new install modes, no breaking changes. Four phases:
+port release matrix to bats + add cell-parity check, ship backup hygiene and detection enhancements,
+file the three upstream GSD CLI issues discovered in v4.0, and polish `--dry-run` output to
+chezmoi-grade.
 
 ## Phases
 
@@ -23,28 +30,73 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 
 </details>
 
-### 📋 Next Milestone (Planned)
+### 🚧 v4.1 Polish & Upstream (In Progress)
 
-_To be defined via `/gsd-new-milestone`._
+**Phase Numbering:** continuing from v4.0 (last used: 7). Next: 8.
 
-Candidate v4.1 carry-overs (from v4.0 deferred items):
+- [ ] **Phase 8: Release Quality** - Port install matrix to bats, add cell-parity check, ship `--collect-all` fail mode
+- [ ] **Phase 9: Backup & Detection** - `--clean-backups` flag, threshold warnings, `claude plugin list` integration, version-skew detection
+- [ ] **Phase 10: Upstream GSD Issues** - File 3 issues in `gsd-build/get-shit-done` (no toolkit code changes)
+- [ ] **Phase 11: UX Polish** - chezmoi-grade styled `--dry-run` diff output across install/update/migrate
 
-- TEST-01: Bats automation for install matrix
-- BACKUP-01: `--clean-backups` flag for `update-claude.sh`
-- BACKUP-02: Warn when backup count crosses threshold
-- DETECT-FUT-01: `claude plugin list` integration path
-- DETECT-FUT-02: Plugin version skew detection
-- Docs: `docs/INSTALL.md` ↔ `docs/RELEASE-CHECKLIST.md` cell-parity auto-check
+## Phase Details
+
+### Phase 8: Release Quality
+
+**Goal**: Release validation infrastructure becomes bats-based, cross-referenced across docs + runner + checklist, and supports `--collect-all` aggregation for multi-cell failures
+**Depends on**: Nothing (v4.1 first phase)
+**Requirements**: REL-01, REL-02, REL-03
+**Success Criteria** (what must be TRUE):
+
+1. `scripts/tests/matrix/*.bats` replicates all 13 install-matrix cells from `validate-release.sh` with 63 assertions preserved; `make test-matrix-bats` exits 0
+2. `make check` gains `cell-parity` target asserting every `--cell <name>` in `docs/INSTALL.md` appears in both `validate-release.sh --list` and as a section heading in `docs/RELEASE-CHECKLIST.md`
+3. `scripts/validate-release.sh --collect-all` runs all 13 cells regardless of failures and emits a final aggregated table; default fail-fast behavior unchanged without the flag
+4. Bash `validate-release.sh` remains functional during transition; no regression in existing 63 assertions
+
+### Phase 9: Backup & Detection
+
+**Goal**: Users have tooling to manage accumulated backup dirs and get early warnings about plugin version skew; detection cross-checks filesystem against `claude plugin list` CLI
+**Depends on**: Phase 8
+**Requirements**: BACKUP-01, BACKUP-02, DETECT-06, DETECT-07
+**Success Criteria** (what must be TRUE):
+
+1. `scripts/update-claude.sh --clean-backups` lists every `~/.claude/.toolkit-backup-*` dir with size + age, prompts `[y/N]` per dir, supports `--keep N` to preserve N most recent
+2. Every script creating a new backup dir checks backup count and prints a warning (non-fatal) when count > 10, pointing users to `--clean-backups`
+3. `scripts/detect.sh` parses `claude plugin list` JSON when available; if filesystem says SP is present but CLI says disabled, CLI overrides; filesystem remains primary when CLI absent
+4. `scripts/update-claude.sh` detects SP/GSD version change between install state and current, emits one-line warning with before/after versions
+
+### Phase 10: Upstream GSD Issues
+
+**Goal**: Three v4.0-discovered bugs in `gsd-build/get-shit-done` are filed as well-formed upstream issues with repro, stack trace, and suggested fix — not patched in this repo
+**Depends on**: Phase 9
+**Requirements**: UPSTREAM-01, UPSTREAM-02, UPSTREAM-03
+**Success Criteria** (what must be TRUE):
+
+1. GitHub issue filed in `gsd-build/get-shit-done` for `audit-open` ReferenceError with minimum repro + stack trace + suggested fix (missing `output` helper import)
+2. GitHub issue filed for `milestone complete` accomplishment-extraction grabbing YAML/frontmatter noise instead of one-liner prose, with v4.0 MILESTONES.md artifact as repro
+3. GitHub issue filed for missing auto-sync of ROADMAP.md plan checkboxes on plan completion, with repro via `gsd-execute-phase` + observed manual `update-plan-progress` workaround
+4. This repo carries zero code changes for UPSTREAM-01/02/03 — only `.planning/` notes documenting issue URLs for cross-reference
+
+### Phase 11: UX Polish
+
+**Goal**: Every `--dry-run` output (install, update, migrate) produces chezmoi-grade styled diff — colored +/-/~ markers, grouped by action with counts, right-aligned
+**Depends on**: Phase 10
+**Requirements**: UX-01
+**Success Criteria** (what must be TRUE):
+
+1. `scripts/init-claude.sh --dry-run` shows colored `[+ INSTALL]` / `[- SKIP]` grouped output with total-per-group count right-aligned
+2. `scripts/update-claude.sh --dry-run` shows the same color-coded grouped style for INSTALL / UPDATE / SKIP / REMOVE groups
+3. `scripts/migrate-to-complement.sh --dry-run` uses the same styling for per-file action previews
+4. Color output respects `NO_COLOR=1` env var and non-TTY detection (plain output when stdout is not a terminal)
 
 ## Progress
 
+**Execution Order:**
+Phases execute in numeric order: 8 → 9 → 10 → 11
+
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Pre-work Bug Fixes | v4.0 | 7/7 | Complete | 2026-04-21 |
-| 2. Foundation | v4.0 | 3/3 | Complete | 2026-04-21 |
-| 3. Install Flow | v4.0 | 3/3 | Complete | 2026-04-21 |
-| 4. Update Flow | v4.0 | 3/3 | Complete | 2026-04-21 |
-| 5. Migration | v4.0 | 3/3 | Complete | 2026-04-21 |
-| 6. Documentation | v4.0 | 3/3 | Complete | 2026-04-19 |
-| 6.1. README translations sync | v4.0 | 3/3 | Complete | 2026-04-21 |
-| 7. Validation | v4.0 | 4/4 | Complete | 2026-04-21 |
+| 8. Release Quality | v4.1 | 0/? | Not started | - |
+| 9. Backup & Detection | v4.1 | 0/? | Not started | - |
+| 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
+| 11. UX Polish | v4.1 | 0/? | Not started | - |
