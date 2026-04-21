@@ -158,7 +158,7 @@ Plans:
 
 - [x] 06.1-01-PLAN.md — sync Romance + Germanic README translations (es, pt, fr, de) + append TRANS-01..04 to REQUIREMENTS.md
 - [x] 06.1-02-PLAN.md — sync East Asian CJK README translations (zh, ja, ko)
-- [ ] 06.1-03-PLAN.md — sync Russian README translation (maintainer-native)
+- [x] 06.1-03-PLAN.md — sync Russian README translation (maintainer-native)
 
 ### Phase 7: Validation
 **Goal**: All 12 install matrix cells are manually smoke-tested and pass, make check passes clean, all version references are aligned, and 4.0.0 is ready to tag

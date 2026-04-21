@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06.1-02-PLAN.md (zh/ja/ko CJK translations)
-last_updated: "2026-04-21T08:35:09.174Z"
+status: verifying
+stopped_at: Completed 06.1-03-PLAN.md
+last_updated: "2026-04-21T08:39:08.955Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 29
-  completed_plans: 27
-  percent: 93
+  completed_plans: 28
+  percent: 97
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 Phase: 06.1 (readme-translations) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-21
 
 Progress: [█░░░░░░░░░] 14%
@@ -59,6 +59,7 @@ Progress: [█░░░░░░░░░] 14%
 | Phase 06-documentation P03 | 20 | 5 tasks | 13 files |
 | Phase 06.1 P01 | 25 | 6 tasks | 5 files |
 | Phase 06.1 P02 | 20 | 4 tasks | 3 files |
+| Phase 06.1 P03 | 8m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Recent decisions affecting current work:
 - [Phase 06-documentation]: RTK.md install guard: never clobber existing ~/.claude/RTK.md regardless of generation (rtk-init, tk-prior, user-edited)
 - [Phase 06.1]: Verbatim code fences + formal registers for es/pt/fr/de; German tight prose achieved 201 lines under 242 ceiling
 - [Phase 06.1]: zh/ja/ko READMEs fully rewritten to v4.0 complement-first with Install Modes and split MCP section
+- [Phase 06.1]: Reused v3.x lexical baseline for Russian (Solo-разработчики, Быстрый старт, slash-команды) per D-02 maintainer-native tightest-scrutiny rule
 
 ### Roadmap Evolution
 
@@ -105,6 +107,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-21T08:35:09.166Z
-Stopped at: Completed 06.1-02-PLAN.md (zh/ja/ko CJK translations)
+Last session: 2026-04-21T08:39:08.951Z
+Stopped at: Completed 06.1-03-PLAN.md
 Resume file: None
