@@ -98,6 +98,15 @@ v4.2+ carry-overs (locked out of v4.1):
 
 ## Session Continuity
 
-Last session: 2026-04-21T10:00:00.000Z
-Stopped at: v4.1 milestone initialized — ready for Phase 8 discuss
+Last session: 2026-04-21T10:05:00.000Z
+Stopped at: v4.1 initialized + pushed to origin — user paused to save tokens
 Resume file: .planning/ROADMAP.md
+
+**To resume next session — one of:**
+
+- `/gsd-resume-work` — auto-detect position from STATE.md
+- `/gsd-discuss-phase 8 --auto` — start Phase 8 (Release Quality) in full auto-chain (discuss → plan → execute)
+- `/gsd-plan-phase 8 --auto` — skip discuss, go straight to plan + execute for Phase 8
+- `/gsd-progress` — see context + next action
+
+**No pending work in-flight.** Repo is clean: v4.0 tagged + pushed, v4.1 scope defined + committed + pushed. Next action is discretionary (start Phase 8 or pick different entry point).
