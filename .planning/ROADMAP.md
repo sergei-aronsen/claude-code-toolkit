@@ -23,6 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Update Flow** - Refactor update-claude.sh to re-evaluate state, surface drift, and apply mode-aware skip-lists
 - [ ] **Phase 5: Migration** - Ship migrate-to-complement.sh for existing v3.x users with three-way diff and per-file confirmation
 - [x] **Phase 6: Documentation** - Reposition README, update all 7 templates, write CHANGELOG 4.0.0 breaking changes entry (completed 2026-04-19)
+- [x] **Phase 06.1: README translations sync** - 8 non-English READMEs synced to v4.0 complement-first, `make translation-drift` green (completed 2026-04-21)
 - [ ] **Phase 7: Validation** - Run full 12-cell install matrix, align all version references, gate 4.0.0 release
 
 ## Phase Details
@@ -191,4 +192,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Update Flow | 0/3 | Planned | - |
 | 5. Migration | 0/3 | Planned | - |
 | 6. Documentation | 3/3 | Complete   | 2026-04-19 |
+| 06.1. README translations sync | 3/3 | Complete | 2026-04-21 |
 | 7. Validation | 3/4 | In Progress|  |
