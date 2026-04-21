@@ -152,11 +152,13 @@ Plans:
   2. `make translation-drift` exits 0 after Phase 06.1 completion
   3. Each translation reflects the "complement to `superpowers` + `get-shit-done`" positioning and carries the "Required Base Plugins" section in its target language
   4. `make mdlint` remains green (no regressions from translation edits)
-**Plans**: 0 plans (TBD)
+**Plans**: 3 plans
 
 Plans:
 
-- [ ] TBD (run `/gsd-plan-phase 06.1` to break down)
+- [ ] 06.1-01-PLAN.md — sync Romance + Germanic README translations (es, pt, fr, de) + append TRANS-01..04 to REQUIREMENTS.md
+- [ ] 06.1-02-PLAN.md — sync East Asian CJK README translations (zh, ja, ko)
+- [ ] 06.1-03-PLAN.md — sync Russian README translation (maintainer-native)
 
 ### Phase 7: Validation
 **Goal**: All 12 install matrix cells are manually smoke-tested and pass, make check passes clean, all version references are aligned, and 4.0.0 is ready to tag
