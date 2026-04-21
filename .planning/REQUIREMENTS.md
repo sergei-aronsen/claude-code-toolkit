@@ -107,10 +107,10 @@ User-facing positioning and per-template plugin docs.
 
 README translation sync for v4.0 complement-first positioning.
 
-- [ ] **TRANS-01**: All 8 README translations (`docs/readme/{de,es,fr,ja,ko,pt,ru,zh}.md`) are within ±20% of `README.md`'s line count: each file has between 161 and 242 lines (inclusive), where the bounds derive from `floor(202 × 0.8) = 161` and `floor(202 × 1.2) = 242`.
-- [ ] **TRANS-02**: `make translation-drift` exits 0 when run from the repository root after all 8 translation files have been written. This is the mechanical gate that unblocks Phase 7 Plan 07-04 (`make check` dependency chain).
-- [ ] **TRANS-03**: Each of the 8 translations contains an equivalent of the English `## Install Modes` section with three subheadings equivalent to "Standalone install", "Complement install", and "Upgrading from v3.x" in its target language. The section conveys the complement-first positioning ("TK is a complement to `superpowers` + `get-shit-done`") at least once in localized prose. All install commands within the section are verbatim-identical to those in `README.md`.
-- [ ] **TRANS-04**: `make mdlint` exits 0 when run from the repository root after all 8 translation files have been written, with zero regressions versus the pre-phase baseline.
+- [x] **TRANS-01**: All 8 README translations (`docs/readme/{de,es,fr,ja,ko,pt,ru,zh}.md`) are within ±20% of `README.md`'s line count: each file has between 161 and 242 lines (inclusive), where the bounds derive from `floor(202 × 0.8) = 161` and `floor(202 × 1.2) = 242`.
+- [x] **TRANS-02**: `make translation-drift` exits 0 when run from the repository root after all 8 translation files have been written. This is the mechanical gate that unblocks Phase 7 Plan 07-04 (`make check` dependency chain).
+- [x] **TRANS-03**: Each of the 8 translations contains an equivalent of the English `## Install Modes` section with three subheadings equivalent to "Standalone install", "Complement install", and "Upgrading from v3.x" in its target language. The section conveys the complement-first positioning ("TK is a complement to `superpowers` + `get-shit-done`") at least once in localized prose. All install commands within the section are verbatim-identical to those in `README.md`.
+- [x] **TRANS-04**: `make mdlint` exits 0 when run from the repository root after all 8 translation files have been written, with zero regressions versus the pre-phase baseline.
 
 ### Validation
 
@@ -222,10 +222,10 @@ Explicitly excluded from v4.0. Documented to prevent re-litigation.
 | DOCS-06 | Phase 6 | Complete |
 | DOCS-07 | Phase 6 | Pending |
 | DOCS-08 | Phase 6 | Pending (component drafted, polish + manifest wiring left) |
-| TRANS-01 | Phase 06.1 | Pending |
-| TRANS-02 | Phase 06.1 | Pending |
-| TRANS-03 | Phase 06.1 | Pending |
-| TRANS-04 | Phase 06.1 | Pending |
+| TRANS-01 | Phase 06.1 | Complete |
+| TRANS-02 | Phase 06.1 | Complete |
+| TRANS-03 | Phase 06.1 | Complete |
+| TRANS-04 | Phase 06.1 | Complete |
 | VALIDATE-01 | Phase 7 | Pending |
 | VALIDATE-02 | Phase 7 | Pending |
 | VALIDATE-03 | Phase 7 | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 06.1 context gathered
-last_updated: "2026-04-21T08:17:16.485Z"
-last_activity: 2026-04-21 -- Phase 06.1 planning complete
+stopped_at: Completed 06.1-01-PLAN.md (es/pt/fr/de translations + TRANS-01..04)
+last_updated: "2026-04-21T08:27:26.505Z"
+last_activity: 2026-04-21
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 29
-  completed_plans: 25
-  percent: 86
+  completed_plans: 26
+  percent: 90
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 7 — validation
+**Current focus:** Phase 06.1 — readme-translations
 
 ## Current Position
 
-Phase: 7 (validation) — EXECUTING
-Plan: 1 of 4
+Phase: 06.1 (readme-translations) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-21 -- Phase 06.1 planning complete
+Last activity: 2026-04-21
 
 Progress: [█░░░░░░░░░] 14%
 
@@ -57,6 +57,7 @@ Progress: [█░░░░░░░░░] 14%
 *Updated after each plan completion*
 | Phase 06-documentation P02 | 15 | 2 tasks | 2 files |
 | Phase 06-documentation P03 | 20 | 5 tasks | 13 files |
+| Phase 06.1 P01 | 25 | 6 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ Recent decisions affecting current work:
 - [Phase 06-documentation]: inventory.components added as top-level manifest key (not files.components) to avoid install-loop side-effect in install.sh:239
 - [Phase 06-documentation]: optional-plugins.sh sourced lib with color guards; called in init-claude.sh between recommend_statusline and setup_council
 - [Phase 06-documentation]: RTK.md install guard: never clobber existing ~/.claude/RTK.md regardless of generation (rtk-init, tk-prior, user-edited)
+- [Phase 06.1]: Verbatim code fences + formal registers for es/pt/fr/de; German tight prose achieved 201 lines under 242 ceiling
 
 ### Roadmap Evolution
 
@@ -101,6 +103,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-04-21T07:51:58.524Z
-Stopped at: Phase 06.1 context gathered
-Resume file: .planning/phases/06.1-readme-translations/06.1-CONTEXT.md
+Last session: 2026-04-21T08:27:26.501Z
+Stopped at: Completed 06.1-01-PLAN.md (es/pt/fr/de translations + TRANS-01..04)
+Resume file: None
