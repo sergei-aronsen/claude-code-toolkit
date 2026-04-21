@@ -152,3 +152,32 @@ Mid-discuss user requested Phase 6 README translations be included in v4.0 (reve
 - `--collect-all` fail mode (v4.1+).
 - BACKUP-01/02 backup hygiene (v4.1).
 - INSTALL.md ↔ RELEASE-CHECKLIST.md parity auto-check (v4.1).
+
+---
+
+## 2026-04-21 — Auto-mode Re-Discuss Pass
+
+**Invocation:** `/gsd-discuss-phase 7 --auto`
+**Context state at invocation:** `has_context=true`, `has_plans=true` (4 plans; 3 executed, 07-04 pending), Phase 7.1 shipped.
+**Mode decision:** Auto-select "Update it" per check_existing.
+
+### Analysis Outcome
+
+No new gray areas surfaced. All 12 D-items (D-01..D-12) remain locked and consistent with executed plans 07-01/02/03. Plan 07-04 (release gate) is fully specified by existing D-08/D-09/D-10/D-11 and does not require new decisions.
+
+### Metadata-Only Updates Applied
+
+| Field | Before | After |
+|-------|--------|-------|
+| Status | Ready for planning | Plans 07-01/02/03 executed; 07-04 release gate pending human checkpoint |
+| Blocker | Phase 7.1 must ship | Phase 7.1 shipped 2026-04-21 — unblocked, `make translation-drift` green |
+| Updated | (absent) | 2026-04-21 |
+
+### Decisions Reaffirmed (no change)
+
+- D-01..D-12 remain authoritative.
+- `<canonical_refs>` unchanged — all referenced artifacts still live at paths listed.
+- `<code_context>` unchanged — Makefile:42-95 pattern + 14 test scripts in `scripts/tests/` remain the reusable base; `validate-release.sh` + `test-matrix.sh` landed per Plan 07-03.
+- Deferred ideas unchanged.
+
+**Outcome:** Context is current. Auto-advance to plan-phase.
