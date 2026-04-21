@@ -36,17 +36,22 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 ### Active
 
-<!-- v4.0 milestone: Phase 7 — Validation. -->
+_No active requirements — v4.0 shipped. Define v4.1 scope via `/gsd-new-milestone`._
 
-- [ ] Detect installed `superpowers` (filesystem path: `~/.claude/plugins/cache/claude-plugins-official/superpowers/`)
-- [ ] Detect installed `get-shit-done` (filesystem path: `~/.claude/get-shit-done/`)
-- [ ] Define 4 install modes: `standalone`, `complement-sp`, `complement-gsd`, `complement-full`
-- [ ] Auto-recommend mode based on detection; user can override
-- [ ] Skip-list per mode: which TK files NOT to install when each base is present
-- [ ] Persist install state to `~/.claude/toolkit-install.json` (mode, detected versions, installed files, skipped files, timestamp)
-- [ ] Extend `manifest.json` per-file with `requires_base: ["superpowers" | "get-shit-done" | null]` and `conflicts_with: [...]`
-- [ ] `setup-security.sh` safely merges into `~/.claude/settings.json` (backup + JSON merge, never overwrite SP hooks)
-- [ ] Verify install/update flows in all 4 modes (smoke test or manual matrix)
+<details>
+<summary>v4.0 requirements moved to Validated (shipped 2026-04-21)</summary>
+
+- ✓ Detect installed `superpowers` (filesystem path: `~/.claude/plugins/cache/claude-plugins-official/superpowers/`) — v4.0 Phase 2 (DETECT-01..05)
+- ✓ Detect installed `get-shit-done` (filesystem path: `~/.claude/get-shit-done/`) — v4.0 Phase 2 (DETECT-02)
+- ✓ 4 install modes: `standalone`, `complement-sp`, `complement-gsd`, `complement-full` — v4.0 Phase 3 (MODE-01)
+- ✓ Auto-recommend mode based on detection; user-overridable — v4.0 Phase 3 (MODE-02, MODE-03)
+- ✓ Skip-list per mode via manifest — v4.0 Phase 3 (MODE-04, MODE-06)
+- ✓ `~/.claude/toolkit-install.json` install state with SHA256 + atomic writes + mkdir lock — v4.0 Phase 2 (STATE-01..05)
+- ✓ `manifest.json` v2 schema with `conflicts_with` / `requires_base` — v4.0 Phase 2 (MANIFEST-01..04)
+- ✓ `setup-security.sh` safe JSON merge with `_tk_owned` marker + backup + restore-on-failure — v4.0 Phase 3 (SAFETY-01..04)
+- ✓ 13-cell install matrix validated via `scripts/validate-release.sh --all` (63 assertions) — v4.0 Phase 7 (VALIDATE-01..04)
+
+</details>
 
 ### Out of Scope
 
@@ -85,18 +90,34 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **Versioning**: v4.0.0 is a breaking release — `manifest.json`, `CHANGELOG.md`, `init-local.sh`, and any other version reference must align.
 - **Commits**: Conventional Commits, branches `feature/xxx` / `fix/xxx`, never push directly to `main`.
 
+## Current State
+
+**Shipped:** v4.0 Complement Mode (2026-04-21) — 8 phases, 29 plans, 56 tasks.
+
+Toolkit now detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes (`standalone`, `complement-sp`, `complement-gsd`, `complement-full`). Manifest-driven skip-lists, atomic state in `~/.claude/toolkit-install.json`, safe migration path for v3.x users, and a 13-cell release validation matrix.
+
+**Release tag:** `v4.0.0` — manual step outside milestone (per CLAUDE.md "never push directly to main"). User runs `git tag -a v4.0.0 -m "Release 4.0.0"` + `git push --tags`.
+
+## Next Milestone Goals
+
+_To be defined via `/gsd-new-milestone`._
+
+v4.1 candidate carry-overs from v4.0 deferred items: Bats-based matrix automation (TEST-01), `--clean-backups` flag (BACKUP-01), backup-count warning (BACKUP-02), `claude plugin list` integration (DETECT-FUT-01), plugin version skew (DETECT-FUT-02), INSTALL.md ↔ RELEASE-CHECKLIST.md parity auto-check.
+
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Bump to v4.0.0 (breaking) | Install behavior changes by default. Clean signal beats silent additive change. | — Pending |
-| Auto-detect SP/GSD via filesystem only | Reliable, no CLI dependency, fast (single `[ -d ... ]` checks). `claude plugin list` may be added later as enhancement. | — Pending |
-| Auto-detect + offer migration for existing v3.x users | Don't strand users on conflicting install. Always backup, always confirm. | — Pending |
-| Keep Supreme Council inside TK | Killer feature; extracting into separate plugin adds maintenance overhead with no clear distribution win. | — Pending |
-| Document required base plugins in every template's CLAUDE.md | Sets correct expectation: "TK is built on top of SP+GSD". Reduces support questions. | — Pending |
-| Persist install state in `~/.claude/toolkit-install.json` | Single source of truth for `update-claude.sh` to know what was installed and in which mode. Survives between runs. | — Pending |
-| Extend `manifest.json` per-file with `requires_base` / `conflicts_with` | Declarative skip-logic instead of hardcoded arrays in shell scripts. Easier to audit and extend. | — Pending |
-| `setup-security.sh` switches to safe JSON merge with backup | Prevents the documented risk of clobbering SP hooks in `~/.claude/settings.json`. | — Pending |
+| Bump to v4.0.0 (breaking) | Install behavior changes by default. Clean signal beats silent additive change. | ✓ Good — shipped 2026-04-21 |
+| Auto-detect SP/GSD via filesystem only | Reliable, no CLI dependency, fast (single `[ -d ... ]` checks). `claude plugin list` may be added later as enhancement. | ✓ Good — DETECT-01..04 validated in Phase 2 |
+| Auto-detect + offer migration for existing v3.x users | Don't strand users on conflicting install. Always backup, always confirm. | ✓ Good — `migrate-to-complement.sh` with three-way diff + full backup (Phase 5) |
+| Keep Supreme Council inside TK | Killer feature; extracting into separate plugin adds maintenance overhead with no clear distribution win. | ✓ Good — council survives all 4 install modes |
+| Document required base plugins in every template's CLAUDE.md | Sets correct expectation: "TK is built on top of SP+GSD". Reduces support questions. | ✓ Good — all 7 templates carry section, CI-enforced (Phase 6) |
+| Persist install state in `~/.claude/toolkit-install.json` | Single source of truth for `update-claude.sh` to know what was installed and in which mode. Survives between runs. | ✓ Good — STATE-01..05 (Phase 2), state schema v2 with `synthesized_from_filesystem` for v3.x users (Phase 5) |
+| Extend `manifest.json` per-file with `requires_base` / `conflicts_with` | Declarative skip-logic instead of hardcoded arrays in shell scripts. Easier to audit and extend. | ✓ Good — MANIFEST-01..04 (Phase 2); `make check` enforces via `agent-collision-static` |
+| `setup-security.sh` switches to safe JSON merge with backup | Prevents the documented risk of clobbering SP hooks in `~/.claude/settings.json`. | ✓ Good — SAFETY-01..04 with `_tk_owned` marker append-both policy (Phase 3) |
+| Phase 6 translation deferral (reversed mid-v4.0) | Originally deferred to v4.1; reversed when user inserted Phase 6.1 so v4.0 ships English + 8 translations consistent. | ✓ Good — 8/8 translations within ±20% of README.md (Phase 6.1), `make translation-drift` green |
+| Release date flip manual; `git tag` manual | CLAUDE.md "never push directly to main" invariant — agent cannot cut release tags. | ✓ Good — Phase 7 ends at ready-to-tag; user tags manually (D-08) |
 
 ## Evolution
 
@@ -118,4 +139,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-19 — Phase 5 (migration) complete. MIGRATE-01..06 satisfied. UAT-3-B01 fix shipped (commit 12f3fb5). TTY-specific subcases (diff viewer, Ctrl-C cleanup) deferred to Phase 6 ship-readiness checklist.*
+*Last updated: 2026-04-21 after v4.0 milestone — Complement Mode shipped. All phases 1–7 + 6.1 complete (29/29 plans). Repo at ready-to-tag state; `git tag -a v4.0.0` is the user's manual step outside the milestone.*
