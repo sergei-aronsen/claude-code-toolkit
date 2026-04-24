@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
-status: defining_requirements
-stopped_at: v4.1 milestone initialized — roadmap defined, awaiting Phase 8 discuss
-last_updated: "2026-04-21T10:00:00.000Z"
-last_activity: 2026-04-21
+status: Ready for Phase 8
+stopped_at: Phase 12 context gathered
+last_updated: "2026-04-24T07:06:41.088Z"
+last_activity: 2026-04-21 — v4.1 milestone initialized
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -67,6 +67,7 @@ Recent v4.1 scope decisions:
 ### Roadmap Evolution
 
 - 2026-04-21: v4.1 roadmap created — 4 phases (8–11), continuing phase numbering from v4.0
+- 2026-04-24: Phase 12 added — Audit Verification + Template Hardening (verify ChatGPT pass-3 findings, then 3 waves of hardening)
 
 ### Pending Todos
 
@@ -98,9 +99,9 @@ v4.2+ carry-overs (locked out of v4.1):
 
 ## Session Continuity
 
-Last session: 2026-04-21T10:05:00.000Z
-Stopped at: v4.1 initialized + pushed to origin — user paused to save tokens
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-24T07:06:41.082Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-audit-verification-template-hardening/12-CONTEXT.md
 
 **To resume next session — one of:**
 
