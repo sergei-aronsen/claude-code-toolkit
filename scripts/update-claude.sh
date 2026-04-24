@@ -569,6 +569,7 @@ acquire_lock || exit 1
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
 cp -R "$CLAUDE_DIR" "$BACKUP_DIR"
 log_success "Backup created: $BACKUP_DIR"
+warn_if_too_many_backups
 
 echo ""
 log_info "Updating toolkit files..."

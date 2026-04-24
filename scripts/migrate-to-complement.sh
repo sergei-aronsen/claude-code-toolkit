@@ -59,12 +59,13 @@ log_error()   { echo -e "${RED}✗${NC} $1"; }
 DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
+LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
 TK_TMPL_TMP=$(mktemp "${TMPDIR:-/tmp}/tk-tmpl.XXXXXX")
 # EXIT trap: release_lock first (ignore failure if not yet sourced), then clean tempfiles.
 # release_lock is defined by lib/state.sh which is sourced after the mktemps below.
 # Guard with `|| true` so EXIT firing before the source does not produce a shell error.
-trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
+trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
 
 # ───────── detect.sh soft-fail (with test seam) ─────────
 if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
@@ -81,8 +82,8 @@ else
     GSD_VERSION=""
 fi
 
-# ───────── lib/install.sh + lib/state.sh HARD-fail (with test seam) ─────────
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP"; do
+# ───────── lib/install.sh + lib/state.sh + lib/backup.sh HARD-fail (with test seam) ─────────
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_MIGRATE_LIB_DIR:-}" && -f "$TK_MIGRATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_MIGRATE_LIB_DIR/$lib_name" "$lib_path"
@@ -276,6 +277,7 @@ if ! cp -R "$CLAUDE_DIR" "$BACKUP_DIR"; then
     exit 1
 fi
 log_success "Backup created: $BACKUP_DIR"
+warn_if_too_many_backups
 echo ""
 
 # ───────── per-file prompt loop (MIGRATE-03, D-73, D-74) ─────────
