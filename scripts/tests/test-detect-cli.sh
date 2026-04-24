@@ -63,7 +63,7 @@ MOCK
             # No file created — command -v claude returns non-zero
             ;;
     esac
-    [[ "$scenario" != "absent" ]] && chmod +x "$bin_dir/claude"
+    if [[ "$scenario" != "absent" ]]; then chmod +x "$bin_dir/claude"; fi
 }
 
 seed_sp_fs() {

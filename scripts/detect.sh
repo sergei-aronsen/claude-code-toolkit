@@ -70,6 +70,36 @@ detect_superpowers() {
         fi
     fi
 
+    # [STEP 4] DETECT-06: cross-check via the claude CLI plugin list (JSON mode).
+    # SP only — GSD is not a plugin; never appears in the plugin list (see detect_gsd).
+    # Silent skip when claude CLI absent or errors; FS result wins on any CLI failure (D-17).
+    # Output captured once into cli_json; parsed twice via herestring to avoid two subprocesses.
+    if command -v claude &>/dev/null && command -v jq &>/dev/null; then
+        local cli_json cli_enabled cli_ver
+        cli_json=$(claude plugin list --json 2>/dev/null || echo "")
+        cli_enabled=$(jq -r '.[] | select(.id == "superpowers@claude-plugins-official") | .enabled' \
+            <<<"$cli_json" 2>/dev/null || echo "")
+        cli_ver=$(jq -r '.[] | select(.id == "superpowers@claude-plugins-official") | .version' \
+            <<<"$cli_json" 2>/dev/null || echo "")
+        case "$cli_enabled" in
+            "false")
+                # CLI explicitly disabled — override FS (D-16)
+                HAS_SP=false
+                SP_VERSION=""
+                export HAS_SP SP_VERSION
+                return 1
+                ;;
+            "true")
+                # CLI confirms enabled; CLI version is authoritative over FS dir-name (D-18)
+                [[ -n "$cli_ver" ]] && ver="$cli_ver"
+                ;;
+            "")
+                # Empty: CLI doesn't know about SP, OR CLI errored, OR non-JSON output.
+                # Fall back to FS truth (don't override). Do NOT treat as "false" (D-16).
+                ;;
+        esac
+    fi
+
     HAS_SP=true
     SP_VERSION="$ver"
     export HAS_SP SP_VERSION
@@ -77,6 +107,8 @@ detect_superpowers() {
 }
 
 detect_gsd() {
+    # DETECT-06 does not apply: GSD is not a Claude Code plugin — it never appears
+    # in the CLI plugin list output. Detection stays filesystem-only (D-13).
     # Filesystem only — GSD is not a Claude Code plugin; it has no entry in settings.json
     if [[ -d "$GSD_DIR" ]] && [[ -f "$GSD_DIR/bin/gsd-tools.cjs" ]]; then
         HAS_GSD=true
