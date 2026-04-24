@@ -11,6 +11,10 @@ set -euo pipefail
 NO_BANNER=0
 OFFER_MODE_SWITCH="interactive"
 PRUNE_MODE="interactive"
+# Phase 9 Plan 09-01 — BACKUP-01 --clean-backups flag state
+CLEAN_BACKUPS=0
+KEEP_N=""
+DRY_RUN_CLEAN=0
 for arg in "$@"; do
     case "$arg" in
         --no-banner) NO_BANNER=1 ;;
@@ -20,6 +24,9 @@ for arg in "$@"; do
         --prune=yes)                                   PRUNE_MODE="yes" ;;
         --prune=no|--no-prune)                         PRUNE_MODE="no" ;;
         --prune=interactive)                           PRUNE_MODE="interactive" ;;
+        --clean-backups)  CLEAN_BACKUPS=1 ;;
+        --keep=*)         KEEP_N="${arg#--keep=}" ;;
+        --dry-run)        DRY_RUN_CLEAN=1 ;;
         *) ;;
     esac
 done
@@ -44,8 +51,9 @@ DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
+LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP"' EXIT
 
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
@@ -68,7 +76,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -122,6 +130,103 @@ log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
+
+# _fmt_age — internal helper; prints e.g. "14d 3h", "5h 12m", "47m", "<1m"
+_fmt_age() {
+    local secs="$1"
+    local days=$(( secs / 86400 ))
+    local hours=$(( (secs % 86400) / 3600 ))
+    local mins=$(( (secs % 3600) / 60 ))
+    if   [[ $days  -gt 0 ]]; then echo "${days}d ${hours}h"
+    elif [[ $hours -gt 0 ]]; then echo "${hours}h ${mins}m"
+    elif [[ $mins  -gt 0 ]]; then echo "${mins}m"
+    else echo "<1m"
+    fi
+}
+
+# run_clean_backups — BACKUP-01 dispatch.
+# Args: $1 = KEEP_N value (may be empty); $2 = DRY_RUN_CLEAN (0 or 1)
+# Exit: 0 clean / 1 partial rm failure / 2 bad --keep value
+run_clean_backups() {
+    local keep_n="$1" dry_run="$2"
+    local rc=0
+
+    # Validate --keep value (D-06 exit 2)
+    if [[ -n "$keep_n" ]]; then
+        if ! [[ "$keep_n" =~ ^[0-9]+$ ]]; then
+            echo -e "${RED}✗${NC} --keep value must be a non-negative integer (got: $keep_n)" >&2
+            return 2
+        fi
+    fi
+
+    # Enumerate backup dirs (newest-epoch-first from list_backup_dirs)
+    local dirs=()
+    while IFS= read -r d; do
+        [[ -z "$d" ]] && continue
+        dirs+=("$d")
+    done < <(list_backup_dirs "${TK_UPDATE_HOME:-$HOME}")
+
+    # Empty-set (D-07)
+    if [[ ${#dirs[@]} -eq 0 ]]; then
+        echo "No toolkit backup directories found under \$HOME."
+        return 0
+    fi
+
+    # Classify dirs into keep set (first N) vs prompt set (remainder)
+    local keep_count=0
+    [[ -n "$keep_n" ]] && keep_count="$keep_n"
+
+    local now_epoch idx=0
+    now_epoch=$(date -u +%s)
+    for d in "${dirs[@]}"; do
+        local name epoch age_secs size age_str
+        name="$(basename "$d")"
+        case "$name" in
+            .claude-backup-[0-9]*-[0-9]*)
+                epoch="${name#.claude-backup-}"; epoch="${epoch%-*}" ;;
+            .claude-backup-pre-migrate-[0-9]*)
+                epoch="${name#.claude-backup-pre-migrate-}" ;;
+            *) idx=$((idx + 1)); continue ;;
+        esac
+        age_secs=$(( now_epoch - epoch ))
+        size=$(du -sh "$d" 2>/dev/null | cut -f1 || echo "?")
+        age_str=$(_fmt_age "$age_secs")
+
+        if [[ $idx -lt $keep_count ]]; then
+            # Keep (newest N)
+            if [[ $dry_run -eq 1 ]]; then
+                echo "[would keep]   $d  (size: $size, age: $age_str)"
+            else
+                echo "Keeping: $d  (size: $size, age: $age_str)"
+            fi
+        else
+            if [[ $dry_run -eq 1 ]]; then
+                echo "[would remove] $d  (size: $size, age: $age_str)"
+            else
+                local decision=""
+                printf 'Remove %s (size: %s, age: %s)? [y/N]: ' "$d" "$size" "$age_str"
+                if ! read -r decision < /dev/tty 2>/dev/null; then
+                    # /dev/tty unavailable (curl|bash or test FIFO) — try stdin
+                    if ! read -r decision 2>/dev/null; then
+                        decision="N"   # fail-closed: EOF or no input
+                    fi
+                fi
+                case "${decision:-N}" in
+                    y|Y)
+                        if ! rm -rf "$d"; then
+                            echo -e "${RED}✗${NC} Failed to remove $d" >&2
+                            rc=1
+                        fi
+                        ;;
+                    *) : ;;
+                esac
+            fi
+        fi
+        idx=$((idx + 1))
+    done
+
+    return $rc
+}
 
 detect_framework() {
     if [[ -f "artisan" ]]; then
@@ -266,6 +371,13 @@ if [[ ! -d "$CLAUDE_DIR" ]]; then
     log_error "$CLAUDE_DIR not found. Run init-claude.sh first:"
     echo "  bash <(curl -sSL $REPO_URL/scripts/init-claude.sh)"
     exit 1
+fi
+
+# Phase 9 Plan 09-01 — BACKUP-01 --clean-backups dispatch.
+# Runs BEFORE lock acquisition + tree backup so cleanup never mutates .claude/.
+if [[ $CLEAN_BACKUPS -eq 1 ]]; then
+    run_clean_backups "${KEEP_N:-}" "$DRY_RUN_CLEAN"
+    exit $?
 fi
 
 # ─────────────────────────────────────────────────
@@ -451,7 +563,7 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
