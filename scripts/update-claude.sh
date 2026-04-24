@@ -401,6 +401,9 @@ STATE_VERSION=$(jq -r '.version // "unknown"' <<<"$STATE_JSON")
 # B2: manifest content hash from prior run — absent on freshly-synthesized v3.x state
 # shellcheck disable=SC2034  # STATE_MANIFEST_HASH consumed by Plan 04-03 is_update_noop condition
 STATE_MANIFEST_HASH=$(jq -r '.manifest_hash // "unknown"' <<<"$STATE_JSON")
+# Phase 9 Plan 09-04 — DETECT-07 version-skew warning (non-fatal, D-24).
+# Emitted AFTER read_state + STATE_MANIFEST_HASH extraction, BEFORE migrate hint / summary.
+warn_version_skew
 
 # ─────────────────────────────────────────────────
 # Phase 5 Plan 05-01 — D-77 migrate hint (standalone + SP/GSD present + duplicate on disk)

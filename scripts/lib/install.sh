@@ -225,6 +225,26 @@ except Exception:
 PYEOF
 }
 
+# warn_version_skew — compare stored plugin versions against current detection.
+# Emits one YELLOW ⚠ line per changed plugin. Non-fatal, no prompt (D-24/D-25).
+# Caller must have already sourced detect.sh (SP_VERSION / GSD_VERSION in scope)
+# and called read_state (STATE_FILE path available).
+# jq path: .detected.superpowers.version / .detected.gsd.version (state schema v2).
+warn_version_skew() {
+    [[ -f "${STATE_FILE:-}" ]] || return 0
+    command -v jq &>/dev/null || return 0
+    local stored_sp stored_gsd
+    stored_sp=$(jq -r '.detected.superpowers.version // ""' "$STATE_FILE" 2>/dev/null || echo "")
+    stored_gsd=$(jq -r '.detected.gsd.version // ""'        "$STATE_FILE" 2>/dev/null || echo "")
+    # Only fire when stored version is non-empty AND differs from current (D-23)
+    if [[ -n "$stored_sp"  && "$stored_sp"  != "${SP_VERSION:-}"  ]]; then
+        echo -e "${YELLOW}⚠${NC} Base plugin version changed: superpowers ${stored_sp} → ${SP_VERSION:-unknown} — review install matrix"
+    fi
+    if [[ -n "$stored_gsd" && "$stored_gsd" != "${GSD_VERSION:-}" ]]; then
+        echo -e "${YELLOW}⚠${NC} Base plugin version changed: get-shit-done ${stored_gsd} → ${GSD_VERSION:-unknown} — review install matrix"
+    fi
+}
+
 # compute_file_diffs_obj <state_json> <manifest_path> <mode>
 # Stdout: ONE JSON object { new: [...], removed: [...], modified_candidates: [...] } describing:
 #   new                 = (manifest.files.*.path - state.installed_files[].path) - compute_skip_set(mode)
