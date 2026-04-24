@@ -36,6 +36,10 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ Install matrix ported to bats under `scripts/tests/matrix/*.bats` with shared `scripts/tests/matrix/lib/helpers.bash` lib; 63 assertions preserved 1:1; `make test-matrix-bats` + CI job pinned to `bats-core/bats-action@77d6fb60…` — Validated in Phase 8: release-quality (REL-01)
 - ✓ `scripts/cell-parity.sh` enforces 3-surface parity (validate-release.sh --list × docs/INSTALL.md × docs/RELEASE-CHECKLIST.md); wired into `make check` + CI `validate-templates`; INSTALL.md carries 13 `--cell` commands + "13 cells" intro — Validated in Phase 8: release-quality (REL-02)
 - ✓ `scripts/validate-release.sh --collect-all` runs all 13 cells with aggregated ASCII table; `--all` fail-fast unchanged; `--all` + `--collect-all` mutex error — Validated in Phase 8: release-quality (REL-03)
+- ✓ `scripts/update-claude.sh --clean-backups` lists sibling `~/.claude-backup-*` + `~/.claude-backup-pre-migrate-*` dirs with size + age, per-dir `[y/N]` prompt, `--keep=N` preserves N newest by parsed epoch, `--dry-run` lists only, exit 0/1/2 — Validated in Phase 9: backup-detection (BACKUP-01)
+- ✓ `scripts/lib/backup.sh` `warn_if_too_many_backups()` emitted from `update-claude.sh` + `migrate-to-complement.sh` when combined backup count > 10; non-fatal; `setup-security.sh` excluded (creates `.bak.*` inside `.claude/`, not sibling dirs) — Validated in Phase 9: backup-detection (BACKUP-02)
+- ✓ `scripts/detect.sh` `detect_superpowers()` gains 4th verification layer parsing `claude plugin list --json`; CLI disabled overrides FS; CLI version wins when enabled; soft-fail to FS on CLI absent/error/non-JSON; GSD stays FS-only (not a Claude plugin) — Validated in Phase 9: backup-detection (DETECT-06)
+- ✓ `scripts/lib/install.sh` `warn_version_skew()` emitted from `update-claude.sh` only (D-22 scope lock); compares `.detected.{superpowers,gsd}.version` in `~/.claude/toolkit-install.json` vs current; non-fatal one-line `⚠ Base plugin version changed` warning per changed plugin — Validated in Phase 9: backup-detection (DETECT-07)
 
 ## Current Milestone: v4.1 Polish & Upstream
 
@@ -56,10 +60,10 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - [x] **REL-01** — Migrate install matrix from bash `validate-release.sh` to bats (TEST-01 carryover) — shipped Phase 8
 - [x] **REL-02** — Auto-check cell parity between `docs/INSTALL.md` and `docs/RELEASE-CHECKLIST.md` — shipped Phase 8
 - [x] **REL-03** — Add `--collect-all` fail mode to `scripts/validate-release.sh` (default stays fail-fast) — shipped Phase 8
-- [ ] **BACKUP-01** — `--clean-backups` flag for `scripts/update-claude.sh` (carryover)
-- [ ] **BACKUP-02** — Warn when backup directory count exceeds threshold (carryover)
-- [ ] **DETECT-06** — Integrate `claude plugin list` as detection input alongside filesystem check
-- [ ] **DETECT-07** — Detect SP/GSD version skew between install time and current, emit warning
+- [x] **BACKUP-01** — `--clean-backups` flag for `scripts/update-claude.sh` — shipped Phase 9
+- [x] **BACKUP-02** — Warn when backup directory count exceeds threshold — shipped Phase 9
+- [x] **DETECT-06** — Integrate `claude plugin list` as detection input alongside filesystem check — shipped Phase 9
+- [x] **DETECT-07** — Detect SP/GSD version skew between install time and current, emit warning — shipped Phase 9
 - [ ] **UPSTREAM-01** — File issue in `gsd-build/get-shit-done` for `audit-open` ReferenceError (`gsd-tools.cjs:786`)
 - [ ] **UPSTREAM-02** — File issue in `gsd-build/get-shit-done` for `milestone complete` accomplishment-extraction noise
 - [ ] **UPSTREAM-03** — File issue in `gsd-build/get-shit-done` for missing auto-sync of ROADMAP checkboxes on plan completion
@@ -166,4 +170,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 — Phase 8 (Release Quality) shipped: REL-01 bats port, REL-02 cell-parity gate, REL-03 --collect-all flag. v4.1 progress: 3/11 requirements validated (Phases 8 + 12 complete).*
+*Last updated: 2026-04-24 — Phase 9 (Backup & Detection) shipped: BACKUP-01 `--clean-backups` flag, BACKUP-02 threshold warning, DETECT-06 `claude plugin list` cross-check, DETECT-07 version-skew warning. v4.1 progress: 7/11 requirements validated (Phases 8 + 9 + 12 complete; Phases 10 + 11 remaining).*
