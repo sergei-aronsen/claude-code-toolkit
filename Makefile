@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats clean install
 
 # Default target
 help:
@@ -218,6 +218,11 @@ agent-collision-static:
 validate-commands:
 	@echo "Validating commands/*.md for required headings (HARDEN-A-01)..."
 	@python3 scripts/validate-commands.py
+
+# REL-01: run bats matrix suite (requires: brew install bats-core locally; CI uses bats-core/bats-action)
+test-matrix-bats:
+	@echo "Running bats install matrix..."
+	@bats scripts/tests/matrix/*.bats
 
 # Clean temporary files
 clean:
