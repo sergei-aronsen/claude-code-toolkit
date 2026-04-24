@@ -77,17 +77,13 @@ metrics:
 |-----------|--------------|---------------|--------|
 | HARDEN-A-01 | AUDIT-12 | Add `validate-commands` Makefile target greping `commands/*.md` for `## Purpose` + `## Usage` headings; wire into `check` and `.github/workflows/quality.yml` | Awaiting user gate |
 
-## User Gate Decisions (Task 5 — pending)
+## User Gate Decisions (Task 5 — complete)
 
-The following per-REQ decisions are awaited from the user before Plan 12.2 can proceed:
+User decisions applied 2026-04-24:
 
-- `HARDEN-A-01: approve | reject - <reason> | defer v4.2+`
+- `HARDEN-A-01: approve` — promoted to Planned; Plan 12.2 scope
 
-After the user responds, a continuation agent will:
-
-1. Update `REQUIREMENTS.md` status for HARDEN-A-01 (Planned / Closed - accepted risk / Deferred v4.2+)
-2. Update this SUMMARY with the decision list
-3. Plan 12.2 scopes to approved HARDEN-A-NN REQs only (or becomes a no-op if all rejected)
+REQUIREMENTS.md updated: HARDEN-A-01 status flipped from `Proposed - awaiting user gate` to `Planned`. Plan 12.2 executes with HARDEN-A-01 as its single concrete scope item.
 
 ## Deviations from Plan
 

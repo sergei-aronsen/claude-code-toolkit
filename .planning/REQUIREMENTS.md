@@ -66,12 +66,13 @@ requirements.
 - [ ] **AUDIT-14**: No uninstall semantics — can't remove template safely — Status: REAL
 - [ ] **AUDIT-15**: No template provenance metadata — no `installed_templates.json` post-install — Status: PARTIAL
 
-## Wave A Hardening (Phase 12 — awaiting user gate)
+## Wave A Hardening (Phase 12 — user gate complete)
 
-HARDEN-A-NN requirements are populated only after the user gate in
-Plan 12.1 approves the corresponding REAL/PARTIAL Wave-A findings.
+HARDEN-A-NN requirements approved by user gate on 2026-04-24 proceed to
+Plan 12.2 implementation. Rejected/deferred rows keep their status for the
+paper trail.
 
-- [ ] **HARDEN-A-01**: Add `validate-commands` Makefile target that greps `commands/*.md` for `## Purpose` and `## Usage` headings; wire into `check` target and `.github/workflows/quality.yml`; fail with list of non-compliant files
+- [ ] **HARDEN-A-01**: Add `validate-commands` Makefile target that greps `commands/*.md` for `## Purpose` and `## Usage` headings; wire into `check` target and `.github/workflows/quality.yml`; fail with list of non-compliant files — Status: Planned (approved 2026-04-24)
 
 ## Future Requirements
 
@@ -120,6 +121,6 @@ Items deferred to v4.2+ after initial scope assessment:
 | AUDIT-13 | Phase 12 | Closed - FALSE |
 | AUDIT-14 | Phase 12 | REAL (Deferred v4.2+) |
 | AUDIT-15 | Phase 12 | REAL |
-| HARDEN-A-01 | Phase 12 | Proposed - awaiting user gate |
+| HARDEN-A-01 | Phase 12 | Planned |
 
 **Coverage:** 27 / 27 requirements mapped to phases ✓
