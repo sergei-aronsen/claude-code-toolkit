@@ -43,6 +43,36 @@ One-item category. Visual polish for `--dry-run` output across install/update/mi
 
 - [ ] **UX-01**: `scripts/init-claude.sh --dry-run`, `scripts/update-claude.sh --dry-run`, and `scripts/migrate-to-complement.sh --dry-run` produce chezmoi-grade styled diff output. Colored `+` / `-` / `~` per file, grouped by action (INSTALL / UPDATE / SKIP / REMOVE), right-aligned file counts per group. Matches chezmoi's `diff` presentation quality.
 
+## Audit Verification (Phase 12)
+
+Traceability records for all 15 ChatGPT pass-3 template-level claims.
+Every claim gets a REQ-ID regardless of verdict. FALSE rows are closed
+immediately; REAL/PARTIAL rows that pass the user gate become HARDEN-A-NN
+requirements.
+
+- [ ] **AUDIT-01**: Plugin manifest schema missing — no `plugin.schema.json` for `.claude-plugin/plugin.json` validation — Status: FALSE
+- [ ] **AUDIT-02**: No template compatibility matrix — no `compatibility.json` to block incompatible stack combos — Status: PARTIAL
+- [ ] **AUDIT-03**: Namespace collision between templates — two framework templates ship same-named commands, overwrite each other — Status: FALSE
+- [ ] **AUDIT-04**: No template merge-strategy declaration — base+python+rag overlay semantics undefined — Status: PARTIAL
+- [ ] **AUDIT-05**: Relative path assumptions in templates — `../skills/rag.md` inside template markdown breaks post-install — Status: FALSE
+- [ ] **AUDIT-06**: No template version pinning — installer pulls main branch, no `template.lock.json` / `template_version` field — Status: PARTIAL
+- [ ] **AUDIT-07**: No template feature-flags — workflow-v2 / memory-v3 / agents-v1 versions not declared — Status: FALSE
+- [ ] **AUDIT-08**: Stack autodetection fragile — confidence scoring, override, dry-run preview missing — Status: FALSE
+- [ ] **AUDIT-09**: No dry-run installer mode — no preview of install plan — Status: FALSE
+- [ ] **AUDIT-10**: No collision detection with existing `.claude/` — overwrite/merge/fail behavior undeclared — Status: PARTIAL
+- [ ] **AUDIT-11**: No template integrity checksum — no `manifest.hash` — Status: FALSE
+- [ ] **AUDIT-12**: Markdown commands as templates without linting — required sections/frontmatter/step markers not enforced — Status: PARTIAL
+- [ ] **AUDIT-13**: No dependency graph between templates — rag requires memory, installer doesn't enforce — Status: FALSE
+- [ ] **AUDIT-14**: No uninstall semantics — can't remove template safely — Status: REAL
+- [ ] **AUDIT-15**: No template provenance metadata — no `installed_templates.json` post-install — Status: PARTIAL
+
+## Wave A Hardening (Phase 12 — awaiting user gate)
+
+HARDEN-A-NN requirements are populated only after the user gate in
+Plan 12.1 approves the corresponding REAL/PARTIAL Wave-A findings.
+
+- [ ] **HARDEN-A-01**: Add `validate-commands` Makefile target that greps `commands/*.md` for `## Purpose` and `## Usage` headings; wire into `check` target and `.github/workflows/quality.yml`; fail with list of non-compliant files
+
 ## Future Requirements
 
 Items deferred to v4.2+ after initial scope assessment:
@@ -75,5 +105,21 @@ Items deferred to v4.2+ after initial scope assessment:
 | UPSTREAM-02 | Phase 10 | Planned |
 | UPSTREAM-03 | Phase 10 | Planned |
 | UX-01 | Phase 11 | Planned |
+| AUDIT-01 | Phase 12 | Closed - FALSE |
+| AUDIT-02 | Phase 12 | REAL |
+| AUDIT-03 | Phase 12 | Closed - FALSE |
+| AUDIT-04 | Phase 12 | REAL |
+| AUDIT-05 | Phase 12 | Closed - FALSE |
+| AUDIT-06 | Phase 12 | REAL |
+| AUDIT-07 | Phase 12 | Closed - FALSE |
+| AUDIT-08 | Phase 12 | Closed - FALSE |
+| AUDIT-09 | Phase 12 | Closed - FALSE |
+| AUDIT-10 | Phase 12 | REAL (Deferred v4.2+) |
+| AUDIT-11 | Phase 12 | Closed - FALSE |
+| AUDIT-12 | Phase 12 | REAL |
+| AUDIT-13 | Phase 12 | Closed - FALSE |
+| AUDIT-14 | Phase 12 | REAL (Deferred v4.2+) |
+| AUDIT-15 | Phase 12 | REAL |
+| HARDEN-A-01 | Phase 12 | Proposed - awaiting user gate |
 
-**Coverage:** 11 / 11 requirements mapped to phases ✓
+**Coverage:** 27 / 27 requirements mapped to phases ✓

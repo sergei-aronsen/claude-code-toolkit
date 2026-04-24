@@ -100,14 +100,29 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 9. Backup & Detection | v4.1 | 0/? | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
+| 12. Audit Verification + Template Hardening | v4.1 | 0/2 | Not started | - |
 
 ### Phase 12: Audit Verification + Template Hardening
 
-**Goal:** [To be planned]
-**Requirements**: AUDIT-01..AUDIT-15, HARDEN-A-NN (NN TBD after user gate)
-**Depends on:** Phase 11
+**Goal**: Verify all 15 ChatGPT pass-3 template-level audit claims against
+actual code; implement Wave A (schema/validation) REAL findings approved
+at user gate; create full AUDIT-NN + HARDEN-A-NN REQ traceability
+**Depends on**: Phase 11
+**Requirements**: AUDIT-01..AUDIT-15, HARDEN-A-01..HARDEN-A-NN (NN TBD after gate)
+**Success Criteria** (what must be TRUE):
+
+1. `12-AUDIT.md` exists with 15-row verdict table; every row has Status
+   + Evidence (file:line or "not found") + Action; no row is blank or
+   prose-only
+2. REQUIREMENTS.md carries AUDIT-01..AUDIT-15 rows with correct statuses;
+   FALSE rows are closed; REAL/PARTIAL rows have HARDEN wave assignment
+3. HARDEN-A-NN REQs (user-approved subset) are implemented and wired into
+   `make check`; CI passes
+4. Wave B and Wave C REQs are defined in AUDIT.md but NOT entered in
+   REQUIREMENTS.md until promoted in v4.2+
+
 **Plans:** 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — AUDIT: verify 15 ChatGPT pass-3 claims, produce verdict table, propose HARDEN-A-NN REQs
-- [ ] 12-02-PLAN.md — WAVE-A: implement user-approved HARDEN-A-NN REQs (gated on 12-01 user review)
+- [ ] 12-01-PLAN.md — AUDIT: verify 15 claims, produce verdict table, propose HARDEN-A-NN
+- [ ] 12-02-PLAN.md — WAVE-A: implement user-approved HARDEN-A-NN REQs (gated on 12-01 approval)
