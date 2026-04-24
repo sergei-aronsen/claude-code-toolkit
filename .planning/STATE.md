@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Polish & Upstream
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-04-24T14:05:22.908Z"
-last_activity: 2026-04-24 -- Phase 8 planning complete
+last_updated: "2026-04-24T14:06:14.357Z"
+last_activity: 2026-04-24 -- Phase 8 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 12 — audit-verification-template-hardening
+**Current focus:** Phase 8 — Release Quality
 
 ## Current Position
 
 Milestone: v4.1 Polish & Upstream
-Phase: 12 (audit-verification-template-hardening) — COMPLETE
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-04-24 -- Phase 8 planning complete
+Phase: 8 (Release Quality) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 8
+Last activity: 2026-04-24 -- Phase 8 execution started
 
 Progress: [██░░░░░░░░] 20% (1/5 phases, 2/2 plans in Phase 12)
 

@@ -53,10 +53,10 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 3. `scripts/validate-release.sh --collect-all` runs all 13 cells regardless of failures and emits a final aggregated table; default fail-fast behavior unchanged without the flag
 4. Bash `validate-release.sh` remains functional during transition; no regression in existing 63 assertions
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 08-01-PLAN.md — REL-01: port 13-cell matrix to bats, extract helpers.bash, add make test-matrix-bats + CI job
+- [x] 08-01-PLAN.md — REL-01: port 13-cell matrix to bats, extract helpers.bash, add make test-matrix-bats + CI job
 - [ ] 08-02-PLAN.md — REL-02: add scripts/cell-parity.sh + make cell-parity target; fix docs/INSTALL.md 12→13 cells drift and add 13 --cell commands
 - [ ] 08-03-PLAN.md — REL-03: add --collect-all flag to validate-release.sh with aggregated ASCII table, --all mutex guard
 
@@ -103,7 +103,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Release Quality | v4.1 | 0/3 | Not started | - |
+| 8. Release Quality | v4.1 | 1/3 | In Progress|  |
 | 9. Backup & Detection | v4.1 | 0/? | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
