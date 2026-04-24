@@ -35,7 +35,7 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 **Phase Numbering:** continuing from v4.0 (last used: 7). Next: 8.
 
 - [x] **Phase 8: Release Quality** - Port install matrix to bats, add cell-parity check, ship `--collect-all` fail mode (completed 2026-04-24)
-- [ ] **Phase 9: Backup & Detection** - `--clean-backups` flag, threshold warnings, `claude plugin list` integration, version-skew detection
+- [x] **Phase 9: Backup & Detection** - `--clean-backups` flag, threshold warnings, `claude plugin list` integration, version-skew detection (completed 2026-04-24)
 - [ ] **Phase 10: Upstream GSD Issues** - File 3 issues in `gsd-build/get-shit-done` (no toolkit code changes)
 - [ ] **Phase 11: UX Polish** - chezmoi-grade styled `--dry-run` diff output across install/update/migrate
 
@@ -72,13 +72,13 @@ Plans:
 3. `scripts/detect.sh` parses `claude plugin list` JSON when available; if filesystem says SP is present but CLI says disabled, CLI overrides; filesystem remains primary when CLI absent
 4. `scripts/update-claude.sh` detects SP/GSD version change between install state and current, emits one-line warning with before/after versions
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 09-01-PLAN.md — BACKUP-01: --clean-backups flag on update-claude.sh + scripts/lib/backup.sh foundation + REQUIREMENTS.md phantom-path fix (wave 1)
 - [x] 09-02-PLAN.md — BACKUP-02: threshold warning wired into update-claude.sh + migrate-to-complement.sh via warn_if_too_many_backups (wave 2, depends on 09-01)
 - [x] 09-03-PLAN.md — DETECT-06: `claude plugin list --json` CLI cross-check as step 4 in detect_superpowers() (wave 1)
-- [ ] 09-04-PLAN.md — DETECT-07: warn_version_skew() helper + wiring in update-claude.sh between STATE_MANIFEST_HASH extraction and migrate hint (wave 2, depends on 09-03)
+- [x] 09-04-PLAN.md — DETECT-07: warn_version_skew() helper + wiring in update-claude.sh between STATE_MANIFEST_HASH extraction and migrate hint (wave 2, depends on 09-03)
 
 ### Phase 10: Upstream GSD Issues
 
@@ -112,7 +112,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
-| 9. Backup & Detection | v4.1 | 3/4 | In Progress|  |
+| 9. Backup & Detection | v4.1 | 4/4 | Complete   | 2026-04-24 |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |

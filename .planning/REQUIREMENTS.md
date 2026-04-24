@@ -27,7 +27,7 @@ Carry-overs BACKUP-01/02 from v4.0. Backup dirs accumulate under `~/.claude-back
 DETECT-FUT-01/02 from v4.0. Filesystem detection remains primary; CLI becomes a cross-check input for stale-cache and version-skew cases.
 
 - [x] **DETECT-06**: `scripts/detect.sh` gains optional `CLAUDE_PLUGIN_LIST_CHECK` path. When `claude plugin list` CLI exists, parse its JSON output; if SP/GSD is filesystem-present but CLI reports disabled, override filesystem detection with the CLI truth. Filesystem remains primary when CLI absent or errors.
-- [ ] **DETECT-07**: On `update-claude.sh` run, compare `SP_VERSION` / `GSD_VERSION` captured in `~/.claude/toolkit-install.json` at install time against current detection. If mismatch detected, emit `⚠ Base plugin version changed: superpowers 5.0.7 → 5.1.0 — review install matrix` one-liner. Non-fatal.
+- [x] **DETECT-07**: On `update-claude.sh` run, compare `SP_VERSION` / `GSD_VERSION` captured in `~/.claude/toolkit-install.json` at install time against current detection. If mismatch detected, emit `⚠ Base plugin version changed: superpowers 5.0.7 → 5.1.0 — review install matrix` one-liner. Non-fatal.
 
 ### Upstream GSD Issues
 
