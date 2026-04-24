@@ -100,3 +100,14 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 9. Backup & Detection | v4.1 | 0/? | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
+
+### Phase 12: Audit Verification + Template Hardening
+
+**Goal:** [To be planned]
+**Requirements**: AUDIT-01..AUDIT-15, HARDEN-A-NN (NN TBD after user gate)
+**Depends on:** Phase 11
+**Plans:** 2 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — AUDIT: verify 15 ChatGPT pass-3 claims, produce verdict table, propose HARDEN-A-NN REQs
+- [ ] 12-02-PLAN.md — WAVE-A: implement user-approved HARDEN-A-NN REQs (gated on 12-01 user review)
