@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
 status: executing
-stopped_at: Phase 9 context gathered
-last_updated: "2026-04-24T16:11:32.191Z"
+stopped_at: Completed 09-backup-detection/09-01-PLAN.md
+last_updated: "2026-04-24T17:54:40.120Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 9
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 8 — Release Quality
+**Current focus:** Phase 9 — Backup & Detection
 
 ## Current Position
 
 Milestone: v4.1 Polish & Upstream
-Phase: 12
-Plan: Not started
-Status: Executing Phase 8
+Phase: 9 (Backup & Detection) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-04-24
 
 Progress: [██░░░░░░░░] 20% (1/5 phases, 2/2 plans in Phase 12)
@@ -64,6 +64,8 @@ Recent v4.1 scope decisions:
 - 2026-04-21: Upstream GSD CLI bugs (audit-open ReferenceError, milestone-complete summary noise, ROADMAP auto-sync) to be filed as upstream issues, NOT patched in this repo (UPSTREAM-01/02/03 file issues only)
 - 2026-04-21: `claude plugin list` becomes secondary detection input — filesystem remains primary (DETECT-06 reverses v4.0 "CLI never" out-of-scope item)
 - 2026-04-21: Chose "fast" pacing (skip discuss-milestone + research) — scope is carry-overs from v4.0, well-understood
+- [Phase 09-backup-detection]: D-01 applied: REQUIREMENTS.md phantom path ~/.claude/.toolkit-backup-* replaced with real patterns
+- [Phase 09-backup-detection]: Prompt reads from /dev/tty first, falls back to stdin for FIFO-based test support while staying curl|bash safe
 
 ### Roadmap Evolution
 
@@ -97,12 +99,13 @@ v4.2+ carry-overs (locked out of v4.1):
 | Locked out | Docker-per-cell isolation | Permanently out (conflicts with POSIX invariant) |
 | Locked out | Auto-cut `git tag` from phase execution | Permanently out (CLAUDE.md "never push main") |
 | Deferred | Installable GSD CLI wrapper in toolkit | v4.2+ (crosses repo boundary) |
+| Phase 09-backup-detection P01 | 35 | 2 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-04-24T16:11:32.187Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-backup-detection/09-CONTEXT.md
+Last session: 2026-04-24T17:54:40.117Z
+Stopped at: Completed 09-backup-detection/09-01-PLAN.md
+Resume file: None
 
 **To resume next session — one of:**
 
