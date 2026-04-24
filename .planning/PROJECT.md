@@ -33,6 +33,9 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ Bump version to `4.0.0` and document breaking changes in `CHANGELOG.md` — Validated in Phase 6: documentation (DOCS-03)
 - ✓ `docs/INSTALL.md` 12-cell install matrix (4 modes × 3 scenarios) — Validated in Phase 6: documentation (DOCS-04)
 - ✓ Recommended optional plugins documented (rtk, caveman, superpowers, get-shit-done) with caveats and upstream verification — Validated in Phase 6: documentation (DOCS-05, DOCS-06, DOCS-07, DOCS-08)
+- ✓ Install matrix ported to bats under `scripts/tests/matrix/*.bats` with shared `scripts/tests/matrix/lib/helpers.bash` lib; 63 assertions preserved 1:1; `make test-matrix-bats` + CI job pinned to `bats-core/bats-action@77d6fb60…` — Validated in Phase 8: release-quality (REL-01)
+- ✓ `scripts/cell-parity.sh` enforces 3-surface parity (validate-release.sh --list × docs/INSTALL.md × docs/RELEASE-CHECKLIST.md); wired into `make check` + CI `validate-templates`; INSTALL.md carries 13 `--cell` commands + "13 cells" intro — Validated in Phase 8: release-quality (REL-02)
+- ✓ `scripts/validate-release.sh --collect-all` runs all 13 cells with aggregated ASCII table; `--all` fail-fast unchanged; `--all` + `--collect-all` mutex error — Validated in Phase 8: release-quality (REL-03)
 
 ## Current Milestone: v4.1 Polish & Upstream
 
@@ -50,9 +53,9 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 <!-- v4.1 milestone: Polish & Upstream -->
 
-- [ ] **REL-01** — Migrate install matrix from bash `validate-release.sh` to bats (TEST-01 carryover)
-- [ ] **REL-02** — Auto-check cell parity between `docs/INSTALL.md` and `docs/RELEASE-CHECKLIST.md`
-- [ ] **REL-03** — Add `--collect-all` fail mode to `scripts/validate-release.sh` (default stays fail-fast)
+- [x] **REL-01** — Migrate install matrix from bash `validate-release.sh` to bats (TEST-01 carryover) — shipped Phase 8
+- [x] **REL-02** — Auto-check cell parity between `docs/INSTALL.md` and `docs/RELEASE-CHECKLIST.md` — shipped Phase 8
+- [x] **REL-03** — Add `--collect-all` fail mode to `scripts/validate-release.sh` (default stays fail-fast) — shipped Phase 8
 - [ ] **BACKUP-01** — `--clean-backups` flag for `scripts/update-claude.sh` (carryover)
 - [ ] **BACKUP-02** — Warn when backup directory count exceeds threshold (carryover)
 - [ ] **DETECT-06** — Integrate `claude plugin list` as detection input alongside filesystem check
@@ -163,4 +166,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-21 — v4.0 Complement Mode shipped and tagged (v4.0.0). v4.1 Polish & Upstream milestone started — 11 requirements across 4 phases (8–11).*
+*Last updated: 2026-04-24 — Phase 8 (Release Quality) shipped: REL-01 bats port, REL-02 cell-parity gate, REL-03 --collect-all flag. v4.1 progress: 3/11 requirements validated (Phases 8 + 12 complete).*
