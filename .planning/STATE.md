@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
 status: executing
-stopped_at: Completed 09-backup-detection/09-01-PLAN.md
-last_updated: "2026-04-24T17:54:40.120Z"
+stopped_at: Completed 09-backup-detection/09-03-PLAN.md
+last_updated: "2026-04-24T18:00:46.637Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
-  percent: 67
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 Milestone: v4.1 Polish & Upstream
 Phase: 9 (Backup & Detection) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -66,6 +66,7 @@ Recent v4.1 scope decisions:
 - 2026-04-21: Chose "fast" pacing (skip discuss-milestone + research) — scope is carry-overs from v4.0, well-understood
 - [Phase 09-backup-detection]: D-01 applied: REQUIREMENTS.md phantom path ~/.claude/.toolkit-backup-* replaced with real patterns
 - [Phase 09-backup-detection]: Prompt reads from /dev/tty first, falls back to stdin for FIFO-based test support while staying curl|bash safe
+- [Phase 09-backup-detection]: DETECT-06: CLI cross-check inserted as step 4 in detect_superpowers(); single subprocess capture + case dispatch on cli_enabled; FS wins on any CLI failure
 
 ### Roadmap Evolution
 
@@ -100,11 +101,12 @@ v4.2+ carry-overs (locked out of v4.1):
 | Locked out | Auto-cut `git tag` from phase execution | Permanently out (CLAUDE.md "never push main") |
 | Deferred | Installable GSD CLI wrapper in toolkit | v4.2+ (crosses repo boundary) |
 | Phase 09-backup-detection P01 | 35 | 2 tasks | 6 files |
+| Phase 09-backup-detection P03 | 25 | 1 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-24T17:54:40.117Z
-Stopped at: Completed 09-backup-detection/09-01-PLAN.md
+Last session: 2026-04-24T18:00:46.634Z
+Stopped at: Completed 09-backup-detection/09-03-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
