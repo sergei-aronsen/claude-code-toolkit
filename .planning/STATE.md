@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
-status: Ready for Phase 8
+status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-04-24T07:06:41.088Z"
-last_activity: 2026-04-21 — v4.1 milestone initialized
+last_updated: "2026-04-24T07:30:27.891Z"
+last_activity: 2026-04-24 -- Phase 12 planning complete
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
   percent: 0
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 
 Milestone: v4.1 Polish & Upstream
 Phase: Not started (defining requirements complete, awaiting Phase 8 discuss)
-Status: Ready for Phase 8
-Last activity: 2026-04-21 — v4.1 milestone initialized
+Status: Ready to execute
+Last activity: 2026-04-24 -- Phase 12 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
