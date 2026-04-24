@@ -67,6 +67,9 @@ jobs:
           fi
           echo "✅ All audit templates valid"
 
+      - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
+        run: make cell-parity
+
   test-init-script:
     name: Test Init Script
     runs-on: ubuntu-latest
