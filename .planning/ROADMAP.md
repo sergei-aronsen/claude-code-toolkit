@@ -36,7 +36,7 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 
 - [x] **Phase 8: Release Quality** - Port install matrix to bats, add cell-parity check, ship `--collect-all` fail mode (completed 2026-04-24)
 - [x] **Phase 9: Backup & Detection** - `--clean-backups` flag, threshold warnings, `claude plugin list` integration, version-skew detection (completed 2026-04-24)
-- [ ] **Phase 10: Upstream GSD Issues** - File 3 issues in `gsd-build/get-shit-done` (no toolkit code changes)
+- [x] **Phase 10: Upstream GSD Issues** - File 3 issues in `gsd-build/get-shit-done` (no toolkit code changes) (completed 2026-04-24)
 - [ ] **Phase 11: UX Polish** - chezmoi-grade styled `--dry-run` diff output across install/update/migrate
 
 ## Phase Details
@@ -92,11 +92,11 @@ Plans:
 3. GitHub issue filed for missing auto-sync of ROADMAP.md plan checkboxes on plan completion, with repro via `gsd-execute-phase` + observed manual `update-plan-progress` workaround
 4. This repo carries zero code changes for UPSTREAM-01/02/03 — only `.planning/` notes documenting issue URLs for cross-reference
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 10-01-PLAN.md — UPSTREAM-01/02/03: file 3 upstream GitHub issues (audit-open ReferenceError, milestone one-liner extraction, ROADMAP auto-sync gap) with redacted repro + suggested fixes; zero toolkit code changes
+- [x] 10-01-PLAN.md — UPSTREAM-01/02/03: file 3 upstream GitHub issues (audit-open ReferenceError, milestone one-liner extraction, ROADMAP auto-sync gap) with redacted repro + suggested fixes; zero toolkit code changes
 
 ### Phase 11: UX Polish
 
@@ -119,7 +119,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 |-------|-----------|----------------|--------|-----------|
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
 | 9. Backup & Detection | v4.1 | 4/4 | Complete    | 2026-04-24 |
-| 10. Upstream GSD Issues | v4.1 | 0/1 | Not started | - |
+| 10. Upstream GSD Issues | v4.1 | 1/1 | Complete   | 2026-04-24 |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
 
