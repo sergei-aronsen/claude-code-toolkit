@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
-status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-04-24T07:34:27.129Z"
-last_activity: 2026-04-24 -- Phase 12 execution started
+status: idle
+stopped_at: Phase 12 complete
+last_updated: "2026-04-24T10:00:00.000Z"
+last_activity: 2026-04-24 -- Phase 12 complete (audit + HARDEN-A-01 shipped)
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 20
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-21)
 ## Current Position
 
 Milestone: v4.1 Polish & Upstream
-Phase: 12 (audit-verification-template-hardening) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 12
-Last activity: 2026-04-24 -- Phase 12 execution started
+Phase: 12 (audit-verification-template-hardening) — COMPLETE
+Plan: 2 of 2
+Status: Phase 12 shipped; next phase discretionary (8, 9, 10, or 11)
+Last activity: 2026-04-24 -- Phase 12 complete (audit + HARDEN-A-01 shipped)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20% (1/5 phases, 2/2 plans in Phase 12)
 
 ## Performance Metrics
 
