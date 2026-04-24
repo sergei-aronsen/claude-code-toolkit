@@ -101,6 +101,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          # Upgrade cells run `git worktree add` at PRE_40_COMMIT
+          # (scripts/tests/matrix/lib/helpers.bash:18). Shallow checkout
+          # lacks that commit, causing 4 -upgrade tests to abort silently.
+          fetch-depth: 0
 
       - name: Install bats-core
         uses: bats-core/bats-action@77d6fb60505b4d0d1d73e48bd035b55074bbfb43 # v4.0.0
