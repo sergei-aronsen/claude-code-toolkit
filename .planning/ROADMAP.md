@@ -92,6 +92,12 @@ Plans:
 3. GitHub issue filed for missing auto-sync of ROADMAP.md plan checkboxes on plan completion, with repro via `gsd-execute-phase` + observed manual `update-plan-progress` workaround
 4. This repo carries zero code changes for UPSTREAM-01/02/03 — only `.planning/` notes documenting issue URLs for cross-reference
 
+**Plans:** 1 plan
+
+Plans:
+
+- [ ] 10-01-PLAN.md — UPSTREAM-01/02/03: file 3 upstream GitHub issues (audit-open ReferenceError, milestone one-liner extraction, ROADMAP auto-sync gap) with redacted repro + suggested fixes; zero toolkit code changes
+
 ### Phase 11: UX Polish
 
 **Goal**: Every `--dry-run` output (install, update, migrate) produces chezmoi-grade styled diff — colored +/-/~ markers, grouped by action with counts, right-aligned
@@ -113,7 +119,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 |-------|-----------|----------------|--------|-----------|
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
 | 9. Backup & Detection | v4.1 | 4/4 | Complete    | 2026-04-24 |
-| 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
+| 10. Upstream GSD Issues | v4.1 | 0/1 | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
 
