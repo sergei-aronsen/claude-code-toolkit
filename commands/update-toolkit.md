@@ -1,6 +1,6 @@
 # /update-toolkit — Update Claude Code Toolkit
 
-## Description
+## Purpose
 
 Smart update of Claude Code Toolkit — updates system files while preserving your customizations.
 

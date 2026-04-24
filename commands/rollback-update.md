@@ -1,6 +1,6 @@
 # /rollback-update — Rollback Toolkit Update
 
-## Description
+## Purpose
 
 Rollback to a previous version of Claude Code Toolkit after a failed or unwanted update.
 

@@ -67,6 +67,9 @@ jobs:
           fi
           echo "✅ All audit templates valid"
 
+      - name: HARDEN-A-01 — validate commands/*.md required headings
+        run: make validate-commands
+
   test-init-script:
     name: Test Init Script
     runs-on: ubuntu-latest

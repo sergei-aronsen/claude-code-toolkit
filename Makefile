@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands clean install
 
 # Default target
 help:
@@ -14,7 +14,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands
 	@echo "All checks passed!"
 
 # Install dependencies
@@ -213,6 +213,11 @@ agent-collision-static:
 	fi; \
 	SP_CONFLICT_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("superpowers")) | .path] | length' manifest.json); \
 	echo "✅ Static agent-collision check: $$SP_CONFLICT_FILES files annotated conflicts_with SP ($$SP_CONFLICT_AGENTS agents, others commands/skills)"
+
+# Validate commands/*.md for required ## Purpose and ## Usage headings (HARDEN-A-01 — derived from AUDIT-12)
+validate-commands:
+	@echo "Validating commands/*.md for required headings (HARDEN-A-01)..."
+	@python3 scripts/validate-commands.py
 
 # Clean temporary files
 clean:
