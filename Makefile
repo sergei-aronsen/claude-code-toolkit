@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install
 
 # Default target
 help:
@@ -14,7 +14,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands cell-parity
 	@echo "All checks passed!"
 
 # Install dependencies
@@ -223,6 +223,11 @@ validate-commands:
 test-matrix-bats:
 	@echo "Running bats install matrix..."
 	@bats scripts/tests/matrix/*.bats
+
+# REL-02: cell-parity gate — all 3 surfaces must carry all 13 cell names
+cell-parity:
+	@echo "Checking cell-parity (all 3 surfaces)..."
+	@bash scripts/cell-parity.sh
 
 # Clean temporary files
 clean:
