@@ -9,3 +9,4 @@
 | REQ-ID | Bug | Issue URL | Status |
 |--------|-----|-----------|--------|
 | UPSTREAM-01 | `audit-open` ReferenceError: output is not defined (regression from #2236) | https://github.com/gsd-build/get-shit-done/issues/2659 | Filed |
+| UPSTREAM-02 | `milestone complete` emits `One-liner:` label instead of prose (regex in `extractOneLinerFromBody`) | https://github.com/gsd-build/get-shit-done/issues/2660 | Filed |
