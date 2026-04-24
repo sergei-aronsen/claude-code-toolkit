@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
-status: idle
-stopped_at: Phase 12 complete
-last_updated: "2026-04-24T10:00:00.000Z"
+status: Phase 12 shipped; next phase discretionary (8, 9, 10, or 11)
+stopped_at: Phase 8 context gathered
+last_updated: "2026-04-24T08:16:06.981Z"
 last_activity: 2026-04-24 -- Phase 12 complete (audit + HARDEN-A-01 shipped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 20
+  percent: 100
 ---
 
 # Project State
@@ -100,9 +100,9 @@ v4.2+ carry-overs (locked out of v4.1):
 
 ## Session Continuity
 
-Last session: 2026-04-24T07:06:41.082Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-audit-verification-template-hardening/12-CONTEXT.md
+Last session: 2026-04-24T08:16:06.976Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-release-quality/08-CONTEXT.md
 
 **To resume next session — one of:**
 
