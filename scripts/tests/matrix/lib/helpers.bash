@@ -27,10 +27,10 @@ detect_superpowers 2>/dev/null || true
 detect_gsd 2>/dev/null || true
 
 # ─── Color constants (tty-auto-disable) ─────────────────────────────────────
+# shellcheck disable=SC2034  # RED/GREEN/YELLOW/BLUE/CYAN/NC sourced by bats tests
 if [ -t 1 ]; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
-    # shellcheck disable=SC2034
     YELLOW='\033[1;33m'
     BLUE='\033[0;34m'
     CYAN='\033[0;36m'
@@ -38,7 +38,6 @@ if [ -t 1 ]; then
 else
     RED=''
     GREEN=''
-    # shellcheck disable=SC2034
     YELLOW=''
     BLUE=''
     CYAN=''
