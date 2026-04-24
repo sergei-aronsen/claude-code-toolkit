@@ -67,10 +67,18 @@ Plans:
 **Requirements**: BACKUP-01, BACKUP-02, DETECT-06, DETECT-07
 **Success Criteria** (what must be TRUE):
 
-1. `scripts/update-claude.sh --clean-backups` lists every `~/.claude/.toolkit-backup-*` dir with size + age, prompts `[y/N]` per dir, supports `--keep N` to preserve N most recent
+1. `scripts/update-claude.sh --clean-backups` lists every `~/.claude-backup-*` and `~/.claude-backup-pre-migrate-*` dir (real on-disk patterns) with size + age, prompts `[y/N]` per dir, supports `--keep N` to preserve N most recent
 2. Every script creating a new backup dir checks backup count and prints a warning (non-fatal) when count > 10, pointing users to `--clean-backups`
 3. `scripts/detect.sh` parses `claude plugin list` JSON when available; if filesystem says SP is present but CLI says disabled, CLI overrides; filesystem remains primary when CLI absent
 4. `scripts/update-claude.sh` detects SP/GSD version change between install state and current, emits one-line warning with before/after versions
+
+**Plans:** 4 plans (waves 1–2)
+
+Plans:
+- [ ] 09-01-PLAN.md — BACKUP-01: --clean-backups flag on update-claude.sh + scripts/lib/backup.sh foundation + REQUIREMENTS.md phantom-path fix (wave 1)
+- [ ] 09-02-PLAN.md — BACKUP-02: threshold warning wired into update-claude.sh + migrate-to-complement.sh via warn_if_too_many_backups (wave 2, depends on 09-01)
+- [ ] 09-03-PLAN.md — DETECT-06: `claude plugin list --json` CLI cross-check as step 4 in detect_superpowers() (wave 1)
+- [ ] 09-04-PLAN.md — DETECT-07: warn_version_skew() helper + wiring in update-claude.sh between STATE_MANIFEST_HASH extraction and migrate hint (wave 2, depends on 09-03)
 
 ### Phase 10: Upstream GSD Issues
 
@@ -104,7 +112,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
-| 9. Backup & Detection | v4.1 | 0/? | Not started | - |
+| 9. Backup & Detection | v4.1 | 0/4 | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
