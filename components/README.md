@@ -12,6 +12,7 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 | [plan-mode-instructions.md](./plan-mode-instructions.md) | Thinking levels: `think` → `think hard` → `ultrathink`. Plan Mode activation. |
 | [bootstrap-workflow.md](./bootstrap-workflow.md) | Workflow for new projects: IDEA → STACK → INSTRUCTIONS → ADAPTATION. |
 | [spec-driven-development.md](./spec-driven-development.md) | Specifications before code. Opus as architect, Sonnet/Haiku as implementers. |
+| [surgical-changes.md](./surgical-changes.md) | Touch only what you must. Don't refactor adjacent code. Clean only your own orphans. |
 
 ---
 
