@@ -1,4 +1,4 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static clean install
+.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static cell-parity clean install
 
 # Default target
 help:
@@ -14,7 +14,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static cell-parity
 	@echo "All checks passed!"
 
 # Install dependencies
@@ -213,6 +213,11 @@ agent-collision-static:
 	fi; \
 	SP_CONFLICT_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("superpowers")) | .path] | length' manifest.json); \
 	echo "✅ Static agent-collision check: $$SP_CONFLICT_FILES files annotated conflicts_with SP ($$SP_CONFLICT_AGENTS agents, others commands/skills)"
+
+# REL-02: cell-parity gate — all 3 surfaces must carry all 13 cell names
+cell-parity:
+	@echo "Checking cell-parity (all 3 surfaces)..."
+	@bash scripts/cell-parity.sh
 
 # Clean temporary files
 clean:
