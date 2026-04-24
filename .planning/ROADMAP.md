@@ -34,7 +34,7 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 
 **Phase Numbering:** continuing from v4.0 (last used: 7). Next: 8.
 
-- [ ] **Phase 8: Release Quality** - Port install matrix to bats, add cell-parity check, ship `--collect-all` fail mode
+- [x] **Phase 8: Release Quality** - Port install matrix to bats, add cell-parity check, ship `--collect-all` fail mode (completed 2026-04-24)
 - [ ] **Phase 9: Backup & Detection** - `--clean-backups` flag, threshold warnings, `claude plugin list` integration, version-skew detection
 - [ ] **Phase 10: Upstream GSD Issues** - File 3 issues in `gsd-build/get-shit-done` (no toolkit code changes)
 - [ ] **Phase 11: UX Polish** - chezmoi-grade styled `--dry-run` diff output across install/update/migrate
@@ -53,12 +53,12 @@ Full phase detail archived at `.planning/milestones/v4.0-ROADMAP.md`.
 3. `scripts/validate-release.sh --collect-all` runs all 13 cells regardless of failures and emits a final aggregated table; default fail-fast behavior unchanged without the flag
 4. Bash `validate-release.sh` remains functional during transition; no regression in existing 63 assertions
 
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 08-01-PLAN.md — REL-01: port 13-cell matrix to bats, extract helpers.bash, add make test-matrix-bats + CI job
-- [ ] 08-02-PLAN.md — REL-02: add scripts/cell-parity.sh + make cell-parity target; fix docs/INSTALL.md 12→13 cells drift and add 13 --cell commands
-- [ ] 08-03-PLAN.md — REL-03: add --collect-all flag to validate-release.sh with aggregated ASCII table, --all mutex guard
+- [x] 08-02-PLAN.md — REL-02: add scripts/cell-parity.sh + make cell-parity target; fix docs/INSTALL.md 12→13 cells drift and add 13 --cell commands
+- [x] 08-03-PLAN.md — REL-03: add --collect-all flag to validate-release.sh with aggregated ASCII table, --all mutex guard
 
 ### Phase 9: Backup & Detection
 
@@ -103,7 +103,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Release Quality | v4.1 | 1/3 | In Progress|  |
+| 8. Release Quality | v4.1 | 3/3 | Complete   | 2026-04-24 |
 | 9. Backup & Detection | v4.1 | 0/? | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
