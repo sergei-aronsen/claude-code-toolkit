@@ -112,7 +112,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
-| 9. Backup & Detection | v4.1 | 4/4 | Complete   | 2026-04-24 |
+| 9. Backup & Detection | v4.1 | 4/4 | Complete    | 2026-04-24 |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
