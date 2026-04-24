@@ -17,10 +17,10 @@ Carry-overs from v4.0 deferred items. Make the release validation infrastructure
 
 ### Backup Hygiene
 
-Carry-overs BACKUP-01/02 from v4.0. Backup dirs accumulate under `~/.claude-backup-*` and `~/.claude/.toolkit-backup-*` — give users tooling to manage them.
+Carry-overs BACKUP-01/02 from v4.0. Backup dirs accumulate under `~/.claude-backup-*` and `~/.claude-backup-pre-migrate-*` — give users tooling to manage them.
 
-- [ ] **BACKUP-01**: `scripts/update-claude.sh --clean-backups` scans `~/.claude/.toolkit-backup-*` dirs, prompts per dir with size + age, removes on `[y/N]` confirmation. Supports `--keep N` to preserve the N most recent.
-- [ ] **BACKUP-02**: Any script that creates a new backup dir also checks total count under `~/.claude/.toolkit-backup-*/` and `~/.claude-backup-pre-migrate-*/`. If count exceeds 10, print a one-line warning pointing to `update-claude.sh --clean-backups`. Non-fatal.
+- [ ] **BACKUP-01**: `scripts/update-claude.sh --clean-backups` scans `~/.claude-backup-<epoch>-<pid>` and `~/.claude-backup-pre-migrate-<epoch>` dirs (real on-disk patterns), prompts per dir with size + age, removes on `[y/N]` confirmation. Supports `--keep N` to preserve the N most recent.
+- [ ] **BACKUP-02**: Any script that creates a new backup dir also checks total count under `~/.claude-backup-*/` and `~/.claude-backup-pre-migrate-*/`. If count exceeds 10, print a one-line warning pointing to `update-claude.sh --clean-backups`. Non-fatal.
 
 ### Detection Enhancements
 
