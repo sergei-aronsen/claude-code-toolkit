@@ -40,6 +40,52 @@ run_cell() {
     echo "${GREEN}PASS: ${cell_name}${NC}"
 }
 
+# ─── REL-03: Aggregate cell runner (D-11) ────────────────────────────────────
+# collect_cell <cell_name> <body_function_name>
+# Sibling of run_cell() — omits exit 1 so --collect-all can continue past failures.
+# Accumulates per-cell counts into _COLL_NAMES/_COLL_PASS/_COLL_FAIL arrays.
+# shellcheck disable=SC2329
+collect_cell() {
+    local cell_name="$1" body_fn="$2"
+    local bp=$PASS bf=$FAIL
+    echo ""
+    echo "${CYAN}━━ Cell: ${cell_name} ━━${NC}"
+    "$body_fn"
+    local cp cf
+    cp=$((PASS - bp))
+    cf=$((FAIL - bf))
+    if [ "$cf" -gt 0 ]; then
+        echo "${RED}FAIL: ${cell_name}: ${cf} assertion(s) failed${NC}" >&2
+    else
+        echo "${GREEN}PASS: ${cell_name}${NC}"
+    fi
+    _COLL_NAMES+=("$cell_name")
+    _COLL_PASS+=("$cp")
+    _COLL_FAIL+=("$cf")
+}
+
+# ─── REL-03: Aggregated ASCII table printer ───────────────────────────────────
+# print_aggregate_table: emit table after --collect-all completes.
+# Uses printf width specifiers (BSD-portable — avoids GNU column --table-columns).
+print_aggregate_table() {
+    local i=0 total=${#_COLL_NAMES[@]} cells_ok=0
+    echo ""
+    printf "%-32s %4s %4s %6s\n" "Cell" "Pass" "Fail" "Status"
+    printf "%-32s %4s %4s %6s\n" "--------------------------------" "----" "----" "------"
+    while [ "$i" -lt "$total" ]; do
+        local n="${_COLL_NAMES[$i]}" cp="${_COLL_PASS[$i]}" cf="${_COLL_FAIL[$i]}" st="PASS"
+        if [ "$cf" -gt 0 ]; then
+            st="FAIL"
+        else
+            cells_ok=$((cells_ok + 1))
+        fi
+        printf "%-32s %4d %4d %6s\n" "$n" "$cp" "$cf" "$st"
+        i=$((i + 1))
+    done
+    echo ""
+    echo "Matrix: ${cells_ok}/${total} cells passed, ${PASS} assertions passed, ${FAIL} failed"
+}
+
 # ─── Self-test: exercise helpers against synthetic fixtures ──────────────────
 self_test() {
     local TMP
@@ -148,6 +194,24 @@ cell_fn_for() {
     echo "cell_$(echo "$1" | tr '-' '_')"
 }
 
+# REL-03 accumulators — populated only during --collect-all run
+declare -a _COLL_NAMES=()
+declare -a _COLL_PASS=()
+declare -a _COLL_FAIL=()
+
+# REL-03 mutex guard — --all and --collect-all cannot be combined (D-14)
+_HAS_ALL=0
+_HAS_COLLECT=0
+for _arg in "$@"; do
+    [ "$_arg" = "--all" ]         && _HAS_ALL=1
+    [ "$_arg" = "--collect-all" ] && _HAS_COLLECT=1
+done
+if [ "$_HAS_ALL" = "1" ] && [ "$_HAS_COLLECT" = "1" ]; then
+    echo "ERROR: --all and --collect-all are mutually exclusive" >&2
+    exit 2
+fi
+unset _HAS_ALL _HAS_COLLECT _arg
+
 case "${1:-}" in
     --self-test)
         self_test
@@ -184,6 +248,14 @@ case "${1:-}" in
         [ "$FAIL" -gt 0 ] && exit 1
         exit 0
         ;;
+    --collect-all)
+        for c in "${CELLS[@]}"; do
+            collect_cell "$c" "$(cell_fn_for "$c")"
+        done
+        print_aggregate_table
+        [ "$FAIL" -gt 0 ] && exit 1
+        exit 0
+        ;;
     "")
         cat <<USAGE
 Usage: bash scripts/validate-release.sh <command>
@@ -193,6 +265,7 @@ Commands:
   --list           Print all 13 cell names, one per line.
   --cell <name>    Run a single matrix cell.
   --all            Run all 13 cells fail-fast.
+  --collect-all    Run all 13 cells regardless of failures; emit aggregated table.
 
 Phase 7 v4.0.0 release validation runner.
 USAGE
