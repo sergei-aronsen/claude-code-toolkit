@@ -100,7 +100,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 9. Backup & Detection | v4.1 | 0/? | Not started | - |
 | 10. Upstream GSD Issues | v4.1 | 0/? | Not started | - |
 | 11. UX Polish | v4.1 | 0/? | Not started | - |
-| 12. Audit Verification + Template Hardening | v4.1 | 0/2 | Not started | - |
+| 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
 
 ### Phase 12: Audit Verification + Template Hardening
 
@@ -121,8 +121,8 @@ at user gate; create full AUDIT-NN + HARDEN-A-NN REQ traceability
 4. Wave B and Wave C REQs are defined in AUDIT.md but NOT entered in
    REQUIREMENTS.md until promoted in v4.2+
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 12-01-PLAN.md — AUDIT: verify 15 claims, produce verdict table, propose HARDEN-A-NN
-- [ ] 12-02-PLAN.md — WAVE-A: implement user-approved HARDEN-A-NN REQs (gated on 12-01 approval)
+- [x] 12-01-PLAN.md — AUDIT: verify 15 claims, produce verdict table, propose HARDEN-A-NN
+- [x] 12-02-PLAN.md — WAVE-A: implement user-approved HARDEN-A-NN REQs (gated on 12-01 approval)

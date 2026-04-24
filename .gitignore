@@ -15,3 +15,7 @@ Thumbs.db
 
 # Claude Code local setup (not toolkit content)
 .claude/
+
+# Python bytecode (from validate-commands.py etc.)
+__pycache__/
+*.pyc
