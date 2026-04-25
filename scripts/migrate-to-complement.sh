@@ -60,12 +60,13 @@ DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
+LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
 TK_TMPL_TMP=$(mktemp "${TMPDIR:-/tmp}/tk-tmpl.XXXXXX")
 # EXIT trap: release_lock first (ignore failure if not yet sourced), then clean tempfiles.
 # release_lock is defined by lib/state.sh which is sourced after the mktemps below.
 # Guard with `|| true` so EXIT firing before the source does not produce a shell error.
-trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
+trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP" "$TK_TMPL_TMP"' EXIT
 
 # ───────── detect.sh soft-fail (with test seam) ─────────
 if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
@@ -83,7 +84,7 @@ else
 fi
 
 # ───────── lib/install.sh + lib/state.sh + lib/backup.sh HARD-fail (with test seam) ─────────
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_MIGRATE_LIB_DIR:-}" && -f "$TK_MIGRATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_MIGRATE_LIB_DIR/$lib_name" "$lib_path"
@@ -255,9 +256,22 @@ done
 : "${SP_HASHES[*]:-}"
 echo ""
 
-# ───────── dry-run early exit ─────────
+# ───────── dry-run early exit (UX-01 SC3 — Phase 11 Plan 11-03) ─────────
+# Preserves the 3-col hash table above for diagnostic context, then prints
+# a chezmoi-grade [- REMOVE] grouped preview using shared dry-run-output.sh
+# primitives. Zero filesystem writes, no backup, no state rewrite.
 if [[ $DRY_RUN -eq 1 ]]; then
-    log_info "--dry-run: the files above would be removed. No backup, no state rewrite. Exiting."
+    if ! command -v dro_init_colors >/dev/null 2>&1; then
+        log_error "dry-run-output.sh not sourced — cannot render styled preview"
+        exit 1
+    fi
+    dro_init_colors
+    dro_print_header "-" "REMOVE" "${#DUPLICATES[@]}" _DRO_R
+    for rel in "${DUPLICATES[@]}"; do
+        dro_print_file "$rel"
+    done
+    echo ""
+    dro_print_total "${#DUPLICATES[@]}"
     exit 0
 fi
 
