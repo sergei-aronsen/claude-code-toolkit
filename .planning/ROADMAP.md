@@ -59,12 +59,13 @@
 4. `audit-exceptions.md` ships with `globs: ["**/*"]` frontmatter so Claude auto-loads it in every session, schema-aligned with existing `.claude/rules/` files
 5. Running `init-claude.sh`, `init-local.sh`, or `update-claude.sh` against a project that already has a user-modified `audit-exceptions.md` leaves the file untouched; only first-time installs seed the empty template
 
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 - [x] 13-01-PLAN.md — Seed file template (`templates/base/rules/audit-exceptions.md`, EXC-03)
 - [x] 13-02-PLAN.md — `/audit-skip` command spec with validation (EXC-01, EXC-04)
 - [x] 13-03-PLAN.md — `/audit-restore` command spec with `[y/N]` confirmation (EXC-02)
 - [x] 13-04-PLAN.md — Installer wiring across init-claude.sh, init-local.sh, update-claude.sh (EXC-05)
+- [ ] 13-05-PLAN.md — Gap closure: comment-aware /audit-restore (CR-01 fix, EXC-02)
 
 ### Phase 14: Audit Pipeline — FP Recheck + Structured Reports
 
