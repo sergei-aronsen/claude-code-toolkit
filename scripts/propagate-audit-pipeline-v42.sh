@@ -315,7 +315,13 @@ insert_blocks() {
         local sc_num of_num
         if [ -n "$existing_selfcheck_num" ]; then
             sc_num="$existing_selfcheck_num"
-            of_num=$((sc_num + 1))
+            # of_num must come AFTER any existing numbered section (REPORT FORMAT,
+            # ACTIONS, etc.) that follows SELF-CHECK to avoid heading collisions.
+            if [ "$max_section_num" -gt "$sc_num" ]; then
+                of_num=$((max_section_num + 1))
+            else
+                of_num=$((sc_num + 1))
+            fi
         else
             sc_num=$((max_section_num + 1))
             of_num=$((sc_num + 1))

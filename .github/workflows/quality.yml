@@ -45,8 +45,7 @@ jobs:
           echo "Checking audit files for required sections..."
           ERRORS=0
 
-          for f in templates/**/SECURITY_AUDIT.md templates/**/PERFORMANCE_AUDIT.md templates/**/CODE_REVIEW.md templates/**/DEPLOY_CHECKLIST.md; do
-            [ -f "$f" ] || continue
+          while IFS= read -r f; do
             if ! grep -q "QUICK CHECK" "$f"; then
               echo "❌ Missing QUICK CHECK: $f"
               ERRORS=$((ERRORS + 1))
@@ -59,7 +58,11 @@ jobs:
               echo "❌ Missing REPORT FORMAT: $f"
               ERRORS=$((ERRORS + 1))
             fi
-          done
+          done < <(find templates -path '*/prompts/*.md' \( \
+            -name 'SECURITY_AUDIT.md' -o \
+            -name 'PERFORMANCE_AUDIT.md' -o \
+            -name 'CODE_REVIEW.md' -o \
+            -name 'DEPLOY_CHECKLIST.md' \))
 
           if [ $ERRORS -gt 0 ]; then
             echo "Found $ERRORS errors"
@@ -72,11 +75,7 @@ jobs:
           echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1)..."
           ERRORS=0
 
-          for f in templates/**/SECURITY_AUDIT.md templates/**/CODE_REVIEW.md \
-                   templates/**/PERFORMANCE_AUDIT.md templates/**/MYSQL_PERFORMANCE_AUDIT.md \
-                   templates/**/POSTGRES_PERFORMANCE_AUDIT.md templates/**/DEPLOY_CHECKLIST.md \
-                   templates/**/DESIGN_REVIEW.md; do
-            [ -f "$f" ] || continue
+          while IFS= read -r f; do
             if ! grep -qF 'Council Handoff' "$f"; then
               echo "❌ Missing 'Council Handoff' marker: $f"
               ERRORS=$((ERRORS + 1))
@@ -89,13 +88,23 @@ jobs:
               echo "❌ Missing '6. **Severity sanity check**' marker: $f"
               ERRORS=$((ERRORS + 1))
             fi
-          done
+          done < <(find templates -path '*/prompts/*.md' \( \
+            -name 'SECURITY_AUDIT.md' -o \
+            -name 'CODE_REVIEW.md' -o \
+            -name 'PERFORMANCE_AUDIT.md' -o \
+            -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
+            -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
+            -name 'DEPLOY_CHECKLIST.md' -o \
+            -name 'DESIGN_REVIEW.md' \))
 
           if [ $ERRORS -gt 0 ]; then
             echo "Found $ERRORS v4.2 marker errors across audit prompts"
             exit 1
           fi
           echo "✅ All 49 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
+
+      - name: Test 20 — template propagation idempotency
+        run: bash scripts/tests/test-template-propagation.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands

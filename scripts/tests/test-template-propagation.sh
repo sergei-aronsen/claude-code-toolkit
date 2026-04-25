@@ -130,7 +130,7 @@ if [ "$SENTINEL_FAIL" -eq 0 ]; then
     report_pass "sentinel invariants: all 49 files carry exactly 4 named v42-splice sentinels"
 fi
 if [ "$MARKER_FAIL" -eq 0 ]; then
-    report_pass "contract markers: all 49 files contain 'Council handoff' + '1. **Read context**'"
+    report_pass "contract markers: all 49 files contain 'Council Handoff' + '1. **Read context**'"
 fi
 if [ "$SLOT_FAIL" -eq 0 ]; then
     report_pass "em-dash slot: all 49 files contain '_pending — run /council audit-review_' (U+2014)"

@@ -39,7 +39,7 @@
 - [x] **Phase 13: Foundation — FP Allowlist + Skip/Restore Commands** — Repo-local exception file + `/audit-skip` and `/audit-restore` commands wired through installers (completed 2026-04-25)
 - [x] **Phase 14: Audit Pipeline — FP Recheck + Structured Reports** — `/audit` honors allowlist, runs 6-step FP recheck, emits parser-friendly reports with verbatim code (completed 2026-04-25)
 - [x] **Phase 15: Council Audit-Review Integration** — Mandatory Council pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden) (completed 2026-04-25)
-- [ ] **Phase 16: Template Propagation — 49 Prompt Files** — All 7 frameworks × 7 audit prompt files updated, CI gates assert markers
+- [x] **Phase 16: Template Propagation — 49 Prompt Files** — All 7 frameworks × 7 audit prompt files updated, CI gates assert markers (completed 2026-04-25)
 - [ ] **Phase 17: Distribution — Manifest, Installers, CHANGELOG** — `manifest.json` + installers + `CHANGELOG.md` aligned for v4.2.0 release
 
 </details>
@@ -154,5 +154,5 @@
 | 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete    | 2026-04-25 |
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 4/4 | Complete    | 2026-04-25 |
 | 15. Council Audit-Review Integration | v4.2 | 6/6 | Complete    | 2026-04-25 |
-| 16. Template Propagation — 49 Prompt Files | v4.2 | 4/4 | Complete   | 2026-04-25 |
+| 16. Template Propagation — 49 Prompt Files | v4.2 | 4/4 | Complete    | 2026-04-25 |
 | 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 0/0 | Not started | - |

@@ -527,7 +527,7 @@ Auditor: Claude (Senior Security Engineer)
 
 ## 13. ACTIONS
 
-## 12. OUTPUT FORMAT (Structured Report Schema — Phase 14)
+## 14. OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
 
 ## Report Path
