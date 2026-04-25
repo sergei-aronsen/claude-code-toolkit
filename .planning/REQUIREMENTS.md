@@ -74,8 +74,31 @@ Wire the new files through manifest, installers, and CI.
 
 | REQ-ID | Phase | Plan |
 |--------|-------|------|
-| _to be filled by roadmapper_ | | |
+| EXC-01 | Phase 13 — Foundation | TBD |
+| EXC-02 | Phase 13 — Foundation | TBD |
+| EXC-03 | Phase 13 — Foundation | TBD |
+| EXC-04 | Phase 13 — Foundation | TBD |
+| EXC-05 | Phase 13 — Foundation | TBD |
+| AUDIT-01 | Phase 14 — Audit Pipeline | TBD |
+| AUDIT-02 | Phase 14 — Audit Pipeline | TBD |
+| AUDIT-03 | Phase 14 — Audit Pipeline | TBD |
+| AUDIT-04 | Phase 14 — Audit Pipeline | TBD |
+| AUDIT-05 | Phase 14 — Audit Pipeline | TBD |
+| COUNCIL-01 | Phase 15 — Council Integration | TBD |
+| COUNCIL-02 | Phase 15 — Council Integration | TBD |
+| COUNCIL-03 | Phase 15 — Council Integration | TBD |
+| COUNCIL-04 | Phase 15 — Council Integration | TBD |
+| COUNCIL-05 | Phase 15 — Council Integration | TBD |
+| COUNCIL-06 | Phase 15 — Council Integration | TBD |
+| TEMPLATE-01 | Phase 16 — Template Propagation | TBD |
+| TEMPLATE-02 | Phase 16 — Template Propagation | TBD |
+| TEMPLATE-03 | Phase 16 — Template Propagation | TBD |
+| DIST-01 | Phase 17 — Distribution | TBD |
+| DIST-02 | Phase 17 — Distribution | TBD |
+| DIST-03 | Phase 17 — Distribution | TBD |
+
+**Coverage:** 22/22 REQ-IDs mapped to exactly one phase. No orphans, no duplicates.
 
 ---
 
-*v4.2 starts 2026-04-25. Phases TBD via roadmapper.*
+*v4.2 roadmap created 2026-04-25 — 5 phases (13–17), 22 REQ-IDs.*
