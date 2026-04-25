@@ -8,19 +8,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[$(date +%H:%M:%S)] File modified: $FILE_PATH' >> .claude/activity.log"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] File modified: $f\" >> .claude/activity.log"
           }
         ]
       }
     ],
-    "PreToolUse": [],
     "Stop": [
       {
         "matcher": ".*",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended: $(pwd)' >> ~/.claude/sessions.log"
+            "command": "echo \"[$(date +%Y-%m-%d\\ %H:%M:%S)] Session ended: $(pwd)\" >> ~/.claude/sessions.log"
           }
         ]
       }

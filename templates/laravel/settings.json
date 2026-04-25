@@ -8,27 +8,26 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [[ \"$FILE_PATH\" == *.php ]]; then ./vendor/bin/pint \"$FILE_PATH\" --quiet 2>/dev/null || true; fi"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [[ \"$f\" == *.php ]] && ./vendor/bin/pint \"$f\" --quiet 2>/dev/null || true"
           },
           {
             "type": "command",
-            "command": "if [[ \"$FILE_PATH\" == *.vue ]] || [[ \"$FILE_PATH\" == *.js ]] || [[ \"$FILE_PATH\" == *.ts ]]; then npx prettier --write \"$FILE_PATH\" --log-level error 2>/dev/null || true; fi"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [[ \"$f\" == *.vue || \"$f\" == *.js || \"$f\" == *.ts ]] && npx prettier --write \"$f\" --log-level error 2>/dev/null || true"
           },
           {
             "type": "command",
-            "command": "echo '[$(date +%H:%M:%S)] Modified: $FILE_PATH' >> .claude/activity.log"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] Modified: $f\" >> .claude/activity.log"
           }
         ]
       }
     ],
-    "PreToolUse": [],
     "Stop": [
       {
         "matcher": ".*",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended: $(pwd)' >> ~/.claude/sessions.log"
+            "command": "echo \"[$(date +%Y-%m-%d\\ %H:%M:%S)] Session ended: $(pwd)\" >> ~/.claude/sessions.log"
           }
         ]
       }

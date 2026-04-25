@@ -8,23 +8,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [[ \"$FILE_PATH\" == *.py ]]; then ruff format \"$FILE_PATH\" 2>/dev/null || true; fi"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [[ \"$f\" == *.py ]] && ruff format \"$f\" 2>/dev/null || true"
           },
           {
             "type": "command",
-            "command": "echo '[$(date +%H:%M:%S)] Modified: $FILE_PATH' >> .claude/activity.log"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] Modified: $f\" >> .claude/activity.log"
           }
         ]
       }
     ],
-    "PreToolUse": [],
     "Stop": [
       {
         "matcher": ".*",
         "hooks": [
           {
             "type": "command",
-            "command": "echo '[$(date +%Y-%m-%d %H:%M:%S)] Session ended: $(pwd)' >> ~/.claude/sessions.log"
+            "command": "echo \"[$(date +%Y-%m-%d\\ %H:%M:%S)] Session ended: $(pwd)\" >> ~/.claude/sessions.log"
           }
         ]
       }
