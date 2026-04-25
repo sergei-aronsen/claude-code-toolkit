@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.1
-milestone_name: Polish & Upstream
-status: shipped
-stopped_at: v4.1 complete — tagged v4.1.0
-last_updated: "2026-04-25T05:50:42.414Z"
-last_activity: 2026-04-25 -- v4.1 milestone shipped
+milestone: v4.2
+milestone_name: Audit System v2
+status: defining-requirements
+stopped_at: v4.2 milestone started — gathering requirements
+last_updated: "2026-04-25T06:00:00.000Z"
+last_activity: 2026-04-25 -- v4.2 milestone started
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 13
-  completed_plans: 13
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.2 milestone planning (run `/gsd-new-milestone`).
+**Current focus:** v4.2 Audit System v2 — defining requirements.
 
 ## Current Position
 
-Milestone: v4.1 Polish & Upstream — SHIPPED 2026-04-25 (tagged `v4.1.0`)
-Phase: All 5 phases complete
-Plan: 13/13 complete
-Status: Awaiting v4.2 milestone definition
-Last activity: 2026-04-25
+Milestone: v4.2 Audit System v2 — IN PROGRESS (started 2026-04-25)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-25 — Milestone v4.2 started
 
-Progress: [██████████] 100% (5/5 phases, 13/13 plans)
+Progress: [          ] 0% (0/0 phases, 0/0 plans)
 
 ## Performance Metrics
 

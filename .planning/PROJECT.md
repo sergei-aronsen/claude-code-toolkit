@@ -44,13 +44,23 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `scripts/lib/dry-run-output.sh` shared library (`dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`); chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output across `init-claude.sh`, `update-claude.sh` (added `DRY_RUN` flag exiting before backup), `migrate-to-complement.sh` (replaced 1-liner with `[- REMOVE]` group); `${NO_COLOR+x}` + `[ -t 1 ]` gates per [no-color.org](https://no-color.org) — Validated in Phase 11: ux-polish (UX-01)
 - ✓ ChatGPT pass-3 audit verified against codebase (8/15 FALSE, 6/15 PARTIAL deferred to v4.2+, 1/15 REAL = uninstall script as HARDEN-C-04); Wave-A `scripts/validate-commands.py` enforces `## Purpose`/`## Usage` H2 headings on `commands/*.md` via `make validate-commands` + CI — Validated in Phase 12: audit-verification-template-hardening (HARDEN-A-01)
 
-## Current Milestone: v4.2 (To Be Defined)
+## Current Milestone: v4.2 Audit System v2
 
-**Goal:** TBD via `/gsd-new-milestone`.
+**Goal:** Upgrade `/audit` pipeline with persistent FP allowlist, mandatory Supreme Council `audit-review` pass, and structured reports containing verbatim code snippets so Council reasons from code, not labels.
+
+**Target features:**
+
+- Persistent FP allowlist (`.claude/rules/audit-exceptions.md`, auto-loaded via `globs:["**/*"]`)
+- New commands: `/audit-skip`, `/audit-restore`
+- Audit prompt FP-recheck pass (6-step rule applied to every finding before reporting)
+- Structured audit report format with ±10 lines of verbatim code per finding
+- Mandatory Council `audit-review` mode — per-finding REAL/FALSE_POSITIVE verdict; **MUST NOT** reclassify severity
+- Update all `templates/*/prompts/{SECURITY_AUDIT,CODE_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,DEPLOY_CHECKLIST,DESIGN_REVIEW}.md` (~49 files across 7 frameworks)
+- `manifest.json` registration + idempotent installer support + `Makefile`/CI gates
 
 ### Active
 
-_Empty — v4.1 shipped. New requirements added when v4.2 starts._
+_v4.2 requirements defined via `/gsd-new-milestone` — see REQUIREMENTS.md._
 
 <details>
 <summary>v4.1 requirements (shipped 2026-04-25)</summary>
@@ -171,4 +181,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-25 — v4.1 Polish & Upstream milestone complete (5/5 phases, 11/11 REQ-IDs validated). Tagged `v4.1.0`. Next: `/gsd-new-milestone` for v4.2.*
+*Last updated: 2026-04-25 — v4.2 Audit System v2 milestone started. Goal: FP allowlist + mandatory Council audit-review + structured reports.*
