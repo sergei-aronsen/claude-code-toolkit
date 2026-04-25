@@ -101,7 +101,14 @@
 5. When Council marks a finding `FALSE_POSITIVE`, `/audit` prints the verdict and prompts the user to invoke `/audit-skip` — the audit never auto-writes exceptions on the user's behalf
 6. `scripts/council/brain.py` runs Gemini and ChatGPT in parallel for `audit-review` mode and flags per-finding disagreements (one REAL, one FALSE_POSITIVE) as `disputed` without auto-resolution
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+- [ ] 15-01-PLAN.md — Council audit-review prompt SOT (COUNCIL-02, COUNCIL-03, COUNCIL-04)
+- [ ] 15-02-PLAN.md — Test fixtures: audit-report.md + 3 stub backends (COUNCIL-06)
+- [ ] 15-03-PLAN.md — commands/audit.md Council Handoff UX text: FP nudge + disputed prompt (COUNCIL-01, COUNCIL-05)
+- [ ] 15-04-PLAN.md — brain.py audit-review mode: argparse, parallel dispatch, in-place rewrite (COUNCIL-01, COUNCIL-02, COUNCIL-03, COUNCIL-04, COUNCIL-06)
+- [ ] 15-05-PLAN.md — commands/council.md ## Modes section (COUNCIL-01)
+- [ ] 15-06-PLAN.md — test-council-audit-review.sh + Makefile Test 19 (COUNCIL-02, COUNCIL-03, COUNCIL-05, COUNCIL-06)
 
 ### Phase 16: Template Propagation — 49 Prompt Files
 
@@ -141,6 +148,6 @@
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete | 2026-04-24 |
 | 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete    | 2026-04-25 |
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 4/4 | Complete    | 2026-04-25 |
-| 15. Council Audit-Review Integration | v4.2 | 0/0 | Not started | - |
+| 15. Council Audit-Review Integration | v4.2 | 0/6 | Planned | - |
 | 16. Template Propagation — 49 Prompt Files | v4.2 | 0/0 | Not started | - |
 | 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 0/0 | Not started | - |
