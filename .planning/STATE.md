@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-04-25T20:21:16.679Z"
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-04-25T20:30:18.707Z"
 last_activity: 2026-04-25 -- Phase 15 planning complete
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -82,6 +82,9 @@ Carry-over decisions from v4.1:
 - [Phase 15]: D-12: /audit NEVER auto-writes audit-exceptions.md; it only nudges users to run /audit-skip after Council returns FALSE_POSITIVE
 - [Phase 15]: D-13: disputed rows prompt user with three options (R/F/N), no default — mirrors /audit-restore [y/N] style
 - [Phase 15-council-audit-review-integration]: Bash cat-heredoc stubs: single-quoted EOF prevents shell expansion inside heredoc body (T-15-05 mitigation)
+- [Phase 15-04]: Extracted _run_validate_plan from main() to preserve v3.0.0 behavior byte-identically while freeing main() for argparse dispatch
+- [Phase 15-04]: ThreadPoolExecutor(max_workers=2) with 90s FuturesTimeoutError per backend for parallel audit-review dispatch
+- [Phase 15-04]: Smoke test must use in-project path for --report because validate_file_path() enforces cwd-anchoring by design
 
 ### Roadmap Evolution
 
@@ -118,11 +121,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 14-audit-pipeline-fp-recheck-structured-reports P04 | 35min | 3 tasks | 7 files |
 | Phase 15 P03 | 5 | 1 tasks | 1 files |
 | Phase 15-council-audit-review-integration P02 | 5 | 2 tasks | 4 files |
+| Phase 15-council-audit-review-integration P04 | 6 | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T20:21:16.675Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-04-25T20:30:18.704Z
+Stopped at: Completed 15-04-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
