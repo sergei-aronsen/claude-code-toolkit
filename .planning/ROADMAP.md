@@ -80,7 +80,12 @@
 4. Report is written to `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md` (directory auto-created), with a fixed section structure: Summary table → Findings → Skipped (allowlist) → Skipped (FP recheck) → Council verdict slot
 5. Each finding entry contains all required fields: ID, severity, rule, location range, claim, verbatim code, data-flow narrative, "why it is real" reasoning, suggested fix
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 14-01-PLAN.md — `components/audit-fp-recheck.md` SOT (6-step FP-recheck procedure) [AUDIT-02, AUDIT-03]
+- [ ] 14-02-PLAN.md — `components/audit-output-format.md` SOT (structured report schema) [AUDIT-04, AUDIT-05]
+- [ ] 14-03-PLAN.md — Rewrite `commands/audit.md` with 6-phase workflow contract [AUDIT-01..05]
+- [ ] 14-04-PLAN.md — Test fixture + `scripts/tests/test-audit-pipeline.sh` + Makefile Test 17 [AUDIT-01..05]
 
 ### Phase 15: Council Audit-Review Integration
 
@@ -135,7 +140,7 @@
 | 11. UX Polish | v4.1 | 3/3 | Complete | 2026-04-25 |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete | 2026-04-24 |
 | 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete    | 2026-04-25 |
-| 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 0/0 | Not started | - |
+| 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 0/4 | Planned    | - |
 | 15. Council Audit-Review Integration | v4.2 | 0/0 | Not started | - |
 | 16. Template Propagation — 49 Prompt Files | v4.2 | 0/0 | Not started | - |
 | 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 0/0 | Not started | - |
