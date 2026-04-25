@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.2
-milestone_name: Audit System v2
-status: defining-requirements
-stopped_at: v4.2 roadmap created — awaiting first phase plan
-last_updated: "2026-04-25T07:00:00.000Z"
-last_activity: 2026-04-25 -- v4.2 roadmap created (5 phases, 22 REQ-IDs)
+milestone: v4.0
+milestone_name: milestone
+status: Roadmap defined; ready for `/gsd-plan-phase 13`
+stopped_at: Phase 13 context gathered
+last_updated: "2026-04-25T13:23:20.745Z"
+last_activity: 2026-04-25 — v4.2 roadmap created (Phases 13–17, 22 REQ-IDs)
 progress:
   total_phases: 5
   completed_phases: 0
@@ -101,9 +101,9 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 
 ## Session Continuity
 
-Last session: 2026-04-25T07:00:00.000Z
-Stopped at: v4.2 roadmap created (.planning/ROADMAP.md, .planning/REQUIREMENTS.md traceability filled)
-Resume file: None
+Last session: 2026-04-25T13:23:20.741Z
+Stopped at: Phase 13 context gathered
+Resume file: .planning/phases/13-foundation-fp-allowlist-skip-restore-commands/13-CONTEXT.md
 
 **To resume next session — one of:**
 
