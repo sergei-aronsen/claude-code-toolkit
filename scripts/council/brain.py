@@ -19,6 +19,7 @@ Usage:
 Config: ~/.claude/council/config.json
 """
 
+import argparse
 import re
 import shutil
 import subprocess
@@ -26,6 +27,7 @@ import sys
 import os
 import json
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
 # ─────────────────────────────────────────────────
@@ -61,6 +63,28 @@ GPT_SYSTEM = (
     "long-term maintenance cost is, and whether there's proven prior art that "
     "solves this better. Be brief and direct."
 )
+
+AUDIT_REVIEW_GEMINI_SYSTEM = (
+    "You are a senior code reviewer evaluating a structured audit report. "
+    "Your job is to confirm whether each reported finding is REAL, "
+    "FALSE_POSITIVE, or NEEDS_MORE_CONTEXT — using only the verbatim code "
+    "embedded in the report. DO NOT reclassify severity. Cite tokens from "
+    "the embedded code blocks in every justification. Output exactly the "
+    "bracketed <verdict-table> and <missed-findings> blocks per the prompt."
+)
+
+AUDIT_REVIEW_GPT_SYSTEM = (
+    "You are a battle-scarred production engineer reviewing a structured "
+    "audit report. Your job is to confirm whether each reported finding is "
+    "REAL, FALSE_POSITIVE, or NEEDS_MORE_CONTEXT — using only the verbatim "
+    "code embedded in the report. DO NOT reclassify severity. Cite tokens "
+    "from the embedded code blocks in every justification. Output exactly "
+    "the bracketed <verdict-table> and <missed-findings> blocks per the prompt."
+)
+
+# Council audit-review constants
+COUNCIL_SLOT_PLACEHOLDER = "_pending — run /council audit-review_"  # U+2014 em-dash
+COUNCIL_VERDICT_HEADER = "| ID | verdict | confidence | justification |"
 
 VERDICTS = {
     "PROCEED": "Plan is justified and well-scoped. Go ahead.",
@@ -118,6 +142,230 @@ def sanitize_error(text, config):
         if key and len(key) >= 4:
             text = text.replace(key, key[:4] + "***")
     return text
+
+
+# ─────────────────────────────────────────────────
+# Council audit-review helpers (Phase 15)
+# ─────────────────────────────────────────────────
+
+
+def extract_block(text, tag):
+    """Extract content between literal <tag> ... </tag> markers.
+
+    Returns the stripped inner content, or None if the markers are absent.
+    Used to parse <verdict-table> and <missed-findings> sections from
+    backend output (D-10 — no fuzzy parsing).
+    """
+    if not text:
+        return None
+    pattern = rf'<{re.escape(tag)}>(.*?)</{re.escape(tag)}>'
+    match = re.search(pattern, text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def parse_verdict_table(block_text):
+    """Parse a markdown verdict table.
+
+    Returns dict: { "F-001": {"verdict": "REAL", "confidence": 0.9,
+                              "justification": "..."}, ... }
+
+    Skips rows that fail to parse (header / separator rows / malformed).
+    Does NOT raise — returns whatever rows parsed cleanly.
+    """
+    rows = {}
+    if not block_text:
+        return rows
+    for line in block_text.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")]
+        # Pipe-delimited rows yield N+2 cells (leading/trailing empties)
+        # Expected: ["", "F-001", "REAL", "0.9", "...", ""]
+        if len(cells) < 6:
+            continue
+        finding_id = cells[1]
+        if not finding_id.startswith("F-"):
+            continue
+        verdict = cells[2].upper()
+        if verdict not in ("REAL", "FALSE_POSITIVE", "NEEDS_MORE_CONTEXT"):
+            continue
+        try:
+            confidence = float(cells[3])
+        except (ValueError, TypeError):
+            confidence = 0.0
+        justification = cells[4]
+        rows[finding_id] = {
+            "verdict": verdict,
+            "confidence": confidence,
+            "justification": justification,
+        }
+    return rows
+
+
+def resolve_council_status(verdicts_g, verdicts_c):
+    """Resolve per-finding agreements/disagreements into (status, rows).
+
+    status in {"passed", "failed", "disputed"}.
+    rows is a list of dicts with keys: id, verdict, confidence, justification.
+
+    Per-finding rules (D-09):
+      - both agree REAL              -> REAL,            confidence max(g,c)
+      - both agree FALSE_POSITIVE    -> FALSE_POSITIVE,  confidence max(g,c)
+      - both agree NEEDS_MORE_CONTEXT -> NEEDS_MORE_CONTEXT, confidence max(g,c)
+      - any other combination        -> disputed,        confidence min(g,c),
+                                        justification cites both backends
+
+    Status rules:
+      - "passed":   every row is REAL
+      - "disputed": >=1 row is disputed
+      - "failed":   else (>=1 FALSE_POSITIVE or NEEDS_MORE_CONTEXT, no disputes)
+    """
+    rows = []
+    has_disputed = False
+    has_non_real = False
+
+    all_ids = sorted(set(verdicts_g.keys()) | set(verdicts_c.keys()))
+
+    for fid in all_ids:
+        g = verdicts_g.get(fid)
+        c = verdicts_c.get(fid)
+
+        if g is None and c is None:
+            continue  # impossible by set construction; defensive
+        if g is None or c is None:
+            # One backend missing this finding ID -> disputed, low confidence
+            present = g if g else c
+            rows.append({
+                "id": fid,
+                "verdict": "disputed",
+                "confidence": round(present["confidence"] / 2.0, 2),
+                "justification": (
+                    f"Only one backend produced a verdict for {fid}: "
+                    f"{present['verdict']} ({present['confidence']}) — "
+                    f"{present['justification']}"
+                ),
+            })
+            has_disputed = True
+            continue
+
+        if g["verdict"] == c["verdict"]:
+            verdict = g["verdict"]
+            confidence = max(g["confidence"], c["confidence"])
+            justification = (
+                g["justification"]
+                if len(g["justification"]) >= len(c["justification"])
+                else c["justification"]
+            )
+            rows.append({
+                "id": fid,
+                "verdict": verdict,
+                "confidence": round(confidence, 2),
+                "justification": justification,
+            })
+            if verdict != "REAL":
+                has_non_real = True
+        else:
+            confidence = min(g["confidence"], c["confidence"])
+            justification = (
+                f"Gemini: {g['verdict']} ({g['confidence']}) — {g['justification']}; "
+                f"ChatGPT: {c['verdict']} ({c['confidence']}) — {c['justification']}"
+            )
+            # Truncate to <= 320 chars to avoid runaway justifications
+            if len(justification) > 320:
+                justification = justification[:317] + "..."
+            rows.append({
+                "id": fid,
+                "verdict": "disputed",
+                "confidence": round(confidence, 2),
+                "justification": justification,
+            })
+            has_disputed = True
+
+    if has_disputed:
+        status = "disputed"
+    elif has_non_real:
+        status = "failed"
+    elif rows:
+        status = "passed"
+    else:
+        status = "failed"  # no rows — defensive
+
+    return status, rows
+
+
+def atomic_write_text(path, content):
+    """Atomic file write: tempfile in same dir + os.replace.
+
+    Atomic on POSIX same-filesystem (Python 3.3+). Pattern mirrors the
+    header-tempfile precedent in ask_chatgpt() to keep brain.py's atomicity
+    discipline consistent (BRAIN-H3/H4).
+    """
+    parent = Path(path).resolve().parent
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        delete=False,
+        dir=str(parent),
+        suffix=".tmp",
+        prefix=".council_",
+        encoding="utf-8",
+    ) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+    os.replace(tmp_path, str(path))
+
+
+def rewrite_report(report_path, status, verdict_text, missed_text):
+    """Rewrite the audit report's Council slot + council_pass frontmatter in place.
+
+    Locates the byte-exact slot string and replaces it with the assembled
+    verdict block. Mutates council_pass: pending -> status (D-04, count=1,
+    MULTILINE). Atomic via atomic_write_text. Other report sections are
+    byte-identical post-rewrite.
+    """
+    path = Path(report_path)
+    content = path.read_text(encoding="utf-8")
+
+    # 1. Frontmatter mutation (anchored, single occurrence)
+    content = re.sub(
+        r'^council_pass: pending$',
+        f'council_pass: {status}',
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    # 2. Slot rewrite (byte-exact str.replace)
+    old_slot = f"## Council verdict\n\n{COUNCIL_SLOT_PLACEHOLDER}"
+    if missed_text is None or missed_text.strip() == "":
+        missed_block = "(none)"
+    else:
+        missed_block = missed_text
+    new_slot = (
+        "## Council verdict\n\n"
+        + verdict_text.rstrip()
+        + "\n\n"
+        + "## Missed findings\n\n"
+        + missed_block.rstrip()
+    )
+    if old_slot not in content:
+        # Defensive: slot already replaced or report malformed — patch via regex
+        new_slot_fallback = (
+            "## Council verdict\n\n_Council parse error: slot placeholder not found in report._"
+        )
+        content = re.sub(
+            r'^## Council verdict\b.*$',
+            new_slot_fallback,
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+    else:
+        content = content.replace(old_slot, new_slot, 1)
+
+    atomic_write_text(path, content)
 
 
 def load_config():
