@@ -110,6 +110,13 @@ Plans:
 3. `scripts/migrate-to-complement.sh --dry-run` uses the same styling for per-file action previews
 4. Color output respects `NO_COLOR=1` env var and non-TTY detection (plain output when stdout is not a terminal)
 
+**Plans:** 3 plans planned
+
+Plans:
+- [ ] 11-01-PLAN.md — UX-01 Wave 1: shared scripts/lib/dry-run-output.sh + refactor init-claude.sh:print_dry_run_grouped + update test-dry-run.sh assertions
+- [ ] 11-02-PLAN.md — UX-01 Wave 2: update-claude.sh DRY_RUN flag + 4-group preview (INSTALL/UPDATE/SKIP/REMOVE) + test-update-dry-run.sh
+- [ ] 11-03-PLAN.md — UX-01 Wave 2: migrate-to-complement.sh [- REMOVE] grouped output replaces dry-run one-liner + test-migrate-dry-run.sh
+
 ## Progress
 
 **Execution Order:**
@@ -120,7 +127,7 @@ Phases execute in numeric order: 8 → 9 → 10 → 11
 | 8. Release Quality | v4.1 | 3/3 | Complete    | 2026-04-24 |
 | 9. Backup & Detection | v4.1 | 4/4 | Complete    | 2026-04-24 |
 | 10. Upstream GSD Issues | v4.1 | 1/1 | Complete   | 2026-04-24 |
-| 11. UX Polish | v4.1 | 0/? | Not started | - |
+| 11. UX Polish | v4.1 | 0/3 | Not started | - |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete   | 2026-04-24 |
 
 ### Phase 12: Audit Verification + Template Hardening
