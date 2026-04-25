@@ -139,7 +139,7 @@ When the ±10 range is clipped by the start or end of the file, emit a `<!-- Ran
 | `.java` | `java` |
 | `.kt`, `.kts` | `kotlin` |
 | `.swift` | `swift` |
-| _unknown_ | `text` |
+| *unknown* | `text` |
 
 The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest of function` cuts. Council reasons from the actual code, not a paraphrase.
 

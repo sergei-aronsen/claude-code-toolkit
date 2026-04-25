@@ -48,6 +48,7 @@ TEMPLATES_ROOT="${SPLICE_TEMPLATES_DIR:-$REPO_ROOT/templates}"
 
 # ─────────────────────────────────────────────────
 # SOT body extraction (D-02) — run once before per-file loop
+# Extracts from the first ^## heading through EOF (skips H1 + intro prose)
 # ─────────────────────────────────────────────────
 FP_RECHECK_BODY="$(awk 'found || /^## /{found=1; print}' "$FP_RECHECK_SOT")"
 OUTPUT_FORMAT_BODY="$(awk 'found || /^## /{found=1; print}' "$OUTPUT_FORMAT_SOT")"
@@ -58,7 +59,231 @@ OUTPUT_FORMAT_BODY="$(awk 'found || /^## /{found=1; print}' "$OUTPUT_FORMAT_SOT"
 [[ "$OUTPUT_FORMAT_BODY" == "## "* ]] || { echo "ERROR: OUTPUT FORMAT body does not start with ##" >&2; exit 1; }
 
 # ─────────────────────────────────────────────────
-# insert_blocks() — rewrite a single file with 4 splice blocks
+# write_spliced_file() — emit the rewritten file to a given output path
+#
+# Uses awk to detect line anchors, then a Python3 rewrite script to perform
+# the actual multi-block insertions. Python3 is available on all supported
+# platforms (macOS 12+ ships it; Linux CI has python3 in PATH).
+#
+# Arguments:
+#   $1 = source file path
+#   $2 = destination file path (typically a tempfile)
+#   $3 = sc_heading  (SELF-CHECK heading text)
+#   $4 = of_heading  (OUTPUT FORMAT heading text)
+# ─────────────────────────────────────────────────
+write_spliced_file() {
+    local src="$1"
+    local dst="$2"
+    local sc_heading="$3"
+    local of_heading="$4"
+
+    # Detect insertion anchors via awk (single-line output, no multi-line issue)
+    local existing_selfcheck_line=0
+    local existing_selfcheck_num=""
+    local existing_reportfmt_line=0
+    local selfcheck_end_line=0
+    local reportfmt_end_line=0
+    local total_lines
+    total_lines=$(awk 'END{print NR}' "$src")
+
+    local sc_raw
+    sc_raw=$(grep -nE '^## ([0-9]+\.\s*)?SELF-CHECK' "$src" | head -1 || true)
+    if [ -n "$sc_raw" ]; then
+        existing_selfcheck_line=${sc_raw%%:*}
+        existing_selfcheck_num=$(echo "${sc_raw#*:}" | grep -oE '^## [0-9]+' | grep -oE '[0-9]+' | head -1 || true)
+    fi
+
+    local rf_raw
+    rf_raw=$(grep -nE '^## ([0-9]+\.\s*)?(REPORT FORMAT|OUTPUT FORMAT|ФОРМАТ ОТЧЁТА)' "$src" | head -1 || true)
+    if [ -n "$rf_raw" ]; then
+        existing_reportfmt_line=${rf_raw%%:*}
+    fi
+
+    if [ "$existing_selfcheck_line" -gt 0 ]; then
+        selfcheck_end_line=$(awk -v start="$existing_selfcheck_line" '
+            /^```/ { infence = !infence }
+            NR > start && !infence && (/^## / || /^---$/) { found=1; print NR; exit }
+            END { if (!found) print NR + 1 }
+        ' "$src")
+    fi
+
+    if [ "$existing_reportfmt_line" -gt 0 ]; then
+        reportfmt_end_line=$(awk -v start="$existing_reportfmt_line" '
+            /^```/ { infence = !infence }
+            NR > start && !infence && /^## / { found=1; print NR; exit }
+            END { if (!found) print NR + 1 }
+        ' "$src")
+    fi
+
+    # ── Build the 4 block files in a local temp dir ──
+    local block_dir
+    block_dir=$(mktemp -d "${TMPDIR:-/tmp}/v42splice.XXXXXX")
+    # shellcheck disable=SC2064
+    trap "rm -rf '$block_dir'" RETURN
+
+    # Block 1: callout (D-05)
+    {
+        printf '<!-- v42-splice: callout -->\n'
+        printf '<!-- Audit exceptions allowlist: .claude/rules/audit-exceptions.md\n'
+        printf '     Consult this file before reporting any finding. Use /audit-skip to add\n'
+        printf '     an entry, /audit-restore to remove one. -->\n'
+    } > "$block_dir/callout.txt"
+
+    # Block 2: fp-recheck section (D-06) — heading + sentinel + SOT body
+    {
+        printf '%s\n' "$sc_heading"
+        printf '<!-- v42-splice: fp-recheck-section -->\n'
+        printf '\n'
+        printf '%s\n' "$FP_RECHECK_BODY"
+    } > "$block_dir/fp.txt"
+
+    # Block 3: output-format section (D-07) — heading + sentinel + SOT body
+    {
+        printf '%s\n' "$of_heading"
+        printf '<!-- v42-splice: output-format-section -->\n'
+        printf '\n'
+        printf '%s\n' "$OUTPUT_FORMAT_BODY"
+    } > "$block_dir/of.txt"
+
+    # Block 4: Council Handoff footer (D-08)
+    # Em-dash below is U+2014 (0xE2 0x80 0x94) — do NOT replace with hyphen-minus.
+    {
+        printf '## Council Handoff\n'
+        printf '<!-- v42-splice: council-handoff -->\n'
+        printf '\n'
+        printf 'When the structured report is complete, hand it off to the Supreme Council for\n'
+        printf 'peer review. See `commands/audit.md` Phase 5 (Council Pass \xe2\x80\x94 mandatory) for the\n'
+        printf 'invocation: `/council audit-review --report <path>`. The Council runs in\n'
+        printf 'audit-review mode (see `commands/council.md` `## Modes`). The Council verdict\n'
+        printf 'slot in the report is pre-populated with the byte-exact placeholder\n'
+        printf '`_pending \xe2\x80\x94 run /council audit-review_` (U+2014 em-dash) and is overwritten by\n'
+        printf 'the Council pass.\n'
+    } > "$block_dir/ch.txt"
+
+    # ── Python rewrite: insert blocks at computed line anchors ──
+    python3 - \
+        "$src" "$dst" \
+        "$block_dir/callout.txt" \
+        "$block_dir/fp.txt" \
+        "$block_dir/of.txt" \
+        "$block_dir/ch.txt" \
+        "$existing_selfcheck_line" \
+        "$selfcheck_end_line" \
+        "$existing_reportfmt_line" \
+        "$reportfmt_end_line" \
+        "$total_lines" \
+    <<'PYEOF'
+import sys
+
+src, dst = sys.argv[1], sys.argv[2]
+callout_f, fp_f, of_f, ch_f = sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
+sc_start  = int(sys.argv[7])
+sc_end    = int(sys.argv[8])
+rf_start  = int(sys.argv[9])
+rf_end    = int(sys.argv[10])
+
+def read_block(path):
+    with open(path, 'r', encoding='utf-8') as fh:
+        return fh.read()
+
+callout = read_block(callout_f)
+fp_blk  = read_block(fp_f)
+of_blk  = read_block(of_f)
+ch_blk  = read_block(ch_f)
+
+def ensure_single_trailing_blank(buf):
+    """Remove all trailing blank lines then append exactly one blank line."""
+    while buf and buf[-1].rstrip('\n') == '':
+        buf.pop()
+    buf.append('\n')
+
+def append_block(buf, block_text):
+    """Ensure exactly one blank line before a block, then append it."""
+    ensure_single_trailing_blank(buf)
+    buf.append(block_text)
+    if not block_text.endswith('\n'):
+        buf.append('\n')
+
+with open(src, 'r', encoding='utf-8') as fh:
+    lines = fh.readlines()
+
+out = []
+has_sc = sc_start > 0
+has_rf = rf_start > 0
+of_emitted = False
+in_skip = False
+i = 0  # 0-based index; line number = i+1
+
+while i < len(lines):
+    lineno = i + 1  # 1-based
+
+    # Block 1: After the H1 line (line 1), insert callout
+    if lineno == 1:
+        out.append(lines[i])
+        out.append('\n')
+        out.append(callout)
+        if not callout.endswith('\n'):
+            out.append('\n')
+        i += 1
+        continue
+
+    # Block 2a: Replace existing SELF-CHECK section (skip old heading+body)
+    if has_sc and lineno == sc_start:
+        append_block(out, fp_blk)
+        in_skip = True
+        i += 1
+        continue
+
+    if in_skip:
+        if lineno < sc_end:
+            i += 1
+            continue
+        else:
+            in_skip = False
+            # sc_end line is the next ## heading — ensure one blank line before it
+            ensure_single_trailing_blank(out)
+            # Fall through to emit sc_end line normally
+
+    # Block 2b: Insert fp_blk BEFORE report-format heading (no existing SELF-CHECK)
+    if not has_sc and has_rf and lineno == rf_start:
+        append_block(out, fp_blk)
+        ensure_single_trailing_blank(out)
+        out.append(lines[i])
+        i += 1
+        continue
+
+    # Block 3: Insert of_blk AFTER report-format section ends
+    if has_rf and lineno == rf_end:
+        out.append(lines[i])
+        append_block(out, of_blk)
+        of_emitted = True
+        i += 1
+        continue
+
+    out.append(lines[i])
+    i += 1
+
+# EOF fallbacks
+if not has_sc and not has_rf:
+    append_block(out, fp_blk)
+    out.append('\n')
+    append_block(out, of_blk)
+    of_emitted = True
+
+if has_sc and not has_rf and not of_emitted:
+    append_block(out, of_blk)
+    of_emitted = True
+
+# Block 4: Council Handoff — always last
+append_block(out, ch_blk)
+
+with open(dst, 'w', encoding='utf-8') as fh:
+    fh.writelines(out)
+PYEOF
+}
+
+# ─────────────────────────────────────────────────
+# insert_blocks() — rewrite a single prompt file in-place
 # Arguments: $1 = path to prompt file
 # ─────────────────────────────────────────────────
 insert_blocks() {
@@ -70,33 +295,22 @@ insert_blocks() {
 
     # ── Shape detection (numbered vs unnumbered) ──
     local has_numbered_sections=0
-    local existing_selfcheck_line=0
     local existing_selfcheck_num=""
     local max_section_num=0
-    local existing_reportfmt_line=0
 
     if grep -qE '^## [0-9]+\.' "$f"; then
         has_numbered_sections=1
         max_section_num=$(grep -oE '^## [0-9]+\.' "$f" | grep -oE '[0-9]+' | sort -n | tail -1)
     fi
 
-    # Find existing SELF-CHECK heading line + number (if any)
-    local sc_line_raw
-    sc_line_raw=$(grep -nE '^## ([0-9]+\.\s*)?SELF-CHECK' "$f" | head -1 || true)
-    if [ -n "$sc_line_raw" ]; then
-        existing_selfcheck_line=${sc_line_raw%%:*}
-        existing_selfcheck_num=$(echo "${sc_line_raw#*:}" | grep -oE '^## [0-9]+' | grep -oE '[0-9]+' | head -1 || true)
-    fi
-
-    # Find existing REPORT FORMAT / OUTPUT FORMAT heading line (any numeric prefix)
-    local rf_line_raw
-    rf_line_raw=$(grep -nE '^## ([0-9]+\.\s*)?(REPORT FORMAT|OUTPUT FORMAT|ФОРМАТ ОТЧЁТА)' "$f" | head -1 || true)
-    if [ -n "$rf_line_raw" ]; then
-        existing_reportfmt_line=${rf_line_raw%%:*}
+    local sc_raw
+    sc_raw=$(grep -nE '^## ([0-9]+\.\s*)?SELF-CHECK' "$f" | head -1 || true)
+    if [ -n "$sc_raw" ]; then
+        existing_selfcheck_num=$(echo "${sc_raw#*:}" | grep -oE '^## [0-9]+' | grep -oE '[0-9]+' | head -1 || true)
     fi
 
     # ── Section number computation (D-06, D-07, Pitfall 1) ──
-    local sc_heading="" of_heading=""
+    local sc_heading of_heading
     if [ "$has_numbered_sections" -eq 1 ]; then
         local sc_num of_num
         if [ -n "$existing_selfcheck_num" ]; then
@@ -113,138 +327,7 @@ insert_blocks() {
         of_heading="## OUTPUT FORMAT (Structured Report Schema — Phase 14)"
     fi
 
-    # ── Build the 4 block payloads ──
-    local callout_block fp_block of_block ch_block
-
-    # Block 1: top-of-file allowlist callout (D-05)
-    callout_block=$(printf '%s\n%s\n%s\n%s' \
-        '<!-- v42-splice: callout -->' \
-        '<!-- Audit exceptions allowlist: .claude/rules/audit-exceptions.md' \
-        '     Consult this file before reporting any finding. Use /audit-skip to add' \
-        '     an entry, /audit-restore to remove one. -->')
-
-    # Block 2: SELF-CHECK section (D-06) — heading + sentinel + SOT body
-    fp_block=$(printf '%s\n<!-- v42-splice: fp-recheck-section -->\n\n%s' \
-        "$sc_heading" "$FP_RECHECK_BODY")
-
-    # Block 3: OUTPUT FORMAT section (D-07) — heading + sentinel + SOT body
-    of_block=$(printf '%s\n<!-- v42-splice: output-format-section -->\n\n%s' \
-        "$of_heading" "$OUTPUT_FORMAT_BODY")
-
-    # Block 4: Council Handoff footer (D-08) — byte-exact em-dash U+2014
-    # The em-dash in the slot string below is U+2014 (0xE2 0x80 0x94).
-    # DO NOT replace with hyphen-minus or en-dash.
-    ch_block=$(printf '%s\n%s\n\n%s\n%s\n%s\n%s\n%s' \
-        '## Council Handoff' \
-        '<!-- v42-splice: council-handoff -->' \
-        'When the structured report is complete, hand it off to the Supreme Council for' \
-        'peer review. See `commands/audit.md` Phase 5 (Council Pass — mandatory) for the' \
-        'invocation: `/council audit-review --report <path>`. The Council runs in' \
-        'audit-review mode (see `commands/council.md` `## Modes`). The Council verdict' \
-        'slot in the report is pre-populated with the byte-exact placeholder
-`_pending — run /council audit-review_` (U+2014 em-dash) and is overwritten by
-the Council pass.')
-
-    # ── Compute section end lines for awk pass ──
-    local selfcheck_end_line=0
-    if [ "$existing_selfcheck_line" -gt 0 ]; then
-        selfcheck_end_line=$(awk -v start="$existing_selfcheck_line" '
-            NR > start && (/^## / || /^---$/) { print NR; exit }
-            END { if (!found) print NR + 1 }
-        ' "$f")
-    fi
-
-    local reportfmt_end_line=0
-    if [ "$existing_reportfmt_line" -gt 0 ]; then
-        reportfmt_end_line=$(awk -v start="$existing_reportfmt_line" '
-            NR > start && /^## / { print NR; exit }
-            END { if (!found) print NR + 1 }
-        ' "$f")
-    fi
-
-    # ── Single awk pass: emit rewritten file with 4 insertions ──
-    awk \
-        -v callout_block="$callout_block" \
-        -v fp_block="$fp_block" \
-        -v of_block="$of_block" \
-        -v ch_block="$ch_block" \
-        -v sc_start="$existing_selfcheck_line" \
-        -v sc_end="$selfcheck_end_line" \
-        -v rf_start="$existing_reportfmt_line" \
-        -v rf_end="$reportfmt_end_line" \
-        -v has_sc=0 \
-        -v has_rf=0 \
-        -v has_of=0 \
-    '
-    BEGIN {
-        in_skip = 0
-        of_emitted = 0
-        has_sc = (sc_start + 0 > 0)
-        has_rf = (rf_start + 0 > 0)
-    }
-
-    # Block 1: callout — insert after H1 (NR == 1)
-    NR == 1 {
-        print
-        print ""
-        print callout_block
-        next
-    }
-
-    # Block 2a: replace existing SELF-CHECK section
-    has_sc && NR == sc_start {
-        print ""
-        print fp_block
-        print ""
-        in_skip = 1
-        next
-    }
-    in_skip && NR < sc_end { next }
-    in_skip && NR >= sc_end { in_skip = 0 }
-
-    # Block 2b: insert fp_block BEFORE the report-format heading (when no existing SELF-CHECK)
-    !has_sc && has_rf && NR == rf_start {
-        print ""
-        print fp_block
-        print ""
-        print
-        next
-    }
-
-    # Block 3: insert of_block AFTER the report-format section ends
-    has_rf && NR == rf_end {
-        print
-        print ""
-        print of_block
-        print ""
-        of_emitted = 1
-        next
-    }
-
-    { print }
-
-    END {
-        # Neither section existed: append fp + of at EOF
-        if (!has_sc && !has_rf) {
-            print ""
-            print fp_block
-            print ""
-            print of_block
-            print ""
-            of_emitted = 1
-        }
-        # SELF-CHECK existed but no REPORT FORMAT: append of_block
-        if (has_sc && !has_rf && !of_emitted) {
-            print ""
-            print of_block
-            print ""
-            of_emitted = 1
-        }
-        # Block 4: Council Handoff — always last
-        print ""
-        print ch_block
-    }
-    ' "$f" > "$tmp"
+    write_spliced_file "$f" "$tmp" "$sc_heading" "$of_heading"
 
     # ── Post-write sanity: tempfile must contain all 4 sentinels ──
     local tmp_sentinels
