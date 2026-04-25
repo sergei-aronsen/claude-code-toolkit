@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-04-25T14:16:03.829Z"
-last_activity: 2026-04-25 -- Phase 13 planning complete
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-25T14:22:29.130Z"
+last_activity: 2026-04-25
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.2 Audit System v2 — roadmap defined; ready to plan Phase 13.
+**Current focus:** Phase 13 — foundation-fp-allowlist-skip-restore-commands
 
 ## Current Position
 
 Milestone: v4.2 Audit System v2 — IN PROGRESS (started 2026-04-25)
-Phase: Not started (roadmap defined, awaiting first phase plan)
-Plan: —
+Phase: 13 (foundation-fp-allowlist-skip-restore-commands) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-04-25 -- Phase 13 planning complete
+Last activity: 2026-04-25
 
 Progress: [          ] 0% (0/5 phases, 0/0 plans)
 
@@ -70,6 +70,7 @@ Carry-over decisions from v4.1:
 
 - 2026-04-21: Upstream GSD CLI bugs to be filed as upstream issues, NOT patched in this repo
 - 2026-04-21: `claude plugin list` is secondary detection input — filesystem remains primary
+- [Phase 13-foundation-fp-allowlist-skip-restore-commands]: audit-exceptions.md uses YAML list form for globs and HTML comment for schema example; NOT registered in manifest.json (seeded inline by installers per CD-01)
 
 ### Roadmap Evolution
 
@@ -98,12 +99,13 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
 | Deferred | Council audit-review → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 ships |
 | Deferred | `--no-council` flag for `/audit` | Mandatory in v4.2; revisit in v4.3 if pain points emerge |
+| Phase 13-foundation-fp-allowlist-skip-restore-commands P01 | 4 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T13:23:20.741Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-foundation-fp-allowlist-skip-restore-commands/13-CONTEXT.md
+Last session: 2026-04-25T14:22:29.127Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
 
 **To resume next session — one of:**
 
