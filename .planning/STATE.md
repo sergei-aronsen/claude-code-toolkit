@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 15-04-PLAN.md
-last_updated: "2026-04-25T20:30:18.707Z"
+stopped_at: Completed 15-05-PLAN.md
+last_updated: "2026-04-25T20:33:03.965Z"
 last_activity: 2026-04-25 -- Phase 15 planning complete
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -85,6 +85,7 @@ Carry-over decisions from v4.1:
 - [Phase 15-04]: Extracted _run_validate_plan from main() to preserve v3.0.0 behavior byte-identically while freeing main() for argparse dispatch
 - [Phase 15-04]: ThreadPoolExecutor(max_workers=2) with 90s FuturesTimeoutError per backend for parallel audit-review dispatch
 - [Phase 15-04]: Smoke test must use in-project path for --report because validate_file_path() enforces cwd-anchoring by design
+- [Phase 15]: Inserted ## Modes between ## Usage and ## When to Use with validate-plan and audit-review subsections; net +52 lines within D-14 cap
 
 ### Roadmap Evolution
 
@@ -122,11 +123,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 15 P03 | 5 | 1 tasks | 1 files |
 | Phase 15-council-audit-review-integration P02 | 5 | 2 tasks | 4 files |
 | Phase 15-council-audit-review-integration P04 | 6 | 3 tasks | 1 files |
+| Phase 15 P05 | 1 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T20:30:18.704Z
-Stopped at: Completed 15-04-PLAN.md
+Last session: 2026-04-25T20:32:45.808Z
+Stopped at: Completed 15-05-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
