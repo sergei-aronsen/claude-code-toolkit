@@ -1,5 +1,30 @@
 # Milestones
 
+## v4.1 Polish & Upstream (Shipped: 2026-04-25)
+
+**Phases completed:** 5 phases (8–12), 13 plans, 11 REQ-IDs
+**Git range:** `c8f4111 → 61d4eed`
+**Timeline:** 2026-04-21 → 2026-04-25
+
+**Delivered:** Hardened v4.0 release against the bugs discovered during v4.0 ship — added bats install-matrix automation, backup hygiene, CLI-cross-checked plugin detection, version-skew warnings, chezmoi-grade `--dry-run` UX, and three filed upstream issues for `gsd-build/get-shit-done` bugs that should not be patched in this repo.
+
+**Key accomplishments:**
+
+- **Release Quality (Phase 8 / REL-01/02/03)** — Ported the 13-cell install matrix to bats with pinned `bats-action@v4.0.0` SHA, added a `cell-parity` gate that locks 13 cell names across 3 surfaces (`Makefile` / `validate-release.sh` / `docs/INSTALL.md`), and shipped `--collect-all` mode on `validate-release.sh` for aggregated CI failure output instead of fail-fast.
+- **Backup & Detection (Phase 9 / BACKUP-01/02, DETECT-06/07)** — Centralized backup logic in `scripts/lib/backup.sh` with `list_backup_dirs()` + `warn_if_too_many_backups()`, wired non-fatal threshold warnings into `update-claude.sh` + `migrate-to-complement.sh`, added `claude plugin list` cross-check as step 4 in `detect_superpowers()` (filesystem still wins on any CLI failure), and shipped `warn_version_skew()` in `update-claude.sh` only.
+- **Upstream GSD Issues (Phase 10 / UPSTREAM-01/02/03)** — Filed three well-formed issues in `gsd-build/get-shit-done` ([#2659](https://github.com/gsd-build/get-shit-done/issues/2659) audit-open ReferenceError, [#2660](https://github.com/gsd-build/get-shit-done/issues/2660) extractOneLinerFromBody returns label, [#2661](https://github.com/gsd-build/get-shit-done/issues/2661) ROADMAP checkbox auto-sync gap) with full repro, root-cause analysis, and suggested fixes — zero code changes in this toolkit per Success Criterion 4.
+- **UX Polish (Phase 11 / UX-01)** — New `scripts/lib/dry-run-output.sh` shared library exposes `dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`; refactored `init-claude.sh`, `update-claude.sh`, `migrate-to-complement.sh` to all share chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output with right-aligned counts; `${NO_COLOR+x}` + `[ -t 1 ]` gates correctly disable color in non-TTY and honor [no-color.org](https://no-color.org).
+- **Audit Verification + Hardening (Phase 12 / HARDEN-A-01)** — Verified ChatGPT pass-3 audit claims against the codebase with `grep` + file reads (8/15 claims FALSE — hallucinated features that already existed; 6/15 PARTIAL deferred to v4.2+; 1/15 REAL = uninstall script deferred as HARDEN-C-04); shipped Wave-A `scripts/validate-commands.py` enforcing `## Purpose` + `## Usage` H2 headings on `commands/*.md` via `make validate-commands` and CI.
+- **CI hardening surfaced during ship** — `bd09abd` silenced SC2034 on sourced color vars in matrix helpers; `2cfa2e8` added `fetch-depth: 0` to the `test-matrix-bats` job so 4 `-upgrade` cells could find `PRE_40_COMMIT` in the GitHub Actions shallow clone.
+- **External signal evaluated** — `forrestchang/andrej-karpathy-skills` (83K stars) cherry-picked: only "Surgical Changes" was a genuinely new rule; KISS/YAGNI/Plan Mode rules duplicated existing coverage. Added `components/surgical-changes.md` instead of installing the full plugin.
+
+**Archived:**
+
+- `.planning/milestones/v4.1-ROADMAP.md` — full phase breakdown with all 13 plans
+- `.planning/milestones/v4.1-REQUIREMENTS.md` — 11 REQ-IDs with traceability
+
+---
+
 ## v4.0 Complement Mode (Shipped: 2026-04-21)
 
 **Phases completed:** 8 phases (1–7 + 6.1 inserted), 29 plans, 56 tasks

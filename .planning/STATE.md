@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Polish & Upstream
-status: executing
-stopped_at: Completed 09-backup-detection/09-04-PLAN.md
-last_updated: "2026-04-25T05:22:33.227Z"
-last_activity: 2026-04-25 -- Phase 11 execution started
+status: shipped
+stopped_at: v4.1 complete — tagged v4.1.0
+last_updated: "2026-04-25T05:50:42.414Z"
+last_activity: 2026-04-25 -- v4.1 milestone shipped
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-21)
+See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 11 — UX Polish
+**Current focus:** v4.2 milestone planning (run `/gsd-new-milestone`).
 
 ## Current Position
 
-Milestone: v4.1 Polish & Upstream
-Phase: 11 (UX Polish) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 11
-Last activity: 2026-04-25 -- Phase 11 execution started
+Milestone: v4.1 Polish & Upstream — SHIPPED 2026-04-25 (tagged `v4.1.0`)
+Phase: All 5 phases complete
+Plan: 13/13 complete
+Status: Awaiting v4.2 milestone definition
+Last activity: 2026-04-25
 
-Progress: [██░░░░░░░░] 20% (1/5 phases, 2/2 plans in Phase 12)
+Progress: [██████████] 100% (5/5 phases, 13/13 plans)
 
 ## Performance Metrics
 

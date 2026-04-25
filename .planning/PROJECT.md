@@ -40,37 +40,31 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `scripts/lib/backup.sh` `warn_if_too_many_backups()` emitted from `update-claude.sh` + `migrate-to-complement.sh` when combined backup count > 10; non-fatal; `setup-security.sh` excluded (creates `.bak.*` inside `.claude/`, not sibling dirs) — Validated in Phase 9: backup-detection (BACKUP-02)
 - ✓ `scripts/detect.sh` `detect_superpowers()` gains 4th verification layer parsing `claude plugin list --json`; CLI disabled overrides FS; CLI version wins when enabled; soft-fail to FS on CLI absent/error/non-JSON; GSD stays FS-only (not a Claude plugin) — Validated in Phase 9: backup-detection (DETECT-06)
 - ✓ `scripts/lib/install.sh` `warn_version_skew()` emitted from `update-claude.sh` only (D-22 scope lock); compares `.detected.{superpowers,gsd}.version` in `~/.claude/toolkit-install.json` vs current; non-fatal one-line `⚠ Base plugin version changed` warning per changed plugin — Validated in Phase 9: backup-detection (DETECT-07)
+- ✓ Three upstream GSD CLI bugs filed in `gsd-build/get-shit-done` ([#2659](https://github.com/gsd-build/get-shit-done/issues/2659) audit-open ReferenceError, [#2660](https://github.com/gsd-build/get-shit-done/issues/2660) extractOneLinerFromBody returns label, [#2661](https://github.com/gsd-build/get-shit-done/issues/2661) ROADMAP checkbox auto-sync gap) with full repro + suggested fixes; zero toolkit code changes per SC4 — Validated in Phase 10: upstream-gsd-issues (UPSTREAM-01/02/03)
+- ✓ `scripts/lib/dry-run-output.sh` shared library (`dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`); chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output across `init-claude.sh`, `update-claude.sh` (added `DRY_RUN` flag exiting before backup), `migrate-to-complement.sh` (replaced 1-liner with `[- REMOVE]` group); `${NO_COLOR+x}` + `[ -t 1 ]` gates per [no-color.org](https://no-color.org) — Validated in Phase 11: ux-polish (UX-01)
+- ✓ ChatGPT pass-3 audit verified against codebase (8/15 FALSE, 6/15 PARTIAL deferred to v4.2+, 1/15 REAL = uninstall script as HARDEN-C-04); Wave-A `scripts/validate-commands.py` enforces `## Purpose`/`## Usage` H2 headings on `commands/*.md` via `make validate-commands` + CI — Validated in Phase 12: audit-verification-template-hardening (HARDEN-A-01)
 
-## Current Milestone: v4.1 Polish & Upstream
+## Current Milestone: v4.2 (To Be Defined)
 
-**Goal:** Harden the v4.0 release cycle with bats-based matrix automation, backup hygiene, detection enhancements, and UX polish — plus file upstream GSD CLI issues discovered during v4.0.
-
-**Target features:**
-
-- Release quality (bats-based install matrix, docs cell-parity check, `--collect-all` for `validate-release.sh`)
-- Backup hygiene (`--clean-backups` flag, threshold warnings)
-- Detection enhancements (`claude plugin list` integration, plugin version skew detection)
-- Upstream GSD CLI issues (file in `gsd-build/get-shit-done`, do NOT patch in this repo)
-- UX polish (chezmoi-grade styled `--dry-run` diff)
+**Goal:** TBD via `/gsd-new-milestone`.
 
 ### Active
 
-<!-- v4.1 milestone: Polish & Upstream -->
-
-- [x] **REL-01** — Migrate install matrix from bash `validate-release.sh` to bats (TEST-01 carryover) — shipped Phase 8
-- [x] **REL-02** — Auto-check cell parity between `docs/INSTALL.md` and `docs/RELEASE-CHECKLIST.md` — shipped Phase 8
-- [x] **REL-03** — Add `--collect-all` fail mode to `scripts/validate-release.sh` (default stays fail-fast) — shipped Phase 8
-- [x] **BACKUP-01** — `--clean-backups` flag for `scripts/update-claude.sh` — shipped Phase 9
-- [x] **BACKUP-02** — Warn when backup directory count exceeds threshold — shipped Phase 9
-- [x] **DETECT-06** — Integrate `claude plugin list` as detection input alongside filesystem check — shipped Phase 9
-- [x] **DETECT-07** — Detect SP/GSD version skew between install time and current, emit warning — shipped Phase 9
-- [ ] **UPSTREAM-01** — File issue in `gsd-build/get-shit-done` for `audit-open` ReferenceError (`gsd-tools.cjs:786`)
-- [ ] **UPSTREAM-02** — File issue in `gsd-build/get-shit-done` for `milestone complete` accomplishment-extraction noise
-- [ ] **UPSTREAM-03** — File issue in `gsd-build/get-shit-done` for missing auto-sync of ROADMAP checkboxes on plan completion
-- [ ] **UX-01** — chezmoi-grade styled diff output for `--dry-run` mode
+_Empty — v4.1 shipped. New requirements added when v4.2 starts._
 
 <details>
-<summary>v4.0 requirements moved to Validated (shipped 2026-04-21)</summary>
+<summary>v4.1 requirements (shipped 2026-04-25)</summary>
+
+- ✓ REL-01..03 (Phase 8 — bats matrix, cell-parity, `--collect-all`)
+- ✓ BACKUP-01..02, DETECT-06..07 (Phase 9 — `--clean-backups`, threshold warns, plugin list integration, version-skew)
+- ✓ UPSTREAM-01..03 (Phase 10 — 3 issues filed in gsd-build/get-shit-done; zero toolkit code)
+- ✓ UX-01 (Phase 11 — chezmoi-grade `--dry-run` across init/update/migrate)
+- ✓ HARDEN-A-01 (Phase 12 — commands/ linting + ChatGPT audit verification)
+
+</details>
+
+<details>
+<summary>v4.0 requirements (shipped 2026-04-21)</summary>
 
 - ✓ Detect installed `superpowers` (filesystem path: `~/.claude/plugins/cache/claude-plugins-official/superpowers/`) — v4.0 Phase 2 (DETECT-01..05)
 - ✓ Detect installed `get-shit-done` (filesystem path: `~/.claude/get-shit-done/`) — v4.0 Phase 2 (DETECT-02)
@@ -116,24 +110,28 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **Tech stack**: Markdown + POSIX shell (bash, must work on macOS BSD and GNU Linux). No Node/Python runtime dependency for install scripts.
 - **Compatibility**: install scripts must work under `curl ... | bash` (no stdin assumptions without `< /dev/tty`); macOS BSD `head`/`sed`/`tail` (no GNU-only flags).
 - **Safety**: never overwrite `~/.claude/settings.json` without backup and JSON merge; never delete user files without confirmation; every destructive action prompts.
-- **Detection**: filesystem-only (no `claude plugin list` dependency in v4.0).
+- **Detection**: filesystem-primary; `claude plugin list` is a secondary cross-check (DETECT-06, v4.1) — never sole source. Filesystem wins on any CLI failure.
 - **Quality gate**: `make check` (markdownlint + shellcheck + validate) must pass on every PR; CI enforced via `.github/workflows/quality.yml`.
 - **Versioning**: v4.0.0 is a breaking release — `manifest.json`, `CHANGELOG.md`, `init-local.sh`, and any other version reference must align.
 - **Commits**: Conventional Commits, branches `feature/xxx` / `fix/xxx`, never push directly to `main`.
 
 ## Current State
 
-**Shipped:** v4.0 Complement Mode (2026-04-21) — 8 phases, 29 plans, 56 tasks.
+**Shipped:**
 
-Toolkit now detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes (`standalone`, `complement-sp`, `complement-gsd`, `complement-full`). Manifest-driven skip-lists, atomic state in `~/.claude/toolkit-install.json`, safe migration path for v3.x users, and a 13-cell release validation matrix.
-
-**Release tag:** `v4.0.0` — manual step outside milestone (per CLAUDE.md "never push directly to main"). User runs `git tag -a v4.0.0 -m "Release 4.0.0"` + `git push --tags`.
+- **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0`.
+- **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
 ## Next Milestone Goals
 
 _To be defined via `/gsd-new-milestone`._
 
-v4.1 candidate carry-overs from v4.0 deferred items: Bats-based matrix automation (TEST-01), `--clean-backups` flag (BACKUP-01), backup-count warning (BACKUP-02), `claude plugin list` integration (DETECT-FUT-01), plugin version skew (DETECT-FUT-02), INSTALL.md ↔ RELEASE-CHECKLIST.md parity auto-check.
+v4.2 candidate carry-overs from v4.1 audit + v4.0 lockouts:
+
+- HARDEN-C-04 — uninstall script (only REAL finding from ChatGPT pass-3 audit)
+- AUDIT-02/04/06/10/15 — Wave B/C hardening deferred from Phase 12 (compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata)
+- Installable GSD CLI wrapper in toolkit (crosses repo boundary — deferred from v4.1)
+- Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
 
 ## Key Decisions
 
@@ -148,7 +146,10 @@ v4.1 candidate carry-overs from v4.0 deferred items: Bats-based matrix automatio
 | Extend `manifest.json` per-file with `requires_base` / `conflicts_with` | Declarative skip-logic instead of hardcoded arrays in shell scripts. Easier to audit and extend. | ✓ Good — MANIFEST-01..04 (Phase 2); `make check` enforces via `agent-collision-static` |
 | `setup-security.sh` switches to safe JSON merge with backup | Prevents the documented risk of clobbering SP hooks in `~/.claude/settings.json`. | ✓ Good — SAFETY-01..04 with `_tk_owned` marker append-both policy (Phase 3) |
 | Phase 6 translation deferral (reversed mid-v4.0) | Originally deferred to v4.1; reversed when user inserted Phase 6.1 so v4.0 ships English + 8 translations consistent. | ✓ Good — 8/8 translations within ±20% of README.md (Phase 6.1), `make translation-drift` green |
-| Release date flip manual; `git tag` manual | CLAUDE.md "never push directly to main" invariant — agent cannot cut release tags. | ✓ Good — Phase 7 ends at ready-to-tag; user tags manually (D-08) |
+| Release date flip manual; `git tag` manual | CLAUDE.md "never push directly to main" invariant — agent cannot cut release tags. | ✓ Good — Phase 7 ends at ready-to-tag; user tags manually (D-08). v4.1 followed same pattern, tagged `v4.1.0` 2026-04-25. |
+| Upstream GSD CLI bugs filed, not patched | TK and gsd-build/get-shit-done are separate repos with separate maintainers; patching upstream code in TK creates a fork burden. Filing well-formed issues is correct boundary. | ✓ Good — 3 issues filed in Phase 10 (#2659/#2660/#2661); zero toolkit code changes per SC4 |
+| Cherry-pick "Surgical Changes" from forrestchang/andrej-karpathy-skills | 83K-star plugin had 65 lines; 3/4 rules duplicated existing KISS/YAGNI/Plan Mode coverage. Cherry-pick avoids redundant skill activation while owning the unique concept. | ✓ Good — `components/surgical-changes.md` shipped; full plugin not installed |
+| Shared `scripts/lib/dry-run-output.sh` over per-script duplication (UX-01) | Three scripts needed identical chezmoi-grade output. Precedent from `scripts/lib/backup.sh` (Phase 9). One contract, one place to fix bugs, all 3 install scripts source it via curl. | ✓ Good — `dro_*` API used by init/update/migrate (Phase 11) |
 
 ## Evolution
 
@@ -170,4 +171,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-24 — Phase 9 (Backup & Detection) shipped: BACKUP-01 `--clean-backups` flag, BACKUP-02 threshold warning, DETECT-06 `claude plugin list` cross-check, DETECT-07 version-skew warning. v4.1 progress: 7/11 requirements validated (Phases 8 + 9 + 12 complete; Phases 10 + 11 remaining).*
+*Last updated: 2026-04-25 — v4.1 Polish & Upstream milestone complete (5/5 phases, 11/11 REQ-IDs validated). Tagged `v4.1.0`. Next: `/gsd-new-milestone` for v4.2.*
