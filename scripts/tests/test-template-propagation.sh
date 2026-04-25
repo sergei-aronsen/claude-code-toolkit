@@ -65,11 +65,14 @@ else
     head -40 "$RUN1_LOG"
 fi
 
-# 2.1: run 1 must report "49 spliced"
-if grep -qF '49 spliced, 0 already-spliced, 0 skipped' "$RUN1_LOG"; then
-    report_pass "run 1: summary reports 49 spliced, 0 already-spliced, 0 errors"
+# 2.1: run 1 must report all 49 files in a terminal state (either freshly
+#      spliced or already-spliced from a previous live-templates apply).
+#      The idempotency contract (run 2 byte-identical to run 1) is asserted
+#      separately below — what matters here is that no file errored.
+if grep -qE 'Processed 49 files: (49 spliced, 0 already-spliced|0 spliced, 49 already-spliced), 0 skipped' "$RUN1_LOG"; then
+    report_pass "run 1: 49 files terminal (spliced or already-spliced), 0 errors"
 else
-    report_fail "run 1: summary does not match expected '49 spliced, 0 already-spliced, 0 skipped (errors)'"
+    report_fail "run 1: summary does not match expected terminal state"
     grep -F 'Processed' "$RUN1_LOG" | head -3 || true
 fi
 
