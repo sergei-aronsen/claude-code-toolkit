@@ -144,19 +144,36 @@ def load_config():
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
 
-    # Audit BRAIN-M5: when the user picked CLI mode for Gemini, fail fast
-    # with an actionable error instead of letting the missing binary
-    # surface ~120s later as a phantom "RETHINK" verdict.
-    if config["gemini"].get("mode", "cli") == "cli" and shutil.which("gemini") is None:
-        print("\n\u274c Gemini CLI mode selected but 'gemini' is not in PATH.")
-        print("   Install: npm install -g @google/gemini-cli")
-        print(f"   Or switch to API mode by editing {CONFIG_PATH}")
-        sys.exit(1)
+    # Audit BRAIN-M5 + Council pass C: pre-flight WARN per provider, fail
+    # only if BOTH providers are unavailable. Single-reviewer Council is a
+    # legitimate use case (e.g. user with only a Gemini CLI install).
+    config["_gemini_available"] = True
+    config["_openai_available"] = True
+
+    if config["gemini"].get("mode", "cli") == "cli":
+        if shutil.which("gemini") is None:
+            print("\u26a0\ufe0f  Gemini CLI mode selected but 'gemini' is not in PATH.")
+            print("   Install: npm install -g @google/gemini-cli")
+            print(f"   Or switch to API mode by editing {CONFIG_PATH}")
+            config["_gemini_available"] = False
+    else:
+        if not config["gemini"].get("api_key"):
+            print("\u26a0\ufe0f  Gemini API mode selected but no api_key configured.")
+            print(f"   Set GEMINI_API_KEY env var or edit {CONFIG_PATH}")
+            config["_gemini_available"] = False
 
     if not config["openai"].get("api_key"):
-        print("\n\u274c OpenAI API key not configured.")
+        print("\u26a0\ufe0f  OpenAI API key not configured.")
         print(f"   Set OPENAI_API_KEY env var or edit {CONFIG_PATH}")
+        config["_openai_available"] = False
+
+    if not config["_gemini_available"] and not config["_openai_available"]:
+        print("\n\u274c No reviewers available — aborting.")
         sys.exit(1)
+    if not config["_gemini_available"]:
+        print("   Continuing with Pragmatist (ChatGPT) only.\n")
+    if not config["_openai_available"]:
+        print("   Continuing with Skeptic (Gemini) only.\n")
 
     return config
 
@@ -399,13 +416,18 @@ def ask_chatgpt(prompt, config):
         hdr.close()
 
         body = json.dumps(payload, ensure_ascii=False)
+        # Council pass D: -f makes curl exit non-zero on HTTP 4xx/5xx so we
+        # don't try to JSON-parse an HTML error page or empty body. Also -S
+        # so we still get the status reason in the captured stderr.
         result = run_command([
-            "curl", "-s",
+            "curl", "-sSf",
             "https://api.openai.com/v1/chat/completions",
             "-H", f"@{hdr.name}",
             "--data-binary", "@-"
         ], input_text=body, timeout=120)
 
+        if is_error_response(result):
+            return sanitize_error(result, config)
         try:
             data = json.loads(result)
             return data["choices"][0]["message"]["content"]
@@ -438,10 +460,13 @@ def main():
     diff_block = f"\nGIT CHANGES:\n{git_diff}" if git_diff else ""
     rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
 
-    # ── Phase 1: Context Discovery ──
-    print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
+    # ── Phase 1: Context Discovery (skip if Gemini unavailable) ──
+    files_content = ""
+    file_paths = []
+    if config.get("_gemini_available", True):
+        print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
 
-    context_prompt = f"""{GEMINI_SYSTEM}
+        context_prompt = f"""{GEMINI_SYSTEM}
 
 Review the project structure and the implementation plan.
 
@@ -453,15 +478,13 @@ PLAN: {plan}
 List the file paths (comma-separated) that are critical to review for this plan.
 Reply ONLY with the comma-separated list of file paths. No explanations."""
 
-    files_to_read = ask_gemini(context_prompt, config)
+        files_to_read = ask_gemini(context_prompt, config)
 
-    files_content = ""
-    file_paths = []
-    if files_to_read and "/" in files_to_read and not files_to_read.startswith("Error"):
-        file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
-        print(f"\U0001f4c2 Reading {len(file_list)} file(s)...")
-        file_paths = get_validated_paths(file_list)
-        files_content = read_files(file_list)
+        if files_to_read and "/" in files_to_read and not is_error_response(files_to_read):
+            file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
+            print(f"\U0001f4c2 Reading {len(file_list)} file(s)...")
+            file_paths = get_validated_paths(file_list)
+            files_content = read_files(file_list)
 
     # ── Phase 2: The Skeptic (Gemini) ──
     print("\U0001f9d0 [The Skeptic]: Challenging plan justification...")
@@ -501,10 +524,13 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
-    gemini_verdict = ask_gemini(
-        skeptic_prompt, config,
-        file_paths=file_paths if use_native_files else None
-    )
+    if config.get("_gemini_available", True):
+        gemini_verdict = ask_gemini(
+            skeptic_prompt, config,
+            file_paths=file_paths if use_native_files else None
+        )
+    else:
+        gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
 
     # ── Phase 3: The Pragmatist (ChatGPT) ──
     print("\U0001f528 [The Pragmatist]: Evaluating production readiness...")
@@ -544,7 +570,10 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
-    gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+    if config.get("_openai_available", True):
+        gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+    else:
+        gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
 
     # ── Phase 4: Final Report ──
     # Audit BRAIN-M2: surface infrastructure failures explicitly. Previously,
