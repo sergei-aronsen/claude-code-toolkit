@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-04-25T23:27:20.815Z"
-last_activity: 2026-04-25 -- Phase 16 planning complete
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-04-25T23:38:00.000Z"
+last_activity: 2026-04-25 -- Phase 16 Plan 03 complete — 49 prompt files spliced
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
-  percent: 89
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 Milestone: v4.2 Audit System v2 — IN PROGRESS (started 2026-04-25)
 Phase: 16
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-25 -- Phase 16 planning complete
+Plan: 03 complete
+Status: Plan 16-03 done — 49 prompt files carry 4 v4.2 contract blocks
+Last activity: 2026-04-25 -- Phase 16 Plan 03 complete — 49 prompt files spliced
 
-Progress: [          ] 0% (0/5 phases, 0/0 plans)
+Progress: [==========] 100% (19/19 plans complete)
 
 ## Performance Metrics
 
@@ -91,6 +91,9 @@ Carry-over decisions from v4.1:
 - [Phase 16]: Python3 inline heredoc used for multi-line block injection (awk -v cannot hold newlines)
 - [Phase 16]: Test 20 uses 'Council Handoff' (capital H) matching byte-exact splice script output; awk used for portable sentinel deletion in negative test
 
+- [Phase 16-03]: Plan verification string used 'Council handoff' (lowercase h) but script emits '## Council Handoff' (capital H); corrected assertion to match — plan typo, not splice bug
+- [Phase 16-03]: Atomic commit of 49 files using individually named git add; 14816 insertions, 405 deletions; idempotency confirmed post-commit
+
 ### Roadmap Evolution
 
 - 2026-04-21: v4.1 roadmap created — 4 phases (8–11), continuing phase numbering from v4.0
@@ -134,8 +137,8 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 
 ## Session Continuity
 
-Last session: 2026-04-25T23:27:20.812Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-04-25T23:38:00.000Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
