@@ -26,6 +26,8 @@
     ],
     "commands": [
       { "path": "commands/api.md" },
+      { "path": "commands/audit-restore.md" },
+      { "path": "commands/audit-skip.md" },
       { "path": "commands/audit.md" },
       { "path": "commands/checkpoint.md" },
       { "path": "commands/context-prime.md" },
