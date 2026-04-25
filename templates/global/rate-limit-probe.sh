@@ -39,16 +39,25 @@ if [ -z "$TOKEN" ]; then
     exit 1
 fi
 
+# Pass headers via a 0600-mode file so the OAuth bearer token never appears
+# in `ps`/argv visible to other local users (audit Sec-H1).
+HDR_FILE=$(mktemp -t claude-rl-hdr) || exit 0
+chmod 600 "$HDR_FILE" 2>/dev/null
+cat > "$HDR_FILE" <<EOF
+Authorization: Bearer $TOKEN
+Content-Type: application/json
+anthropic-version: 2023-06-01
+anthropic-beta: interleaved-thinking-2025-05-14,oauth-2025-04-20
+EOF
+trap 'rm -rf "$LOCK_DIR"; rm -f "$HDR_FILE"' EXIT
+
 # Probe API with minimal request (retry up to 2 times on 529/overloaded)
 RESPONSE=""
 for attempt in 1 2; do
     RESPONSE=$(curl -s -D - -o /dev/null \
         --max-time 15 \
         "https://api.anthropic.com/v1/messages" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "Content-Type: application/json" \
-        -H "anthropic-version: 2023-06-01" \
-        -H "anthropic-beta: interleaved-thinking-2025-05-14,oauth-2025-04-20" \
+        -H "@$HDR_FILE" \
         -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"h"}]}' \
         2>/dev/null)
 
@@ -58,6 +67,8 @@ for attempt in 1 2; do
     fi
     [ "$attempt" -lt 2 ] && sleep 5
 done
+
+rm -f "$HDR_FILE"
 
 # Parse rate limit headers
 S_UTIL=$(echo "$RESPONSE" | grep -i "anthropic-ratelimit-unified-5h-utilization" | tr -d '\r' | awk -F': ' '{print $2}')
