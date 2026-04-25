@@ -50,8 +50,8 @@ created: 2026-04-25
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/tests/fixtures/audit/` — canned source files with 1 allowlisted finding + 1 FP-recheck-droppable finding + 1 surviving finding
-- [ ] `scripts/tests/fixtures/audit/.claude/rules/audit-exceptions.md` — populated allowlist
+- [ ] `scripts/tests/fixtures/audit/` — canned source files with 1 allowlisted finding (lib/utils.py), 1 FP-recheck-droppable finding (src/legacy.js, build-time-only eval), 1 surviving finding (src/auth.ts, SQL-injection)
+- [ ] `scripts/tests/fixtures/audit/allowlist-populated.md` — populated allowlist (flat sibling of allowlist-empty.md, NOT nested under .claude/rules/)
 - [ ] `scripts/tests/test-audit-pipeline.sh` — Bash test runner (PASS/FAIL counter)
 
 *Wave 0 = the test fixture + script must exist before Wave 2's verification asserts pass.*

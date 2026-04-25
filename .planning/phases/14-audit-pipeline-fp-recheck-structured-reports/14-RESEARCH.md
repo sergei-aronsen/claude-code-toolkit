@@ -867,9 +867,9 @@ auth logic, no crypto). The relevant ASVS categories are limited:
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Backward compatibility for `code` and `deploy` type names**
+1. **Backward compatibility for `code` and `deploy` type names** — RESOLVED: Plan 14-03 documents `code` -> `code-review` and `deploy` -> `deploy-checklist` as backward-compat aliases that resolve at dispatch time; the report filename always uses the canonical slug. See 14-03-PLAN.md `## Usage` rewrite step 4.
    - What we know: Current `commands/audit.md` exposes `code` and `deploy`; D-12 requires
      `code-review` and `deploy-checklist` as the canonical slugs.
    - What's unclear: Should the rewrite accept `code` as an alias for `code-review` and
@@ -878,7 +878,7 @@ auth logic, no crypto). The relevant ASVS categories are limited:
      `code-review`; `deploy` is an alias for `deploy-checklist`." This avoids breaking
      existing users' muscle memory while documenting the canonical names.
 
-2. **`audit-exceptions.md` not yet in `manifest.json` rules list**
+2. **`audit-exceptions.md` not yet in `manifest.json` rules list** — RESOLVED: Plan 14-03 (Phase 0) documents that the audit proceeds with an empty allowlist when the file is absent, per D-06. Manifest registration is explicitly Phase 17's job (DIST-01) — not in scope for Phase 14.
    - What we know: Phase 13 created the file (`templates/base/rules/audit-exceptions.md`);
      manifest currently only has `rules/README.md` and `rules/project-context.md`.
    - What's unclear: Phase 14 READS this file — if a user installed before Phase 13, they
