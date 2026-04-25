@@ -687,6 +687,183 @@ def ask_chatgpt(prompt, config):
 
 
 # ─────────────────────────────────────────────────
+# Council audit-review dispatch (Phase 15)
+# ─────────────────────────────────────────────────
+
+
+def dispatch_audit_review_gemini(prompt, config):
+    """Gemini dispatch for audit-review mode.
+
+    Honors COUNCIL_STUB_GEMINI env var (RESEARCH.md §5) — when set, the value
+    is treated as a path to an executable script that emits canned <verdict-table>
+    output on stdout. Used by scripts/tests/test-council-audit-review.sh.
+    """
+    stub = os.getenv("COUNCIL_STUB_GEMINI")
+    if stub:
+        return run_command([stub], timeout=30)
+    return ask_gemini(prompt, config)
+
+
+def dispatch_audit_review_chatgpt(prompt, config):
+    """ChatGPT dispatch for audit-review mode.
+
+    Honors COUNCIL_STUB_CHATGPT env var (RESEARCH.md §5).
+    """
+    stub = os.getenv("COUNCIL_STUB_CHATGPT")
+    if stub:
+        return run_command([stub], timeout=30)
+    return ask_chatgpt(prompt, config)
+
+
+def run_audit_review(report_path_str, config):
+    """Run the Council audit-review mode against a structured audit report.
+
+    Phase 15 entry point invoked by `--mode audit-review --report <path>`.
+    Returns: 0 on success, 1 on malformed backend output / both backends failed.
+    """
+    # 1. Validate report path
+    report_path = validate_file_path(report_path_str)
+    if not report_path:
+        print(f"\n❌ Audit report not found or outside project: {report_path_str}",
+              file=sys.stderr)
+        return 1
+
+    report_content = report_path.read_text(encoding="utf-8")
+    if COUNCIL_SLOT_PLACEHOLDER not in report_content:
+        print(
+            f"\n❌ Report does not contain the Council slot placeholder. "
+            f"Either it has already been reviewed or the report is malformed: {report_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # 2. Resolve and load the prompt template
+    prompt_path = Path(__file__).resolve().parent / "prompts" / "audit-review.md"
+    if not prompt_path.is_file():
+        print(f"\n❌ Council audit-review prompt missing: {prompt_path}", file=sys.stderr)
+        return 1
+    prompt_template = prompt_path.read_text(encoding="utf-8")
+    if "{REPORT_CONTENT}" not in prompt_template:
+        print(
+            f"\n❌ Council audit-review prompt is missing {{REPORT_CONTENT}} token: {prompt_path}",
+            file=sys.stderr,
+        )
+        return 1
+
+    prompt = prompt_template.replace("{REPORT_CONTENT}", report_content)
+
+    # 3. Parallel dispatch (D-08, COUNCIL-06)
+    stub_gemini = os.getenv("COUNCIL_STUB_GEMINI")
+    stub_chatgpt = os.getenv("COUNCIL_STUB_CHATGPT")
+
+    gemini_raw = None
+    chatgpt_raw = None
+
+    # Bypass backend availability checks when stubs are configured (Pitfall 6).
+    if not stub_gemini and not config.get("_gemini_available", True):
+        gemini_raw = "Error: Gemini backend not available"
+    if not stub_chatgpt and not config.get("_openai_available", True):
+        chatgpt_raw = "Error: OpenAI backend not available"
+
+    print("\n\U0001f9e0 Council audit-review: dispatching Gemini and ChatGPT in parallel...")
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_g = executor.submit(dispatch_audit_review_gemini, prompt, config)
+        future_c = executor.submit(dispatch_audit_review_chatgpt, prompt, config)
+        try:
+            gemini_raw = future_g.result(timeout=90)
+        except FuturesTimeoutError:
+            gemini_raw = "Error: Gemini backend timed out after 90s"
+        except Exception as exc:
+            gemini_raw = f"Error: Gemini dispatch failed: {exc}"
+        try:
+            chatgpt_raw = future_c.result(timeout=90)
+        except FuturesTimeoutError:
+            chatgpt_raw = "Error: ChatGPT backend timed out after 90s"
+        except Exception as exc:
+            chatgpt_raw = f"Error: ChatGPT dispatch failed: {exc}"
+
+    # 4. Extract bracketed blocks (D-10)
+    g_verdict_block = extract_block(gemini_raw, "verdict-table")
+    g_missed_block = extract_block(gemini_raw, "missed-findings")
+    c_verdict_block = extract_block(chatgpt_raw, "verdict-table")
+    c_missed_block = extract_block(chatgpt_raw, "missed-findings")
+
+    # 5. Malformed-output guard
+    if g_verdict_block is None and c_verdict_block is None:
+        # Both backends produced unparseable output -> council_pass: failed, exit 1
+        msg = "Council parse error: neither backend returned a <verdict-table> marker."
+        print(f"\n❌ {msg}", file=sys.stderr)
+        rewrite_report(
+            report_path,
+            status="failed",
+            verdict_text=f"_{msg}_",
+            missed_text=None,
+        )
+        return 1
+
+    # 6. Parse verdict tables
+    verdicts_g = parse_verdict_table(g_verdict_block) if g_verdict_block else {}
+    verdicts_c = parse_verdict_table(c_verdict_block) if c_verdict_block else {}
+
+    if not verdicts_g and not verdicts_c:
+        msg = "Council parse error: backends emitted markers but no parseable verdict rows."
+        print(f"\n❌ {msg}", file=sys.stderr)
+        rewrite_report(
+            report_path,
+            status="failed",
+            verdict_text=f"_{msg}_",
+            missed_text=None,
+        )
+        return 1
+
+    # 7. Resolve consolidated status
+    status, rows = resolve_council_status(verdicts_g, verdicts_c)
+
+    # 8. Build verdict_text — markdown table with byte-exact column header
+    verdict_lines = [
+        COUNCIL_VERDICT_HEADER,
+        "|----|---------|------------|---------------|",
+    ]
+    for row in rows:
+        # Sanitize pipe characters in justification to avoid breaking the table
+        just = row["justification"].replace("|", "\\|")
+        verdict_lines.append(
+            f"| {row['id']} | {row['verdict']} | {row['confidence']} | {just} |"
+        )
+    verdict_text = "\n".join(verdict_lines)
+
+    # 9. Build missed_text — prefer Gemini, fall back to ChatGPT
+    missed_text = g_missed_block or c_missed_block or "(none)"
+    # Normalise common empty representations
+    if missed_text.strip().lower() in ("(none)", "none", ""):
+        missed_text = "(none)"
+
+    # 10. Rewrite report (atomic, in-place)
+    rewrite_report(report_path, status, verdict_text, missed_text)
+
+    # 11. Print collated verdict to stdout
+    print("\n" + "=" * 60)
+    print("\U0001f4cb COUNCIL AUDIT-REVIEW REPORT")
+    print("=" * 60)
+    print(f"  Report:       {report_path}")
+    print(f"  council_pass: {status}")
+    print(f"  Findings:     {len(rows)}")
+    print("-" * 60)
+    for row in rows:
+        marker = {
+            "REAL": "✅",
+            "FALSE_POSITIVE": "⛔",
+            "NEEDS_MORE_CONTEXT": "❓",
+            "disputed": "⚠️",
+        }.get(row["verdict"], "?")
+        print(f"  {marker} {row['id']}: {row['verdict']} ({row['confidence']})")
+    print("=" * 60 + "\n")
+
+    return 0
+
+
+# ─────────────────────────────────────────────────
 # Main orchestration
 # ─────────────────────────────────────────────────
 
