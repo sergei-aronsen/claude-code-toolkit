@@ -28,10 +28,11 @@ install:
 lint: shellcheck mdlint
 	@echo "All checks passed!"
 
-# ShellCheck
+# ShellCheck — covers scripts/ and templates/global/ which both ship to users.
+# Audit M-03: templates/global/{rate-limit-probe,statusline}.sh were never linted.
 shellcheck:
 	@echo "Running ShellCheck..."
-	@find scripts -name '*.sh' -exec shellcheck -S warning {} + && echo "✅ ShellCheck passed"
+	@find scripts templates/global -name '*.sh' -exec shellcheck -S warning {} + && echo "✅ ShellCheck passed"
 
 # Markdown lint
 mdlint:

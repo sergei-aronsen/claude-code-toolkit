@@ -9,3 +9,7 @@ node_modules/
 # as injection-template tech debt — file stays in repo for Claude sessions but
 # is excluded from lint until the injection templates are fixed.
 CLAUDE.md
+
+# AUDIT-REPORT.md is a transient deep-audit artifact (subagent output) kept
+# in the repo as a fix-tracking reference. Not part of the published toolkit.
+AUDIT-REPORT.md
