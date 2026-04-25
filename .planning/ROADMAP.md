@@ -65,7 +65,7 @@
 - [x] 13-02-PLAN.md — `/audit-skip` command spec with validation (EXC-01, EXC-04)
 - [x] 13-03-PLAN.md — `/audit-restore` command spec with `[y/N]` confirmation (EXC-02)
 - [x] 13-04-PLAN.md — Installer wiring across init-claude.sh, init-local.sh, update-claude.sh (EXC-05)
-- [ ] 13-05-PLAN.md — Gap closure: comment-aware /audit-restore (CR-01 fix, EXC-02)
+- [x] 13-05-PLAN.md — Gap closure: comment-aware /audit-restore (CR-01 fix, EXC-02)
 
 ### Phase 14: Audit Pipeline — FP Recheck + Structured Reports
 
@@ -134,7 +134,7 @@
 | 10. Upstream GSD Issues | v4.1 | 1/1 | Complete | 2026-04-24 |
 | 11. UX Polish | v4.1 | 3/3 | Complete | 2026-04-25 |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete | 2026-04-24 |
-| 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 4/4 | Complete   | 2026-04-25 |
+| 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete   | 2026-04-25 |
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 0/0 | Not started | - |
 | 15. Council Audit-Review Integration | v4.2 | 0/0 | Not started | - |
 | 16. Template Propagation — 49 Prompt Files | v4.2 | 0/0 | Not started | - |
