@@ -109,6 +109,9 @@ test:
 	@echo "Test 19: council audit-review — verdict slot rewrite + parallel dispatch"
 	@bash scripts/tests/test-council-audit-review.sh
 	@echo ""
+	@echo "Test 20: template propagation idempotency (propagate-audit-pipeline-v42.sh)"
+	@bash scripts/tests/test-template-propagation.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
@@ -132,6 +135,34 @@ validate:
 		echo "Found $$ERRORS errors"; \
 		exit 1; \
 	fi
+	@echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1)..."
+	@ERRORS=0; \
+	for f in $$(find templates -path '*/prompts/*.md' \( \
+		-name 'SECURITY_AUDIT.md' -o \
+		-name 'CODE_REVIEW.md' -o \
+		-name 'PERFORMANCE_AUDIT.md' -o \
+		-name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
+		-name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
+		-name 'DEPLOY_CHECKLIST.md' -o \
+		-name 'DESIGN_REVIEW.md' \)); do \
+		if ! grep -qF 'Council Handoff' "$$f" 2>/dev/null; then \
+			echo "❌ Missing 'Council Handoff' marker: $$f"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if ! grep -qF '1. **Read context**' "$$f" 2>/dev/null; then \
+			echo "❌ Missing '1. **Read context**' marker: $$f"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if ! grep -qF '6. **Severity sanity check**' "$$f" 2>/dev/null; then \
+			echo "❌ Missing '6. **Severity sanity check**' marker: $$f"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+	done; \
+	if [ $$ERRORS -gt 0 ]; then \
+		echo "Found $$ERRORS v4.2 marker errors across audit prompts"; \
+		exit 1; \
+	fi
+	@echo "✅ All 49 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
 	@MANIFEST_VER=$$(grep -m1 '"version"' manifest.json | sed 's/.*"version": *"\([^"]*\)".*/\1/'); \
 		CHANGELOG_VER=$$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/'); \
 		if [ "$$MANIFEST_VER" != "$$CHANGELOG_VER" ]; then \

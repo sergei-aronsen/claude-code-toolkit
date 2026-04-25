@@ -67,6 +67,36 @@ jobs:
           fi
           echo "✅ All audit templates valid"
 
+      - name: Check v4.2 pipeline markers in all 49 prompt files
+        run: |
+          echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1)..."
+          ERRORS=0
+
+          for f in templates/**/SECURITY_AUDIT.md templates/**/CODE_REVIEW.md \
+                   templates/**/PERFORMANCE_AUDIT.md templates/**/MYSQL_PERFORMANCE_AUDIT.md \
+                   templates/**/POSTGRES_PERFORMANCE_AUDIT.md templates/**/DEPLOY_CHECKLIST.md \
+                   templates/**/DESIGN_REVIEW.md; do
+            [ -f "$f" ] || continue
+            if ! grep -qF 'Council Handoff' "$f"; then
+              echo "❌ Missing 'Council Handoff' marker: $f"
+              ERRORS=$((ERRORS + 1))
+            fi
+            if ! grep -qF '1. **Read context**' "$f"; then
+              echo "❌ Missing '1. **Read context**' marker: $f"
+              ERRORS=$((ERRORS + 1))
+            fi
+            if ! grep -qF '6. **Severity sanity check**' "$f"; then
+              echo "❌ Missing '6. **Severity sanity check**' marker: $f"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "Found $ERRORS v4.2 marker errors across audit prompts"
+            exit 1
+          fi
+          echo "✅ All 49 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
+
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands
 
