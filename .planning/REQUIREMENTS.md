@@ -31,11 +31,11 @@ Force every audit to re-validate findings against the actual code and produce re
 
 Every `/audit` run terminates in a Council pass that confirms or rejects each finding using the embedded code.
 
-- [ ] **COUNCIL-01**: `/audit` MUST invoke `/council audit-review --report <path>` after writing the report. The audit is incomplete until the Council pass returns. No `--no-council` flag in v4.2.
+- [x] **COUNCIL-01**: `/audit` MUST invoke `/council audit-review --report <path>` after writing the report. The audit is incomplete until the Council pass returns. No `--no-council` flag in v4.2.
 - [x] **COUNCIL-02**: Council prompt explicitly forbids severity reclassification. CRITICAL→HIGH, MEDIUM→LOW, etc. are never allowed. Severity disagreements may be logged as comments only.
 - [x] **COUNCIL-03**: Council outputs a per-finding verdict table with `REAL | FALSE_POSITIVE | NEEDS_MORE_CONTEXT`, a confidence score (0.0-1.0), and a one-line justification grounded in the embedded code.
 - [x] **COUNCIL-04**: Council also returns a "Missed findings" section listing any real issues visible in the embedded code that the auditor did not report. Each missed finding includes location, rule, code excerpt, claim, suggested severity (auditor accepts or rejects).
-- [ ] **COUNCIL-05**: When the Council marks a finding `FALSE_POSITIVE`, `/audit` displays the verdict and prompts the user to run `/audit-skip` to persist it. The audit never auto-writes exceptions on the user's behalf.
+- [x] **COUNCIL-05**: When the Council marks a finding `FALSE_POSITIVE`, `/audit` displays the verdict and prompts the user to run `/audit-skip` to persist it. The audit never auto-writes exceptions on the user's behalf.
 - [ ] **COUNCIL-06**: The Council orchestrator (`scripts/council/brain.py`) runs Gemini and ChatGPT in parallel for `audit-review` mode and collates per-finding verdicts. Disagreements (one says REAL, one says FALSE_POSITIVE) are flagged as `disputed` and surfaced to the user without auto-resolution.
 
 ### Template Propagation Across All 7 Frameworks

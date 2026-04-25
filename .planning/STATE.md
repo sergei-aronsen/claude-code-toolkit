@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-04-25T20:17:45.838Z"
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-04-25T20:17:55.531Z"
 last_activity: 2026-04-25 -- Phase 15 planning complete
 progress:
   total_phases: 5
@@ -79,6 +79,8 @@ Carry-over decisions from v4.1:
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: create_audit_exceptions() placed immediately after create_lessons_learned() in init-claude.sh; no per-block DRY_RUN in init-local.sh (script-level early-exit covers it); mkdir -p added in update-claude.sh before seed write
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: CR-01 closed: sed strip into STRIPPED_TMP before grep/display + in_comment awk state machine in Step 5 rebuild — EXC-02 fully satisfied
 - [Phase 14-audit-pipeline-fp-recheck-structured-reports]: Use tail -1 for H2 section line numbers in audit-output-format.md — file has duplicate heading names in description vs skeleton sections
+- [Phase 15]: D-12: /audit NEVER auto-writes audit-exceptions.md; it only nudges users to run /audit-skip after Council returns FALSE_POSITIVE
+- [Phase 15]: D-13: disputed rows prompt user with three options (R/F/N), no default — mirrors /audit-restore [y/N] style
 
 ### Roadmap Evolution
 
@@ -113,11 +115,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 13-foundation-fp-allowlist-skip-restore-commands P04 | 15 | 4 tasks | 4 files |
 | Phase 13-foundation-fp-allowlist-skip-restore-commands P05 | 2 | 2 tasks | 1 files |
 | Phase 14-audit-pipeline-fp-recheck-structured-reports P04 | 35min | 3 tasks | 7 files |
+| Phase 15 P03 | 5 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T20:17:39.278Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-04-25T20:17:55.528Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
