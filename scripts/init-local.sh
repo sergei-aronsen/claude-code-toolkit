@@ -33,6 +33,8 @@ source "$SCRIPT_DIR/detect.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/install.sh"
 # shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/dry-run-output.sh"
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/state.sh"
 
 # Colors (auto-disabled when stdout is not a tty, per D-36). Reassigned AFTER

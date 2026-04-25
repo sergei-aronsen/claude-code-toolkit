@@ -65,10 +65,10 @@ else
     report_fail "dry-run output missing [+ INSTALL] lines"
 fi
 
-if grep -qE '\[SKIP' "$DRY_OUTPUT"; then
-    report_pass "dry-run output contains [SKIP lines"
+if grep -qE '\[- SKIP\]' "$DRY_OUTPUT"; then
+    report_pass "dry-run output contains [- SKIP] lines"
 else
-    report_fail "dry-run output missing [SKIP lines"
+    report_fail "dry-run output missing [- SKIP] lines"
 fi
 
 if grep -qE '^Total:' "$DRY_OUTPUT"; then

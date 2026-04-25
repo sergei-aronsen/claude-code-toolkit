@@ -68,20 +68,28 @@ backup_settings_once() {
 }
 
 # print_dry_run_grouped <manifest_path> <mode>
-# Prints one [INSTALL]/[SKIP - conflicts_with:<plugin>] line per file in manifest.files.*,
-# followed by a Total: footer. ANSI colors auto-disable when stdout is not a tty (D-36).
-# Zero filesystem writes. Returns 0.
+# Prints chezmoi-grade grouped dry-run output:
+#   [+ INSTALL]                                  N files
+#     bucket/path
+#     ...
+#   [- SKIP]                                     N files
+#     bucket/path  (conflicts_with:plugin)
+#   Total: N files
+# Color via dro_* helpers — caller MUST source scripts/lib/dry-run-output.sh first.
+# ANSI auto-disable on non-TTY OR NO_COLOR (no-color.org).
+# Zero filesystem writes. Returns 0 on success, 1 on bad mode / missing jq /
+# missing dro_init_colors.
 print_dry_run_grouped() {
     local manifest_path="$1" mode="$2"
-    local _GREEN _YELLOW _NC
-    if [ -t 1 ]; then
-        _GREEN='\033[0;32m'; _YELLOW='\033[1;33m'; _NC='\033[0m'
-    else
-        _GREEN=''; _YELLOW=''; _NC=''
+    # Initialize dro_* color vars (TTY + NO_COLOR gated). Caller (init-claude.sh)
+    # must have sourced scripts/lib/dry-run-output.sh BEFORE this function runs.
+    if ! command -v dro_init_colors >/dev/null 2>&1; then
+        echo "ERROR: dry-run-output.sh not sourced — print_dry_run_grouped cannot render" >&2
+        return 1
     fi
+    dro_init_colors
 
-    # Build the same skip_json as compute_skip_set (kept inline so the jq filter
-    # can produce the {bucket, path, skip, reason} stream in one pass).
+    # Build skip_json (case dispatch unchanged from original)
     local skip_json
     case "$mode" in
         standalone)         skip_json='[]' ;;
@@ -97,7 +105,11 @@ print_dry_run_grouped() {
         return 1
     fi
 
-    local install_count=0 skip_count=0
+    # First pass: collect into INSTALL_PATHS and SKIP_PATHS arrays.
+    # SKIP entries are stored as "bucket/path  (conflicts_with:reason)" strings so
+    # the per-file annotation survives into the grouped output.
+    local -a INSTALL_PATHS=()
+    local -a SKIP_PATHS=()
     while IFS= read -r line; do
         local bucket path skip reason
         bucket=$(printf '%s' "$line" | jq -r '.bucket')
@@ -105,11 +117,9 @@ print_dry_run_grouped() {
         skip=$(printf '%s'   "$line" | jq -r '.skip')
         reason=$(printf '%s' "$line" | jq -r '.reason')
         if [ "$skip" = "true" ]; then
-            printf '%b[SKIP - conflicts_with:%s]%b %s/%s\n' "$_YELLOW" "$reason" "$_NC" "$bucket" "$path"
-            skip_count=$((skip_count + 1))
+            SKIP_PATHS+=("${bucket}/${path}  (conflicts_with:${reason})")
         else
-            printf '%b[INSTALL]%b %s/%s\n' "$_GREEN" "$_NC" "$bucket" "$path"
-            install_count=$((install_count + 1))
+            INSTALL_PATHS+=("${bucket}/${path}")
         fi
     done < <(jq -c --argjson skip "$skip_json" '
         .files | to_entries[] |
@@ -120,8 +130,29 @@ print_dry_run_grouped() {
           reason: ((.conflicts_with // []) | join(",")) }
     ' "$manifest_path")
 
-    echo ""
-    echo "Total: $install_count install, $skip_count skip"
+    local install_count="${#INSTALL_PATHS[@]}"
+    local skip_count="${#SKIP_PATHS[@]}"
+    local total=$((install_count + skip_count))
+
+    # Second pass: print grouped sections (only render groups with count > 0)
+    if [ "$install_count" -gt 0 ]; then
+        dro_print_header "+" "INSTALL" "$install_count" _DRO_G
+        local p
+        for p in "${INSTALL_PATHS[@]}"; do
+            dro_print_file "$p"
+        done
+        echo ""
+    fi
+    if [ "$skip_count" -gt 0 ]; then
+        dro_print_header "-" "SKIP" "$skip_count" _DRO_Y
+        local s
+        for s in "${SKIP_PATHS[@]}"; do
+            dro_print_file "$s"
+        done
+        echo ""
+    fi
+
+    dro_print_total "$total"
 }
 
 # merge_settings_python <settings_path> <hook_command>
