@@ -867,15 +867,11 @@ def run_audit_review(report_path_str, config):
 # Main orchestration
 # ─────────────────────────────────────────────────
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 brain.py \"Your implementation plan\"")
-        print("       brain \"Your implementation plan\"")
-        sys.exit(1)
-
-    plan = sys.argv[1]
+def _run_validate_plan(plan, config):
+    """Existing Phase 1-4 validate-plan flow. Behavior is byte-identical
+    to the v3.0.0 brain.py main() body — no logic changes here.
+    """
     validate_plan(plan)
-    config = load_config()
 
     project_map = get_project_structure()
     git_diff = get_git_diff()
@@ -1059,7 +1055,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     # Save report to scratchpad
     scratchpad = Path.cwd() / ".claude" / "scratchpad"
     scratchpad.mkdir(parents=True, exist_ok=True)
-    report_path = scratchpad / "council-report.md"
+    vp_report_path = scratchpad / "council-report.md"
 
     report = f"""# Supreme Council Review Report
 
@@ -1095,8 +1091,59 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - **SKIP** — don't do this. Move on to something else.
 """
 
-    report_path.write_text(report, encoding="utf-8")
-    print(f"Report saved: {report_path}")
+    vp_report_path.write_text(report, encoding="utf-8")
+    print(f"Report saved: {vp_report_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="brain",
+        description=(
+            "Supreme Council orchestrator. "
+            "Two modes: validate-plan (default) and audit-review."
+        ),
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["validate-plan", "audit-review"],
+        default=None,
+        help="Council mode (default: validate-plan when a positional plan is given)",
+    )
+    parser.add_argument(
+        "--report",
+        default=None,
+        help="Path to audit report (required when --mode audit-review)",
+    )
+    parser.add_argument(
+        "plan",
+        nargs="?",
+        default=None,
+        help="Implementation plan text (validate-plan mode)",
+    )
+    args = parser.parse_args()
+
+    # Backward-compat: positional plan with no --mode -> validate-plan
+    if args.mode is None:
+        if args.plan:
+            args.mode = "validate-plan"
+        else:
+            parser.print_help()
+            sys.exit(1)
+
+    config = load_config()
+
+    if args.mode == "audit-review":
+        if not args.report:
+            parser.error("--report is required with --mode audit-review")
+        rc = run_audit_review(args.report, config)
+        sys.exit(rc)
+    else:
+        if not args.plan:
+            print("\n❌ validate-plan mode requires a positional plan argument",
+                  file=sys.stderr)
+            print("Usage: python3 brain.py \"Your implementation plan\"", file=sys.stderr)
+            sys.exit(1)
+        _run_validate_plan(args.plan, config)
 
 
 if __name__ == "__main__":
