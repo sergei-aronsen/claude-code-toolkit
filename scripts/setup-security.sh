@@ -105,20 +105,24 @@ else
         echo -e "  Checking for new sections..."
         ADDED=0
 
-        # Extract section headers from the latest template (## N. TITLE)
-        SECTIONS=$(echo "$SECURITY_CONTENT" | grep -n '^## [0-9]\+\.' || true)
+        # Extract section headers from the latest template (## N. TITLE).
+        # ERE for portability: BSD grep doesn't reliably support \+ in BRE.
+        SECTIONS=$(echo "$SECURITY_CONTENT" | grep -nE '^## [0-9]+\.' || true)
 
         while IFS= read -r line; do
             [[ -z "$line" ]] && continue
             LINE_NUM=$(echo "$line" | cut -d: -f1)
             HEADER=$(echo "$line" | cut -d: -f2-)
             # Extract section number for matching (e.g., "## 12." from "## 12. API SECURITY")
-            SECTION_NUM=$(echo "$HEADER" | grep -o '## [0-9]\+\.' || true)
+            SECTION_NUM=$(echo "$HEADER" | grep -oE '## [0-9]+\.' || true)
 
-            if [[ -n "$SECTION_NUM" ]] && ! grep -q "$SECTION_NUM" "$CLAUDE_MD" 2>/dev/null; then
+            # Audit C-09: anchor with `^... ` — without anchoring, `## 1.`
+            # matches inside `## 12.`, `## 13.`, etc., so sections 10-19
+            # are wrongly reported "already present" and skipped.
+            if [[ -n "$SECTION_NUM" ]] && ! grep -qE "^${SECTION_NUM} " "$CLAUDE_MD" 2>/dev/null; then
                 # This section is missing — extract it from the template
                 # Find the next section header or end of file
-                NEXT_LINE=$(echo "$SECURITY_CONTENT" | tail -n +"$((LINE_NUM + 1))" | grep -n '^## [0-9]\+\.' | head -1 | cut -d: -f1)
+                NEXT_LINE=$(echo "$SECURITY_CONTENT" | tail -n +"$((LINE_NUM + 1))" | grep -nE '^## [0-9]+\.' | head -1 | cut -d: -f1)
 
                 if [[ -n "$NEXT_LINE" ]]; then
                     SECTION_BODY=$(echo "$SECURITY_CONTENT" | sed -n "${LINE_NUM},$((LINE_NUM + NEXT_LINE - 2))p")
@@ -314,14 +318,30 @@ PLUGINS=(
 
 if [[ -f "$SETTINGS_JSON" ]]; then
     if grep -q "enabledPlugins" "$SETTINGS_JSON" 2>/dev/null; then
-        # Check if all plugins already present
+        # Audit C-10: substring grep for `code-review@...` matches inside
+        # `_disabled_code-review@...` and other unrelated keys, falsely
+        # reporting "all enabled" and skipping the merge. Use python+json
+        # to check the actual `enabledPlugins[plugin] is true` shape.
         ALL_PRESENT=true
-        for plugin in "${PLUGINS[@]}"; do
-            if ! grep -q "$plugin" "$SETTINGS_JSON" 2>/dev/null; then
-                ALL_PRESENT=false
-                break
-            fi
-        done
+        if command -v python3 &>/dev/null; then
+            for plugin in "${PLUGINS[@]}"; do
+                if ! python3 -c "import json,sys
+c=json.load(open(sys.argv[1]))
+sys.exit(0 if c.get('enabledPlugins',{}).get(sys.argv[2]) is True else 1)" \
+                    "$SETTINGS_JSON" "$plugin" 2>/dev/null; then
+                    ALL_PRESENT=false
+                    break
+                fi
+            done
+        else
+            # Fallback: anchor the grep so we don't accept partial keys.
+            for plugin in "${PLUGINS[@]}"; do
+                if ! grep -qE "\"${plugin}\"[[:space:]]*:[[:space:]]*true" "$SETTINGS_JSON" 2>/dev/null; then
+                    ALL_PRESENT=false
+                    break
+                fi
+            done
+        fi
 
         if [[ "$ALL_PRESENT" == true ]]; then
             echo -e "  ${GREEN}✓${NC} All official plugins already enabled"
