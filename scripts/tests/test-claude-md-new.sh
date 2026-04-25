@@ -245,6 +245,77 @@ scenario_stale_new_cleared() {
 }
 
 # ─────────────────────────────────────────────────
+# Scenario 6: CRLF/BOM/trailing-newline drift treated as identical
+# (Council pass A — minimal whitespace tolerance, no spurious .new)
+# ─────────────────────────────────────────────────
+scenario_whitespace_drift_idempotent() {
+    echo ""
+    echo "Scenario 6: whitespace-drift-idempotent (Council pass A)"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/s6"
+    mkdir -p "$SCR/.claude"
+    seed_minimal_state "$SCR/.claude/toolkit-install.json"
+
+    # User's file: BOM + CRLF + trailing blank line.
+    printf '\xef\xbb\xbfCONTENT\r\nMORE\r\n\r\n' > "$SCR/.claude/CLAUDE.md"
+
+    # Upstream: clean LF + single trailing newline. Same logical content.
+    local FILE_SRC="$SCR/.src"
+    build_file_src "$FILE_SRC" $'CONTENT\nMORE\n'
+
+    run_update "$SCR" "$FILE_SRC" >/dev/null
+
+    [[ -f "$SCR/.claude/CLAUDE.md.new" ]] && local new_exists=true || local new_exists=false
+    assert_eq "false" "$new_exists" "no .new on CRLF/BOM-only drift (whitespace tolerance)"
+}
+
+# ─────────────────────────────────────────────────
+# Scenario 7: existing .new preserved if user mid-reconciliation
+# (Council pass B — don't clobber user's manual diff work)
+# ─────────────────────────────────────────────────
+scenario_preserve_user_edited_new() {
+    echo ""
+    echo "Scenario 7: preserve-user-edited-new (Council pass B)"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/s7"
+    mkdir -p "$SCR/.claude"
+    seed_minimal_state "$SCR/.claude/toolkit-install.json"
+
+    printf '%s' "USER-CONTENT" > "$SCR/.claude/CLAUDE.md"
+    # User has been working through a previous .new (different from what's
+    # about to land — e.g. they manually patched it).
+    printf '%s' "USER-EDITED-RECONCILIATION" > "$SCR/.claude/CLAUDE.md.new"
+
+    local FILE_SRC="$SCR/.src"
+    build_file_src "$FILE_SRC" "BRAND-NEW-UPSTREAM-V4"
+
+    run_update "$SCR" "$FILE_SRC" >/dev/null
+
+    # Versioned backup of the user's prior .new must exist.
+    local versioned_count
+    versioned_count=$(find "$SCR/.claude" -maxdepth 1 -name 'CLAUDE.md.new.*' -type f 2>/dev/null | wc -l | tr -d ' ')
+    assert_eq "1" "$versioned_count" "prior .new versioned as .new.<timestamp>"
+
+    # The versioned backup must contain the user's edited content, not upstream.
+    local backup
+    backup=$(find "$SCR/.claude" -maxdepth 1 -name 'CLAUDE.md.new.*' -type f -print -quit)
+    local backup_body
+    backup_body=$(cat "$backup")
+    assert_eq "USER-EDITED-RECONCILIATION" "$backup_body" \
+        "versioned backup contains user-edited content (not upstream)"
+
+    # Fresh .new now contains the new upstream.
+    local new_body
+    new_body=$(cat "$SCR/.claude/CLAUDE.md.new")
+    assert_eq "BRAND-NEW-UPSTREAM-V4" "$new_body" "fresh .new contains new upstream"
+
+    # User's CLAUDE.md still preserved.
+    local user_body
+    user_body=$(cat "$SCR/.claude/CLAUDE.md")
+    assert_eq "USER-CONTENT" "$user_body" "user CLAUDE.md untouched"
+}
+
+# ─────────────────────────────────────────────────
 # Run
 # ─────────────────────────────────────────────────
 echo "Test: CLAUDE.md.new flow (audit T-02)"
@@ -254,6 +325,8 @@ scenario_identical
 scenario_differs
 scenario_empty_src
 scenario_stale_new_cleared
+scenario_whitespace_drift_idempotent
+scenario_preserve_user_edited_new
 
 echo ""
 echo "==============================================="

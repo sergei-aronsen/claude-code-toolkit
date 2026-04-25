@@ -867,20 +867,60 @@ if [[ -n "$CLAUDE_MD_TMP" ]] && [[ ! -s "$CLAUDE_MD_TMP" ]]; then
     log_warning "Downloaded CLAUDE.md template was empty — keeping existing file untouched"
 fi
 
+# Normalize line endings (CRLF → LF) and ensure a single trailing newline so
+# trivial whitespace drift across BSD/GNU/git doesn't trip cmp into writing
+# a phantom .new on every update (Council pass: minimal whitespace tolerance).
+# Markdown semantics are preserved — code blocks, tables, indentation untouched.
+normalize_md() {
+    local in="$1" out="$2"
+    python3 - "$in" "$out" <<'PYEOF'
+import sys
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, "rb") as f:
+    data = f.read()
+# Strip UTF-8 BOM if present.
+if data.startswith(b"\xef\xbb\xbf"):
+    data = data[3:]
+# CRLF / CR → LF.
+data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+# Exactly one trailing newline.
+data = data.rstrip(b"\n") + b"\n"
+with open(dst, "wb") as f:
+    f.write(data)
+PYEOF
+}
+
 if [[ -n "$CLAUDE_MD_TMP" ]]; then
     if [[ ! -f "$CLAUDE_MD" ]]; then
         # First install — no existing file to preserve.
         mv "$CLAUDE_MD_TMP" "$CLAUDE_MD"
         log_success "CLAUDE.md created"
-    elif cmp -s "$CLAUDE_MD" "$CLAUDE_MD_TMP"; then
-        # Unchanged — clear any stale .new from a previous run and stay quiet.
-        rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
-        log_info "CLAUDE.md already matches latest template"
     else
-        mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
-        log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"
-        log_info "Diff:  diff -u \"$CLAUDE_MD\" \"$CLAUDE_MD_NEW_FILE\""
-        log_info "Apply: mv \"$CLAUDE_MD_NEW_FILE\" \"$CLAUDE_MD\""
+        # Compare normalized content so CRLF/BOM/trailing-newline drift doesn't
+        # spam .new files on every update (Council pass A).
+        CMP_LOCAL_NORM=$(mktemp)
+        CMP_REMOTE_NORM=$(mktemp)
+        if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
+           && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
+           && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
+            # Unchanged — clear any stale .new from a previous run and stay quiet.
+            rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            log_info "CLAUDE.md already matches latest template"
+        else
+            # Council pass B: don't clobber an existing .new that the user may
+            # be in the middle of reconciling. If the existing .new differs
+            # from what we're about to write, version it as .new.<ts>.
+            if [[ -f "$CLAUDE_MD_NEW_FILE" ]] && ! cmp -s "$CLAUDE_MD_NEW_FILE" "$CLAUDE_MD_TMP"; then
+                NEW_STAMP=$(date -u +%s)
+                mv "$CLAUDE_MD_NEW_FILE" "${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+                log_warning "Preserved prior reconciliation as ${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+            fi
+            mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"
+            log_info "Diff:  diff -u \"$CLAUDE_MD\" \"$CLAUDE_MD_NEW_FILE\""
+            log_info "Apply: mv \"$CLAUDE_MD_NEW_FILE\" \"$CLAUDE_MD\""
+        fi
+        rm -f "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"
     fi
 fi
 
