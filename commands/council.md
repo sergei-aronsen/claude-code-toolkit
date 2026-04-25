@@ -20,6 +20,58 @@ Challenge your implementation plan with Gemini (The Skeptic) and ChatGPT (The Pr
 
 ---
 
+## Modes
+
+The Council orchestrator (`scripts/council/brain.py`) supports two modes. Pick the one that matches your task.
+
+### validate-plan (default)
+
+**Invocation:**
+
+```text
+/council <feature description>
+```
+
+**Produces:** Per-reviewer assessment (Problem Assessment, Simplicity Check, Concerns) plus a
+final consolidated verdict — `PROCEED / SIMPLIFY / RETHINK / SKIP`.
+
+**When to use:** Before implementing any non-trivial feature or architectural change. Run this
+BEFORE writing code so the Council's verdict influences scope.
+
+**Prompt:** Built into `brain.py` (`GEMINI_SYSTEM` and `GPT_SYSTEM` constants in
+`scripts/council/brain.py`).
+
+**Output:** `.claude/scratchpad/council-report.md`
+
+---
+
+### audit-review
+
+**Invocation:**
+
+```text
+/council audit-review --report <path-to-audit-report>
+```
+
+**Produces:** Per-finding verdict table with columns `| ID | verdict | confidence | justification |`.
+Each row carries one of `REAL / FALSE_POSITIVE / NEEDS_MORE_CONTEXT`. Plus a `## Missed findings`
+section listing real issues visible in the embedded code blocks that the auditor did not report.
+Plus in-place rewrite of the report's `## Council verdict` slot and the YAML `council_pass:`
+frontmatter key (mutates `pending` to `passed`, `failed`, or `disputed`).
+
+**When to use:** After every `/audit` run (Phase 5 of the audit workflow — mandatory).
+The audit run is incomplete until Council returns. There is no `--no-council` flag in v4.2.
+
+**Constraints:** The Council MUST NOT reclassify severity (COUNCIL-02). Severity stays with
+the auditor. Disagreements between Gemini and ChatGPT are flagged `disputed` with confidence
+`min(g_conf, c_conf)` and surfaced to the user without auto-resolution (COUNCIL-06).
+
+**Prompt:** `scripts/council/prompts/audit-review.md`
+
+**Output:** Mutates the input report file in place; prints a collated stdout summary.
+
+---
+
 ## When to Use
 
 | Situation | Use /council |
