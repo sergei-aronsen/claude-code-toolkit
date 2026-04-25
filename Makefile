@@ -106,6 +106,9 @@ test:
 	@echo "Test 18: audit pipeline fixture — allowlist match + FP schema"
 	@bash scripts/tests/test-audit-pipeline.sh
 	@echo ""
+	@echo "Test 19: council audit-review — verdict slot rewrite + parallel dispatch"
+	@bash scripts/tests/test-council-audit-review.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
