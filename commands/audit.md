@@ -191,7 +191,38 @@ Automatically detect framework and use appropriate template:
 
 ## Council Handoff (Phase 15)
 
-Phase 5 of the workflow invokes `/council audit-review --report <path>`. Council is mandatory: the audit run is reported as incomplete until the Council pass returns. Council confirms or rejects each finding using the embedded verbatim code block in the report — see `components/audit-output-format.md` for the report schema Council reads. Council MUST NOT reclassify severity (COUNCIL-02); it confirms REAL vs FALSE_POSITIVE only. When Council marks a finding `FALSE_POSITIVE`, this command prints the verdict and prompts the user to run `/audit-skip` to persist the exception (`/audit` never auto-writes the allowlist).
+Phase 5 of the workflow invokes `/council audit-review --report <path>`. Council is mandatory: the audit run is reported as incomplete until the Council pass returns. Council confirms or rejects each finding using the embedded verbatim code block in the report — see `components/audit-output-format.md` for the report schema Council reads. Council MUST NOT reclassify severity (COUNCIL-02); it confirms REAL vs FALSE_POSITIVE only.
+
+### FALSE_POSITIVE Nudge (COUNCIL-05)
+
+For each verdict where `verdict == FALSE_POSITIVE` (and the auditor agrees), `/audit` prints a structured nudge:
+
+```text
+Council confirmed F-NNN as FALSE_POSITIVE.
+To persist: /audit-skip <path>:<line> <rule> "<reason>"
+```
+
+`/audit` NEVER writes to `.claude/rules/audit-exceptions.md` directly. The `/audit-skip` command (Phase 13 EXC-01 contract) is the only writer. The user MUST run `/audit-skip` themselves — `/audit` only nudges. This preserves the EXC-04 validation guard chain (file existence, line count, duplicate check) that `/audit-skip` enforces before appending an entry.
+
+### Disputed Resolution (D-13)
+
+For each `disputed` row (Gemini and ChatGPT disagree on REAL vs FALSE_POSITIVE per COUNCIL-06), `/audit` prints the disagreement and prompts the user to choose:
+
+```text
+F-NNN is disputed:
+  Gemini: <g_verdict> (confidence <g_conf>) — <g_justification>
+  ChatGPT: <c_verdict> (confidence <c_conf>) — <c_justification>
+
+Choose: (R)eal — keep as a finding
+        (F)alse positive — run /audit-skip
+        (N)eeds more context — leave open in next audit
+```
+
+No default. The user MUST choose before the audit run is considered complete. The single-character prompt mirrors the `[y/N]` style of `/audit-restore` (Phase 13 EXC-02 contract) — explicit, fail-loud, no implicit acceptance.
+
+### Orchestrator Reference
+
+The Council orchestrator that implements both behaviors above is `scripts/council/brain.py --mode audit-review --report <path>`. See `commands/council.md` `## Modes` section (added in Phase 15) for invocation syntax and the prompt template at `scripts/council/prompts/audit-review.md` for the contract Council enforces against backends.
 
 ---
 
