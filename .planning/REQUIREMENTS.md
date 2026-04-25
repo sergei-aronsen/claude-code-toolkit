@@ -42,8 +42,8 @@ Every `/audit` run terminates in a Council pass that confirms or rejects each fi
 
 Every framework's audit prompt set picks up the new behavior consistently.
 
-- [ ] **TEMPLATE-01**: Every `templates/{base,laravel,rails,nextjs,nodejs,python,go}/prompts/{SECURITY_AUDIT,CODE_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,DEPLOY_CHECKLIST,DESIGN_REVIEW}.md` file is updated to include: (a) top-of-file callout pointing to `audit-exceptions.md`, (b) the 6-step FP-recheck SELF-CHECK section, (c) the new structured OUTPUT FORMAT, (d) "Council handoff" footer.
-- [ ] **TEMPLATE-02**: Existing language in each prompt is preserved — Russian sections stay Russian, English sections stay English. No translation drift introduced.
+- [x] **TEMPLATE-01**: Every `templates/{base,laravel,rails,nextjs,nodejs,python,go}/prompts/{SECURITY_AUDIT,CODE_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,DEPLOY_CHECKLIST,DESIGN_REVIEW}.md` file is updated to include: (a) top-of-file callout pointing to `audit-exceptions.md`, (b) the 6-step FP-recheck SELF-CHECK section, (c) the new structured OUTPUT FORMAT, (d) "Council handoff" footer.
+- [x] **TEMPLATE-02**: Existing language in each prompt is preserved — Russian sections stay Russian, English sections stay English. No translation drift introduced.
 - [ ] **TEMPLATE-03**: `make validate` (and CI mirror in `.github/workflows/quality.yml`) asserts each updated prompt file contains the literal markers `Council handoff` and the six numbered FP-recheck steps. Missing markers fail the build.
 
 ### Distribution + Tooling
