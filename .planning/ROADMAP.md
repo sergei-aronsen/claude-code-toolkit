@@ -36,7 +36,7 @@
 <details>
 <summary>🟢 v4.2 Audit System v2 (Phases 13–17) — IN PROGRESS</summary>
 
-- [ ] **Phase 13: Foundation — FP Allowlist + Skip/Restore Commands** — Repo-local exception file + `/audit-skip` and `/audit-restore` commands wired through installers
+- [x] **Phase 13: Foundation — FP Allowlist + Skip/Restore Commands** — Repo-local exception file + `/audit-skip` and `/audit-restore` commands wired through installers (completed 2026-04-25)
 - [ ] **Phase 14: Audit Pipeline — FP Recheck + Structured Reports** — `/audit` honors allowlist, runs 6-step FP recheck, emits parser-friendly reports with verbatim code
 - [ ] **Phase 15: Council Audit-Review Integration** — Mandatory Council pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden)
 - [ ] **Phase 16: Template Propagation — 49 Prompt Files** — All 7 frameworks × 7 audit prompt files updated, CI gates assert markers
@@ -134,7 +134,7 @@
 | 10. Upstream GSD Issues | v4.1 | 1/1 | Complete | 2026-04-24 |
 | 11. UX Polish | v4.1 | 3/3 | Complete | 2026-04-25 |
 | 12. Audit Verification + Template Hardening | v4.1 | 2/2 | Complete | 2026-04-24 |
-| 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete   | 2026-04-25 |
+| 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete    | 2026-04-25 |
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 0/0 | Not started | - |
 | 15. Council Audit-Review Integration | v4.2 | 0/0 | Not started | - |
 | 16. Template Propagation — 49 Prompt Files | v4.2 | 0/0 | Not started | - |

@@ -1,26 +1,24 @@
 ---
 phase: 13-foundation-fp-allowlist-skip-restore-commands
-verified: 2026-04-25T15:30:00Z
-status: gaps_found
-score: 4/5 must-haves verified
+verified: 2026-04-25T16:00:00Z
+status: passed
+score: 5/5 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "User can run `/audit-restore <file:line> <rule>` and, after a `[y/N]` confirmation, see the matching entry removed from `audit-exceptions.md`"
-    status: partial
-    reason: "CR-01: `grep -Fxq` in Step 2 matches the example heading inside the seeded HTML comment block. Running `/audit-restore scripts/setup-security.sh:142 SEC-RAW-EXEC` on any freshly-seeded project (which is the common case) deletes lines from inside the `<!-- -->` block, leaving an unclosed HTML comment in `audit-exceptions.md`. Claude then auto-loads this malformed file every session. The awk display (Step 3) and delete (Step 5) operate on the whole file with no comment-awareness, so the corruption is committed by Step 6 mv. The Step 5 sanity check passes because the heading is successfully removed — the error is not caught."
-    artifacts:
-      - path: "commands/audit-restore.md"
-        issue: "Step 2 `grep -Fxq -- \"$HEADING\" \"$EXC_FILE\"` matches inside HTML comment blocks. No comment-stripping (e.g., `sed '/^<!--/,/^-->/d'`) applied before the match."
-    missing:
-      - "In Step 2 of `commands/audit-restore.md`, strip HTML comment blocks from the search file before the `grep -Fxq` match. Recommended fix from 13-REVIEW.md CR-01: `sed '/^<!--/,/^-->/d' \"$EXC_FILE\" > \"$STRIPPED_TMP\"` then grep against `$STRIPPED_TMP`. Apply the same strip to the display (Step 3) and delete (Step 5) awk passes, or verify they cannot reach comment lines via their existing stop conditions."
+re_verification:
+  previous_status: gaps_found
+  previous_score: 4/5
+  gaps_closed:
+    - "CR-01: `/audit-restore` Step 2 grep matched the seeded HTML-comment example heading, enabling corruption of freshly-seeded audit-exceptions.md"
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 13: Foundation — FP Allowlist + Skip/Restore Commands — Verification Report
 
 **Phase Goal:** Users have a persistent, auto-loaded false-positive allowlist plus the commands to maintain it
-**Verified:** 2026-04-25T15:30:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-04-25T16:00:00Z
+**Status:** passed
+**Re-verification:** Yes — after CR-01 gap closure (plan 13-05, commits f932407 + bbf9f5a)
 
 ---
 
@@ -30,13 +28,13 @@ gaps:
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | User can run `/audit-skip <file:line> <rule> <reason>` and see a structured block (location, rule, reason, date, council status) appended to `.claude/rules/audit-exceptions.md` | VERIFIED | `commands/audit-skip.md` exists (241 lines). All 7 Process steps are substantive Bash. Validation order (arg-count → git ls-files → awk line-count → grep -Fxq duplicate), atomic two-temp write, council enum with `unreviewed` default. markdownlint exits 0. |
-| 2 | User can run `/audit-restore <file:line> <rule>` and, after a `[y/N]` confirmation, see the matching entry removed from `audit-exceptions.md` | PARTIAL | `commands/audit-restore.md` exists (218 lines) with [y/N] prompt, `< /dev/tty` fallback, awk sentinel-blank deletion, atomic mv, no `--force`. However, CR-01 confirmed: `grep -Fxq` in Step 2 matches the example heading inside the seeded HTML comment. Reproducing: run `/audit-restore scripts/setup-security.sh:142 SEC-RAW-EXEC` on any fresh-seeded project; the command displays the comment block, user confirms, awk deletes from heading to EOF (no following `###` or `##`), leaving an unclosed `<!--`. The Step 5 sanity check PASSES (heading gone) and `mv` commits the corrupted file. |
-| 3 | `/audit-skip` refuses to write when `<file:line>` is missing from `git ls-files` or beyond the file's line count, and refuses duplicates of `path:line + rule` (showing the existing record instead) | VERIFIED | Step 2: `git ls-files --error-unmatch -- "$PATH_PART"`. Step 3: `awk 'END{print NR}'` line-count check. Step 4: `grep -Fxq -- "$HEADING" "$EXC_FILE"` duplicate check + `grep -A 5 -F` to display full block. All three are hard-refusal (no `--force`). |
-| 4 | `audit-exceptions.md` ships with `globs: ["**/*"]` frontmatter so Claude auto-loads it in every session, schema-aligned with existing `.claude/rules/` files | VERIFIED | `templates/base/rules/audit-exceptions.md` exists. Frontmatter: `description:` first, then `globs:` in list form (`  - "**/*"`). `## Entries` H2 present. Example inside HTML comment (not a parseable entry). Not in `manifest.json` per CD-01. markdownlint exits 0. `grep -c $'—'` returns 3 (H1 separator + example H3 + example text). |
-| 5 | Running `init-claude.sh`, `init-local.sh`, or `update-claude.sh` against a project that already has a user-modified `audit-exceptions.md` leaves the file untouched; only first-time installs seed the empty template | VERIFIED | `init-claude.sh`: `create_audit_exceptions()` function with `[[ -f "$exceptions_file" ]]; then return` guard + DRY_RUN string form. `init-local.sh`: `[ ! -f "$EXCEPTIONS_FILE" ]` POSIX guard, no per-block DRY_RUN. `update-claude.sh`: `[[ ! -f "$EXCEPTIONS_FILE" ]]` double-bracket guard, `[[ $DRY_RUN -eq 1 ]]` integer form. All three heredoc bodies diff-identical to `templates/base/rules/audit-exceptions.md`. shellcheck exits 0 on all three. |
+| 1 | User can run `/audit-skip <file:line> <rule> <reason>` and see a structured block (location, rule, reason, date, council status) appended to `.claude/rules/audit-exceptions.md` | VERIFIED | `commands/audit-skip.md` exists, 241 lines. All 7 process steps substantive. Validation order: arg-count → git ls-files → awk line-count → grep -Fxq duplicate. Atomic two-temp write. Council enum with `unreviewed` default. markdownlint exits 0. No regression from initial verification. |
+| 2 | User can run `/audit-restore <file:line> <rule>` and, after a `[y/N]` confirmation, see the matching entry removed from `audit-exceptions.md` | VERIFIED | CR-01 closed. `commands/audit-restore.md` exists, 263 lines. Step 2 now strips HTML comment blocks via `sed '/^<!--/,/^-->/d' "$EXC_FILE" > "$STRIPPED_TMP"` before `grep -Fxq` match. Step 3 display awk reads `$STRIPPED_TMP`. Step 5 delete awk gains `in_comment` state machine reading `$EXC_FILE` verbatim (preserves the comment block). Step 6 `mv "$NEW_TMP" "$EXC_FILE"` still atomic. Reproduction test passes: fresh-seed invocation exits 1 with `no entry found for scripts/setup-security.sh:142:SEC-RAW-EXEC`, file byte-identical. markdownlint exits 0. `make check` exits 0. |
+| 3 | `/audit-skip` refuses to write when `<file:line>` is missing from `git ls-files` or beyond the file's line count, and refuses duplicates of `path:line + rule` (showing the existing record instead) | VERIFIED | Step 2: `git ls-files --error-unmatch -- "$PATH_PART"`. Step 3: `awk 'END{print NR}'` line-count check. Step 4: `grep -Fxq -- "$HEADING" "$EXC_FILE"` duplicate check + `grep -A 5 -F` to display full block. All three hard-refusal (no `--force`). No regression. |
+| 4 | `audit-exceptions.md` ships with `globs: ["**/*"]` frontmatter so Claude auto-loads it in every session, schema-aligned with existing `.claude/rules/` files | VERIFIED | `templates/base/rules/audit-exceptions.md` exists. Frontmatter: `description:` first, then `globs:` with list-form `  - "**/*"`. `## Entries` H2 present. Example inside HTML comment (not a parseable entry). markdownlint exits 0. File unchanged from initial verification. |
+| 5 | Running `init-claude.sh`, `init-local.sh`, or `update-claude.sh` against a project that already has a user-modified `audit-exceptions.md` leaves the file untouched; only first-time installs seed the empty template | VERIFIED | `init-claude.sh`: `create_audit_exceptions()` function at line 541 with `[[ -f "$exceptions_file" ]]; then return` guard, invoked at line 782. `init-local.sh`: POSIX `[ ! -f "$EXCEPTIONS_FILE" ]` guard at line 319. `update-claude.sh`: `[[ ! -f "$EXCEPTIONS_FILE" ]]` guard at line 975, `[[ $DRY_RUN -eq 1 ]]` integer form at 976. `make check` (shellcheck) exits 0 on all three. No regression. |
 
-**Score:** 4/5 truths verified (SC-2 partial due to CR-01)
+**Score:** 5/5 truths verified
 
 ---
 
@@ -44,12 +42,12 @@ gaps:
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `templates/base/rules/audit-exceptions.md` | Seed allowlist template, `globs: ["**/*"]`, schema reference | VERIFIED | Exists. Frontmatter correct (list form). `## Entries` H2. Example inside `<!-- -->`. 26 lines. markdownlint clean. |
-| `commands/audit-skip.md` | Slash command spec with validation logic (EXC-01, EXC-04) | VERIFIED | Exists, 241 lines (min 120). All 7 process steps substantive. `git ls-files --error-unmatch`, `awk 'END{print NR}'`, `grep -Fxq`, `grep -A 5 -F`, atomic write. markdownlint clean. |
-| `commands/audit-restore.md` | Slash command spec with [y/N] confirmation (EXC-02) | PARTIAL | Exists, 218 lines (min 100). All 7 process steps present. [y/N] prompt, `< /dev/tty`, awk deletion, atomic mv, no `--force`. CR-01 bug: comment-unaware grep matches seeded example heading, enabling corruption of fresh installs. |
-| `scripts/init-claude.sh` | `create_audit_exceptions` function + invocation | VERIFIED | Function at line 541, idempotency guard at 544, DRY_RUN string form at 551, heredoc sentinel `EXCEPTIONS`. Invoked at line 782 (line after `create_lessons_learned`). shellcheck clean. |
-| `scripts/init-local.sh` | Inline seed block `EXCEPTIONS_FILE` | VERIFIED | Block at line 317-348. POSIX single-bracket guard. No per-block DRY_RUN (script-level early exit covers it). `(seed)` suffix on success message. shellcheck clean. |
-| `scripts/update-claude.sh` | Idempotent seed guard near EOF, DRY_RUN integer-form | VERIFIED | Block at line 972-1008. Double-bracket guard. `[[ $DRY_RUN -eq 1 ]]` integer form. `mkdir -p "$CLAUDE_DIR/rules"` defensive. shellcheck clean. |
+| `templates/base/rules/audit-exceptions.md` | Seed allowlist template, `globs: ["**/*"]`, schema reference | VERIFIED | Exists. Frontmatter correct (list form). `## Entries` H2. Example inside `<!-- -->`. markdownlint clean. Unchanged from initial verification. |
+| `commands/audit-skip.md` | Slash command spec with validation logic (EXC-01, EXC-04) | VERIFIED | Exists, 241 lines. All 7 process steps substantive. `git ls-files --error-unmatch`, `awk 'END{print NR}'`, `grep -Fxq`, `grep -A 5 -F`, atomic write. markdownlint clean. |
+| `commands/audit-restore.md` | Slash command spec with [y/N] confirmation and HTML-comment safety (EXC-02) | VERIFIED | Exists, 263 lines (increased from 218 post-patch). CR-01 fix applied: `STRIPPED_TMP` + `sed` strip in Step 2, display awk reads `$STRIPPED_TMP` (Step 3), delete awk has `in_comment` state machine reading `$EXC_FILE` (Step 5). Consolidated trap covers both temps. Stale single-temp trap removed. Sanity check preserved. All 7 steps intact. markdownlint clean. |
+| `scripts/init-claude.sh` | `create_audit_exceptions` function + invocation | VERIFIED | Function at line 541, idempotency guard at 544, DRY_RUN string form at 551, heredoc sentinel `EXCEPTIONS`. Invoked at line 782. shellcheck clean. |
+| `scripts/init-local.sh` | Inline seed block `EXCEPTIONS_FILE` | VERIFIED | Block at line 317. POSIX single-bracket guard at 319. Heredoc sentinel `EXCEPTIONS`. shellcheck clean. |
+| `scripts/update-claude.sh` | Idempotent seed guard near EOF, DRY_RUN integer-form | VERIFIED | Block at line 972. Double-bracket guard at 975. `[[ $DRY_RUN -eq 1 ]]` integer form at 976. shellcheck clean. |
 
 ---
 
@@ -58,13 +56,16 @@ gaps:
 | From | To | Via | Status | Details |
 |------|----|-----|--------|---------|
 | `templates/base/rules/audit-exceptions.md` | Claude session auto-load | `globs: ["**/*"]` frontmatter | VERIFIED | List form confirmed: `  - "**/*"` on its own line |
-| `commands/audit-skip.md` (Process steps) | `.claude/rules/audit-exceptions.md` | Atomic append (temp + mv) under `## Entries` H2 | VERIFIED | `BLOCK_TMP` + `NEW_TMP` + `mv "$NEW_TMP" "$EXC_FILE"` confirmed |
+| `commands/audit-skip.md` (Process steps) | `.claude/rules/audit-exceptions.md` | Atomic append (BLOCK_TMP + NEW_TMP + mv) under `## Entries` H2 | VERIFIED | Confirmed unchanged |
 | `commands/audit-skip.md` (validation) | git ls-files + line-count + duplicate-triple | Three hard-refusal checks | VERIFIED | All three present in Steps 2, 3, 4 |
-| `commands/audit-restore.md` (Process steps) | `.claude/rules/audit-exceptions.md` | awk block deletion (atomic temp+mv) | PARTIAL | `mv "$NEW_TMP" "$EXC_FILE"` present and atomic. However Step 2 `grep -Fxq` does not distinguish real entries from HTML-commented examples — CR-01 bug. |
-| `commands/audit-restore.md` (Step 4) | Interactive [y/N] confirmation | `read -r ANSWER < /dev/tty` | VERIFIED | Both `[y/N]` prompt text and `< /dev/tty` fallback present. Only `y|Y` proceeds. |
-| `scripts/init-claude.sh:create_audit_exceptions` | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[[ ! -f ]]` guard | VERIFIED | Pattern `<< 'EXCEPTIONS'` and closing `EXCEPTIONS` sentinel confirmed. Body diff-identical to template. |
-| `scripts/init-local.sh` (rules block) | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[ ! -f ]` POSIX guard | VERIFIED | `EXCEPTIONS_FILE=` variable + POSIX guard + heredoc confirmed. Body diff-identical. |
-| `scripts/update-claude.sh` (guard block near EOF) | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[[ ! -f ]]` guard | VERIFIED | Block after `print_update_summary`, before `recommend_optional_plugins`. Body diff-identical. |
+| `commands/audit-restore.md` (Step 2) | `$STRIPPED_TMP` (HTML-comment-stripped copy) | `sed '/^<!--/,/^-->/d' "$EXC_FILE" > "$STRIPPED_TMP"` then `grep -Fxq -- "$HEADING" "$STRIPPED_TMP"` | VERIFIED | CR-01 fix: seeded example heading inside `<!-- -->` can never satisfy the search |
+| `commands/audit-restore.md` (Step 3 display awk) | `$STRIPPED_TMP` | `awk ... ' "$STRIPPED_TMP"` | VERIFIED | Display awk reads comment-stripped copy; no comment-internal text reaches the user's screen |
+| `commands/audit-restore.md` (Step 5 delete awk) | `$EXC_FILE` with `in_comment` guard | `awk ... in_comment` state machine; `' "$EXC_FILE" > "$NEW_TMP"` | VERIFIED | Reads original file; `in_comment` guard makes heading-match rule unreachable inside `<!-- -->` blocks; comment block preserved verbatim |
+| `commands/audit-restore.md` (Step 6) | `$EXC_FILE` (original path) | `mv "$NEW_TMP" "$EXC_FILE"` | VERIFIED | Atomic mv to original path confirmed; `$STRIPPED_TMP` never replaces the file |
+| `commands/audit-restore.md` (Step 4) | Interactive [y/N] confirmation | `read -r ANSWER < /dev/tty` | VERIFIED | `[y/N]` prompt text and `< /dev/tty` fallback present. Only `y|Y` proceeds. `Aborted` message on any other input. |
+| `scripts/init-claude.sh:create_audit_exceptions` | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[[ ! -f ]]` guard | VERIFIED | Pattern `<< 'EXCEPTIONS'` and closing `EXCEPTIONS` sentinel confirmed |
+| `scripts/init-local.sh` (rules block) | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[ ! -f ]` POSIX guard | VERIFIED | POSIX guard + heredoc confirmed |
+| `scripts/update-claude.sh` (guard block near EOF) | `.claude/rules/audit-exceptions.md` | Heredoc `EXCEPTIONS` inside `[[ ! -f ]]` guard | VERIFIED | Block after `print_update_summary`. DRY_RUN integer form. |
 
 ---
 
@@ -79,13 +80,23 @@ Not applicable — this phase delivers markdown spec files (slash command docume
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
 | Seed file has correct frontmatter | `grep -A 2 '^globs:' templates/base/rules/audit-exceptions.md` | `globs:\n  - "**/*"` | PASS |
-| Seed file not in manifest.json | `grep 'audit-exceptions' manifest.json` | no output | PASS |
-| Heredoc bodies byte-identical (init-claude.sh) | `diff <(awk extraction) templates/base/rules/audit-exceptions.md` | empty diff | PASS |
-| Heredoc bodies byte-identical (init-local.sh) | `diff <(awk extraction) templates/base/rules/audit-exceptions.md` | empty diff | PASS |
-| Heredoc bodies byte-identical (update-claude.sh) | `diff <(awk extraction) templates/base/rules/audit-exceptions.md` | empty diff | PASS |
-| CR-01 corruption reproducible | `grep -Fxq '### scripts/setup-security.sh:142 — SEC-RAW-EXEC' templates/base/rules/audit-exceptions.md` | MATCH | FAIL — confirms bug exists in seeded file |
-| markdownlint on all three md deliverables | `npx markdownlint-cli "templates/base/rules/audit-exceptions.md" "commands/audit-skip.md" "commands/audit-restore.md"` | exit 0, no output | PASS |
-| shellcheck on all three installer scripts | `shellcheck -S warning scripts/init-claude.sh scripts/init-local.sh scripts/update-claude.sh` | exit 0, no output | PASS |
+| Step 2 sed strip present | `grep -Fc "sed '/^<!--/,/^-->/d'" commands/audit-restore.md` | 1 | PASS |
+| STRIPPED_TMP count (≥4 uses) | `grep -c STRIPPED_TMP commands/audit-restore.md` | 7 | PASS |
+| in_comment state machine present | `grep -c 'in_comment' commands/audit-restore.md` | 9 | PASS |
+| 7 H3 steps preserved | `grep -cE '^### Step [1-7] ' commands/audit-restore.md` | 7 | PASS |
+| Step 5 awk reads $EXC_FILE not $STRIPPED_TMP | `awk '/^### Step 5/,/^### Step 6/' commands/audit-restore.md \| grep -F "' \"$EXC_FILE\" > \"$NEW_TMP\""` | match | PASS |
+| Stale single-temp trap removed | `grep -Ec "trap 'rm -f \"\\\$NEW_TMP\"' EXIT" commands/audit-restore.md` | 0 | PASS |
+| Consolidated trap present | `grep -F "trap 'rm -f \"$STRIPPED_TMP\" \"$NEW_TMP\"' EXIT" commands/audit-restore.md` | match | PASS |
+| Sanity check preserved | `grep -F 'audit-restore: deletion failed' commands/audit-restore.md` | match | PASS |
+| [y/N] default-N gate | `grep -F '[y/N]' commands/audit-restore.md` | match | PASS |
+| `< /dev/tty` fallback | `grep -F '< /dev/tty' commands/audit-restore.md` | match | PASS |
+| Atomic mv to $EXC_FILE | `grep -F 'mv "$NEW_TMP" "$EXC_FILE"' commands/audit-restore.md` | match | PASS |
+| No --force/-y flag | `grep -E -- '--force\|-y\b' commands/audit-restore.md` (filtered) | none | PASS |
+| HTML-comment safe bullet in Key Principles | `grep -F 'HTML-comment safe' commands/audit-restore.md` | match | PASS |
+| NOT staged reminder | `grep -F 'NOT staged' commands/audit-restore.md` | match | PASS |
+| CR-01 repro: fresh-seed exits 1, file byte-identical | scratch fixture + Steps 1-2 with `scripts/setup-security.sh:142 SEC-RAW-EXEC` | exit 1, stderr = `no entry found for scripts/setup-security.sh:142:SEC-RAW-EXEC`, `diff -q` exit 0 | PASS |
+| markdownlint on audit-restore.md | `markdownlint commands/audit-restore.md` | exit 0 | PASS |
+| make check (full gate) | `make check` | exit 0, all checks passed | PASS |
 
 ---
 
@@ -93,21 +104,19 @@ Not applicable — this phase delivers markdown spec files (slash command docume
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| EXC-01 | 13-02 | `/audit-skip` appends structured block (location, rule, reason, date, council status) | SATISFIED | `commands/audit-skip.md` delivers full 7-step spec. Entry block includes `**Date:**`, `**Council:**`, `**Reason:**` bullets. Atomic write confirmed. |
-| EXC-02 | 13-03 | `/audit-restore` removes entry after confirmation prompt | PARTIALLY SATISFIED | `commands/audit-restore.md` delivers the restore spec with [y/N] confirmation, but CR-01 means the command can corrupt `audit-exceptions.md` when the example heading matches. The removal succeeds for real entries; only the comment-awareness gap is missing. |
+| EXC-01 | 13-02 | `/audit-skip` appends structured block (location, rule, reason, date, council status) | SATISFIED | `commands/audit-skip.md` delivers full 7-step spec. Entry block includes `**Date:**`, `**Council:**`, `**Reason:**` bullets. Atomic write confirmed. No regression. |
+| EXC-02 | 13-03, 13-05 | `/audit-restore` removes entry after confirmation prompt; HTML-comment safe | SATISFIED | `commands/audit-restore.md` delivers restore spec with [y/N] confirmation and CR-01 fix. Step 2 strips comments before grep. Step 3 display reads stripped copy. Step 5 uses `in_comment` state machine preserving comment block verbatim. Reproduction test confirms fresh-seed corruption is impossible. |
 | EXC-03 | 13-01 | `audit-exceptions.md` carries `globs: ["**/*"]` frontmatter, schema-aligned | SATISFIED | File exists with correct list-form frontmatter, `## Entries` H2, example inside HTML comment. markdownlint clean. |
-| EXC-04 | 13-02 | `/audit-skip` validates `<file:line>` via `git ls-files` + line count; refuses duplicates | SATISFIED | Steps 2, 3, 4 confirm git-tracked check, line-count check, exact-triple duplicate check — all hard-refusal. |
-| EXC-05 | 13-04 | Installers seed only when missing, never overwrite | SATISFIED | All three installer guards confirmed. Heredoc bodies byte-identical to template. DRY_RUN behavior correct per-script. shellcheck clean. |
+| EXC-04 | 13-02 | `/audit-skip` validates `<file:line>` via `git ls-files` + line count; refuses duplicates | SATISFIED | Steps 2, 3, 4 confirm git-tracked check, line-count check, exact-triple duplicate check — all hard-refusal. No regression. |
+| EXC-05 | 13-04 | Installers seed only when missing, never overwrite | SATISFIED | All three installer guards confirmed. `[[ -f ]]` / `[ ! -f ]` / `[[ ! -f ]]` guards present. DRY_RUN behavior correct per-script. shellcheck clean. |
 
 ---
 
 ### Anti-Patterns Found
 
-| File | Line | Pattern | Severity | Impact |
-|------|------|---------|----------|--------|
-| `commands/audit-restore.md` | Step 2 (lines 78-88) | `grep -Fxq -- "$HEADING" "$EXC_FILE"` with no HTML-comment stripping | Blocker | On any fresh-seeded project, running `/audit-restore scripts/setup-security.sh:142 SEC-RAW-EXEC` matches inside the `<!-- -->` example block. Confirmed by `grep -Fxq` returning a match against the template file. The awk deletion then excises lines from inside the comment through EOF, leaving an unclosed `<!--` that corrupts every subsequent auto-loaded Claude session. |
+None. CR-01 (the sole blocker from the initial verification) was closed by plan 13-05. The fix is surgical: single-file edit to `commands/audit-restore.md`, no side effects on other deliverables.
 
-Note: WR-01 (awk `-v` failing silently for paths with backslashes in `audit-restore`) and WR-02 (EXIT trap coverage in `update-claude.sh`) are warnings from 13-REVIEW.md. WR-01 has a confusing but non-silent failure path (Step 5 sanity check catches it with "deletion failed"). WR-02 affects temp files with no secrets. Neither rises to blocker for the Phase 13 goal; they are listed for awareness.
+Note: WR-01 (awk `-v` failing silently for paths with backslashes in `audit-restore`) and WR-02 (EXIT trap coverage in `update-claude.sh`) remain as documented warnings from 13-REVIEW.md. WR-01 has a non-silent failure path (Step 5 sanity check catches it). WR-02 affects only temp files with no secrets. Neither rises to blocker for the Phase 13 goal. Both are out of scope for this gap-closure per 13-VERIFICATION.md lines 109-110.
 
 ---
 
@@ -117,52 +126,23 @@ None — all success criteria are verifiable programmatically from the codebase 
 
 ---
 
-### Gaps Summary
+### Gap Closure Summary
 
-**1 gap blocking goal achievement.**
+**CR-01 closed** by plan 13-05 (commits f932407 + bbf9f5a).
 
-**CR-01: `/audit-restore` can corrupt `audit-exceptions.md` on fresh installs**
+The fix applied four edits to `commands/audit-restore.md`:
 
-The freshly-seeded `audit-exceptions.md` contains an HTML comment block with an example entry:
+1. **Step 2:** Added `STRIPPED_TMP="$(mktemp)"` and `sed '/^<!--/,/^-->/d' "$EXC_FILE" > "$STRIPPED_TMP"` before the `grep -Fxq` search. The search target changed from `$EXC_FILE` to `$STRIPPED_TMP`. The consolidated `trap 'rm -f "$STRIPPED_TMP" "$NEW_TMP"' EXIT` was placed here (moved `NEW_TMP` creation up from Step 5).
 
-```text
-<!--
-Example entry (this comment is intentionally not a real entry):
+2. **Step 3:** Display awk input changed from `"$EXC_FILE"` to `"$STRIPPED_TMP"`. Comment-internal text can never reach the user's confirmation screen.
 
-### scripts/setup-security.sh:142 — SEC-RAW-EXEC
-...
--->
-```
+3. **Step 5:** Delete awk gained an `in_comment` state machine. The `in_comment { ... print; next }` rule consumes every line between `^<!--` and `^-->` before the heading-match rule can fire. The awk still reads `$EXC_FILE` (not the stripped copy), so the seeded `<!-- Example entry -->` block is preserved verbatim in the rebuilt file. Stale single-temp trap removed.
 
-The `grep -Fxq` in Step 2 of `commands/audit-restore.md` operates on the raw file with no HTML-comment awareness. Running `/audit-restore scripts/setup-security.sh:142 SEC-RAW-EXEC` on any project where `audit-exceptions.md` was just seeded (and contains only the template content):
+4. **Key Principles:** New "HTML-comment safe" bullet added documenting the protection.
 
-1. Step 2 `grep -Fxq` MATCHES — confirms (incorrectly) that the heading is a real entry.
-2. Step 3 awk DISPLAYS the comment block — user sees what looks like a real entry.
-3. User confirms with `y`.
-4. Step 5 awk DELETES from the heading to EOF (no following `###` or `##` to stop the block) — removes `Allowed Council values:` and the closing `-->`.
-5. Step 5 sanity check PASSES — heading is gone, so the check sees no error.
-6. Step 6 `mv` COMMITS the corrupted file.
-
-Result: `audit-exceptions.md` has an unclosed `<!--`, which corrupts markdown rendering and Claude's auto-loaded context for every subsequent session.
-
-**Fix:** Add HTML-comment stripping before the `grep -Fxq` match in Step 2 of `commands/audit-restore.md`:
-
-```bash
-STRIPPED_TMP="$(mktemp)"
-trap 'rm -f "$STRIPPED_TMP"' EXIT
-sed '/^<!--/,/^-->/d' "$EXC_FILE" > "$STRIPPED_TMP"
-
-if ! grep -Fxq -- "$HEADING" "$STRIPPED_TMP"; then
-    printf 'audit-restore: no entry found for %s:%s:%s\n' "$PATH_PART" "$LINE_PART" "$RULE" >&2
-    exit 1
-fi
-```
-
-Apply the same strip (or add `in_comment` tracking) to the display awk (Step 3) and the delete awk (Step 5) so they also cannot touch lines inside comment blocks.
-
-The root cause is a single missing pre-processing step; the rest of the `audit-restore` spec is correct and complete.
+Reproduction confirms: on a project where `audit-exceptions.md` contains only the seeded template, running `/audit-restore scripts/setup-security.sh:142 SEC-RAW-EXEC` now prints `audit-restore: no entry found for scripts/setup-security.sh:142:SEC-RAW-EXEC` to stderr, exits 1, and leaves the file byte-identical to its pre-invocation state.
 
 ---
 
-_Verified: 2026-04-25T15:30:00Z_
+_Verified: 2026-04-25T16:00:00Z_
 _Verifier: Claude (gsd-verifier)_
