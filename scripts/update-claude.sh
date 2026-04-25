@@ -15,6 +15,10 @@ PRUNE_MODE="interactive"
 CLEAN_BACKUPS=0
 KEEP_N=""
 DRY_RUN_CLEAN=0
+# Phase 11 Plan 11-02 — UX-01 full update preview flag (distinct from DRY_RUN_CLEAN
+# which only governs --clean-backups). The --dry-run arg sets BOTH so existing
+# `--clean-backups --dry-run` workflow continues unchanged (RESEARCH Pitfall 3).
+DRY_RUN=0
 for arg in "$@"; do
     case "$arg" in
         --no-banner) NO_BANNER=1 ;;
@@ -26,7 +30,7 @@ for arg in "$@"; do
         --prune=interactive)                           PRUNE_MODE="interactive" ;;
         --clean-backups)  CLEAN_BACKUPS=1 ;;
         --keep=*)         KEEP_N="${arg#--keep=}" ;;
-        --dry-run)        DRY_RUN_CLEAN=1 ;;
+        --dry-run)        DRY_RUN=1; DRY_RUN_CLEAN=1 ;;
         *) ;;
     esac
 done
@@ -52,8 +56,9 @@ LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install.XXXXXX")
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
+LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
 
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
@@ -76,7 +81,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -355,6 +360,72 @@ print_update_summary() {
     done
 }
 
+# print_update_dry_run — UX-01 SC2 chezmoi-grade preview of update actions.
+# Reads from outer-scope arrays/JSON populated by the read-only diff phase:
+#   NEW_FILES (jq array, +)                — paths to install
+#   MODIFIED_ACTUAL (jq array, ~)          — paths to update (hash differs from state)
+#   SKIPPED_BY_MODE_JSON (jq array, -)     — paths skipped by mode skip-set
+#   REMOVED_FROM_MANIFEST (jq array, -)    — paths removed from manifest
+# Color via dro_* helpers (TTY + NO_COLOR gated).
+# Zero filesystem writes. No prompts. Returns 0.
+print_update_dry_run() {
+    if ! command -v dro_init_colors >/dev/null 2>&1; then
+        echo "ERROR: dry-run-output.sh not sourced — print_update_dry_run cannot render" >&2
+        return 1
+    fi
+    dro_init_colors
+
+    local install_count update_count skip_count remove_count total
+    install_count=$(jq length <<<"$NEW_FILES")
+    update_count=$(jq length <<<"$MODIFIED_ACTUAL")
+    skip_count=$(jq length <<<"$SKIPPED_BY_MODE_JSON")
+    remove_count=$(jq length <<<"$REMOVED_FROM_MANIFEST")
+    total=$((install_count + update_count + skip_count + remove_count))
+
+    if [ "$install_count" -gt 0 ]; then
+        dro_print_header "+" "INSTALL" "$install_count" _DRO_G
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            dro_print_file "$p"
+        done < <(jq -r '.[]' <<<"$NEW_FILES")
+        echo ""
+    fi
+
+    if [ "$update_count" -gt 0 ]; then
+        dro_print_header "~" "UPDATE" "$update_count" _DRO_C
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            dro_print_file "$p"
+        done < <(jq -r '.[]' <<<"$MODIFIED_ACTUAL")
+        echo ""
+    fi
+
+    if [ "$skip_count" -gt 0 ]; then
+        dro_print_header "-" "SKIP" "$skip_count" _DRO_Y
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            local reason
+            reason=$(jq -r --arg p "$p" '
+                .files | to_entries[] | .value[] | select(.path == $p) |
+                (.conflicts_with // [] | join(","))
+            ' "$MANIFEST_TMP")
+            dro_print_file "${p}  (conflicts_with:${reason:-unknown})"
+        done < <(jq -r '.[]' <<<"$SKIPPED_BY_MODE_JSON")
+        echo ""
+    fi
+
+    if [ "$remove_count" -gt 0 ]; then
+        dro_print_header "-" "REMOVE" "$remove_count" _DRO_R
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            dro_print_file "$p"
+        done < <(jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST")
+        echo ""
+    fi
+
+    dro_print_total "$total"
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -557,8 +628,35 @@ REMOVED_BY_SWITCH_JSON='[]'
 # Pre-dispatch read-only hash check to determine if anything actually changed.
 # ─────────────────────────────────────────────────
 MODIFIED_ACTUAL=$(compute_modified_actual)
+
+# ── Skip-set pre-computation (moved here from install loop for dry-run access) ──
+# Phase 11 Plan 11-02 — UX-01: must be available before dry-run exit below.
+# Formula: (manifest - installed) ∩ skip_set  i.e. would-be-new files filtered out by mode.
+# Previously-installed files in skip_set are handled by the removed-files path, not here.
+SKIP_SET_JSON=$(compute_skip_set "$STATE_MODE" "$MANIFEST_TMP")
+MANIFEST_FILES_JSON=$(jq -c '[.files | to_entries[] | .value[] | .path]' "$MANIFEST_TMP")
+INSTALLED_PATHS_JSON=$(jq -c '[.installed_files[].path]' <<<"$STATE_JSON")
+SKIPPED_BY_MODE_JSON=$(jq -nc \
+    --argjson manifest "$MANIFEST_FILES_JSON" \
+    --argjson installed "$INSTALLED_PATHS_JSON" \
+    --argjson skipset "$SKIP_SET_JSON" \
+    '($manifest - $installed) - (($manifest - $installed) - $skipset)')
+
 if is_update_noop; then
     echo "Already up-to-date. Nothing to do."
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────
+# Phase 11 Plan 11-02 — UX-01 SC2 full update --dry-run preview.
+# Decision A3 (locked): when --dry-run is passed without --clean-backups, run all
+# read-only steps (already complete by here) then print 4-group preview and exit 0
+# BEFORE acquire_lock, BEFORE BACKUP_DIR creation, BEFORE any file write.
+# When --clean-backups is also passed, the earlier dispatch at line ~378 exits before
+# control reaches here, so this block is skipped (CLEAN_BACKUPS path unchanged).
+# ─────────────────────────────────────────────────
+if [[ $DRY_RUN -eq 1 && $CLEAN_BACKUPS -eq 0 ]]; then
+    print_update_dry_run
     exit 0
 fi
 
@@ -566,7 +664,7 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$MANIFEST_TMP"' EXIT
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
@@ -609,16 +707,8 @@ while IFS= read -r rel; do
 done < <(jq -r '.[]' <<<"$NEW_FILES")
 
 # ── Skip-set tracking (W2 fix: only paths that WOULD be new but are filtered by mode) ──
-# Formula: (manifest - installed) ∩ skip_set  i.e. would-be-new files filtered out by mode.
-# Previously-installed files in skip_set are handled by the removed-files path, not here.
-SKIP_SET_JSON=$(compute_skip_set "$STATE_MODE" "$MANIFEST_TMP")
-MANIFEST_FILES_JSON=$(jq -c '[.files | to_entries[] | .value[] | .path]' "$MANIFEST_TMP")
-INSTALLED_PATHS_JSON=$(jq -c '[.installed_files[].path]' <<<"$STATE_JSON")
-SKIPPED_BY_MODE_JSON=$(jq -nc \
-    --argjson manifest "$MANIFEST_FILES_JSON" \
-    --argjson installed "$INSTALLED_PATHS_JSON" \
-    --argjson skipset "$SKIP_SET_JSON" \
-    '($manifest - $installed) - (($manifest - $installed) - $skipset)')
+# SKIPPED_BY_MODE_JSON already computed before the dry-run exit (Phase 11 Plan 11-02 move).
+# This loop populates SKIPPED_PATHS for the post-run summary printer.
 while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
     reason=$(jq -r --arg p "$rel" '
@@ -873,7 +963,7 @@ write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
 # This allows the next run's no-op check to compare manifest content hashes.
 STATE_TMP="${STATE_FILE}.tmp.$$"
 # Register STATE_TMP cleanup before writing so SIGKILL between jq and mv leaves no orphan.
-trap 'rm -f "$STATE_TMP"; release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$STATE_TMP"; release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
 jq --arg mh "$MANIFEST_HASH" '. + { manifest_hash: $mh }' "$STATE_FILE" > "$STATE_TMP"
 mv "$STATE_TMP" "$STATE_FILE"
 
