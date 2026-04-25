@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-04-25T14:34:31.447Z"
+status: verifying
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-04-25T15:09:28.581Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 Milestone: v4.2 Audit System v2 — IN PROGRESS (started 2026-04-25)
 Phase: 13 (foundation-fp-allowlist-skip-restore-commands) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-25
 
 Progress: [          ] 0% (0/5 phases, 0/0 plans)
@@ -76,6 +76,7 @@ Carry-over decisions from v4.1:
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: [y/N] prompt reads from /dev/tty when available, falls back to stdin for CI contexts (D-08)
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: Sentinel-blank awk logic: pending_blank variable drops the blank line preceding the deleted heading
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: Post-write sanity check uses grep -Fxq on NEW_TMP before mv — exit 1 if heading still present
+- [Phase 13-foundation-fp-allowlist-skip-restore-commands]: create_audit_exceptions() placed immediately after create_lessons_learned() in init-claude.sh; no per-block DRY_RUN in init-local.sh (script-level early-exit covers it); mkdir -p added in update-claude.sh before seed write
 
 ### Roadmap Evolution
 
@@ -107,11 +108,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 13-foundation-fp-allowlist-skip-restore-commands P01 | 4 | 1 tasks | 1 files |
 | Phase 13 P02 | 4min | 1 tasks | 1 files |
 | Phase 13-foundation-fp-allowlist-skip-restore-commands P03 | 2 | 1 tasks | 1 files |
+| Phase 13-foundation-fp-allowlist-skip-restore-commands P04 | 15 | 4 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T14:34:31.444Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-04-25T15:09:28.578Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
