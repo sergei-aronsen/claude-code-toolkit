@@ -21,11 +21,11 @@ A repo-local list of known false-positive findings that auditors must respect on
 
 Force every audit to re-validate findings against the actual code and produce reports the Council can reason from.
 
-- [ ] **AUDIT-01**: `/audit` reads `.claude/rules/audit-exceptions.md` in Phase 0. Findings whose `path:line + rule` matches an existing entry are dropped from the report and counted in a `Skipped (allowlist)` table.
-- [ ] **AUDIT-02**: Every audit prompt enforces a 6-step FP-recheck on each candidate finding before it is reported: (1) read file with ±20 lines context, (2) trace data flow from input, (3) check execution context (test/prod/worker/SW), (4) cross-reference exceptions, (5) apply platform-constraint rule, (6) severity sanity check. Findings dropped at this stage land in a `Skipped (FP recheck)` table with one-line reason.
-- [ ] **AUDIT-03**: Audit reports include a verbatim ±10 lines code block (with language fence) for every reported finding. Block is copied directly from the source file — Council reasons from the code, not the rule label.
-- [ ] **AUDIT-04**: Audit reports are written to `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md` (directory created if missing). The exact section structure (Summary table, Findings, Skipped tables, Council verdict slot) is fixed and parser-friendly.
-- [ ] **AUDIT-05**: Each finding entry contains: ID, severity, rule, location range, claim, verbatim code block, data-flow narrative, "why it is real" reasoning, suggested fix.
+- [x] **AUDIT-01**: `/audit` reads `.claude/rules/audit-exceptions.md` in Phase 0. Findings whose `path:line + rule` matches an existing entry are dropped from the report and counted in a `Skipped (allowlist)` table.
+- [x] **AUDIT-02**: Every audit prompt enforces a 6-step FP-recheck on each candidate finding before it is reported: (1) read file with ±20 lines context, (2) trace data flow from input, (3) check execution context (test/prod/worker/SW), (4) cross-reference exceptions, (5) apply platform-constraint rule, (6) severity sanity check. Findings dropped at this stage land in a `Skipped (FP recheck)` table with one-line reason.
+- [x] **AUDIT-03**: Audit reports include a verbatim ±10 lines code block (with language fence) for every reported finding. Block is copied directly from the source file — Council reasons from the code, not the rule label.
+- [x] **AUDIT-04**: Audit reports are written to `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md` (directory created if missing). The exact section structure (Summary table, Findings, Skipped tables, Council verdict slot) is fixed and parser-friendly.
+- [x] **AUDIT-05**: Each finding entry contains: ID, severity, rule, location range, claim, verbatim code block, data-flow narrative, "why it is real" reasoning, suggested fix.
 
 ### Mandatory Supreme Council Audit-Review
 
