@@ -59,10 +59,10 @@ else
     report_fail "dry-run: filesystem changed during dry-run"
 fi
 
-if grep -qE '\[INSTALL\]' "$DRY_OUTPUT"; then
-    report_pass "dry-run output contains [INSTALL] lines"
+if grep -qE '\[\+ INSTALL\]' "$DRY_OUTPUT"; then
+    report_pass "dry-run output contains [+ INSTALL] lines"
 else
-    report_fail "dry-run output missing [INSTALL] lines"
+    report_fail "dry-run output missing [+ INSTALL] lines"
 fi
 
 if grep -qE '\[SKIP' "$DRY_OUTPUT"; then
@@ -83,6 +83,15 @@ if grep -q $'\x1b\[' "$DRY_OUTPUT"; then
     report_fail "dry-run output contains ANSI escape codes when stdout is not a tty"
 else
     report_pass "dry-run output is ANSI-clean when stdout is not a tty"
+fi
+
+# NO_COLOR=1 must suppress ANSI even on a TTY (no-color.org spec)
+NO_COLOR_OUTPUT="$SCRATCH/no_color_output.txt"
+NO_COLOR=1 bash "$INIT_LOCAL" --dry-run --mode complement-sp > "$NO_COLOR_OUTPUT" 2>&1 || true
+if grep -q $'\x1b\[' "$NO_COLOR_OUTPUT"; then
+    report_fail "NO_COLOR=1: dry-run output contains ANSI escape codes"
+else
+    report_pass "NO_COLOR=1: dry-run output is ANSI-clean"
 fi
 
 echo ""
