@@ -161,18 +161,22 @@ echo -e "${CYAN}Step 4: Installing Supreme Council${NC}"
 mkdir -p "$COUNCIL_DIR"
 
 # Download brain.py
-if curl -sSL "$REPO_URL/scripts/council/brain.py" -o "$COUNCIL_DIR/brain.py" 2>/dev/null; then
+if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$COUNCIL_DIR/brain.py" 2>/dev/null; then
     chmod +x "$COUNCIL_DIR/brain.py"
     echo -e "  ${GREEN}✓${NC} brain.py"
 else
+    rm -f "$COUNCIL_DIR/brain.py"
     echo -e "  ${RED}✗${NC} Failed to download brain.py"
     exit 1
 fi
 
 # Download README
-curl -sSL "$REPO_URL/scripts/council/README.md" -o "$COUNCIL_DIR/README.md" 2>/dev/null && \
-    echo -e "  ${GREEN}✓${NC} README.md" || \
+if curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$COUNCIL_DIR/README.md" 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} README.md"
+else
+    rm -f "$COUNCIL_DIR/README.md"
     echo -e "  ${YELLOW}⚠${NC} README.md (not critical)"
+fi
 
 echo ""
 

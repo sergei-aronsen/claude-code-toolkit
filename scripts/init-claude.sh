@@ -377,13 +377,19 @@ download_extras() {
         parent_dir=$(dirname "$full_dest")
 
         mkdir -p "$parent_dir"
-        if curl -sSL "$full_url" -o "$full_dest" 2>/dev/null; then
+        # -f makes curl exit non-zero on HTTP 4xx/5xx so we don't write
+        # error bodies (e.g. "404: Not Found") into user-facing files
+        # and so the fallback branch actually triggers (audit C-06).
+        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null; then
             echo -e "  ${GREEN}✓${NC} $dest"
         else
             echo -e "  ${YELLOW}⚠${NC} $dest (using base template)"
             # Try base template as fallback
             base_src="${src/templates\/$FRAMEWORK/templates\/base}"
-            curl -sSL "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || true
+            if ! curl -sSLf "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null; then
+                rm -f "$full_dest"   # avoid leaving a half-written or empty file
+                echo -e "  ${RED}✗${NC} $dest (download failed, no fallback)"
+            fi
         fi
     done
 }
@@ -575,16 +581,17 @@ setup_council() {
 
     # Download brain.py
     mkdir -p "$council_dir"
-    if curl -sSL "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
+    if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
         chmod +x "$council_dir/brain.py"
         echo -e "  ${GREEN}✓${NC} brain.py installed"
     else
+        rm -f "$council_dir/brain.py"
         echo -e "  ${RED}✗${NC} Failed to download brain.py"
         return
     fi
 
     # Download README
-    curl -sSL "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || true
+    curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || rm -f "$council_dir/README.md"
 
     # Ask to configure now (skip in non-interactive environments)
     echo ""

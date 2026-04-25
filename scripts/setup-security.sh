@@ -81,7 +81,7 @@ echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
 mkdir -p "$CLAUDE_DIR"
 
 # Download latest security rules
-SECURITY_CONTENT=$(curl -sSL "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+SECURITY_CONTENT=$(curl -sSLf "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
 if [[ -z "$SECURITY_CONTENT" ]]; then
     echo -e "  ${RED}✗${NC} Failed to download security rules"
     echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"

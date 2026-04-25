@@ -71,18 +71,20 @@ mkdir -p "$CLAUDE_DIR"
 echo ""
 echo -e "${BLUE}Downloading scripts...${NC}"
 
-if curl -sSL "$REPO_URL/templates/global/rate-limit-probe.sh" -o "$CLAUDE_DIR/rate-limit-probe.sh" 2>/dev/null; then
+if curl -sSLf "$REPO_URL/templates/global/rate-limit-probe.sh" -o "$CLAUDE_DIR/rate-limit-probe.sh" 2>/dev/null; then
     chmod +x "$CLAUDE_DIR/rate-limit-probe.sh"
     echo -e "  ${GREEN}✓${NC} rate-limit-probe.sh"
 else
+    rm -f "$CLAUDE_DIR/rate-limit-probe.sh"
     echo -e "  ${RED}✗${NC} Failed to download rate-limit-probe.sh"
     exit 1
 fi
 
-if curl -sSL "$REPO_URL/templates/global/statusline.sh" -o "$CLAUDE_DIR/statusline.sh" 2>/dev/null; then
+if curl -sSLf "$REPO_URL/templates/global/statusline.sh" -o "$CLAUDE_DIR/statusline.sh" 2>/dev/null; then
     chmod +x "$CLAUDE_DIR/statusline.sh"
     echo -e "  ${GREEN}✓${NC} statusline.sh"
 else
+    rm -f "$CLAUDE_DIR/statusline.sh"
     echo -e "  ${RED}✗${NC} Failed to download statusline.sh"
     exit 1
 fi

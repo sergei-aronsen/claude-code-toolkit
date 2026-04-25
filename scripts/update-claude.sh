@@ -824,107 +824,52 @@ while IFS= read -r rel; do
 done < <(jq -r '.[]' <<<"$MODIFIED_ACTUAL")
 
 # ============================================================================
-# SMART MERGE CLAUDE.md
+# CLAUDE.md template handling (audit CRIT-01: chezmoi-style .new file)
+# ----------------------------------------------------------------------------
+# The previous "smart-merge" used emoji-anchored sed regexes to splice user
+# sections into the upstream template. Any heading rename, missing emoji, or
+# section-as-last-in-file silently truncated user content. Council verdict
+# (Skeptic + Pragmatist): drop the merge — write CLAUDE.md.new alongside the
+# existing file and let the developer reconcile manually.
 # ============================================================================
 
 echo ""
-log_info "Updating CLAUDE.md (preserving user sections)..."
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
-CLAUDE_MD_NEW=$(mktemp)
+CLAUDE_MD_NEW_FILE="$CLAUDE_DIR/CLAUDE.md.new"
+CLAUDE_MD_TMP=$(mktemp)
 
-# Download new template
-if ! curl -sSL "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_NEW" 2>/dev/null; then
-    curl -sSL "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_NEW" 2>/dev/null
+# -f makes curl exit non-zero on HTTP 4xx/5xx so we don't write error bodies
+# into a file the user might mistake for the real template (audit C-06).
+if ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+    if ! curl -sSLf "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+        rm -f "$CLAUDE_MD_TMP"
+        log_warning "Failed to download CLAUDE.md template — keeping existing file untouched"
+        CLAUDE_MD_TMP=""
+    fi
 fi
 
-if [[ -f "$CLAUDE_MD" ]] && [[ -f "$CLAUDE_MD_NEW" ]]; then
-    # Extract user sections from current CLAUDE.md
-    # These sections contain project-specific customizations
+if [[ -n "$CLAUDE_MD_TMP" ]] && [[ ! -s "$CLAUDE_MD_TMP" ]]; then
+    rm -f "$CLAUDE_MD_TMP"
+    CLAUDE_MD_TMP=""
+    log_warning "Downloaded CLAUDE.md template was empty — keeping existing file untouched"
+fi
 
-    USER_SECTIONS_FILE=$(mktemp)
-
-    # Extract Project Overview section
-    sed -n '/^## 🎯 Project Overview/,/^## [^P]/p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.overview" 2>/dev/null || true
-
-    # Extract Project Structure section
-    sed -n '/^## 📁 Project Structure/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.structure" 2>/dev/null || true
-
-    # Extract Essential Commands section
-    sed -n '/^## ⚡ Essential Commands/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.commands" 2>/dev/null || true
-
-    # Extract Project-Specific Notes section
-    sed -n '/^## ⚠️ Project-Specific Notes/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.notes" 2>/dev/null || true
-
-    # If no user sections extracted, this might be first install or different format
-    # In that case, just use the new template
-
-    HAS_USER_CONTENT=false
-    for section in overview structure commands notes; do
-        if [[ -s "$USER_SECTIONS_FILE.$section" ]]; then
-            # Check if it's not just placeholder text
-            if ! grep -q '\[Project Name\]\|\[Framework\]\|\[command\]\|\[List project' "$USER_SECTIONS_FILE.$section" 2>/dev/null; then
-                HAS_USER_CONTENT=true
-                break
-            fi
-        fi
-    done
-
-    if [[ "$HAS_USER_CONTENT" == "true" ]]; then
-        log_info "Found user customizations, merging..."
-
-        # Start with new template
-        cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-
-        # Replace placeholder sections with user content
-        # This is a simplified approach - for each user section, replace the placeholder in new template
-
-        for section in overview structure commands notes; do
-            if [[ -s "$USER_SECTIONS_FILE.$section" ]]; then
-                # Get the section header pattern
-                case $section in
-                    overview)  PATTERN="## 🎯 Project Overview" ;;
-                    structure) PATTERN="## 📁 Project Structure" ;;
-                    commands)  PATTERN="## ⚡ Essential Commands" ;;
-                    notes)     PATTERN="## ⚠️ Project-Specific Notes" ;;
-                esac
-
-                # Find line numbers for replacement
-                START_LINE=$(grep -n "^$PATTERN" "$CLAUDE_MD" | head -1 | cut -d: -f1)
-                if [[ -n "$START_LINE" ]]; then
-                    # Find next section
-                    END_LINE=$(tail -n +$((START_LINE + 1)) "$CLAUDE_MD" | grep -n "^## " | head -1 | cut -d: -f1)
-                    if [[ -n "$END_LINE" ]]; then
-                        END_LINE=$((START_LINE + END_LINE - 1))
-                    else
-                        END_LINE=$(wc -l < "$CLAUDE_MD")
-                    fi
-
-                    # Replace section
-                    {
-                        head -n $((START_LINE - 1)) "$CLAUDE_MD"
-                        cat "$USER_SECTIONS_FILE.$section"
-                        tail -n +$((END_LINE + 1)) "$CLAUDE_MD"
-                    } > "$CLAUDE_MD.tmp"
-                    mv "$CLAUDE_MD.tmp" "$CLAUDE_MD"
-                fi
-            fi
-        done
-
-        log_success "CLAUDE.md merged (user sections preserved)"
+if [[ -n "$CLAUDE_MD_TMP" ]]; then
+    if [[ ! -f "$CLAUDE_MD" ]]; then
+        # First install — no existing file to preserve.
+        mv "$CLAUDE_MD_TMP" "$CLAUDE_MD"
+        log_success "CLAUDE.md created"
+    elif cmp -s "$CLAUDE_MD" "$CLAUDE_MD_TMP"; then
+        # Unchanged — clear any stale .new from a previous run and stay quiet.
+        rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+        log_info "CLAUDE.md already matches latest template"
     else
-        log_info "No user customizations found, using new template"
-        cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-        log_success "CLAUDE.md updated"
+        mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+        log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"
+        log_info "Diff:  diff -u \"$CLAUDE_MD\" \"$CLAUDE_MD_NEW_FILE\""
+        log_info "Apply: mv \"$CLAUDE_MD_NEW_FILE\" \"$CLAUDE_MD\""
     fi
-
-    # Cleanup temp files
-    rm -f "$USER_SECTIONS_FILE"* "$CLAUDE_MD_NEW"
-else
-    # No existing CLAUDE.md, just copy new one
-    cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-    log_success "CLAUDE.md created"
-    rm -f "$CLAUDE_MD_NEW"
 fi
 
 # ─────────────────────────────────────────────────
