@@ -20,6 +20,7 @@ Config: ~/.claude/council/config.json
 """
 
 import re
+import shutil
 import subprocess
 import sys
 import os
@@ -71,18 +72,41 @@ VERDICTS = {
 VERDICT_PRIORITY = ["SKIP", "RETHINK", "SIMPLIFY", "PROCEED"]
 
 
+ERROR_PREFIXES = (
+    "Error:",
+    "Error (exit",
+    "Gemini API error",
+    "OpenAI API error",
+)
+
+
+def is_error_response(text):
+    """True when the reviewer call returned an error string instead of a real verdict."""
+    if not text:
+        return True
+    return any(text.startswith(p) for p in ERROR_PREFIXES)
+
+
 def extract_verdict(text):
-    """Extract verdict from reviewer response. Prefers explicit VERDICT: pattern."""
+    """Extract verdict from reviewer response.
+
+    Audit BRAIN-M1: the original full-text fallback would scan every word for
+    `SKIP|RETHINK|SIMPLIFY|PROCEED` in priority order. If the model echoed the
+    prompt (which contains "- SKIP — this doesn't need to be done"), the
+    fallback latched onto `SKIP` and returned the wrong verdict. Restrict the
+    fallback to the last 500 characters where the verdict line normally lives.
+    """
     if not text:
         return "RETHINK"
     upper = text.upper()
-    # First: look for explicit "VERDICT: <word>" pattern
+    # First: look for explicit "VERDICT: <word>" pattern.
     match = re.search(r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)", upper)
     if match:
         return match.group(1)
-    # Fallback: scan full text in priority order
+    # Fallback: scan only the last 500 chars (verdict line typically at end).
+    tail = upper[-500:]
     for verdict in VERDICT_PRIORITY:
-        if verdict in upper:
+        if verdict in tail:
             return verdict
     return "RETHINK"
 
@@ -119,6 +143,20 @@ def load_config():
         config["openai"]["api_key"] = os.getenv("OPENAI_API_KEY")
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
+
+    # Audit BRAIN-M5: when the user picked CLI mode for Gemini, fail fast
+    # with an actionable error instead of letting the missing binary
+    # surface ~120s later as a phantom "RETHINK" verdict.
+    if config["gemini"].get("mode", "cli") == "cli" and shutil.which("gemini") is None:
+        print("\n\u274c Gemini CLI mode selected but 'gemini' is not in PATH.")
+        print("   Install: npm install -g @google/gemini-cli")
+        print(f"   Or switch to API mode by editing {CONFIG_PATH}")
+        sys.exit(1)
+
+    if not config["openai"].get("api_key"):
+        print("\n\u274c OpenAI API key not configured.")
+        print(f"   Set OPENAI_API_KEY env var or edit {CONFIG_PATH}")
+        sys.exit(1)
 
     return config
 
@@ -509,13 +547,38 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
 
     # ── Phase 4: Final Report ──
+    # Audit BRAIN-M2: surface infrastructure failures explicitly. Previously,
+    # an API timeout / missing CLI / 5xx response would degrade silently to
+    # a phantom "RETHINK" verdict via extract_verdict's fallback. The user
+    # had no signal whether the model rendered an opinion or the call failed.
+    skeptic_failed = is_error_response(gemini_verdict)
+    pragmatist_failed = is_error_response(gpt_verdict)
+    if skeptic_failed and pragmatist_failed:
+        print("\n\u274c Both reviewers failed — cannot render a verdict:")
+        print(f"   Skeptic (Gemini):    {gemini_verdict}")
+        print(f"   Pragmatist (ChatGPT): {gpt_verdict}")
+        sys.exit(2)
+    if skeptic_failed:
+        print(f"\n\u26a0\ufe0f  Skeptic (Gemini) call failed: {gemini_verdict}")
+        print("   Continuing with Pragmatist verdict only.")
+    if pragmatist_failed:
+        print(f"\n\u26a0\ufe0f  Pragmatist (ChatGPT) call failed: {gpt_verdict}")
+        print("   Continuing with Skeptic verdict only.")
+
     skeptic_decision = extract_verdict(gemini_verdict)
     pragmatist_decision = extract_verdict(gpt_verdict)
 
-    # More conservative verdict wins
-    skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
-    pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
-    final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
+    # More conservative verdict wins. When one reviewer failed, fall back to
+    # the surviving reviewer's verdict instead of letting the failure's
+    # "RETHINK" fallback bias the result.
+    if skeptic_failed and not pragmatist_failed:
+        final_verdict = pragmatist_decision
+    elif pragmatist_failed and not skeptic_failed:
+        final_verdict = skeptic_decision
+    else:
+        skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
+        pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
+        final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
 
     print("\n" + "=" * 60)
     print("\U0001f4cb SUPREME COUNCIL REPORT")
