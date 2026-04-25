@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-04-25
+
+### Added
+
+- Phase 11 UX polish: chezmoi-grade dry-run preview with `[+ ADD]` / `[~ MOD]` / `[- REMOVE]` grouping for both `install` and `update` flows.
+- `migrate-to-complement.sh --dry-run` now emits the same grouped preview before any destructive change.
+- New audit pipeline (`AUDIT-REPORT.md`) — full deep audit covering security, correctness, performance, portability, JSON state-file integrity. Cross-AI reviewed via Supreme Council (Gemini Skeptic + ChatGPT Pragmatist).
+
+### Fixed
+
+- `manifest.json` `version` and `updated` fields now match the `v4.1.0` git tag (previously drifted at `4.0.0` / `2026-04-19`).
+
+### Notes
+
+This release closes the v4.1 milestone. See `.planning/archived/v4.1/` for phase artifacts.
+
 ## [4.0.0] - 2026-04-21
 
 ### BREAKING CHANGES
