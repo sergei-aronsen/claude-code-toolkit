@@ -839,9 +839,21 @@ CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CLAUDE_MD_NEW_FILE="$CLAUDE_DIR/CLAUDE.md.new"
 CLAUDE_MD_TMP=$(mktemp)
 
+# Test seam: TK_UPDATE_FILE_SRC short-circuits the network fetch for hermetic
+# tests. Same convention as the manifest-driven download loop above.
 # -f makes curl exit non-zero on HTTP 4xx/5xx so we don't write error bodies
 # into a file the user might mistake for the real template (audit C-06).
-if ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
+    if [[ -f "$TK_UPDATE_FILE_SRC/templates/$FRAMEWORK/CLAUDE.md" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/templates/$FRAMEWORK/CLAUDE.md" "$CLAUDE_MD_TMP"
+    elif [[ -f "$TK_UPDATE_FILE_SRC/templates/base/CLAUDE.md" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/templates/base/CLAUDE.md" "$CLAUDE_MD_TMP"
+    else
+        rm -f "$CLAUDE_MD_TMP"
+        log_warning "TK_UPDATE_FILE_SRC has no CLAUDE.md template — keeping existing file untouched"
+        CLAUDE_MD_TMP=""
+    fi
+elif ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
     if ! curl -sSLf "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
         rm -f "$CLAUDE_MD_TMP"
         log_warning "Failed to download CLAUDE.md template — keeping existing file untouched"

@@ -100,6 +100,9 @@ test:
 	@echo "Test 16: full install matrix"
 	@bash scripts/tests/test-matrix.sh
 	@echo ""
+	@echo "Test 17: CLAUDE.md.new flow (audit T-02 / CRIT-01 regression guard)"
+	@bash scripts/tests/test-claude-md-new.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
