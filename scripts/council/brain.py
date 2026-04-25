@@ -631,8 +631,12 @@ def ask_gemini(prompt, config, file_paths=None):
 # ChatGPT integration (curl-only, no pip deps)
 # ─────────────────────────────────────────────────
 
-def ask_chatgpt(prompt, config):
-    """Query ChatGPT via OpenAI API using curl."""
+def ask_chatgpt(prompt, config, system_prompt=None):
+    """Query ChatGPT via OpenAI API using curl.
+
+    `system_prompt` overrides the default Pragmatist persona — used by
+    audit-review mode to swap in AUDIT_REVIEW_GPT_SYSTEM (WR-01 fix).
+    """
     api_key = config["openai"].get("api_key", "")
     model = config["openai"]["model"]
 
@@ -642,7 +646,7 @@ def ask_chatgpt(prompt, config):
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": GPT_SYSTEM},
+            {"role": "system", "content": system_prompt or GPT_SYSTEM},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.2
@@ -712,7 +716,7 @@ def dispatch_audit_review_chatgpt(prompt, config):
     stub = os.getenv("COUNCIL_STUB_CHATGPT")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_chatgpt(prompt, config)
+    return ask_chatgpt(prompt, config, system_prompt=AUDIT_REVIEW_GPT_SYSTEM)
 
 
 def run_audit_review(report_path_str, config):
@@ -756,14 +760,19 @@ def run_audit_review(report_path_str, config):
     stub_gemini = os.getenv("COUNCIL_STUB_GEMINI")
     stub_chatgpt = os.getenv("COUNCIL_STUB_CHATGPT")
 
+    # Fail fast when neither backend is reachable and no stubs override them
+    # (WR-02 fix — replaces the dead pre-set bypass that was unconditionally
+    # overwritten by future.result() below).
+    if (not stub_gemini and not config.get("_gemini_available", True) and
+            not stub_chatgpt and not config.get("_openai_available", True)):
+        print(
+            "\n❌ No Council backends available and no stubs configured.",
+            file=sys.stderr,
+        )
+        return 1
+
     gemini_raw = None
     chatgpt_raw = None
-
-    # Bypass backend availability checks when stubs are configured (Pitfall 6).
-    if not stub_gemini and not config.get("_gemini_available", True):
-        gemini_raw = "Error: Gemini backend not available"
-    if not stub_chatgpt and not config.get("_openai_available", True):
-        chatgpt_raw = "Error: OpenAI backend not available"
 
     print("\n\U0001f9e0 Council audit-review: dispatching Gemini and ChatGPT in parallel...")
 
