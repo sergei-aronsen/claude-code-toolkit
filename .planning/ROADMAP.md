@@ -121,7 +121,12 @@
 2. Existing prompt language is preserved — Russian sections stay Russian, English sections stay English; no translation drift introduced
 3. `make validate` (and the matching CI job in `.github/workflows/quality.yml`) asserts every updated prompt contains the literal `Council handoff` marker plus all six numbered FP-recheck steps; missing markers fail the build
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 16-01-PLAN.md — Splice tool: scripts/propagate-audit-pipeline-v42.sh (TEMPLATE-01, TEMPLATE-02)
+- [ ] 16-02-PLAN.md — Test 20: scripts/tests/test-template-propagation.sh idempotency + marker regression (TEMPLATE-03)
+- [ ] 16-03-PLAN.md — Apply splice script to live templates/ (49 prompt files in one atomic commit) (TEMPLATE-01, TEMPLATE-02)
+- [ ] 16-04-PLAN.md — Wire CI gates: Makefile validate + quality.yml validate-templates + register Test 20 (TEMPLATE-03)
 
 ### Phase 17: Distribution — Manifest, Installers, CHANGELOG
 
