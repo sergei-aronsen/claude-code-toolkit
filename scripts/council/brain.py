@@ -2,8 +2,15 @@
 """
 Supreme Council — Multi-AI Hypothesis Validation Orchestrator
 
-Sends implementation plans to Gemini (The Skeptic) and ChatGPT (The Pragmatist)
-for independent validation before Claude Code starts coding.
+Runs a sequential review pipeline:
+  1. Gemini reads project context and lists files relevant to the plan.
+  2. Gemini (The Skeptic) renders a verdict on whether the plan is justified.
+  3. ChatGPT (The Pragmatist) evaluates production readiness, given the
+     plan AND the Skeptic's verdict.
+
+Phases run in series (each call may take up to 120s). The Pragmatist depends
+on the Skeptic's output, so full parallelism is not possible without changing
+the prompt design.
 
 Usage:
     python3 brain.py "Your implementation plan"
@@ -170,16 +177,23 @@ def get_project_structure():
 
 
 def validate_file_path(file_path):
-    """Validate and resolve a file path safely. Returns resolved Path or None."""
+    """Validate and resolve a file path safely. Returns resolved Path or None.
+
+    Audit BRAIN-H2: previous implementation rejected bare filenames like
+    `Makefile` (no `/`) and the project root itself (string-prefix check
+    excluded `cwd` exactly). Path.relative_to() handles both correctly.
+    """
     file_path = file_path.strip().strip("'\"`)>")
-    if not file_path or "/" not in file_path:
+    if not file_path:
         return None
-    resolved = Path(file_path).resolve()
     cwd = Path.cwd().resolve()
-    if not str(resolved).startswith(str(cwd) + os.sep):
+    try:
+        resolved = (cwd / file_path).resolve()
+        resolved.relative_to(cwd)
+    except (ValueError, OSError):
         print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
         return None
-    if not resolved.exists() or not resolved.is_file():
+    if not resolved.is_file():
         print(f"\u26a0\ufe0f  File not found: {file_path}")
         return None
     return resolved
@@ -279,31 +293,25 @@ def ask_gemini_api(prompt, model, api_key, config=None):
         }
     }
 
-    tmp = None
+    # Audit BRAIN-H3: pass JSON via stdin instead of a tempfile so the full
+    # prompt (which can include 200K chars of project source) doesn't sit on
+    # disk between processes — `finally` doesn't run on SIGKILL, so a hard
+    # interrupt would leak tempfiles in /tmp.
+    body = json.dumps(payload, ensure_ascii=False)
+    result = run_command([
+        "curl", "-s",
+        "-H", "Content-Type: application/json",
+        "-H", f"User-Agent: {USER_AGENT}",
+        "--data-binary", "@-",
+        url
+    ], input_text=body, timeout=120)
+
     try:
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".json", prefix="council_"
-        )
-        json.dump(payload, tmp, ensure_ascii=False)
-        tmp.close()
-
-        result = run_command([
-            "curl", "-s",
-            "-H", "Content-Type: application/json",
-            "-H", f"User-Agent: {USER_AGENT}",
-            "-d", f"@{tmp.name}",
-            url
-        ], timeout=120)
-
-        try:
-            data = json.loads(result)
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except (json.JSONDecodeError, KeyError, IndexError):
-            error = f"Gemini API error: {result[:500]}"
-            return sanitize_error(error, config) if config else error
-    finally:
-        if tmp and os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+        data = json.loads(result)
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (json.JSONDecodeError, KeyError, IndexError):
+        error = f"Gemini API error: {result[:500]}"
+        return sanitize_error(error, config) if config else error
 
 
 def ask_gemini(prompt, config, file_paths=None):
@@ -337,22 +345,28 @@ def ask_chatgpt(prompt, config):
         "temperature": 0.2
     }
 
-    tmp = None
+    # Audit BRAIN-H4: write the Authorization header to a 0600 tempfile and
+    # pass via `-H @file` so the API key never appears in `ps`/argv. Audit
+    # BRAIN-H3: send the body via stdin so the full prompt isn't persisted.
+    hdr = tempfile.NamedTemporaryFile(
+        mode="w", delete=False, prefix="council_hdr_", suffix=".txt"
+    )
     try:
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".json", prefix="council_"
+        os.chmod(hdr.name, 0o600)
+        hdr.write(
+            f"Authorization: Bearer {api_key}\n"
+            f"Content-Type: application/json\n"
+            f"User-Agent: {USER_AGENT}\n"
         )
-        json.dump(payload, tmp, ensure_ascii=False)
-        tmp.close()
+        hdr.close()
 
+        body = json.dumps(payload, ensure_ascii=False)
         result = run_command([
             "curl", "-s",
             "https://api.openai.com/v1/chat/completions",
-            "-H", "Content-Type: application/json",
-            "-H", f"Authorization: Bearer {api_key}",
-            "-H", f"User-Agent: {USER_AGENT}",
-            "-d", f"@{tmp.name}"
-        ], timeout=120)
+            "-H", f"@{hdr.name}",
+            "--data-binary", "@-"
+        ], input_text=body, timeout=120)
 
         try:
             data = json.loads(result)
@@ -360,8 +374,8 @@ def ask_chatgpt(prompt, config):
         except (json.JSONDecodeError, KeyError, IndexError):
             return sanitize_error(f"OpenAI API error: {result[:500]}", config)
     finally:
-        if tmp and os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+        if os.path.exists(hdr.name):
+            os.unlink(hdr.name)
 
 
 # ─────────────────────────────────────────────────
