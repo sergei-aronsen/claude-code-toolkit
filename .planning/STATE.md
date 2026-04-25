@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-04-25T14:28:46.644Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-04-25T14:34:31.447Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 Milestone: v4.2 Audit System v2 — IN PROGRESS (started 2026-04-25)
 Phase: 13 (foundation-fp-allowlist-skip-restore-commands) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-25
 
@@ -73,6 +73,9 @@ Carry-over decisions from v4.1:
 - [Phase 13-foundation-fp-allowlist-skip-restore-commands]: audit-exceptions.md uses YAML list form for globs and HTML comment for schema example; NOT registered in manifest.json (seeded inline by installers per CD-01)
 - [Phase 13]: grep -A 5 -F used for duplicate-block display (not awk) — awk exits on blank line before bullets, grep reliably captures full entry block (heading + blank + 3 bullets)
 - [Phase 13]: printf '%s' used for all REASON interpolation in /audit-skip — never echo, satisfies T-13-04 Tampering threat mitigation
+- [Phase 13-foundation-fp-allowlist-skip-restore-commands]: [y/N] prompt reads from /dev/tty when available, falls back to stdin for CI contexts (D-08)
+- [Phase 13-foundation-fp-allowlist-skip-restore-commands]: Sentinel-blank awk logic: pending_blank variable drops the blank line preceding the deleted heading
+- [Phase 13-foundation-fp-allowlist-skip-restore-commands]: Post-write sanity check uses grep -Fxq on NEW_TMP before mv — exit 1 if heading still present
 
 ### Roadmap Evolution
 
@@ -103,11 +106,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Deferred | `--no-council` flag for `/audit` | Mandatory in v4.2; revisit in v4.3 if pain points emerge |
 | Phase 13-foundation-fp-allowlist-skip-restore-commands P01 | 4 | 1 tasks | 1 files |
 | Phase 13 P02 | 4min | 1 tasks | 1 files |
+| Phase 13-foundation-fp-allowlist-skip-restore-commands P03 | 2 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T14:28:46.641Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-04-25T14:34:31.444Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
