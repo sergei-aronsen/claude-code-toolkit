@@ -824,107 +824,104 @@ while IFS= read -r rel; do
 done < <(jq -r '.[]' <<<"$MODIFIED_ACTUAL")
 
 # ============================================================================
-# SMART MERGE CLAUDE.md
+# CLAUDE.md template handling (audit CRIT-01: chezmoi-style .new file)
+# ----------------------------------------------------------------------------
+# The previous "smart-merge" used emoji-anchored sed regexes to splice user
+# sections into the upstream template. Any heading rename, missing emoji, or
+# section-as-last-in-file silently truncated user content. Council verdict
+# (Skeptic + Pragmatist): drop the merge — write CLAUDE.md.new alongside the
+# existing file and let the developer reconcile manually.
 # ============================================================================
 
 echo ""
-log_info "Updating CLAUDE.md (preserving user sections)..."
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
-CLAUDE_MD_NEW=$(mktemp)
+CLAUDE_MD_NEW_FILE="$CLAUDE_DIR/CLAUDE.md.new"
+CLAUDE_MD_TMP=$(mktemp)
 
-# Download new template
-if ! curl -sSL "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_NEW" 2>/dev/null; then
-    curl -sSL "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_NEW" 2>/dev/null
+# Test seam: TK_UPDATE_FILE_SRC short-circuits the network fetch for hermetic
+# tests. Same convention as the manifest-driven download loop above.
+# -f makes curl exit non-zero on HTTP 4xx/5xx so we don't write error bodies
+# into a file the user might mistake for the real template (audit C-06).
+if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
+    if [[ -f "$TK_UPDATE_FILE_SRC/templates/$FRAMEWORK/CLAUDE.md" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/templates/$FRAMEWORK/CLAUDE.md" "$CLAUDE_MD_TMP"
+    elif [[ -f "$TK_UPDATE_FILE_SRC/templates/base/CLAUDE.md" ]]; then
+        cp "$TK_UPDATE_FILE_SRC/templates/base/CLAUDE.md" "$CLAUDE_MD_TMP"
+    else
+        rm -f "$CLAUDE_MD_TMP"
+        log_warning "TK_UPDATE_FILE_SRC has no CLAUDE.md template — keeping existing file untouched"
+        CLAUDE_MD_TMP=""
+    fi
+elif ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+    if ! curl -sSLf "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+        rm -f "$CLAUDE_MD_TMP"
+        log_warning "Failed to download CLAUDE.md template — keeping existing file untouched"
+        CLAUDE_MD_TMP=""
+    fi
 fi
 
-if [[ -f "$CLAUDE_MD" ]] && [[ -f "$CLAUDE_MD_NEW" ]]; then
-    # Extract user sections from current CLAUDE.md
-    # These sections contain project-specific customizations
+if [[ -n "$CLAUDE_MD_TMP" ]] && [[ ! -s "$CLAUDE_MD_TMP" ]]; then
+    rm -f "$CLAUDE_MD_TMP"
+    CLAUDE_MD_TMP=""
+    log_warning "Downloaded CLAUDE.md template was empty — keeping existing file untouched"
+fi
 
-    USER_SECTIONS_FILE=$(mktemp)
+# Normalize line endings (CRLF → LF) and ensure a single trailing newline so
+# trivial whitespace drift across BSD/GNU/git doesn't trip cmp into writing
+# a phantom .new on every update (Council pass: minimal whitespace tolerance).
+# Markdown semantics are preserved — code blocks, tables, indentation untouched.
+normalize_md() {
+    local in="$1" out="$2"
+    python3 - "$in" "$out" <<'PYEOF'
+import sys
+src, dst = sys.argv[1], sys.argv[2]
+with open(src, "rb") as f:
+    data = f.read()
+# Strip UTF-8 BOM if present.
+if data.startswith(b"\xef\xbb\xbf"):
+    data = data[3:]
+# CRLF / CR → LF.
+data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+# Exactly one trailing newline.
+data = data.rstrip(b"\n") + b"\n"
+with open(dst, "wb") as f:
+    f.write(data)
+PYEOF
+}
 
-    # Extract Project Overview section
-    sed -n '/^## 🎯 Project Overview/,/^## [^P]/p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.overview" 2>/dev/null || true
-
-    # Extract Project Structure section
-    sed -n '/^## 📁 Project Structure/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.structure" 2>/dev/null || true
-
-    # Extract Essential Commands section
-    sed -n '/^## ⚡ Essential Commands/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.commands" 2>/dev/null || true
-
-    # Extract Project-Specific Notes section
-    sed -n '/^## ⚠️ Project-Specific Notes/,/^## /p' "$CLAUDE_MD" | sed '$d' > "$USER_SECTIONS_FILE.notes" 2>/dev/null || true
-
-    # If no user sections extracted, this might be first install or different format
-    # In that case, just use the new template
-
-    HAS_USER_CONTENT=false
-    for section in overview structure commands notes; do
-        if [[ -s "$USER_SECTIONS_FILE.$section" ]]; then
-            # Check if it's not just placeholder text
-            if ! grep -q '\[Project Name\]\|\[Framework\]\|\[command\]\|\[List project' "$USER_SECTIONS_FILE.$section" 2>/dev/null; then
-                HAS_USER_CONTENT=true
-                break
-            fi
-        fi
-    done
-
-    if [[ "$HAS_USER_CONTENT" == "true" ]]; then
-        log_info "Found user customizations, merging..."
-
-        # Start with new template
-        cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-
-        # Replace placeholder sections with user content
-        # This is a simplified approach - for each user section, replace the placeholder in new template
-
-        for section in overview structure commands notes; do
-            if [[ -s "$USER_SECTIONS_FILE.$section" ]]; then
-                # Get the section header pattern
-                case $section in
-                    overview)  PATTERN="## 🎯 Project Overview" ;;
-                    structure) PATTERN="## 📁 Project Structure" ;;
-                    commands)  PATTERN="## ⚡ Essential Commands" ;;
-                    notes)     PATTERN="## ⚠️ Project-Specific Notes" ;;
-                esac
-
-                # Find line numbers for replacement
-                START_LINE=$(grep -n "^$PATTERN" "$CLAUDE_MD" | head -1 | cut -d: -f1)
-                if [[ -n "$START_LINE" ]]; then
-                    # Find next section
-                    END_LINE=$(tail -n +$((START_LINE + 1)) "$CLAUDE_MD" | grep -n "^## " | head -1 | cut -d: -f1)
-                    if [[ -n "$END_LINE" ]]; then
-                        END_LINE=$((START_LINE + END_LINE - 1))
-                    else
-                        END_LINE=$(wc -l < "$CLAUDE_MD")
-                    fi
-
-                    # Replace section
-                    {
-                        head -n $((START_LINE - 1)) "$CLAUDE_MD"
-                        cat "$USER_SECTIONS_FILE.$section"
-                        tail -n +$((END_LINE + 1)) "$CLAUDE_MD"
-                    } > "$CLAUDE_MD.tmp"
-                    mv "$CLAUDE_MD.tmp" "$CLAUDE_MD"
-                fi
-            fi
-        done
-
-        log_success "CLAUDE.md merged (user sections preserved)"
+if [[ -n "$CLAUDE_MD_TMP" ]]; then
+    if [[ ! -f "$CLAUDE_MD" ]]; then
+        # First install — no existing file to preserve.
+        mv "$CLAUDE_MD_TMP" "$CLAUDE_MD"
+        log_success "CLAUDE.md created"
     else
-        log_info "No user customizations found, using new template"
-        cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-        log_success "CLAUDE.md updated"
+        # Compare normalized content so CRLF/BOM/trailing-newline drift doesn't
+        # spam .new files on every update (Council pass A).
+        CMP_LOCAL_NORM=$(mktemp)
+        CMP_REMOTE_NORM=$(mktemp)
+        if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
+           && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
+           && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
+            # Unchanged — clear any stale .new from a previous run and stay quiet.
+            rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            log_info "CLAUDE.md already matches latest template"
+        else
+            # Council pass B: don't clobber an existing .new that the user may
+            # be in the middle of reconciling. If the existing .new differs
+            # from what we're about to write, version it as .new.<ts>.
+            if [[ -f "$CLAUDE_MD_NEW_FILE" ]] && ! cmp -s "$CLAUDE_MD_NEW_FILE" "$CLAUDE_MD_TMP"; then
+                NEW_STAMP=$(date -u +%s)
+                mv "$CLAUDE_MD_NEW_FILE" "${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+                log_warning "Preserved prior reconciliation as ${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+            fi
+            mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"
+            log_info "Diff:  diff -u \"$CLAUDE_MD\" \"$CLAUDE_MD_NEW_FILE\""
+            log_info "Apply: mv \"$CLAUDE_MD_NEW_FILE\" \"$CLAUDE_MD\""
+        fi
+        rm -f "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"
     fi
-
-    # Cleanup temp files
-    rm -f "$USER_SECTIONS_FILE"* "$CLAUDE_MD_NEW"
-else
-    # No existing CLAUDE.md, just copy new one
-    cp "$CLAUDE_MD_NEW" "$CLAUDE_MD"
-    log_success "CLAUDE.md created"
-    rm -f "$CLAUDE_MD_NEW"
 fi
 
 # ─────────────────────────────────────────────────
@@ -956,16 +953,12 @@ for entry in "${SKIPPED_PATHS[@]:-}"; do
     FINAL_SKIPPED_CSV+="$entry"
 done
 
+# Audit C-04: pass manifest_hash directly so the field is written atomically
+# in the same os.replace call as installed_files. Previously a separate jq
+# splice happened after write_state; SIGKILL between the two left the state
+# without manifest_hash and is_update_noop never fired again.
 write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
-            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV"
-
-# B2: write_state does not accept a manifest_hash arg — post-process atomically.
-# This allows the next run's no-op check to compare manifest content hashes.
-STATE_TMP="${STATE_FILE}.tmp.$$"
-# Register STATE_TMP cleanup before writing so SIGKILL between jq and mv leaves no orphan.
-trap 'rm -f "$STATE_TMP"; release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
-jq --arg mh "$MANIFEST_HASH" '. + { manifest_hash: $mh }' "$STATE_FILE" > "$STATE_TMP"
-mv "$STATE_TMP" "$STATE_FILE"
+            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "$MANIFEST_HASH"
 
 print_update_summary "$BACKUP_DIR"
 recommend_optional_plugins

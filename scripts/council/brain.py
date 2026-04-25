@@ -2,8 +2,15 @@
 """
 Supreme Council — Multi-AI Hypothesis Validation Orchestrator
 
-Sends implementation plans to Gemini (The Skeptic) and ChatGPT (The Pragmatist)
-for independent validation before Claude Code starts coding.
+Runs a sequential review pipeline:
+  1. Gemini reads project context and lists files relevant to the plan.
+  2. Gemini (The Skeptic) renders a verdict on whether the plan is justified.
+  3. ChatGPT (The Pragmatist) evaluates production readiness, given the
+     plan AND the Skeptic's verdict.
+
+Phases run in series (each call may take up to 120s). The Pragmatist depends
+on the Skeptic's output, so full parallelism is not possible without changing
+the prompt design.
 
 Usage:
     python3 brain.py "Your implementation plan"
@@ -13,6 +20,7 @@ Config: ~/.claude/council/config.json
 """
 
 import re
+import shutil
 import subprocess
 import sys
 import os
@@ -64,18 +72,41 @@ VERDICTS = {
 VERDICT_PRIORITY = ["SKIP", "RETHINK", "SIMPLIFY", "PROCEED"]
 
 
+ERROR_PREFIXES = (
+    "Error:",
+    "Error (exit",
+    "Gemini API error",
+    "OpenAI API error",
+)
+
+
+def is_error_response(text):
+    """True when the reviewer call returned an error string instead of a real verdict."""
+    if not text:
+        return True
+    return any(text.startswith(p) for p in ERROR_PREFIXES)
+
+
 def extract_verdict(text):
-    """Extract verdict from reviewer response. Prefers explicit VERDICT: pattern."""
+    """Extract verdict from reviewer response.
+
+    Audit BRAIN-M1: the original full-text fallback would scan every word for
+    `SKIP|RETHINK|SIMPLIFY|PROCEED` in priority order. If the model echoed the
+    prompt (which contains "- SKIP — this doesn't need to be done"), the
+    fallback latched onto `SKIP` and returned the wrong verdict. Restrict the
+    fallback to the last 500 characters where the verdict line normally lives.
+    """
     if not text:
         return "RETHINK"
     upper = text.upper()
-    # First: look for explicit "VERDICT: <word>" pattern
+    # First: look for explicit "VERDICT: <word>" pattern.
     match = re.search(r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)", upper)
     if match:
         return match.group(1)
-    # Fallback: scan full text in priority order
+    # Fallback: scan only the last 500 chars (verdict line typically at end).
+    tail = upper[-500:]
     for verdict in VERDICT_PRIORITY:
-        if verdict in upper:
+        if verdict in tail:
             return verdict
     return "RETHINK"
 
@@ -112,6 +143,37 @@ def load_config():
         config["openai"]["api_key"] = os.getenv("OPENAI_API_KEY")
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
+
+    # Audit BRAIN-M5 + Council pass C: pre-flight WARN per provider, fail
+    # only if BOTH providers are unavailable. Single-reviewer Council is a
+    # legitimate use case (e.g. user with only a Gemini CLI install).
+    config["_gemini_available"] = True
+    config["_openai_available"] = True
+
+    if config["gemini"].get("mode", "cli") == "cli":
+        if shutil.which("gemini") is None:
+            print("\u26a0\ufe0f  Gemini CLI mode selected but 'gemini' is not in PATH.")
+            print("   Install: npm install -g @google/gemini-cli")
+            print(f"   Or switch to API mode by editing {CONFIG_PATH}")
+            config["_gemini_available"] = False
+    else:
+        if not config["gemini"].get("api_key"):
+            print("\u26a0\ufe0f  Gemini API mode selected but no api_key configured.")
+            print(f"   Set GEMINI_API_KEY env var or edit {CONFIG_PATH}")
+            config["_gemini_available"] = False
+
+    if not config["openai"].get("api_key"):
+        print("\u26a0\ufe0f  OpenAI API key not configured.")
+        print(f"   Set OPENAI_API_KEY env var or edit {CONFIG_PATH}")
+        config["_openai_available"] = False
+
+    if not config["_gemini_available"] and not config["_openai_available"]:
+        print("\n\u274c No reviewers available — aborting.")
+        sys.exit(1)
+    if not config["_gemini_available"]:
+        print("   Continuing with Pragmatist (ChatGPT) only.\n")
+    if not config["_openai_available"]:
+        print("   Continuing with Skeptic (Gemini) only.\n")
 
     return config
 
@@ -170,16 +232,23 @@ def get_project_structure():
 
 
 def validate_file_path(file_path):
-    """Validate and resolve a file path safely. Returns resolved Path or None."""
+    """Validate and resolve a file path safely. Returns resolved Path or None.
+
+    Audit BRAIN-H2: previous implementation rejected bare filenames like
+    `Makefile` (no `/`) and the project root itself (string-prefix check
+    excluded `cwd` exactly). Path.relative_to() handles both correctly.
+    """
     file_path = file_path.strip().strip("'\"`)>")
-    if not file_path or "/" not in file_path:
+    if not file_path:
         return None
-    resolved = Path(file_path).resolve()
     cwd = Path.cwd().resolve()
-    if not str(resolved).startswith(str(cwd) + os.sep):
+    try:
+        resolved = (cwd / file_path).resolve()
+        resolved.relative_to(cwd)
+    except (ValueError, OSError):
         print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
         return None
-    if not resolved.exists() or not resolved.is_file():
+    if not resolved.is_file():
         print(f"\u26a0\ufe0f  File not found: {file_path}")
         return None
     return resolved
@@ -279,31 +348,25 @@ def ask_gemini_api(prompt, model, api_key, config=None):
         }
     }
 
-    tmp = None
+    # Audit BRAIN-H3: pass JSON via stdin instead of a tempfile so the full
+    # prompt (which can include 200K chars of project source) doesn't sit on
+    # disk between processes — `finally` doesn't run on SIGKILL, so a hard
+    # interrupt would leak tempfiles in /tmp.
+    body = json.dumps(payload, ensure_ascii=False)
+    result = run_command([
+        "curl", "-s",
+        "-H", "Content-Type: application/json",
+        "-H", f"User-Agent: {USER_AGENT}",
+        "--data-binary", "@-",
+        url
+    ], input_text=body, timeout=120)
+
     try:
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".json", prefix="council_"
-        )
-        json.dump(payload, tmp, ensure_ascii=False)
-        tmp.close()
-
-        result = run_command([
-            "curl", "-s",
-            "-H", "Content-Type: application/json",
-            "-H", f"User-Agent: {USER_AGENT}",
-            "-d", f"@{tmp.name}",
-            url
-        ], timeout=120)
-
-        try:
-            data = json.loads(result)
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except (json.JSONDecodeError, KeyError, IndexError):
-            error = f"Gemini API error: {result[:500]}"
-            return sanitize_error(error, config) if config else error
-    finally:
-        if tmp and os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+        data = json.loads(result)
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+    except (json.JSONDecodeError, KeyError, IndexError):
+        error = f"Gemini API error: {result[:500]}"
+        return sanitize_error(error, config) if config else error
 
 
 def ask_gemini(prompt, config, file_paths=None):
@@ -337,31 +400,42 @@ def ask_chatgpt(prompt, config):
         "temperature": 0.2
     }
 
-    tmp = None
+    # Audit BRAIN-H4: write the Authorization header to a 0600 tempfile and
+    # pass via `-H @file` so the API key never appears in `ps`/argv. Audit
+    # BRAIN-H3: send the body via stdin so the full prompt isn't persisted.
+    hdr = tempfile.NamedTemporaryFile(
+        mode="w", delete=False, prefix="council_hdr_", suffix=".txt"
+    )
     try:
-        tmp = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, suffix=".json", prefix="council_"
+        os.chmod(hdr.name, 0o600)
+        hdr.write(
+            f"Authorization: Bearer {api_key}\n"
+            f"Content-Type: application/json\n"
+            f"User-Agent: {USER_AGENT}\n"
         )
-        json.dump(payload, tmp, ensure_ascii=False)
-        tmp.close()
+        hdr.close()
 
+        body = json.dumps(payload, ensure_ascii=False)
+        # Council pass D: -f makes curl exit non-zero on HTTP 4xx/5xx so we
+        # don't try to JSON-parse an HTML error page or empty body. Also -S
+        # so we still get the status reason in the captured stderr.
         result = run_command([
-            "curl", "-s",
+            "curl", "-sSf",
             "https://api.openai.com/v1/chat/completions",
-            "-H", "Content-Type: application/json",
-            "-H", f"Authorization: Bearer {api_key}",
-            "-H", f"User-Agent: {USER_AGENT}",
-            "-d", f"@{tmp.name}"
-        ], timeout=120)
+            "-H", f"@{hdr.name}",
+            "--data-binary", "@-"
+        ], input_text=body, timeout=120)
 
+        if is_error_response(result):
+            return sanitize_error(result, config)
         try:
             data = json.loads(result)
             return data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError):
             return sanitize_error(f"OpenAI API error: {result[:500]}", config)
     finally:
-        if tmp and os.path.exists(tmp.name):
-            os.unlink(tmp.name)
+        if os.path.exists(hdr.name):
+            os.unlink(hdr.name)
 
 
 # ─────────────────────────────────────────────────
@@ -386,10 +460,13 @@ def main():
     diff_block = f"\nGIT CHANGES:\n{git_diff}" if git_diff else ""
     rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
 
-    # ── Phase 1: Context Discovery ──
-    print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
+    # ── Phase 1: Context Discovery (skip if Gemini unavailable) ──
+    files_content = ""
+    file_paths = []
+    if config.get("_gemini_available", True):
+        print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
 
-    context_prompt = f"""{GEMINI_SYSTEM}
+        context_prompt = f"""{GEMINI_SYSTEM}
 
 Review the project structure and the implementation plan.
 
@@ -401,15 +478,13 @@ PLAN: {plan}
 List the file paths (comma-separated) that are critical to review for this plan.
 Reply ONLY with the comma-separated list of file paths. No explanations."""
 
-    files_to_read = ask_gemini(context_prompt, config)
+        files_to_read = ask_gemini(context_prompt, config)
 
-    files_content = ""
-    file_paths = []
-    if files_to_read and "/" in files_to_read and not files_to_read.startswith("Error"):
-        file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
-        print(f"\U0001f4c2 Reading {len(file_list)} file(s)...")
-        file_paths = get_validated_paths(file_list)
-        files_content = read_files(file_list)
+        if files_to_read and "/" in files_to_read and not is_error_response(files_to_read):
+            file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
+            print(f"\U0001f4c2 Reading {len(file_list)} file(s)...")
+            file_paths = get_validated_paths(file_list)
+            files_content = read_files(file_list)
 
     # ── Phase 2: The Skeptic (Gemini) ──
     print("\U0001f9d0 [The Skeptic]: Challenging plan justification...")
@@ -449,10 +524,13 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
-    gemini_verdict = ask_gemini(
-        skeptic_prompt, config,
-        file_paths=file_paths if use_native_files else None
-    )
+    if config.get("_gemini_available", True):
+        gemini_verdict = ask_gemini(
+            skeptic_prompt, config,
+            file_paths=file_paths if use_native_files else None
+        )
+    else:
+        gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
 
     # ── Phase 3: The Pragmatist (ChatGPT) ──
     print("\U0001f528 [The Pragmatist]: Evaluating production readiness...")
@@ -492,16 +570,44 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
-    gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+    if config.get("_openai_available", True):
+        gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+    else:
+        gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
 
     # ── Phase 4: Final Report ──
+    # Audit BRAIN-M2: surface infrastructure failures explicitly. Previously,
+    # an API timeout / missing CLI / 5xx response would degrade silently to
+    # a phantom "RETHINK" verdict via extract_verdict's fallback. The user
+    # had no signal whether the model rendered an opinion or the call failed.
+    skeptic_failed = is_error_response(gemini_verdict)
+    pragmatist_failed = is_error_response(gpt_verdict)
+    if skeptic_failed and pragmatist_failed:
+        print("\n\u274c Both reviewers failed — cannot render a verdict:")
+        print(f"   Skeptic (Gemini):    {gemini_verdict}")
+        print(f"   Pragmatist (ChatGPT): {gpt_verdict}")
+        sys.exit(2)
+    if skeptic_failed:
+        print(f"\n\u26a0\ufe0f  Skeptic (Gemini) call failed: {gemini_verdict}")
+        print("   Continuing with Pragmatist verdict only.")
+    if pragmatist_failed:
+        print(f"\n\u26a0\ufe0f  Pragmatist (ChatGPT) call failed: {gpt_verdict}")
+        print("   Continuing with Skeptic verdict only.")
+
     skeptic_decision = extract_verdict(gemini_verdict)
     pragmatist_decision = extract_verdict(gpt_verdict)
 
-    # More conservative verdict wins
-    skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
-    pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
-    final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
+    # More conservative verdict wins. When one reviewer failed, fall back to
+    # the surviving reviewer's verdict instead of letting the failure's
+    # "RETHINK" fallback bias the result.
+    if skeptic_failed and not pragmatist_failed:
+        final_verdict = pragmatist_decision
+    elif pragmatist_failed and not skeptic_failed:
+        final_verdict = skeptic_decision
+    else:
+        skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
+        pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
+        final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
 
     print("\n" + "=" * 60)
     print("\U0001f4cb SUPREME COUNCIL REPORT")

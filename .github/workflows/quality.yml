@@ -74,8 +74,14 @@ jobs:
         run: make cell-parity
 
   test-init-script:
+    # Audit T-05: matrix across Linux + macOS so BSD-vs-GNU divergence in
+    # head/sed/awk/cp/find is caught in CI instead of surfacing in user installs.
     name: Test Init Script
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -83,7 +89,7 @@ jobs:
         run: |
           cd /tmp
           touch artisan
-          bash $GITHUB_WORKSPACE/scripts/init-local.sh
+          bash "$GITHUB_WORKSPACE/scripts/init-local.sh"
           test -f .claude/prompts/SECURITY_AUDIT.md || exit 1
           echo "✅ Laravel init works"
 
@@ -92,7 +98,7 @@ jobs:
           cd /tmp
           rm -rf .claude CLAUDE.md artisan
           touch next.config.js
-          bash $GITHUB_WORKSPACE/scripts/init-local.sh
+          bash "$GITHUB_WORKSPACE/scripts/init-local.sh"
           test -f .claude/prompts/SECURITY_AUDIT.md || exit 1
           echo "✅ Next.js init works"
 

@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2026-04-25
+
+### Fixed
+
+- **CRIT-01** — Replaced fragile 95-line emoji-anchored sed smart-merge in `update-claude.sh` with chezmoi-style `.new` flow. Toolkit never touches user `CLAUDE.md`; updates land as `CLAUDE.md.new` for manual review/merge.
+- **CRIT-02** — Aligned `manifest.json` version with v4.1.0 git tag.
+- **C-01..C-10** — Lock TOCTOU fix in `state.sh`, atomic state-write with manifest_hash, `curl -sSLf` (fail on HTTP 4xx/5xx) across all installers, anchored regex in `setup-security.sh`, JSON-based plugin presence check.
+- **Sec-H1** — Anthropic OAuth Bearer token moved off `curl` argv. Written to `mktemp` header file with `chmod 600`, passed via `-H @file`. EXIT trap cleans up.
+- **BRAIN-H1..H4, M1, M2, M5** — `brain.py` corrected docstring, `Path.relative_to` validation, stdin body, header-file auth (chmod 0o600), partial-Council fallback (one provider failure → use surviving verdict), per-provider availability flags.
+- **S-01** — All hook scripts in `templates/*/settings.json` read `f=$(jq -r '.tool_input.file_path // empty')` from STDIN. Removed undefined `$FILE_PATH` references.
+- **PERF-02** — `sha256_file` prefers `sha256sum` → `shasum -a 256` → chunked Python fallback.
+- **T-02, T-05** — New regression suite `test-claude-md-new.sh` (19 assertions, 7 scenarios). CI matrix extended to `[ubuntu-latest, macos-latest]` for `test-init-script` job.
+- **M-03** — `make shellcheck` extended to `templates/global/`.
+
+### Notes
+
+Patch release closing 53 audit findings (2 CRIT, 14 HIGH, 20 MED, 17 LOW) cross-reviewed by Supreme Council. Council follow-up applied 4 additional refinements (passes A/B/C/D).
+
+## [4.1.0] - 2026-04-25
+
+### Added
+
+- Phase 11 UX polish: chezmoi-grade dry-run preview with `[+ ADD]` / `[~ MOD]` / `[- REMOVE]` grouping for both `install` and `update` flows.
+- `migrate-to-complement.sh --dry-run` now emits the same grouped preview before any destructive change.
+- New audit pipeline (`AUDIT-REPORT.md`) — full deep audit covering security, correctness, performance, portability, JSON state-file integrity. Cross-AI reviewed via Supreme Council (Gemini Skeptic + ChatGPT Pragmatist).
+
+### Fixed
+
+- `manifest.json` `version` and `updated` fields now match the `v4.1.0` git tag (previously drifted at `4.0.0` / `2026-04-19`).
+
+### Notes
+
+This release closes the v4.1 milestone. See `.planning/archived/v4.1/` for phase artifacts.
+
 ## [4.0.0] - 2026-04-21
 
 ### BREAKING CHANGES

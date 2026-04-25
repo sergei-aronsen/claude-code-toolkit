@@ -20,6 +20,7 @@
     "node_modules/**",
     ".planning/**",
     ".claude/**",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "AUDIT-REPORT.md"
   ]
 }

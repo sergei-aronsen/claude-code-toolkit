@@ -32,7 +32,24 @@ get_mtime() {
 sha256_file() {
     local path="$1"
     [[ -f "$path" ]] || return 1
-    python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$path"
+    # Prefer the standard CLI tools — `shasum` ships with macOS, `sha256sum`
+    # is GNU coreutils (Linux). Both run in ~5–10ms vs ~80–120ms for a
+    # cold python3 fork, which dominates wallclock when the diff loop hashes
+    # 80+ files per update (audit PERF-02). Fall back to python only as a
+    # last resort so we still work in minimal environments.
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$path" | awk '{print $1}'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$path" | awk '{print $1}'
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import hashlib,sys
+h=hashlib.sha256()
+with open(sys.argv[1],"rb") as f:
+    for c in iter(lambda: f.read(65536), b""): h.update(c)
+print(h.hexdigest())' "$path"
+    else
+        return 1
+    fi
 }
 
 read_state() {
@@ -43,13 +60,19 @@ read_state() {
 write_state() {
     local mode="$1" has_sp="$2" sp_ver="$3" has_gsd="$4" gsd_ver="$5"
     local installed_csv="$6" skipped_csv="$7" synth_flag="${8:-false}"
+    # Audit C-04: manifest_hash is an explicit, optional 9th argument so the
+    # field is always written atomically together with installed_files.
+    # Previously it was spliced in by a separate jq call after write_state
+    # returned — if the script was interrupted between the two, the state
+    # was left without manifest_hash and is_update_noop never fired again.
+    local manifest_hash="${9:-}"
     mkdir -p "$(dirname "$STATE_FILE")"
     python3 - "$mode" "$has_sp" "$sp_ver" "$has_gsd" "$gsd_ver" \
-             "$installed_csv" "$skipped_csv" "$synth_flag" "$STATE_FILE" <<'PYEOF'
+             "$installed_csv" "$skipped_csv" "$synth_flag" "$manifest_hash" "$STATE_FILE" <<'PYEOF'
 import json, os, sys, tempfile, hashlib
 from datetime import datetime, timezone
 
-mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, synth_flag, state_path = sys.argv[1:10]
+mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, synth_flag, manifest_hash, state_path = sys.argv[1:11]
 
 def sha256(p):
     with open(p, "rb") as f:
@@ -93,6 +116,7 @@ state = {
     },
     "installed_files": installed,
     "skipped_files": skipped,
+    "manifest_hash": manifest_hash,
     "installed_at": now,
 }
 
@@ -118,7 +142,31 @@ acquire_lock() {
     local retries=0
     while ! mkdir "$LOCK_DIR" 2>/dev/null; do
         local old_pid=""
+        # Audit C-02: there is a TOCTOU window between mkdir(LOCK_DIR) and
+        # the holder writing `pid`. Wait briefly for the file to appear so
+        # we don't reclaim a live lock whose PID hasn't been written yet.
+        local pid_wait=0
+        while [[ ! -s "$LOCK_DIR/pid" && $pid_wait -lt 5 ]]; do
+            sleep 0.1
+            pid_wait=$((pid_wait + 1))
+        done
         old_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+
+        # If the holder still hasn't written its pid, treat as a live race
+        # and retry — never `rm -rf` a lock with no PID, that's how two
+        # processes end up thinking they hold the lock simultaneously.
+        if [[ -z "$old_pid" ]]; then
+            retries=$((retries + 1))
+            if [[ $retries -ge 5 ]]; then
+                echo -e "${RED}✗${NC} Another install is starting up (no PID written yet). Exiting." >&2
+                return 1
+            fi
+            sleep 1
+            continue
+        fi
+
+        # Validate pid is integer before any further use (audit Sec-L3).
+        [[ "$old_pid" =~ ^[0-9]+$ ]] || old_pid=""
 
         # Signal 1: PID liveness (kill -0 sends no signal; returns 0 if process exists)
         if [[ -n "$old_pid" ]] && ! kill -0 "$old_pid" 2>/dev/null; then
