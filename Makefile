@@ -103,6 +103,9 @@ test:
 	@echo "Test 17: CLAUDE.md.new flow (audit T-02 / CRIT-01 regression guard)"
 	@bash scripts/tests/test-claude-md-new.sh
 	@echo ""
+	@echo "Test 18: audit pipeline fixture — allowlist match + FP schema"
+	@bash scripts/tests/test-audit-pipeline.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
