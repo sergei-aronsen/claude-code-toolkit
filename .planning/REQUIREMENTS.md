@@ -11,10 +11,10 @@ Requirements for the v4.2 release. Each maps to exactly one roadmap phase.
 
 A repo-local list of known false-positive findings that auditors must respect on every re-run.
 
-- [ ] **EXC-01**: User can run `/audit-skip <file:line> <rule> <reason>` to add an entry to `.claude/rules/audit-exceptions.md` after confirming the finding is not exploitable. Command appends a structured block (location, rule, reason, date, council status).
+- [x] **EXC-01**: User can run `/audit-skip <file:line> <rule> <reason>` to add an entry to `.claude/rules/audit-exceptions.md` after confirming the finding is not exploitable. Command appends a structured block (location, rule, reason, date, council status).
 - [ ] **EXC-02**: User can run `/audit-restore <file:line> <rule>` to remove an entry from `audit-exceptions.md` when an exception turns out to be a real bug. Requires confirmation prompt.
 - [x] **EXC-03**: `audit-exceptions.md` carries `globs: ["**/*"]` frontmatter so it auto-loads into every Claude Code session. Schema-aligned with existing `.claude/rules/` files.
-- [ ] **EXC-04**: `/audit-skip` validates that `<file:line>` exists in the working tree (`git ls-files` + line count) before writing. Refuses duplicates of `path:line + rule` and shows the existing record.
+- [x] **EXC-04**: `/audit-skip` validates that `<file:line>` exists in the working tree (`git ls-files` + line count) before writing. Refuses duplicates of `path:line + rule` and shows the existing record.
 - [ ] **EXC-05**: Installers (`init-claude.sh`, `init-local.sh`, `update-claude.sh`) seed `audit-exceptions.md` only when missing — never overwrite a user-modified file.
 
 ### Audit Pipeline FP Recheck + Structured Reports
