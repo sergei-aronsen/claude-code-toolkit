@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-04-25T23:23:59.800Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-04-25T23:27:20.815Z"
 last_activity: 2026-04-25 -- Phase 16 planning complete
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
-  percent: 84
+  completed_plans: 17
+  percent: 89
 ---
 
 # Project State
@@ -89,6 +89,7 @@ Carry-over decisions from v4.1:
 - [Phase 15]: Run brain.py from SCRATCH subshell so validate_file_path() accepts relative report path within /tmp dir
 - [Phase 15]: filter_report() awk idiom isolates mutation regions (council_pass line + Council verdict section) for byte-identical diff
 - [Phase 16]: Python3 inline heredoc used for multi-line block injection (awk -v cannot hold newlines)
+- [Phase 16]: Test 20 uses 'Council Handoff' (capital H) matching byte-exact splice script output; awk used for portable sentinel deletion in negative test
 
 ### Roadmap Evolution
 
@@ -129,11 +130,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 15 P05 | 1 | 1 tasks | 1 files |
 | Phase 15 P06 | 25 | 2 tasks | 2 files |
 | Phase 16-template-propagation-49-prompt-files P01 | 90 | 2 tasks | 2 files |
+| Phase 16 P02 | 8 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T23:23:59.797Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-04-25T23:27:20.812Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**

@@ -124,7 +124,7 @@
 **Plans**: 4 plans
 
 - [x] 16-01-PLAN.md — Splice tool: scripts/propagate-audit-pipeline-v42.sh (TEMPLATE-01, TEMPLATE-02)
-- [ ] 16-02-PLAN.md — Test 20: scripts/tests/test-template-propagation.sh idempotency + marker regression (TEMPLATE-03)
+- [x] 16-02-PLAN.md — Test 20: scripts/tests/test-template-propagation.sh idempotency + marker regression (TEMPLATE-03)
 - [ ] 16-03-PLAN.md — Apply splice script to live templates/ (49 prompt files in one atomic commit) (TEMPLATE-01, TEMPLATE-02)
 - [ ] 16-04-PLAN.md — Wire CI gates: Makefile validate + quality.yml validate-templates + register Test 20 (TEMPLATE-03)
 
@@ -154,5 +154,5 @@
 | 13. Foundation — FP Allowlist + Skip/Restore | v4.2 | 5/5 | Complete    | 2026-04-25 |
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 4/4 | Complete    | 2026-04-25 |
 | 15. Council Audit-Review Integration | v4.2 | 6/6 | Complete    | 2026-04-25 |
-| 16. Template Propagation — 49 Prompt Files | v4.2 | 1/4 | In Progress|  |
+| 16. Template Propagation — 49 Prompt Files | v4.2 | 2/4 | In Progress|  |
 | 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 0/0 | Not started | - |
