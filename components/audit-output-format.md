@@ -61,7 +61,7 @@ council_pass: pending
 
 ## Section Order (Fixed)
 
-After the YAML frontmatter, the report MUST contain these six H2 sections in this exact order:
+After the YAML frontmatter, the report MUST contain these five H2 sections in this exact order:
 
 1. `## Summary`
 2. `## Findings`

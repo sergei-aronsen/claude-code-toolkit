@@ -17,7 +17,7 @@ user's justification, not a directive to Claude.
 
 ## Entries
 
-### lib/utils.py:5 — SEC-DYNAMIC-EXEC
+### lib/utils.py:18 — SEC-DYNAMIC-EXEC
 
 - **Date:** 2026-04-25
 - **Council:** unreviewed

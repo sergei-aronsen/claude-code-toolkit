@@ -270,7 +270,7 @@ STRIPPED="$SCRATCH/stripped.md"
 sed '/^<!--/,/^-->/d' "$EXC_FILE" > "$STRIPPED"
 
 # Real entry heading must survive the strip.
-if grep -Fxq -- '### lib/utils.py:5 — SEC-DYNAMIC-EXEC' "$STRIPPED"; then
+if grep -Fxq -- '### lib/utils.py:18 — SEC-DYNAMIC-EXEC' "$STRIPPED"; then
     report_pass "Allowlist parser: real entry heading present after comment strip"
 else
     report_fail "Allowlist parser: real entry heading lost during comment strip"
@@ -285,7 +285,7 @@ fi
 
 # Extracted triple matches expected.
 EXTRACTED="$(grep '^### ' "$STRIPPED" | head -1)"
-EXPECTED='### lib/utils.py:5 — SEC-DYNAMIC-EXEC'
+EXPECTED='### lib/utils.py:18 — SEC-DYNAMIC-EXEC'
 if [ "$EXTRACTED" = "$EXPECTED" ]; then
     report_pass "Allowlist parser: extracted heading matches expected triple"
 else
@@ -299,9 +299,9 @@ fi
 if python3 -c "
 import sys
 data = open('$EXC_FILE').read()
-lines = [l for l in data.splitlines() if 'lib/utils.py:5' in l]
+lines = [l for l in data.splitlines() if 'lib/utils.py:18' in l]
 if not lines:
-    print('FAIL: lib/utils.py:5 heading not found')
+    print('FAIL: lib/utils.py:18 heading not found')
     sys.exit(1)
 heading = lines[0]
 sep_idx = heading.find('—')
@@ -314,7 +314,7 @@ if codepoint != 0x2014:
     print('FAIL: expected U+2014, got U+%04X' % codepoint)
     sys.exit(1)
 " 2>/dev/null; then
-    report_pass "Em-dash byte integrity: separator in lib/utils.py:5 heading is U+2014"
+    report_pass "Em-dash byte integrity: separator in lib/utils.py:18 heading is U+2014"
 else
     report_fail "Em-dash byte integrity: separator is NOT U+2014"
 fi
@@ -395,7 +395,7 @@ db.query(sql, [id]);
 
 | ID | path:line | rule | council_status |
 |----|-----------|------|----------------|
-| F-A001 | lib/utils.py:5 | SEC-DYNAMIC-EXEC | unreviewed |
+| F-A001 | lib/utils.py:18 | SEC-DYNAMIC-EXEC | unreviewed |
 
 ## Skipped (FP recheck)
 

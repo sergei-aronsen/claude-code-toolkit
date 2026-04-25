@@ -1,6 +1,6 @@
 """
 AUDIT-PIPELINE REGRESSION-TEST FIXTURE -- do not "fix" this file.
-The dynamic-execution call on line ~5 is INTENTIONAL.
+The dynamic-execution call on line ~18 is INTENTIONAL.
 It exists to exercise the SEC-DYNAMIC-EXEC allowlist-suppression path.
 The matching allowlist entry lives in fixtures/audit/allowlist-populated.md.
 See Plan 14-04 for full context.
