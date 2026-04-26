@@ -121,6 +121,9 @@ test:
 	@echo "Test 23: uninstall [y/N/d] prompt loop — UN-03 stdin-injected 3-branch proof"
 	@bash scripts/tests/test-uninstall-prompt.sh
 	@echo ""
+	@echo "Test 24: uninstall round-trip integration (UN-08 — init→uninstall→clean state)"
+	@bash scripts/tests/test-uninstall.sh
+	@echo ""
 	@echo "Test 25: installer banner gate (UN-07 — grep 'To remove:' in 3 installers)"
 	@bash scripts/tests/test-install-banner.sh
 	@echo ""
