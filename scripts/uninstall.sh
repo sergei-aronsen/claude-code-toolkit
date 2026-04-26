@@ -618,6 +618,44 @@ fi
 
 printf '%bBACKED UP%b to %s\n' "$CYAN" "$NC" "$BACKUP_DIR"
 
+# ═════════════════════════════════════════════════════════════════════════════
+# UN-05: Phase 19 finalization — sentinel strip + base-plugin invariant + state delete
+# Order per CONTEXT.md D-06: backup (done) → strip → file-delete (done) → state-delete (LAST)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ───────── UN-05: strip toolkit sentinel block from ~/.claude/CLAUDE.md ─────────
+GLOBAL_CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+if [[ -n "${TK_UNINSTALL_HOME:-}" ]]; then
+    GLOBAL_CLAUDE_MD="$TK_UNINSTALL_HOME/.claude/CLAUDE.md"
+fi
+strip_sentinel_block "$GLOBAL_CLAUDE_MD"
+
+# ───────── UN-05: base-plugin invariant — verify no mutation occurred ─────────
+# Snapshots taken post-state-read (before any mutation). Capture post-state now.
+find "$SP_DIR"  -type f 2>/dev/null | sort > "$SP_AFTER_TMP"  || true
+find "$GSD_DIR" -type f 2>/dev/null | sort > "$GSD_AFTER_TMP" || true
+
+if ! diff -q "$SP_SNAP_TMP" "$SP_AFTER_TMP" >/dev/null 2>&1; then
+    log_error "BUG: superpowers plugin tree was modified during uninstall — aborting"
+    log_error "  expected: $(wc -l < "$SP_SNAP_TMP" | tr -d '[:space:]') files; got: $(wc -l < "$SP_AFTER_TMP" | tr -d '[:space:]') files"
+    exit 1
+fi
+if ! diff -q "$GSD_SNAP_TMP" "$GSD_AFTER_TMP" >/dev/null 2>&1; then
+    log_error "BUG: get-shit-done plugin tree was modified during uninstall — aborting"
+    log_error "  expected: $(wc -l < "$GSD_SNAP_TMP" | tr -d '[:space:]') files; got: $(wc -l < "$GSD_AFTER_TMP" | tr -d '[:space:]') files"
+    exit 1
+fi
+
+# ───────── UN-05: delete toolkit-install.json (LAST step, D-06) ─────────
+# Failure logs warning but exits 0: files already removed; orphaned state is recoverable
+# by manual `rm`. Hard-fail on state-delete failure would leave the user thinking the
+# uninstall didn't work when in reality only the bookkeeping is stuck.
+if rm -f "$STATE_FILE"; then
+    log_success "State file removed: $STATE_FILE"
+else
+    log_warning "Failed to remove $STATE_FILE — uninstall is complete but state file is orphaned. Remove manually: rm '$STATE_FILE'"
+fi
+
 echo ""
-log_info "Phase 18 (v4.3 Wave 1) ships file removal. Phase 19 will handle state cleanup ~/.claude/toolkit-install.json + CLAUDE.md sentinel block."
+log_success "Uninstall complete. Toolkit removed from ${PROJECT_DIR}/.claude/"
 exit 0
