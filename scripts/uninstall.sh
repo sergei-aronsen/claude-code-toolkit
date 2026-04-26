@@ -80,7 +80,10 @@ log_error()   { echo -e "${RED}✗${NC} $1"; }
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
-trap 'rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP"' EXIT
+# Trap registered BEFORE acquire_lock so SIGINT mid-acquire still releases cleanly.
+# release_lock is defined in lib/state.sh (sourced below); the 2>/dev/null guard
+# handles the case where the trap fires before sourcing completes.
+trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP"' EXIT
 
 # ───────── source libs HARD-fail (with TK_UNINSTALL_LIB_DIR test seam) ─────────
 for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
@@ -114,11 +117,15 @@ else
     NC=''
 fi
 
-# ───────── CLAUDE_DIR / STATE_FILE override for test seam ─────────
+# ───────── CLAUDE_DIR / STATE_FILE / LOCK_DIR override for test seam ─────────
 CLAUDE_DIR="$(pwd)/.claude"
 if [[ -n "${TK_UNINSTALL_HOME:-}" ]]; then
     CLAUDE_DIR="$TK_UNINSTALL_HOME/.claude"
     STATE_FILE="$TK_UNINSTALL_HOME/.claude/toolkit-install.json"
+    # LOCK_DIR is defined as a global by lib/state.sh at source time; override
+    # it here so acquire_lock uses the sandbox path during tests.
+    # shellcheck disable=SC2034  # consumed by acquire_lock in lib/state.sh
+    LOCK_DIR="$TK_UNINSTALL_HOME/.claude/.toolkit-install.lock"
 fi
 # shellcheck disable=SC2034  # PROJECT_DIR referenced by helpers in 18-03/04
 PROJECT_DIR="$(dirname "$CLAUDE_DIR")"
@@ -304,5 +311,114 @@ echo -e "  ${YELLOW}MODIFIED${NC}: $n_modified"
 echo -e "  ${BLUE}MISSING${NC}:   $n_missing"
 echo -e "  ${RED}PROTECTED${NC}: $n_protected (excluded from any action)"
 
-# TODO(18-03): replace with backup + delete loop
+# ───────── Mutation lock: prevent concurrent install/update/uninstall ─────────
+# Trap was already registered before sourcing libs (above) so SIGINT before
+# acquire_lock completes will still invoke release_lock cleanly.
+acquire_lock || { log_error "Another toolkit install/update/uninstall is in progress."; exit 1; }
+
+# ───────── UN-04: backup CLAUDE_DIR before any rm ─────────
+BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-uninstall-$(date -u +%s)"
+log_info "Creating backup at $BACKUP_DIR (this may take a moment)…"
+if ! cp -R "$CLAUDE_DIR" "$BACKUP_DIR"; then
+    log_error "Backup failed — aborting uninstall without removing any files"
+    [[ -d "$BACKUP_DIR" ]] && rm -rf "$BACKUP_DIR"
+    exit 1
+fi
+# UN-04 snapshot clause: ensure toolkit-install.json is captured inside backup.
+if [[ -f "$STATE_FILE" ]]; then
+    cp "$STATE_FILE" "$BACKUP_DIR/toolkit-install.json.snapshot" || \
+        log_warning "State file snapshot copy failed (backup proceeds without snapshot)"
+fi
+log_success "Backup created: $BACKUP_DIR"
+warn_if_too_many_backups
+
+# ───────── UN-01: delete only hash-matched files (REMOVE_LIST) ─────────
+# PROTECTED_LIST is NEVER iterated here — base-plugin invariant.
+# MODIFIED_LIST entries are kept and surfaced in post-run summary (deferred to 18-04).
+#
+# bash 3.2 + set -u safety: NO `local` keyword (this is the top-level MAIN block,
+# not a function body — `local` triggers SC2168 + bash runtime error). NO inline
+# [@]:- array-default guards — use explicit array-length guard before expansion.
+DELETED_LIST=()
+DELETE_FAILED_LIST=()
+
+if [[ ${#REMOVE_LIST[@]} -gt 0 ]]; then
+    log_info "Removing ${#REMOVE_LIST[@]} unmodified file(s)…"
+    for rel in "${REMOVE_LIST[@]}"; do
+        # Defense-in-depth: re-check protection at delete time (UN-01 invariant).
+        if is_protected_path "$rel"; then
+            log_warning "Refusing to delete protected path: $rel"
+            continue
+        fi
+        # NOTE: NO `local` — this loop runs at MAIN block (top-level), not inside
+        # a function. Using `local` here triggers shellcheck SC2168 + a bash runtime
+        # error. Plain assignment is correct.
+        abs_path="$rel"
+        case "$rel" in
+            /*) : ;;   # absolute already
+            *)  abs_path="$PROJECT_DIR/$rel" ;;
+        esac
+        if [[ -f "$abs_path" ]]; then
+            if rm -f "$abs_path"; then
+                DELETED_LIST+=("$rel")
+            else
+                DELETE_FAILED_LIST+=("$rel")
+                log_warning "Failed to remove: $rel"
+            fi
+        fi
+    done
+fi
+
+# ───────── Post-run summary (4-group) ─────────
+# IMPORTANT: every array iteration uses the bash 3.2-safe array-length guard
+# pattern — NEVER the inline `[@]:-` default modifier. Empty arrays under
+# set -u raise "unbound variable" without the explicit length check.
+echo ""
+echo "Uninstall Summary"
+echo "─────────────────"
+
+if [[ ${#DELETED_LIST[@]} -gt 0 ]]; then
+    printf '%bDELETED %d%b\n' "$GREEN" "${#DELETED_LIST[@]}" "$NC"
+    for p in "${DELETED_LIST[@]}"; do
+        echo "  $p"
+    done
+else
+    printf '%bDELETED 0%b\n' "$GREEN" "$NC"
+fi
+
+# MODIFIED entries — kept (18-04 will add prompt to allow removal). Surface as KEPT.
+if [[ ${#MODIFIED_LIST[@]} -gt 0 ]]; then
+    printf '%bKEPT (modified) %d%b — pass through 18-04 [y/N/d] prompt in next plan\n' \
+        "$YELLOW" "${#MODIFIED_LIST[@]}" "$NC"
+    for p in "${MODIFIED_LIST[@]}"; do
+        echo "  $p"
+    done
+fi
+
+if [[ ${#MISSING_LIST[@]} -gt 0 ]]; then
+    printf '%bMISSING %d%b (registered but absent)\n' "$BLUE" "${#MISSING_LIST[@]}" "$NC"
+    for p in "${MISSING_LIST[@]}"; do
+        echo "  $p"
+    done
+fi
+
+if [[ ${#PROTECTED_LIST[@]} -gt 0 ]]; then
+    printf '%bPROTECTED %d%b (excluded by safety policy)\n' "$RED" "${#PROTECTED_LIST[@]}" "$NC"
+    for p in "${PROTECTED_LIST[@]}"; do
+        echo "  $p"
+    done
+fi
+
+if [[ ${#DELETE_FAILED_LIST[@]} -gt 0 ]]; then
+    printf '%bDELETE_FAILED %d%b\n' "$RED" "${#DELETE_FAILED_LIST[@]}" "$NC"
+    for p in "${DELETE_FAILED_LIST[@]}"; do
+        echo "  $p"
+    done
+fi
+
+printf '%bBACKED UP%b to %s\n' "$CYAN" "$NC" "$BACKUP_DIR"
+
+# 18-05+ (Phase 19) will add: state cleanup, idempotency-on-second-run, mode-strip from CLAUDE.md
+echo ""
+log_warning "⚠ State cleanup deferred to v4.3 Phase 19 — toolkit-install.json NOT yet removed"
 exit 0
