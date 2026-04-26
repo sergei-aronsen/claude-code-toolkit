@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
 status: executing
-stopped_at: Completed 18-core-uninstall-script-dry-run-backup/18-02-PLAN.md
-last_updated: "2026-04-26T09:30:54.542Z"
+stopped_at: Completed 18-core-uninstall-script-dry-run-backup/18-03-PLAN.md
+last_updated: "2026-04-26T09:39:12.117Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 
 Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
 Phase: 18 (core-uninstall-script-dry-run-backup) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 
 Progress: [          ] 0%
@@ -57,6 +57,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 18-core-uninstall-script-dry-run-backup]: classify_file PROTECTED-first ordering: is_protected_path checked before file existence before SHA compare — UN-01 invariant enforced at helper layer before any downstream delete logic
 - [Phase 18-core-uninstall-script-dry-run-backup]: classify_file resolves paths against PROJECT_DIR not CLAUDE_DIR — installed_files[].path is project-root-relative; using CLAUDE_DIR caused double-.claude path bug
 - [Phase 18-core-uninstall-script-dry-run-backup]: DRY_RUN early-exit is a permanent gate after classification — 18-03/18-04 must add backup+delete AFTER this block, never before (UN-02 zero-mutation invariant)
+- [Phase 18-core-uninstall-script-dry-run-backup]: LOCK_DIR override added to TK_UNINSTALL_HOME test seam block — acquire_lock must use sandbox path during tests to avoid real-home lock interference
+- [Phase 18-core-uninstall-script-dry-run-backup]: Execution order: trap → source libs → LOCK_DIR override → acquire_lock → backup → snapshot → delete loop → summary; backup ALWAYS precedes rm
 
 ### Roadmap Evolution
 
@@ -87,11 +89,12 @@ Carry-overs available for next milestone scoping:
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
 | Phase 18-core-uninstall-script-dry-run-backup P01 | 10 | 1 tasks | 1 files |
 | Phase 18-core-uninstall-script-dry-run-backup P02 | 15 | 2 tasks | 3 files |
+| Phase 18-core-uninstall-script-dry-run-backup P03 | 6 | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T09:30:54.540Z
-Stopped at: Completed 18-core-uninstall-script-dry-run-backup/18-02-PLAN.md
+Last session: 2026-04-26T09:39:12.114Z
+Stopped at: Completed 18-core-uninstall-script-dry-run-backup/18-03-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
