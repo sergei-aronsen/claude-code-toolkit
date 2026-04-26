@@ -158,12 +158,16 @@ is_protected_path() {
 #   MISSING    — file does not exist on disk
 #   PROTECTED  — is_protected_path returned 0 (caller MUST skip)
 # Never deletes. Pure read.
+#
+# NOTE: installed_files[].path entries are relative to PROJECT_DIR (the parent of
+# .claude/), e.g. ".claude/commands/plan.md". Resolve against PROJECT_DIR, not
+# CLAUDE_DIR, to avoid the double-.claude path .claude/.claude/commands/plan.md.
 classify_file() {
     local path="$1" recorded="$2"
     local abs
     case "$path" in
         /*) abs="$path" ;;
-        *)  abs="$CLAUDE_DIR/$path" ;;
+        *)  abs="$PROJECT_DIR/$path" ;;
     esac
     if is_protected_path "$abs"; then
         printf 'PROTECTED'
@@ -200,30 +204,105 @@ fi
 
 STATE_JSON=$(read_state) || { log_error "toolkit-install.json unreadable at $STATE_FILE"; exit 1; }
 
+# print_uninstall_dry_run — UN-02 chezmoi-grade preview of removal plan.
+# Reads from outer-scope arrays populated by the read-only classification phase:
+#   REMOVE_LIST    — files whose current sha256 matches recorded sha256 (-)
+#   MODIFIED_LIST  — files whose current sha256 differs (?, prompt-pending)
+#   MISSING_LIST   — files registered but absent on disk (?, distinguished by label)
+#   KEEP_LIST      — files user chose to keep (~) — empty in dry-run; populated by 18-04
+# Color via dro_* helpers (TTY + NO_COLOR gated).
+# Zero filesystem writes. No prompts. Returns 0.
+#
+# IMPORTANT: dro_print_header takes a SINGLE-CHAR marker. MODIFIED and MISSING both
+# use "?" — they are distinguished by their LABEL ("MODIFIED" vs "MISSING"), not by
+# the marker. The output reads as "[? MODIFIED]" and "[? MISSING]".
+print_uninstall_dry_run() {
+    if ! command -v dro_init_colors >/dev/null 2>&1; then
+        log_error "dry-run-output.sh not sourced — print_uninstall_dry_run cannot render"
+        return 1
+    fi
+    dro_init_colors
+
+    local total=$((n_remove + n_keep + n_modified + n_missing))
+
+    if [ "$n_remove" -gt 0 ]; then
+        dro_print_header "-" "REMOVE" "$n_remove" _DRO_R
+        for p in "${REMOVE_LIST[@]}"; do
+            dro_print_file "$p"
+        done
+        echo ""
+    fi
+
+    if [ "$n_keep" -gt 0 ]; then
+        dro_print_header "~" "KEEP" "$n_keep" _DRO_C
+        for p in "${KEEP_LIST[@]}"; do
+            dro_print_file "$p"
+        done
+        echo ""
+    fi
+
+    if [ "$n_modified" -gt 0 ]; then
+        dro_print_header "?" "MODIFIED" "$n_modified" _DRO_Y
+        for p in "${MODIFIED_LIST[@]}"; do
+            dro_print_file "${p}  (will prompt: y=remove / N=keep / d=diff)"
+        done
+        echo ""
+    fi
+
+    if [ "$n_missing" -gt 0 ]; then
+        # NOTE: single-char "?" marker (matches dro_print_header API). Distinguished
+        # from MODIFIED group by the label column.
+        dro_print_header "?" "MISSING" "$n_missing" _DRO_Y
+        for p in "${MISSING_LIST[@]}"; do
+            dro_print_file "${p}  (registered but absent on disk)"
+        done
+        echo ""
+    fi
+
+    dro_print_total "$total"
+}
+
 # ───────── classify all registered files ─────────
-n_remove=0
-n_modified=0
-n_missing=0
-n_protected=0
-n_keep=0
+REMOVE_LIST=()
+MODIFIED_LIST=()
+MISSING_LIST=()
+PROTECTED_LIST=()
+KEEP_LIST=()   # populated by 18-04 [y/N/d] prompt; empty in 18-02
 
 while IFS=$'\t' read -r path sha256; do
     [[ -z "$path" ]] && continue
     verdict=$(classify_file "$path" "$sha256")
     case "$verdict" in
-        REMOVE)    n_remove=$((n_remove + 1)) ;;
-        MODIFIED)  n_modified=$((n_modified + 1)) ;;
-        MISSING)   n_missing=$((n_missing + 1)) ;;
-        PROTECTED) n_protected=$((n_protected + 1)) ;;
-        KEEP)      n_keep=$((n_keep + 1)) ;;
+        REMOVE)    REMOVE_LIST+=("$path") ;;
+        MODIFIED)  MODIFIED_LIST+=("$path") ;;
+        MISSING)   MISSING_LIST+=("$path") ;;
+        PROTECTED) PROTECTED_LIST+=("$path") ;;
+        KEEP)      KEEP_LIST+=("$path") ;;
     esac
 done < <(jq -r '.installed_files[] | "\(.path)\t\(.sha256)"' <<<"$STATE_JSON")
 
-# ───────── print classification summary ─────────
+# Derive counters from array lengths.
+n_remove=${#REMOVE_LIST[@]}
+n_modified=${#MODIFIED_LIST[@]}
+n_missing=${#MISSING_LIST[@]}
+n_protected=${#PROTECTED_LIST[@]}
+n_keep=${#KEEP_LIST[@]}
+
+# UN-02 dry-run early exit. Must run AFTER classification (read-only) and
+# BEFORE any backup/lock/delete logic added by plans 18-03/18-04.
+# Zero filesystem changes from this point if --dry-run was passed.
+if [[ $DRY_RUN -eq 1 ]]; then
+    print_uninstall_dry_run
+    exit 0
+fi
+
+# Print the plain text classification summary (non-dry-run runs only).
+echo ""
 echo "Classification:"
 echo -e "  ${GREEN}REMOVE${NC}:    $n_remove"
 echo -e "  ${YELLOW}MODIFIED${NC}: $n_modified"
 echo -e "  ${BLUE}MISSING${NC}:   $n_missing"
 echo -e "  ${RED}PROTECTED${NC}: $n_protected (excluded from any action)"
 
+# TODO(18-03): replace with backup + delete loop
 exit 0
