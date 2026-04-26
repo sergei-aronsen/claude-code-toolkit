@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
-status: verifying
-stopped_at: Completed 19-state-cleanup-idempotency-03-PLAN.md
-last_updated: "2026-04-26T11:21:11.337Z"
+status: in_progress
+stopped_at: Verified 19-state-cleanup-idempotency — PASSED
+last_updated: "2026-04-26T12:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 7
   completed_plans: 7
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 19 — state-cleanup-idempotency
+**Current focus:** Phase 20 — Distribution + Tests
 
 ## Current Position
 
-Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
-Phase: 19 (state-cleanup-idempotency) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Milestone: v4.3 Uninstall — in progress (started 2026-04-26)
+Phase: 19 (state-cleanup-idempotency) — COMPLETE (verified 2026-04-26)
+Next: Phase 20 — Distribution + Tests
+Status: Phase 19 verified PASSED. Ready for Phase 20.
 
-Progress: [          ] 0%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
@@ -73,10 +73,11 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-21: v4.0 shipped (Phases 1–7 + 6.1)
 - 2026-04-25: v4.1 shipped (Phases 8–12); v4.2 roadmap created (Phases 13–17, 22 REQ-IDs)
 - 2026-04-26: v4.2 shipped — tagged `v4.2.0` + GitHub Release published
+- 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
 
 ### Pending Todos
 
-None — milestone complete.
+None.
 
 ### Blockers/Concerns
 
@@ -95,6 +96,7 @@ Carry-overs available for next milestone scoping:
 | Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
 | Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
+| Deferred | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: explicitly deferred to v4.4 |
 | Phase 18-core-uninstall-script-dry-run-backup P01 | 10 | 1 tasks | 1 files |
 | Phase 18-core-uninstall-script-dry-run-backup P02 | 15 | 2 tasks | 3 files |
 | Phase 18-core-uninstall-script-dry-run-backup P03 | 6 | 3 tasks | 4 files |
@@ -105,14 +107,11 @@ Carry-overs available for next milestone scoping:
 
 ## Session Continuity
 
-Last session: 2026-04-26T11:21:11.333Z
-Stopped at: Completed 19-state-cleanup-idempotency-03-PLAN.md
+Last session: 2026-04-26T12:00:00.000Z
+Stopped at: Phase 19 verification complete — PASSED
 Resume file: None
 
-**To resume next session — one of:**
+**To resume next session:**
 
-- `/gsd-new-milestone` — scope v4.3+ via questioning → research → requirements → roadmap
+- `/gsd-next` — proceed to Phase 20 (Distribution + Tests)
 - `/gsd-progress` — see context + next action
-- `/gsd-explore` — Socratic ideation before committing to a milestone
-
-**No pending work in-flight.** Repo is clean. v4.2 shipped + pushed + GitHub Release live.
