@@ -47,7 +47,7 @@
 
 ### 🟢 v4.3 Uninstall (Phases 18–20) — IN PROGRESS
 
-- [ ] **Phase 18: Core Uninstall — Script + Dry-Run + Backup** — `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes registered files with `--dry-run` preview, `[y/N/d]` user-modification prompt, and full `.claude/` backup
+- [x] **Phase 18: Core Uninstall — Script + Dry-Run + Backup** — `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes registered files with `--dry-run` preview, `[y/N/d]` user-modification prompt, and full `.claude/` backup (completed 2026-04-26)
 - [ ] **Phase 19: State Cleanup + Idempotency** — Strip toolkit-owned `~/.claude/CLAUDE.md` sections, delete `toolkit-install.json` after success, double-invocation is a no-op
 - [ ] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, Test 21 fresh→install→uninstall→fresh assertion
 
@@ -71,7 +71,7 @@
 - [x] 18-01-PLAN.md — Script skeleton: argparse, state load, SHA256 classification, base-plugin exclusion (UN-01)
 - [x] 18-02-PLAN.md — `--dry-run` 4-group preview using dro_* primitives, zero-mutation contract (UN-02)
 - [x] 18-03-PLAN.md — Backup-before-delete to `~/.claude-backup-pre-uninstall-<ts>/` + REMOVE_LIST hash-match delete loop (UN-04, UN-01)
-- [ ] 18-04-PLAN.md — Per-MODIFIED-file [y/N/d] prompt via /dev/tty with re-entrant d-branch diff (UN-03)
+- [x] 18-04-PLAN.md — Per-MODIFIED-file [y/N/d] prompt via /dev/tty with re-entrant d-branch diff (UN-03)
 
 ### Phase 19: State Cleanup + Idempotency
 
