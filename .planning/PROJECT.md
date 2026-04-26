@@ -44,23 +44,20 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `scripts/lib/dry-run-output.sh` shared library (`dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`); chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output across `init-claude.sh`, `update-claude.sh` (added `DRY_RUN` flag exiting before backup), `migrate-to-complement.sh` (replaced 1-liner with `[- REMOVE]` group); `${NO_COLOR+x}` + `[ -t 1 ]` gates per [no-color.org](https://no-color.org) — Validated in Phase 11: ux-polish (UX-01)
 - ✓ ChatGPT pass-3 audit verified against codebase (8/15 FALSE, 6/15 PARTIAL deferred to v4.2+, 1/15 REAL = uninstall script as HARDEN-C-04); Wave-A `scripts/validate-commands.py` enforces `## Purpose`/`## Usage` H2 headings on `commands/*.md` via `make validate-commands` + CI — Validated in Phase 12: audit-verification-template-hardening (HARDEN-A-01)
 
-## Current Milestone: v4.2 Audit System v2
-
-**Goal:** Upgrade `/audit` pipeline with persistent FP allowlist, mandatory Supreme Council `audit-review` pass, and structured reports containing verbatim code snippets so Council reasons from code, not labels.
-
-**Target features:**
-
-- Persistent FP allowlist (`.claude/rules/audit-exceptions.md`, auto-loaded via `globs:["**/*"]`)
-- New commands: `/audit-skip`, `/audit-restore`
-- Audit prompt FP-recheck pass (6-step rule applied to every finding before reporting)
-- Structured audit report format with ±10 lines of verbatim code per finding
-- Mandatory Council `audit-review` mode — per-finding REAL/FALSE_POSITIVE verdict; **MUST NOT** reclassify severity
-- Update all `templates/*/prompts/{SECURITY_AUDIT,CODE_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,DEPLOY_CHECKLIST,DESIGN_REVIEW}.md` (~49 files across 7 frameworks)
-- `manifest.json` registration + idempotent installer support + `Makefile`/CI gates
-
 ### Active
 
-_v4.2 requirements defined via `/gsd-new-milestone` — see REQUIREMENTS.md._
+_Next milestone requirements TBD via `/gsd-new-milestone`._
+
+<details>
+<summary>v4.2 requirements (shipped 2026-04-26)</summary>
+
+- ✓ EXC-01..05 (Phase 13 — FP allowlist + `/audit-skip` + `/audit-restore` + installer wiring)
+- ✓ AUDIT-01..05 (Phase 14 — allowlist parser, 6-step FP recheck, structured `.claude/audits/<type>-<HHMM>.md` reports with ±10 lines verbatim code)
+- ✓ COUNCIL-01..06 (Phase 15 — mandatory `/council audit-review`, severity reclass forbidden, REAL/FALSE_POSITIVE verdicts, missed findings, FP nudge UX, parallel Gemini+ChatGPT with `disputed` flagging)
+- ✓ TEMPLATE-01..03 (Phase 16 — 49 prompt files spliced with 4 contract blocks, RU/EN preserved, CI gate asserts markers)
+- ✓ DIST-01..03 (Phase 17 — manifest 4.2.0, `audit-review.md` installer, CHANGELOG `[4.2.0]`)
+
+</details>
 
 <details>
 <summary>v4.1 requirements (shipped 2026-04-25)</summary>
@@ -129,17 +126,19 @@ _v4.2 requirements defined via `/gsd-new-milestone` — see REQUIREMENTS.md._
 
 **Shipped:**
 
-- **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0`.
+- **v4.2 Audit System v2** (2026-04-26) — 5 phases (13–17), 22 plans, 22 REQ-IDs. Persistent FP allowlist (`.claude/rules/audit-exceptions.md` + `/audit-skip` + `/audit-restore`), `/audit` rewritten to a 6-phase pipeline with 6-step FP recheck and structured reports at `.claude/audits/<type>-<HHMM>.md` (±10 lines verbatim code per finding), mandatory `/council audit-review` pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden), and 49 prompt files spliced across 7 frameworks. Tagged `v4.2.0`.
+- **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
 ## Next Milestone Goals
 
 _To be defined via `/gsd-new-milestone`._
 
-v4.2 candidate carry-overs from v4.1 audit + v4.0 lockouts:
+Candidate carry-overs from v4.1 audit + v4.0 lockouts:
 
-- HARDEN-C-04 — uninstall script (only REAL finding from ChatGPT pass-3 audit)
+- HARDEN-C-04 — uninstall script (only REAL finding from ChatGPT pass-3 audit, deferred through v4.2)
 - AUDIT-02/04/06/10/15 — Wave B/C hardening deferred from Phase 12 (compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata)
+- Council `audit-review` integration with cloud Sentry/Linear (auto-create issue per Council-confirmed REAL finding) — surfaced from v4.2 deferred list
 - Installable GSD CLI wrapper in toolkit (crosses repo boundary — deferred from v4.1)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
 
@@ -160,6 +159,10 @@ v4.2 candidate carry-overs from v4.1 audit + v4.0 lockouts:
 | Upstream GSD CLI bugs filed, not patched | TK and gsd-build/get-shit-done are separate repos with separate maintainers; patching upstream code in TK creates a fork burden. Filing well-formed issues is correct boundary. | ✓ Good — 3 issues filed in Phase 10 (#2659/#2660/#2661); zero toolkit code changes per SC4 |
 | Cherry-pick "Surgical Changes" from forrestchang/andrej-karpathy-skills | 83K-star plugin had 65 lines; 3/4 rules duplicated existing KISS/YAGNI/Plan Mode coverage. Cherry-pick avoids redundant skill activation while owning the unique concept. | ✓ Good — `components/surgical-changes.md` shipped; full plugin not installed |
 | Shared `scripts/lib/dry-run-output.sh` over per-script duplication (UX-01) | Three scripts needed identical chezmoi-grade output. Precedent from `scripts/lib/backup.sh` (Phase 9). One contract, one place to fix bugs, all 3 install scripts source it via curl. | ✓ Good — `dro_*` API used by init/update/migrate (Phase 11) |
+| Council `audit-review` MUST NOT reclassify severity (COUNCIL-02) | Auditor owns severity; Council confirms REAL/FALSE_POSITIVE only. Splitting the two responsibilities prevents Council drift and keeps a single source of truth for severity. | ✓ Good — locked in prompt + Test 19 verdict-table contract (v4.2 Phase 15) |
+| No `--no-council` flag in v4.2 | If Council pass is optional, users skip it under deadline pressure and the trust guarantee evaporates. Mandatory pass forces the FP discipline; revisit only if Council friction surfaces. | ✓ Good — flag absent from `commands/audit.md` 6-phase contract (v4.2 Phase 14/15) |
+| Verbatim ±10 lines code block per finding (AUDIT-03) | Council reasons from code, not labels. Embedding code makes the report self-contained and lets disputed verdicts be re-checked offline without re-reading the repo. | ✓ Good — schema enforced by Test 17 + 49 propagated prompts (v4.2 Phase 14/16) |
+| Splice 4 contract blocks into all 49 prompts via one atomic commit (Phase 16) | RU/EN partitions + 7 frameworks × 7 prompt types = high drift surface. Doing it in one commit keeps `make validate` deterministic and makes the contract change auditable as a single changeset. | ✓ Good — commit `33be0b1` shipped clean; CI gate Test 20 + `validate-templates` job locks markers |
 
 ## Evolution
 
@@ -181,4 +184,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-25 — v4.2 Audit System v2 milestone started. Goal: FP allowlist + mandatory Council audit-review + structured reports.*
+*Last updated: 2026-04-26 — v4.2 Audit System v2 milestone shipped (5 phases / 22 plans / 22 REQ-IDs). Tagged `v4.2.0`.*

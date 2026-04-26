@@ -111,6 +111,61 @@
 
 ---
 
+## Milestone: v4.2 — Audit System v2
+
+**Shipped:** 2026-04-26
+**Phases:** 5 (13–17) | **Plans:** 22 | **REQ-IDs:** 22 | **Timeline:** 2 days (2026-04-25 → 2026-04-26)
+
+### What Was Built
+
+- Persistent FP allowlist at `.claude/rules/audit-exceptions.md` (`globs:["**/*"]`) + `/audit-skip` (validated append, exact-triple dedupe, atomic write) + `/audit-restore` (`[y/N]` default-N, comment-aware sed-strip + `in_comment` awk state machine); installer wiring across `init-claude.sh` / `init-local.sh` / `update-claude.sh` (Phase 13)
+- `commands/audit.md` rewritten as 6-phase workflow (load context → quick check → deep analysis → 6-step FP recheck → structured report → Council pass); reports land at `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md` with verbatim ±10-line code blocks per finding + `Skipped (allowlist)` + `Skipped (FP recheck)` tables; locked by Test 17 (82 assertions) (Phase 14)
+- Mandatory `/council audit-review --report <path>` pass with byte-exact `<verdict-table>` + `<missed-findings>` contract; per-finding `REAL | FALSE_POSITIVE | NEEDS_MORE_CONTEXT` + `[0.0, 1.0]` confidence; severity reclassification forbidden by prompt; `brain.py` parallel Gemini+ChatGPT with `disputed` flagging (Phase 15)
+- 49 framework prompts spliced with 4 contract blocks (allowlist callout, FP-recheck SELF-CHECK, structured OUTPUT FORMAT, Council handoff footer) in atomic commit `33be0b1`; CI gate Test 20 + `validate-templates` (Phase 16)
+- `manifest.json` 4.2.0 with `audit-exceptions.md` + `audit-review.md` registered; mtime-aware Council prompt installer in `setup-council.sh` Step 4 + `init-claude.sh setup_council()`; `CHANGELOG.md` `[4.2.0]` shipped 2026-04-26 (Phase 17)
+
+### What Worked
+
+- **Byte-exact contracts as the unit of work** — `<verdict-table>` and `<missed-findings>` markers were specified verbatim in plans, so executors couldn't drift; tests assert literal strings; Council prompt + auditor prompt + `brain.py` parser all agree by string identity, not interpretation
+- **One atomic 49-file splice** (Phase 16) — propagating to 7 frameworks × 7 prompt types in a single commit kept the changeset reviewable as one unit; `make validate` either passes or fails the whole set, no partial drift
+- **Splice script as the contract** — `scripts/propagate-audit-pipeline-v42.sh` made the 49-file change reproducible: re-run produces zero diff, regression tests assert idempotency. Beats hand-editing 49 files
+- **Test 17 + Test 19 + Test 20 layered gates** — Test 17 locks audit pipeline schema, Test 19 locks Council fixture verdicts, Test 20 locks template propagation markers. Three independent gates surface drift at different layers
+- **Severity-reclass-forbidden contract (COUNCIL-02)** — splitting "find" (auditor) from "verify" (Council) as separate single-purpose roles eliminated drift category; the Council literally cannot widen scope, only confirm/reject
+- **D-12 nudge over auto-write** — `/audit` printing FP verdict + telling user to invoke `/audit-skip` (instead of auto-writing) keeps the user in the loop and prevents Council from overwriting the allowlist
+
+### What Was Inefficient
+
+- **`gsd-tools milestone complete` accomplishment extraction** still grabs SUMMARY.md noise ("One-liner:", "1. [Rule 1 - Bug]", code fences) — same upstream bug that bit v4.1, still unfixed, hand-rewrote MILESTONES.md again. Filed as #2660 during v4.1; remains open
+- **Pre-close `audit-open` ReferenceError (#2659)** still throws on every milestone close — same upstream bug as v4.1, skipped audit step manually again
+- **STATE.md `milestone_name` field** got literal placeholder `"milestone"` instead of `"Audit System v2"` — `gsd-tools milestone complete` warned about field name drift but didn't update; required hand-fix
+- **Phase 17 had no real research** — distribution work (manifest bump + CHANGELOG date stamp + installer wiring) is mechanical; the research → plan → checker → executor cycle was overkill. Could have been a `/gsd-quick` pass, not a full phase
+- **STATE.md "Deferred Items" table grew junk rows** — `gsd-tools` appended "Phase 13 P01 | 4 | 1 tasks | 1 files" duration entries to the deferred-items table during execution. Not deferrals at all, just stats. Hand-pruned at close
+
+### Patterns Established
+
+- **Byte-exact prompt contracts + test-asserted markers** — Council `<verdict-table>` + `<missed-findings>`, audit-prompt "Council handoff" footer, FP-recheck 6 numbered steps. Pattern: name a literal string, lock it via `grep -F` in a CI gate, never paraphrase
+- **Splice script + idempotency test** — large multi-file content changes (49 files) ship as a script + a regression test asserting "running it twice produces no diff", never as a hand-commit
+- **Three-layer audit pipeline gate** — schema test (Test 17) + verdict-fixture test (Test 19) + propagation test (Test 20). Each layer can fail independently, surfacing the regression at the right altitude
+- **Single-purpose AI roles** — auditor finds, Council confirms, user persists. No role widens beyond contract. Locked by COUNCIL-02 (no severity reclass) + COUNCIL-05 (no auto-write)
+- **mtime-aware idempotent installer** — `setup-council.sh` Step 4 only re-downloads `audit-review.md` if upstream is newer (`-nt`). Prevents clobbering local modifications; pattern reusable for future Council prompts
+
+### Key Lessons
+
+1. **Council's job is verification, not search** — letting Council reclassify severity merges two responsibilities and creates drift surface. The auditor owns the label; Council says only REAL/FALSE_POSITIVE. Locked by COUNCIL-02
+2. **Verbatim code in the report beats verbatim summary** — embedding ±10 lines of actual source per finding (AUDIT-03) made disputed verdicts re-checkable offline; "trust the rule label" never works for cross-AI verification
+3. **Mandatory > optional for trust gates** — a `--no-council` flag would have eroded the FP discipline under deadline pressure. Mandatory pass forces the cost upfront, every time. Revisit only if friction surfaces
+4. **Atomic-commit propagation > per-file commits** for content-heavy phases — 49 files spliced in one commit kept review tractable; per-framework commits would have created 7-way drift surface
+5. **Upstream bugs in the planning toolchain stay broken** — v4.0 → v4.1 → v4.2 all hit the same `audit-open ReferenceError` and same accomplishment-extraction noise. Filing issues isn't a fix; either patch upstream or stop using the broken commands
+
+### Cost Observations
+
+- **Model mix:** ~70% Sonnet (executors + 49-file splice), ~25% Opus (Phase 14 audit-pipeline cross-file orchestrator + Council prompt design), ~5% Haiku (codebase grep for marker assertions)
+- **Commits:** 82 in v4.2 (`v4.1.1 → v4.2.0`); 207 files changed (+39997 / −18884)
+- **Notable efficiency:** Phase 16 (49 prompt files) shipped in ~30 min wall-time after the splice script landed — script ran once, regression test confirmed idempotency, atomic commit
+- **Notable cost:** Phase 14 cross-file orchestrator on Opus (~12 min) — `commands/audit.md` rewrite needed full ANSI/printf-style contract specification + threat model + 5 success criteria. Acceptable for the workflow contract that 49 prompts inherit
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -119,6 +174,7 @@
 |-----------|----------|--------|-------|------------|
 | v4.0 | ~12 | 8 | 29 | Introduced complement-aware install + 4-mode matrix + insert-phase pattern for mid-milestone scope reversal |
 | v4.1 | ~6 | 5 | 13 | Audit-then-implement gate (Phase 12), shared-lib pattern (`backup.sh` + `dry-run-output.sh`), upstream-issue-as-shipped-work (Phase 10) |
+| v4.2 | ~5 | 5 | 22 | Byte-exact prompt contracts + test-asserted markers, splice-script + idempotency-test pattern for content-heavy phases, single-purpose AI role split (auditor finds / Council confirms / user persists) |
 
 ### Cumulative Quality
 
@@ -126,10 +182,13 @@
 |-----------|-------|----------|-------------------|
 | v4.0 | 16 (`make test` harness) | shellcheck + markdownlint + validate + validate-base-plugins + version-align + translation-drift + agent-collision-static | 0 new runtime deps |
 | v4.1 | 16 + bats 13-cell matrix + 3 dry-run test scripts (test-dry-run/test-update-dry-run/test-migrate-dry-run) | + cell-parity + validate-commands (commands/*.md headings) + bats matrix CI job | 0 new runtime deps; bats-core via pinned action only in CI |
+| v4.2 | + Test 17 (audit pipeline, 82 assertions) + Test 19 (Council audit-review, 4-file fixture) + Test 20 (template propagation, 49-file marker regression) | + `validate-templates` job asserts `Council handoff` + 6 FP-recheck steps on all 49 prompts | 0 new runtime deps |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. **Filesystem detection beats CLI detection for install-time logic** — confirmed v4.0 (DETECT-01..05) and v4.1 (DETECT-06 added CLI as secondary cross-check, never primary)
-2. **`make check` enforced gates beat documentation-only conventions** — every gate added (translation-drift, agent-collision-static in v4.0; cell-parity, validate-commands in v4.1) caught drift that prose docs alone would have let slip
-3. **Manual release tag boundary holds (D-08)** — v4.0 and v4.1 both ended at "ready-to-tag, agent stops"; user cuts tag outside any workflow. CLAUDE.md "never push directly to main" invariant respected
+2. **`make check` enforced gates beat documentation-only conventions** — every gate added (translation-drift, agent-collision-static in v4.0; cell-parity, validate-commands in v4.1; `validate-templates` Council/FP-recheck markers in v4.2) caught drift that prose docs alone would have let slip
+3. **Manual release tag boundary holds (D-08)** — v4.0, v4.1, v4.2 all ended at "ready-to-tag, agent stops"; user cuts tag outside any workflow. CLAUDE.md "never push directly to main" invariant respected across three milestones
 4. **Shared `scripts/lib/<feature>.sh` is now the convention** — `backup.sh` (v4.1) + `dry-run-output.sh` (v4.1) + the v4.0-era `install.sh` form a consistent pattern. New install-time logic should land here, not inlined in scripts
+5. **Byte-exact contract strings beat prose specs for cross-AI work** (NEW v4.2) — Council prompt + auditor prompt + `brain.py` all agreed by literal `<verdict-table>` / `<missed-findings>` markers, not interpretation. Pattern: name the string, lock it via `grep -F` in CI, never paraphrase
+6. **Upstream `gsd-tools` bugs persist across closes** (NEW v4.2) — `audit-open ReferenceError` (#2659) and accomplishment-extraction noise (#2660) hit v4.0, v4.1, v4.2 milestone closes identically. Filing issues isn't a fix; either patch upstream or stop using the broken commands

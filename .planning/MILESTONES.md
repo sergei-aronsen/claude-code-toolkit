@@ -1,5 +1,28 @@
 # Milestones
 
+## v4.2 Audit System v2 (Shipped: 2026-04-26)
+
+**Phases completed:** 5 phases (13–17), 22 plans, 23 tasks
+**Git range:** `v4.1.1 (f87eace) → v4.2.0 (29cca9c)` — 82 commits, 207 files changed (+39997 / −18884)
+**Timeline:** 2026-04-25 → 2026-04-26
+
+**Delivered:** Replaced `/audit` with a deterministic FP-rechecked, structured-report pipeline that terminates in a mandatory Council pass. Findings are filtered through a repo-local `audit-exceptions.md` allowlist plus a 6-step FP recheck, written to a parser-friendly schema, and verified per-finding by Gemini + ChatGPT before the audit is considered complete.
+
+**Key accomplishments:**
+
+- **Foundation — FP Allowlist + Skip/Restore (Phase 13 / EXC-01..05)** — Seeded `templates/base/rules/audit-exceptions.md` with `globs: ["**/*"]` auto-load frontmatter + HTML-commented entry schema; shipped `/audit-skip` (hard-refusal append with `git ls-files` validation, exact-triple duplicate detection, atomic write) and `/audit-restore` (default-N `[y/N]` confirmation, comment-aware sed-strip + `in_comment` awk state machine to prevent CR-01 corruption); wired all three installers (`init-claude.sh`, `init-local.sh`, `update-claude.sh`) with byte-identical heredocs and idempotent first-install-only seeding.
+- **Audit Pipeline — FP Recheck + Structured Reports (Phase 14 / AUDIT-01..05)** — Authored `components/audit-fp-recheck.md` (6-step recheck SOT) and `components/audit-output-format.md` (report schema SOT); rewrote `commands/audit.md` with a 6-phase workflow contract (load context → quick check → deep analysis → FP recheck → structured report → Council pass); reports land at `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md` with verbatim ±10-line code blocks per finding plus `Skipped (allowlist)` and `Skipped (FP recheck)` tables; locked by Test 17 (`scripts/tests/test-audit-pipeline.sh`, 82 assertions).
+- **Council Audit-Review Integration (Phase 15 / COUNCIL-01..06)** — `scripts/council/prompts/audit-review.md` encodes byte-exact `<verdict-table>` / `<missed-findings>` contract; per-finding `REAL | FALSE_POSITIVE | NEEDS_MORE_CONTEXT` verdicts with `[0.0, 1.0]` confidence and one-line justifications grounded in embedded code; severity reclassification is forbidden by prompt contract; `brain.py audit-review` runs Gemini + ChatGPT in parallel and flags per-finding disagreements as `disputed` without auto-resolution; `commands/audit.md` Council Handoff section gained byte-exact FP nudge (D-12/COUNCIL-05) and three-option disputed prompt (D-13); `commands/council.md` `## Modes` section surfaces `/council audit-review --report <path>` as the mandatory Phase 5 step.
+- **Template Propagation — 49 Prompt Files (Phase 16 / TEMPLATE-01..03)** — `scripts/propagate-audit-pipeline-v42.sh` spliced four contract blocks (top-of-file allowlist callout, 6-step FP-recheck SELF-CHECK, structured OUTPUT FORMAT, Council handoff footer) into all 49 framework prompts (`templates/{base,laravel,rails,nextjs,nodejs,python,go}/prompts/*.md`) in one atomic commit `33be0b1`; preserved RU/EN language partitions; CI gate (Test 20 + `make validate` + `validate-templates` job) asserts all six numbered FP steps + literal `Council handoff` marker on every prompt.
+- **Distribution — Manifest, Installers, CHANGELOG (Phase 17 / DIST-01..03)** — Bumped `manifest.json` to `4.2.0` and registered `templates/base/rules/audit-exceptions.md`; extended `setup-council.sh` Step 4 + `init-claude.sh setup_council()` with mtime-aware install of `scripts/council/prompts/audit-review.md`; `CHANGELOG.md` `[4.2.0]` entry covers all Phase 13–16 features with concrete ship date 2026-04-26; `make check` + `make test` green at close.
+
+**Archived:**
+
+- `.planning/milestones/v4.2-ROADMAP.md` — full phase breakdown with all 22 plans
+- `.planning/milestones/v4.2-REQUIREMENTS.md` — 22 REQ-IDs with traceability
+
+---
+
 ## v4.1 Polish & Upstream (Shipped: 2026-04-25)
 
 **Phases completed:** 5 phases (8–12), 13 plans, 11 REQ-IDs
