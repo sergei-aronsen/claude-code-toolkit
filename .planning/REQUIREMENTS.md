@@ -51,7 +51,7 @@ Every framework's audit prompt set picks up the new behavior consistently.
 Wire the new files through manifest, installers, and CI.
 
 - [x] **DIST-01**: `manifest.json` registers `templates/base/rules/audit-exceptions.md`, `commands/audit-skip.md`, `commands/audit-restore.md`. Version bumped to `4.2.0`. `updated:` field set to release date.
-- [ ] **DIST-02**: `commands/council.md` adds an `audit-review` mode section documenting input format (path to structured audit report), expected Council prompt verbatim, and output schema. `commands/audit.md` updated with the new 6-phase workflow (load context → quick check → deep analysis → FP recheck → structured report → Council pass).
+- [x] **DIST-02**: `commands/council.md` adds an `audit-review` mode section documenting input format (path to structured audit report), expected Council prompt verbatim, and output schema. `commands/audit.md` updated with the new 6-phase workflow (load context → quick check → deep analysis → FP recheck → structured report → Council pass).
 - [x] **DIST-03**: `CHANGELOG.md` `[4.2.0]` entry covers all v4.2 features with ship date set when the milestone closes.
 
 ## Future Requirements (Deferred)
