@@ -44,9 +44,26 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `scripts/lib/dry-run-output.sh` shared library (`dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`); chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output across `init-claude.sh`, `update-claude.sh` (added `DRY_RUN` flag exiting before backup), `migrate-to-complement.sh` (replaced 1-liner with `[- REMOVE]` group); `${NO_COLOR+x}` + `[ -t 1 ]` gates per [no-color.org](https://no-color.org) — Validated in Phase 11: ux-polish (UX-01)
 - ✓ ChatGPT pass-3 audit verified against codebase (8/15 FALSE, 6/15 PARTIAL deferred to v4.2+, 1/15 REAL = uninstall script as HARDEN-C-04); Wave-A `scripts/validate-commands.py` enforces `## Purpose`/`## Usage` H2 headings on `commands/*.md` via `make validate-commands` + CI — Validated in Phase 12: audit-verification-template-hardening (HARDEN-A-01)
 
+## Current Milestone: v4.3 Uninstall
+
+**Goal:** Ship `scripts/uninstall.sh` — clean reverse of `init-claude.sh`/`init-local.sh` install based on `~/.claude/toolkit-install.json` state.
+
+**Target features:**
+
+- `scripts/uninstall.sh` removes all toolkit-installed files from `.claude/` per state manifest
+- `--dry-run` flag previews removal without deleting
+- User-modified files (SHA256 mismatch vs manifest) trigger `[y/N/d]` per-file prompt with default keep
+- Full `.claude/` backup to `~/.claude-backup-pre-uninstall-<unix-ts>/` before any delete
+- Base plugins (`superpowers`, `get-shit-done`) preserved untouched — toolkit-install.json drives the file list, never wildcard
+- Idempotent — second run on already-uninstalled project is a no-op with clear message
+- `manifest.json` registers `scripts/uninstall.sh`; installer post-install banner mentions it; `CHANGELOG.md [4.3.0]` entry
+- Test cell asserts fresh → install → uninstall → fresh state across all 4 install modes
+
+**Why now:** Closes the only REAL finding from the v4.1 ChatGPT pass-3 audit (HARDEN-C-04), deferred through v4.2 as out-of-scope.
+
 ### Active
 
-_Next milestone requirements TBD via `/gsd-new-milestone`._
+_v4.3 requirements defined inline below — see REQUIREMENTS.md._
 
 <details>
 <summary>v4.2 requirements (shipped 2026-04-26)</summary>
@@ -184,4 +201,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 — v4.2 Audit System v2 milestone shipped (5 phases / 22 plans / 22 REQ-IDs). Tagged `v4.2.0`.*
+*Last updated: 2026-04-26 — v4.3 Uninstall milestone started. Goal: HARDEN-C-04 uninstall script (only REAL finding from v4.1 audit, deferred through v4.2).*

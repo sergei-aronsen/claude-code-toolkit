@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.2
-milestone_name: Audit System v2
-status: shipped
-stopped_at: v4.2 milestone complete — awaiting /gsd-new-milestone
-last_updated: "2026-04-26T08:30:00.000Z"
+milestone: v4.3
+milestone_name: Uninstall
+status: defining_requirements
+stopped_at: v4.3 milestone started — defining REQUIREMENTS.md
+last_updated: "2026-04-26T09:00:00.000Z"
 last_activity: 2026-04-26
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Awaiting next milestone — run `/gsd-new-milestone` to scope v4.3+.
+**Current focus:** v4.3 Uninstall — `scripts/uninstall.sh` (HARDEN-C-04 carryover from v4.1 audit).
 
 ## Current Position
 
-Milestone: v4.2 Audit System v2 — ✅ SHIPPED 2026-04-26
-Phase: — (no phase in-flight)
+Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
+Phase: — (not started)
 Plan: —
-Status: Tagged `v4.2.0` + GitHub Release published.
+Status: REQUIREMENTS.md being defined; ROADMAP.md TBD.
 
-Progress: [==========] 100% (22/22 plans complete)
+Progress: [          ] 0%
 
 ## Performance Metrics
 
