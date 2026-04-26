@@ -48,7 +48,7 @@
 ### 🟢 v4.3 Uninstall (Phases 18–20) — IN PROGRESS
 
 - [x] **Phase 18: Core Uninstall — Script + Dry-Run + Backup** — `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes registered files with `--dry-run` preview, `[y/N/d]` user-modification prompt, and full `.claude/` backup (completed 2026-04-26)
-- [ ] **Phase 19: State Cleanup + Idempotency** — Strip toolkit-owned `~/.claude/CLAUDE.md` sections, delete `toolkit-install.json` after success, double-invocation is a no-op
+- [x] **Phase 19: State Cleanup + Idempotency** — Strip toolkit-owned `~/.claude/CLAUDE.md` sections, delete `toolkit-install.json` after success, double-invocation is a no-op (completed 2026-04-26)
 - [ ] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, Test 21 fresh→install→uninstall→fresh assertion
 
 ## Phase Details
@@ -90,7 +90,7 @@
 Plans:
 - [x] 19-01-PLAN.md — UN-06 dedicated idempotency regression test (no-op exit + locked log wording + zero side-effects)
 - [x] 19-02-PLAN.md — UN-05 implementation: strip_sentinel_block helper + base-plugin invariant snapshot+check + state-file delete in scripts/uninstall.sh
-- [ ] 19-03-PLAN.md — UN-05 + UN-06 integration test: full uninstall flow asserts state delete + sentinel strip + user content preservation + base-plugin invariant + double-uninstall no-op
+- [x] 19-03-PLAN.md — UN-05 + UN-06 integration test: full uninstall flow asserts state delete + sentinel strip + user content preservation + base-plugin invariant + double-uninstall no-op
 
 ### Phase 20: Distribution + Tests
 
