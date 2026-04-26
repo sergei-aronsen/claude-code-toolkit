@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
 status: executing
-stopped_at: v4.2 milestone complete — archive + tag pushed
-last_updated: "2026-04-26T09:10:01.500Z"
+stopped_at: Completed 18-core-uninstall-script-dry-run-backup/18-01-PLAN.md
+last_updated: "2026-04-26T09:23:27.794Z"
 progress:
   total_phases: 3
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.3 Uninstall — `scripts/uninstall.sh` (HARDEN-C-04 carryover from v4.1 audit).
+**Current focus:** Phase 18 — core-uninstall-script-dry-run-backup
 
 ## Current Position
 
 Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
-Phase: — (not started)
-Plan: —
+Phase: 18 (core-uninstall-script-dry-run-backup) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
 
 Progress: [          ] 0%
@@ -53,6 +53,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 49 prompt files spliced in one atomic commit `33be0b1` — single auditable changeset across 7 frameworks × 7 prompt types
 - D-12: `/audit` never auto-writes `audit-exceptions.md`; nudges user to invoke `/audit-skip` after FALSE_POSITIVE verdict
 - D-13: disputed verdicts surface three-option prompt (R/F/N), no default
+- [Phase 18-core-uninstall-script-dry-run-backup]: Re-apply color gate after lib-source: lib/state.sh unconditionally overwrites RED/YELLOW/NC; second gate block after sourcing restores NO_COLOR compliance
+- [Phase 18-core-uninstall-script-dry-run-backup]: classify_file PROTECTED-first ordering: is_protected_path checked before file existence before SHA compare — UN-01 invariant enforced at helper layer before any downstream delete logic
 
 ### Roadmap Evolution
 
@@ -81,11 +83,12 @@ Carry-overs available for next milestone scoping:
 | Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
 | Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
+| Phase 18-core-uninstall-script-dry-run-backup P01 | 10 | 1 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T08:30:00.000Z
-Stopped at: v4.2 milestone complete — archive + tag pushed
+Last session: 2026-04-26T09:23:27.791Z
+Stopped at: Completed 18-core-uninstall-script-dry-run-backup/18-01-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
