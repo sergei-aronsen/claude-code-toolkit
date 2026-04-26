@@ -89,7 +89,7 @@
 
 Plans:
 - [x] 19-01-PLAN.md — UN-06 dedicated idempotency regression test (no-op exit + locked log wording + zero side-effects)
-- [ ] 19-02-PLAN.md — UN-05 implementation: strip_sentinel_block helper + base-plugin invariant snapshot+check + state-file delete in scripts/uninstall.sh
+- [x] 19-02-PLAN.md — UN-05 implementation: strip_sentinel_block helper + base-plugin invariant snapshot+check + state-file delete in scripts/uninstall.sh
 - [ ] 19-03-PLAN.md — UN-05 + UN-06 integration test: full uninstall flow asserts state delete + sentinel strip + user content preservation + base-plugin invariant + double-uninstall no-op
 
 ### Phase 20: Distribution + Tests

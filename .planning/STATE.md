@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
 status: executing
-stopped_at: Completed 19-state-cleanup-idempotency-01-PLAN.md
-last_updated: "2026-04-26T11:11:22.268Z"
+stopped_at: Completed 19-state-cleanup-idempotency-02-PLAN.md
+last_updated: "2026-04-26T11:16:56.977Z"
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 
 Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
 Phase: 19 (state-cleanup-idempotency) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 
 Progress: [          ] 0%
@@ -64,6 +64,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 19-state-cleanup-idempotency]: assert_contains uses plain grep -q so ✓ glyph needs no escaping in idempotency test
 - [Phase 19-state-cleanup-idempotency]: Trap uses parameter-length guards (SANDBOX:? / MARKER_FILE:?) per T-19-01-01 threat model
 - [Phase 19-state-cleanup-idempotency]: A2 asserts Toolkit not installed; nothing to do without trailing period to survive cosmetic punctuation changes
+- [Phase 19-state-cleanup-idempotency]: D-06 order: backup → strip → file-delete → state-delete (LAST); state-delete is final atomic step so earlier failures leave state intact for re-run
+- [Phase 19-state-cleanup-idempotency]: D-10 fail-loud: base-plugin tree mutation during uninstall → log_error + exit 1 with STATE_FILE preserved; defense-in-depth invariant via diff -q on sorted find output
 
 ### Roadmap Evolution
 
@@ -97,11 +99,12 @@ Carry-overs available for next milestone scoping:
 | Phase 18-core-uninstall-script-dry-run-backup P03 | 6 | 3 tasks | 4 files |
 | Phase 18-core-uninstall-script-dry-run-backup P04 | 8 | 2 tasks | 4 files |
 | Phase 19-state-cleanup-idempotency P01 | 8 | 1 tasks | 1 files |
+| Phase 19-state-cleanup-idempotency P02 | 196 | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T11:11:22.265Z
-Stopped at: Completed 19-state-cleanup-idempotency-01-PLAN.md
+Last session: 2026-04-26T11:16:56.975Z
+Stopped at: Completed 19-state-cleanup-idempotency-02-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
