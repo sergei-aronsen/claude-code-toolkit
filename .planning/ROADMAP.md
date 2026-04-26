@@ -104,7 +104,12 @@ Plans:
 3. `CHANGELOG.md` `[4.3.0]` entry covers UN-01..UN-08 with the ship date set when the milestone closes (placeholder `YYYY-MM-DD` until then).
 4. `scripts/tests/test-uninstall.sh` + Makefile `Test 21` execute in a `/tmp/` sandbox: fresh install → uninstall → final state matches a clean checkout (`find .claude -type f | wc -l = 0` for unmodified install). Modified-file scenarios cover `y` / `N` / `d` choices. Base-plugin inventory unchanged. `--dry-run` produces zero changes. Double-uninstall exits 0 with no-op message. CI runs the test in `.github/workflows/quality.yml`.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — manifest.json + CHANGELOG.md bump to 4.3.0; register scripts/uninstall.sh under files.scripts[] (UN-07 — version-align gate)
+- [ ] 20-02-PLAN.md — Banner echo in 3 installers (init-claude.sh, init-local.sh, update-claude.sh) + test-install-banner.sh source-grep gate + Makefile Test 25 slot (UN-07)
+- [ ] 20-03-PLAN.md — scripts/tests/test-uninstall.sh round-trip integration test (S1-S5 scenarios) + Makefile Test 24 slot (UN-08)
 
 ## Progress
 
