@@ -112,6 +112,9 @@ test:
 	@echo "Test 20: template propagation idempotency (propagate-audit-pipeline-v42.sh)"
 	@bash scripts/tests/test-template-propagation.sh
 	@echo ""
+	@echo "Test 21: uninstall --dry-run zero-mutation contract (UN-02)"
+	@bash scripts/tests/test-uninstall-dry-run.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
