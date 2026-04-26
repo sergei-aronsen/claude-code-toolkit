@@ -5,6 +5,11 @@
 # Exposes: list_backup_dirs, warn_if_too_many_backups
 # Globals: none — reads $HOME at call time
 #
+# Recognized backup patterns:
+#   .claude-backup-<ts>-<pid>/           — update-claude.sh standard backup
+#   .claude-backup-pre-migrate-<ts>/     — migrate-to-complement.sh pre-migration backup
+#   .claude-backup-pre-uninstall-<ts>/   — uninstall.sh pre-uninstall backup (UN-04)
+#
 # IMPORTANT: No errexit/pipefail — sourced libraries must not alter caller error mode.
 #            Callers MUST register `trap 'release_lock' EXIT` BEFORE calling acquire_lock.
 
@@ -31,11 +36,16 @@ list_backup_dirs() {
             .claude-backup-pre-migrate-[0-9]*)
                 epoch="${name#.claude-backup-pre-migrate-}"
                 ;;
+            .claude-backup-pre-uninstall-[0-9]*)
+                epoch="${name#.claude-backup-pre-uninstall-}"
+                ;;
             *) continue ;;
         esac
         printf '%s %s\n' "$epoch" "$dir"
     done < <(find "$home" -maxdepth 1 -type d \
-        \( -name '.claude-backup-*' -o -name '.claude-backup-pre-migrate-*' \) \
+        \( -name '.claude-backup-*' \
+           -o -name '.claude-backup-pre-migrate-*' \
+           -o -name '.claude-backup-pre-uninstall-*' \) \
         2>/dev/null) \
     | sort -rn \
     | cut -d' ' -f2-
@@ -47,7 +57,9 @@ list_backup_dirs() {
 warn_if_too_many_backups() {
     local count
     count=$(( $(find "$HOME" -maxdepth 1 -type d \
-        \( -name '.claude-backup-*' -o -name '.claude-backup-pre-migrate-*' \) \
+        \( -name '.claude-backup-*' \
+           -o -name '.claude-backup-pre-migrate-*' \
+           -o -name '.claude-backup-pre-uninstall-*' \) \
         2>/dev/null | wc -l) ))
     if [[ $count -gt 10 ]]; then
         echo -e "${YELLOW}⚠${NC} ${count} toolkit backup dirs under \$HOME — run \`update-claude.sh --clean-backups\` to prune"
