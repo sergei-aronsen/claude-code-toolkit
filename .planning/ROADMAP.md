@@ -85,7 +85,12 @@
 3. Running `bash scripts/uninstall.sh` a second time on an already-uninstalled project: detects missing `~/.claude/toolkit-install.json`, prints `✓ Toolkit not installed; nothing to do`, exits 0, creates no backup directory (no `~/.claude-backup-pre-uninstall-*` parallel created on no-op runs), and produces zero filesystem changes.
 4. Partial-uninstall recovery: if the user answers `N` (keep) on every modified file, the script preserves all kept files and still deletes `toolkit-install.json` only when the user explicitly chooses `--keep-state` (TBD whether this is in scope or strictly v4.4).
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — UN-06 dedicated idempotency regression test (no-op exit + locked log wording + zero side-effects)
+- [ ] 19-02-PLAN.md — UN-05 implementation: strip_sentinel_block helper + base-plugin invariant snapshot+check + state-file delete in scripts/uninstall.sh
+- [ ] 19-03-PLAN.md — UN-05 + UN-06 integration test: full uninstall flow asserts state delete + sentinel strip + user content preservation + base-plugin invariant + double-uninstall no-op
 
 ### Phase 20: Distribution + Tests
 
