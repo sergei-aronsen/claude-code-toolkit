@@ -218,8 +218,9 @@ prompt_modified_for_uninstall() {
         *)  local_path="$PROJECT_DIR/$rel" ;;
     esac
 
-    # Defense-in-depth: never prompt on a protected path
-    if is_protected_path "$rel"; then
+    # Defense-in-depth: never prompt on a protected path (use resolved abs path
+    # to avoid double-.claude when rel already starts with .claude/).
+    if is_protected_path "$local_path"; then
         log_warning "Skipping prompt for protected path: $rel"
         KEEP_LIST+=("$rel")
         return 0
@@ -433,11 +434,6 @@ DELETE_FAILED_LIST=()
 if [[ ${#REMOVE_LIST[@]} -gt 0 ]]; then
     log_info "Removing ${#REMOVE_LIST[@]} unmodified file(s)…"
     for rel in "${REMOVE_LIST[@]}"; do
-        # Defense-in-depth: re-check protection at delete time (UN-01 invariant).
-        if is_protected_path "$rel"; then
-            log_warning "Refusing to delete protected path: $rel"
-            continue
-        fi
         # NOTE: NO `local` — this loop runs at MAIN block (top-level), not inside
         # a function. Using `local` here triggers shellcheck SC2168 + a bash runtime
         # error. Plain assignment is correct.
@@ -446,6 +442,14 @@ if [[ ${#REMOVE_LIST[@]} -gt 0 ]]; then
             /*) : ;;   # absolute already
             *)  abs_path="$PROJECT_DIR/$rel" ;;
         esac
+        # Defense-in-depth: re-check protection at delete time (UN-01 invariant).
+        # Use the resolved absolute path to avoid double-.claude when rel already
+        # starts with .claude/ (e.g. .claude/get-shit-done/plugin.md would resolve
+        # to $CLAUDE_DIR/.claude/... inside is_protected_path if passed as-is).
+        if is_protected_path "$abs_path"; then
+            log_warning "Refusing to delete protected path: $rel"
+            continue
+        fi
         if [[ -f "$abs_path" ]]; then
             if rm -f "$abs_path"; then
                 DELETED_LIST+=("$rel")
