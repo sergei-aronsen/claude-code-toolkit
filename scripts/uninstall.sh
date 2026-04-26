@@ -286,6 +286,86 @@ prompt_modified_for_uninstall() {
     done
 }
 
+# strip_sentinel_block <file>
+# UN-05 (D-01/D-02/D-03): strip <!-- TOOLKIT-START --> ... <!-- TOOLKIT-END --> blocks
+# from <file>, plus exactly ONE leading and ONE trailing blank line around each pair.
+# Behavior:
+#   - File absent → no-op, return 0
+#   - Zero markers (no sentinels) → no-op, return 0 (graceful when CLAUDE.md never had them)
+#   - Unmatched markers (start count != end count) → log warning, return 0 (D-02: never partial-strip)
+#   - Multiple START/END pairs → strip ALL pairs (D-02 defensive)
+#   - Empty result after strip → leave empty file on disk, do NOT delete (D-03 least-destruction)
+#
+# `local` is permitted here because we are INSIDE a function body.
+# RETURN-scoped trap cleans the temp file when the function returns by any path.
+strip_sentinel_block() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0   # absent — nothing to strip
+
+    # Count markers to detect unmatched pairs (D-02 guard).
+    # `grep -c` returns 1 with exit 1 on zero matches when -q-style; the `|| true`
+    # plus `grep -cF` count form returns 0 with exit 0 cleanly under set -e.
+    local starts ends
+    starts=$(grep -cF '<!-- TOOLKIT-START -->' "$file" 2>/dev/null || true)
+    ends=$(grep -cF '<!-- TOOLKIT-END -->' "$file" 2>/dev/null || true)
+    starts="${starts:-0}"
+    ends="${ends:-0}"
+
+    if [[ "$starts" -ne "$ends" ]]; then
+        log_warning "Unmatched TOOLKIT-START/END markers in $file (starts=$starts, ends=$ends) — leaving file untouched"
+        return 0
+    fi
+    if [[ "$starts" -eq 0 ]]; then
+        return 0   # no sentinels — graceful no-op (D-01 strip-only-if-present)
+    fi
+
+    # awk strip: for each START/END pair, remove the pair and the surrounding blank
+    # line on each side (one before START, one after END). State machine:
+    #   in_block         — currently inside a START..END pair → drop line
+    #   skip_prev_blank  — just exited a START line; drop the trailing blank if any
+    #                      (note: handled at exit-of-block, not entry; see flag swap below)
+    #   skip_next_blank  — just exited an END line; drop the next blank if any
+    local tmp
+    tmp=$(mktemp "${TMPDIR:-/tmp}/sentinel-strip.XXXXXX")
+    # shellcheck disable=SC2064  # intentional: capture path at trap-registration time
+    trap "rm -f '$tmp'" RETURN
+
+    awk '
+        # END marker: leave block, arm trailing-blank skip
+        /<!-- TOOLKIT-END -->/   { in_block=0; skip_next_blank=1; next }
+        # Inside block: drop everything (including START line catch below)
+        in_block                 { next }
+        # START marker: enter block, arm leading-blank skip retroactively by
+        # buffering the previous-line decision; simpler: just consume the blank
+        # we already printed by deferring print one line. Implementation below
+        # uses a one-line lookahead via "buf".
+        /<!-- TOOLKIT-START -->/ {
+            # Drop the previously printed blank if it was blank
+            in_block=1
+            if (last_was_blank && have_buf) { have_buf=0 }
+            else if (have_buf) { print buf; have_buf=0 }
+            next
+        }
+        # Trailing-blank skip after END
+        skip_next_blank && /^[[:space:]]*$/ { skip_next_blank=0; next }
+        # Otherwise: emit any buffered line, then buffer the current line.
+        # last_was_blank tracks if the buffered line is blank (so START can drop it).
+        {
+            if (have_buf) { print buf }
+            buf = $0
+            have_buf = 1
+            last_was_blank = ($0 ~ /^[[:space:]]*$/) ? 1 : 0
+            skip_next_blank = 0
+        }
+        END {
+            if (have_buf && !in_block) { print buf }
+        }
+    ' "$file" > "$tmp"
+
+    mv "$tmp" "$file"
+    log_success "Stripped toolkit sentinel block from $file"
+}
+
 # ───────── MAIN ─────────
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
