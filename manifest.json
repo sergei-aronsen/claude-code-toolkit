@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "version": "4.1.1",
-  "updated": "2026-04-25",
+  "version": "4.2.0",
+  "updated": "YYYY-MM-DD",
   "description": "Claude Code Toolkit manifest for smart updates",
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. D-71 escape hatch activated 2026-04-18: 6 of 7 TK→SP basenames do not match.",
 
@@ -97,7 +97,8 @@
     ],
     "rules": [
       { "path": "rules/README.md" },
-      { "path": "rules/project-context.md" }
+      { "path": "rules/project-context.md" },
+      { "path": "rules/audit-exceptions.md" }
     ]
   },
 
