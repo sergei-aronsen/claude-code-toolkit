@@ -139,7 +139,11 @@
 2. `commands/council.md` documents an `audit-review` mode (input format = path to structured audit report, expected Council prompt verbatim, output schema), and `commands/audit.md` documents the new 6-phase workflow (load context → quick check → deep analysis → FP recheck → structured report → Council pass)
 3. `CHANGELOG.md` `[4.2.0]` entry covers all v4.2 features (FP allowlist, `/audit-skip`/`/audit-restore`, FP recheck pipeline, structured reports, mandatory Council audit-review, 49-file template propagation, manifest/installer wiring) with the ship date set when the milestone closes
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [x] 17-01-PLAN.md — Bump manifest.json to 4.2.0, register audit-exceptions.md rule, add [4.2.0] CHANGELOG placeholder covering all Phase 13-16 features (DIST-01, DIST-03)
+- [ ] 17-02-PLAN.md — Extend setup-council.sh and init-claude.sh setup_council() to install scripts/council/prompts/audit-review.md, idempotent + mtime-aware (DIST-01, T-17-02)
+- [ ] 17-03-PLAN.md — Verify DIST-02 markers intact in commands/audit.md and commands/council.md, stamp real ship date, run make check + make test (DIST-01, DIST-02, DIST-03)
 
 ## Progress
 
@@ -155,4 +159,4 @@
 | 14. Audit Pipeline — FP Recheck + Structured Reports | v4.2 | 4/4 | Complete    | 2026-04-25 |
 | 15. Council Audit-Review Integration | v4.2 | 6/6 | Complete    | 2026-04-25 |
 | 16. Template Propagation — 49 Prompt Files | v4.2 | 4/4 | Complete    | 2026-04-25 |
-| 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 0/0 | Not started | - |
+| 17. Distribution — Manifest, Installers, CHANGELOG | v4.2 | 1/3 | In Progress|  |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 16-04-PLAN.md
-last_updated: "2026-04-25T23:53:50.088Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-04-26T00:08:30.474Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_plans: 22
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -94,6 +94,8 @@ Carry-over decisions from v4.1:
 - [Phase 16-03]: Plan verification string used 'Council handoff' (lowercase h) but script emits '## Council Handoff' (capital H); corrected assertion to match — plan typo, not splice bug
 - [Phase 16-03]: Atomic commit of 49 files using individually named git add; 14816 insertions, 405 deletions; idempotency confirmed post-commit
 - [Phase 16-04]: Used grep -qF fixed-string for v4.2 marker assertions to avoid regex escaping of literal asterisks in 1. **Read context** and 6. **Severity sanity check**
+- [Phase 17]: manifest.json bumped to 4.2.0; rules/audit-exceptions.md registered under files.rules
+- [Phase 17]: CHANGELOG [4.2.0] entry uses YYYY-MM-DD placeholder; 17-03 replaces with real ship date
 
 ### Roadmap Evolution
 
@@ -136,11 +138,12 @@ v4.2+ carry-overs (still locked out of v4.2 scope):
 | Phase 16-template-propagation-49-prompt-files P01 | 90 | 2 tasks | 2 files |
 | Phase 16 P02 | 8 | 1 tasks | 1 files |
 | Phase 16 P04 | 8 | 2 tasks | 2 files |
+| Phase 17 P01 | 8 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-25T23:36:24.474Z
-Stopped at: Completed 16-04-PLAN.md
+Last session: 2026-04-26T00:08:30.471Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
 
 **To resume next session — one of:**
