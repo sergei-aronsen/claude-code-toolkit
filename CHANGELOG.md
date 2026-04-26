@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - YYYY-MM-DD
+
+### Added
+
+- **Persistent FP allowlist** — `.claude/rules/audit-exceptions.md` auto-seeds via `globs: ["**/*"]`
+  and is consulted by `/audit` Phase 0 to drop known false positives before reporting (EXC-01..05).
+- **`/audit-skip <file:line> <rule> <reason>`** — appends a structured exception block to
+  `audit-exceptions.md` after validating the file:line exists in the working tree and that the
+  entry is not already allowlisted.
+- **`/audit-restore <file:line> <rule>`** — comment-aware removal of an allowlist entry with a
+  `[y/N]` confirmation prompt.
+- **6-phase `/audit` workflow** — load context → quick check → deep analysis → 6-step FP recheck
+  → structured report → mandatory Council pass. Every reported finding survives the FP-recheck and
+  ships with verbatim ±10 lines of source code so the Council reasons from the code, not the rule
+  label.
+- **Structured audit reports** — `/audit` writes to `.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md`
+  with a fixed schema: Summary table → Findings (ID, severity, rule, location, claim, verbatim
+  code, data flow, "why it's real", suggested fix) → Skipped (allowlist) → Skipped (FP recheck)
+  → Council verdict slot.
+- **Mandatory Supreme Council `audit-review` mode** — every `/audit` run terminates in
+  `/council audit-review --report <path>`. Council emits per-finding
+  `REAL | FALSE_POSITIVE | NEEDS_MORE_CONTEXT` verdicts with confidence scores in `[0.0, 1.0]`,
+  plus a "Missed findings" section. Severity reclassification is explicitly forbidden (COUNCIL-02).
+- **`brain.py --mode audit-review`** — runs Gemini and ChatGPT in parallel for audit-review, flags
+  per-finding disagreements as `disputed` without auto-resolution.
+- **Template propagation across all 49 prompt files** — every
+  `templates/{base,laravel,rails,nextjs,nodejs,python,go}/prompts/{SECURITY_AUDIT,CODE_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,DEPLOY_CHECKLIST,DESIGN_REVIEW}.md`
+  carries the audit-exceptions callout, 6-step FP-recheck SELF-CHECK, structured OUTPUT FORMAT,
+  and Council Handoff footer.
+
+### Changed
+
+- **`manifest.json`** — bumped to `4.2.0` and registered `templates/base/rules/audit-exceptions.md`
+  under `files.rules`.
+- **`commands/audit.md`** — rewritten around the 6-phase workflow; documents the Council Handoff UX
+  (FALSE_POSITIVE nudge → user runs `/audit-skip`; disputed verdict prompt).
+- **`commands/council.md`** — added `## Modes` section with `audit-review` subsection documenting
+  input format (path to structured audit report), expected Council prompt, and verdict-table output
+  schema.
+
+### Fixed
+
+- _None — this is an additive feature release. See [4.1.1] for the prior patch._
+
+### Documentation
+
+- **CI gates** — `make validate` now asserts every audit prompt carries the `Council Handoff`
+  marker plus all six numbered FP-recheck steps; missing markers fail the build (TEMPLATE-03).
+- **`make test`** — adds Test 18 (audit pipeline fixture), Test 19 (Council audit-review
+  verdict-slot rewrite + parallel dispatch), Test 20 (template propagation idempotency).
+
 ## [4.1.1] - 2026-04-25
 
 ### Fixed
