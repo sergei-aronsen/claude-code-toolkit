@@ -2,14 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
-status: defining_requirements
-stopped_at: v4.3 milestone started — defining REQUIREMENTS.md
-last_updated: "2026-04-26T09:00:00.000Z"
-last_activity: 2026-04-26
+status: executing
+stopped_at: v4.2 milestone complete — archive + tag pushed
+last_updated: "2026-04-26T09:10:01.500Z"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -28,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-26)
 Milestone: v4.3 Uninstall — defining requirements (started 2026-04-26)
 Phase: — (not started)
 Plan: —
-Status: REQUIREMENTS.md being defined; ROADMAP.md TBD.
+Status: Ready to execute
 
 Progress: [          ] 0%
 

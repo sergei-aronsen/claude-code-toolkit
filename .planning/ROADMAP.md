@@ -61,12 +61,17 @@
 **Success Criteria** (what must be TRUE):
 
 1. `bash scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, computes SHA256 for every file in `installed_files[]`, and removes only those whose hash matches the recorded value (untouched-since-install). Files outside the project's `.claude/` directory and files inside `~/.claude/plugins/cache/claude-plugins-official/superpowers/` or `~/.claude/get-shit-done/` are never deleted.
-2. `bash scripts/uninstall.sh --dry-run` prints a 4-group preview (`[- REMOVE]` / `[~ KEEP]` / `[? MODIFIED]` / `[!? MISSING]`) using the existing `scripts/lib/dry-run-output.sh` API, exits 0, and produces zero filesystem changes (verified by `git status` + `find ~/.claude-backup-pre-uninstall-* | wc -l = 0`).
+2. `bash scripts/uninstall.sh --dry-run` prints a 4-group preview (`[- REMOVE]` / `[~ KEEP]` / `[? MODIFIED]` / `[? MISSING]`) using the existing `scripts/lib/dry-run-output.sh` API (which uses single-char markers per `dro_print_header`), exits 0, and produces zero filesystem changes (verified by `git status` + `find ~/.claude-backup-pre-uninstall-* | wc -l = 0`).
 3. When a registered file's current SHA256 differs from the manifest, the script reads `[y/N/d]` from `< /dev/tty` (default `N` = keep). `d` shows `diff` against the manifest reference (or notes "reference unavailable") and re-prompts. The prompt loop is re-entrant for every modified file.
 4. Before any delete operation, the script writes a full copy of the project's `.claude/` directory to `~/.claude-backup-pre-uninstall-<unix-ts>/` using the same backup convention as `update-claude.sh`. The backup directory is created via `cp -R` and includes the toolkit-install.json snapshot at the time of backup.
 5. The script is shellcheck-clean (severity warning), works under `bash <(curl -sSL ...)`, and follows project conventions: `set -euo pipefail`, color codes via `RED`/`GREEN`/`YELLOW`/`BLUE`/`NC`, `${NO_COLOR+x}` + `[ -t 1 ]` gates.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 18-01-PLAN.md — Script skeleton: argparse, state load, SHA256 classification, base-plugin exclusion (UN-01)
+- [ ] 18-02-PLAN.md — `--dry-run` 4-group preview using dro_* primitives, zero-mutation contract (UN-02)
+- [ ] 18-03-PLAN.md — Backup-before-delete to `~/.claude-backup-pre-uninstall-<ts>/` + REMOVE_LIST hash-match delete loop (UN-04, UN-01)
+- [ ] 18-04-PLAN.md — Per-MODIFIED-file [y/N/d] prompt via /dev/tty with re-entrant d-branch diff (UN-03)
 
 ### Phase 19: State Cleanup + Idempotency
 
