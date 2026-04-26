@@ -107,8 +107,15 @@ Carry-overs available for next milestone scoping:
 |----------|------|--------|
 | Locked out | Docker-per-cell isolation | Permanently out (conflicts with POSIX invariant) |
 | Locked out | Auto-cut `git tag` from phase execution | Permanently out (CLAUDE.md "never push main") |
-| Deferred | HARDEN-C-04 — uninstall script | Carry-over from v4.1 audit, deferred through v4.2 |
-| Deferred | AUDIT-02/04/06/10/15 Wave B/C hardening | Compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata |
+| Closed | HARDEN-C-04 — uninstall script | Done in v4.3 (`scripts/uninstall.sh`, UN-01..UN-08) |
+| Closed | AUDIT-10 collision detection | Done — already covered by idempotent install + SHA256 manifest diff (closed 2026-04-26) |
+| Closed | AUDIT-12 command markdown linting | Done by HARDEN-A-01 (`scripts/validate-commands.py`) |
+| Closed | AUDIT-14 uninstall semantics | Done by v4.3 Uninstall (closed 2026-04-26) |
+| Closed | AUDIT-15 provenance metadata | Done — already covered by `~/.claude/toolkit-install.json` (closed 2026-04-26) |
+| WONTFIX | AUDIT-02 compat matrix | KISS — install-time picks 1 framework, no overlay scenario (closed 2026-04-26) |
+| WONTFIX | AUDIT-04 merge-strategy | KISS — no multi-template overlay; per-file fallback in installers is sufficient (closed 2026-04-26) |
+| WONTFIX | AUDIT-06 template version pinning | Already covered — `manifest.json` `version` + `~/.claude/.toolkit-version` + smart-update diff (closed 2026-04-26) |
+| Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
 | Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
 | Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |

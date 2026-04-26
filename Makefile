@@ -1,9 +1,11 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install
 
 # Default target
 help:
 	@echo "Claude Guides - Available commands:"
 	@echo ""
+	@echo "  make check      - Primary quality gate (lint + validate + parity)"
+	@echo "  make check-full - check + bats install matrix (run before push)"
 	@echo "  make lint       - Run all linters (shellcheck + markdownlint)"
 	@echo "  make shellcheck - Check shell scripts"
 	@echo "  make mdlint     - Check markdown files"
@@ -16,6 +18,12 @@ help:
 # Run all checks (documented in CLAUDE.md as primary quality gate)
 check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands cell-parity
 	@echo "All checks passed!"
+
+# Full local validation — `check` + bats install matrix. Run before push to catch
+# bats-only regressions that surfaced 59 commits late during v4.1 (RETROSPECTIVE
+# 2026-04-25). Requires: brew install bats-core. CI runs the matrix separately.
+check-full: check test-matrix-bats
+	@echo "All checks + bats matrix passed!"
 
 # Install dependencies
 install:
