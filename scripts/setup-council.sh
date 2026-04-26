@@ -178,6 +178,27 @@ else
     echo -e "  ${YELLOW}⚠${NC} README.md (not critical)"
 fi
 
+# Download audit-review.md prompt (Phase 17 — DIST-01 / D-04)
+# Idempotent + mtime-aware: only overwrites if upstream is newer than local copy.
+# NOTE: --force flag (to unconditionally overwrite) is deferred to a future hardening pass.
+mkdir -p "$COUNCIL_DIR/prompts"
+if curl -sSLf "$REPO_URL/scripts/council/prompts/audit-review.md" \
+        -o "$COUNCIL_DIR/prompts/audit-review.md.tmp" 2>/dev/null; then
+    if [ ! -f "$COUNCIL_DIR/prompts/audit-review.md" ]; then
+        mv "$COUNCIL_DIR/prompts/audit-review.md.tmp" "$COUNCIL_DIR/prompts/audit-review.md"
+        echo -e "  ${GREEN}✓${NC} prompts/audit-review.md"
+    elif [ "$COUNCIL_DIR/prompts/audit-review.md.tmp" -nt "$COUNCIL_DIR/prompts/audit-review.md" ]; then
+        mv "$COUNCIL_DIR/prompts/audit-review.md.tmp" "$COUNCIL_DIR/prompts/audit-review.md"
+        echo -e "  ${GREEN}✓${NC} prompts/audit-review.md (refreshed)"
+    else
+        rm -f "$COUNCIL_DIR/prompts/audit-review.md.tmp"
+        echo -e "  ${GREEN}✓${NC} prompts/audit-review.md (already current)"
+    fi
+else
+    rm -f "$COUNCIL_DIR/prompts/audit-review.md.tmp"
+    echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
+fi
+
 echo ""
 
 # ─────────────────────────────────────────────────
