@@ -69,7 +69,7 @@
 **Plans**: 4 plans
 
 - [x] 18-01-PLAN.md — Script skeleton: argparse, state load, SHA256 classification, base-plugin exclusion (UN-01)
-- [ ] 18-02-PLAN.md — `--dry-run` 4-group preview using dro_* primitives, zero-mutation contract (UN-02)
+- [x] 18-02-PLAN.md — `--dry-run` 4-group preview using dro_* primitives, zero-mutation contract (UN-02)
 - [ ] 18-03-PLAN.md — Backup-before-delete to `~/.claude-backup-pre-uninstall-<ts>/` + REMOVE_LIST hash-match delete loop (UN-04, UN-01)
 - [ ] 18-04-PLAN.md — Per-MODIFIED-file [y/N/d] prompt via /dev/tty with re-entrant d-branch diff (UN-03)
 

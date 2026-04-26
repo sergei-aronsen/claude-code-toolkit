@@ -12,7 +12,7 @@ Requirements for the v4.3 release. Each maps to exactly one roadmap phase.
 The script that drives the file removal — must be safe, deterministic, and reversible-by-backup.
 
 - [x] **UN-01**: `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes every file listed under `installed_files[]` whose SHA256 matches the recorded hash. Files are deleted from the project's `.claude/` directory only — never from `~/.claude/` and never from base-plugin directories (`~/.claude/plugins/cache/claude-plugins-official/superpowers/`, `~/.claude/get-shit-done/`).
-- [ ] **UN-02**: `--dry-run` flag prints the full removal plan (which files would be deleted, which would be kept due to user modification, which would be skipped due to absence) and exits 0 without touching the filesystem.
+- [x] **UN-02**: `--dry-run` flag prints the full removal plan (which files would be deleted, which would be kept due to user modification, which would be skipped due to absence) and exits 0 without touching the filesystem.
 - [ ] **UN-03**: User-modified files (recorded SHA256 ≠ current SHA256) trigger a per-file `[y/N/d]` prompt: `y` removes, `N` keeps (default), `d` shows diff vs the manifest reference and re-prompts. Stdin reads via `< /dev/tty` so the script works under `curl ... | bash`.
 - [ ] **UN-04**: Before any delete, the script writes a full backup of the project's `.claude/` directory to `~/.claude-backup-pre-uninstall-<unix-ts>/` (parallel to existing backup conventions in `update-claude.sh` + `migrate-to-complement.sh`). Backup is always made — `--no-backup` flag does not exist in v4.3.
 
