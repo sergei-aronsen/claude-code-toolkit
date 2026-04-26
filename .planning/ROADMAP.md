@@ -49,7 +49,7 @@
 
 - [x] **Phase 18: Core Uninstall — Script + Dry-Run + Backup** — `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes registered files with `--dry-run` preview, `[y/N/d]` user-modification prompt, and full `.claude/` backup (completed 2026-04-26)
 - [x] **Phase 19: State Cleanup + Idempotency** — Strip toolkit-owned `~/.claude/CLAUDE.md` sections, delete `toolkit-install.json` after success, double-invocation is a no-op (completed 2026-04-26)
-- [ ] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, Test 21 fresh→install→uninstall→fresh assertion
+- [x] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, Test 21 fresh→install→uninstall→fresh assertion (completed 2026-04-26)
 
 ## Phase Details
 
@@ -109,7 +109,7 @@ Plans:
 Plans:
 - [x] 20-01-PLAN.md — manifest.json + CHANGELOG.md bump to 4.3.0; register scripts/uninstall.sh under files.scripts[] (UN-07 — version-align gate)
 - [x] 20-02-PLAN.md — Banner echo in 3 installers (init-claude.sh, init-local.sh, update-claude.sh) + test-install-banner.sh source-grep gate + Makefile Test 25 slot (UN-07)
-- [ ] 20-03-PLAN.md — scripts/tests/test-uninstall.sh round-trip integration test (S1-S5 scenarios) + Makefile Test 24 slot (UN-08)
+- [x] 20-03-PLAN.md — scripts/tests/test-uninstall.sh round-trip integration test (S1-S5 scenarios) + Makefile Test 24 slot (UN-08)
 
 ## Progress
 

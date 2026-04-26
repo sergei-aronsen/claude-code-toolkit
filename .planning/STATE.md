@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
 status: verifying
-stopped_at: Completed 20-distribution-tests Plan 02 (installer banners + Test 25)
-last_updated: "2026-04-26T16:09:14.598Z"
+stopped_at: Completed 20-distribution-tests Plan 03 (UN-08 round-trip test + Makefile Test 24)
+last_updated: "2026-04-26T16:22:00.066Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -71,6 +71,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 20-distribution-tests]: D-15: YYYY-MM-DD placeholder locked literal in manifest.json and CHANGELOG.md until v4.3.0 tag commit
 - [Phase 20-distribution-tests]: D-06: banner string is byte-identical across all 3 installers — single BANNER= variable in test is the canonical source-of-truth
 - [Phase 20-distribution-tests]: D-09: test uses grep -cF count-mode (exactly 1) not grep -q — catches accidental duplication
+- [Phase 20-distribution-tests]: Canary selection uses jq .installed_files[].path | grep -E '.(md|json)' | head -1 for resilience to future install-set changes
+- [Phase 20-distribution-tests]: Backup path strips .claude/ prefix to match cp -R CLAUDE_DIR layout in .claude-backup-pre-uninstall-* dirs
+- [Phase 20-distribution-tests]: Rule 1 fix: init-local.sh now tracks 13 previously-untracked files (cheatsheets, seed files, CLAUDE.md, settings.json) in INSTALLED_PATHS[] so uninstall can cleanly remove all
 
 ### Roadmap Evolution
 
@@ -110,11 +113,12 @@ Carry-overs available for next milestone scoping:
 | Phase 19-state-cleanup-idempotency P03 | 2 | 1 tasks | 1 files |
 | Phase 20-distribution-tests P01 | 211 | 3 tasks | 2 files |
 | Phase 20-distribution-tests P02 | 3 | 5 tasks | 5 files |
+| Phase 20-distribution-tests P03 | 35 | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T16:09:14.595Z
-Stopped at: Completed 20-distribution-tests Plan 02 (installer banners + Test 25)
+Last session: 2026-04-26T16:22:00.063Z
+Stopped at: Completed 20-distribution-tests Plan 03 (UN-08 round-trip test + Makefile Test 24)
 Resume file: None
 
 **To resume next session:**
