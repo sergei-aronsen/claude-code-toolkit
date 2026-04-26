@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - YYYY-MM-DD
+
+### Added
+
+- **Uninstall script** (`scripts/uninstall.sh`) — single command to safely remove every
+  toolkit-installed file from a project's `.claude/` while preserving user modifications
+  and base plugins (`superpowers`, `get-shit-done`).
+  - UN-01: removes registered files only when current SHA256 matches the recorded hash;
+    files outside the project's `.claude/` and inside base-plugin trees are never touched
+  - UN-02: `--dry-run` prints a 4-group preview (REMOVE / KEEP / MODIFIED / MISSING) and
+    exits 0 with zero filesystem changes
+  - UN-03: modified files trigger a `[y/N/d]` prompt read from `< /dev/tty`; default `N`
+    keeps the file, `d` shows a diff against the manifest reference and re-prompts
+  - UN-04: full `.claude/` backup written to `~/.claude-backup-pre-uninstall-<unix-ts>/`
+    before any delete; `--no-backup` flag does not exist
+
+- **State cleanup + idempotency**
+  - UN-05: deletes `~/.claude/toolkit-install.json` after successful removal and strips
+    any `<!-- TOOLKIT-START -->`…`<!-- TOOLKIT-END -->` block from `~/.claude/CLAUDE.md`;
+    user-authored sections preserved verbatim
+  - UN-06: second invocation detects missing state file, prints
+    `✓ Toolkit not installed; nothing to do`, exits 0, creates no backup directory
+
+- **Distribution** — `manifest.json` registers `scripts/uninstall.sh` under
+  `files.scripts[]`; `init-claude.sh`, `init-local.sh`, and `update-claude.sh` end-of-run
+  banners include the line
+  `To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)`
+  (UN-07).
+
+- **Round-trip integration test** — `scripts/tests/test-uninstall.sh` (Makefile Test 24)
+  exercises the full install→uninstall round-trip across 5 scenario blocks; new
+  `scripts/tests/test-install-banner.sh` (Test 25) gates banner presence in all 3
+  installers (UN-08).
+
 ## [4.2.0] - 2026-04-26
 
 ### Added
