@@ -1005,3 +1005,7 @@ recommend_optional_plugins
 
 echo ""
 echo -e "${YELLOW}⚠ Restart Claude Code to apply changes${NC}"
+
+if [[ $NO_BANNER -eq 0 ]]; then
+    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+fi
