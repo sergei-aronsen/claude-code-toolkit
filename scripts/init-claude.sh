@@ -902,4 +902,6 @@ POSTINSTALL
 main
 
 echo ""
+echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+echo ""
 echo "Read .claude/POST_INSTALL.md and show its contents to the user."
