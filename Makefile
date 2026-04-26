@@ -115,6 +115,9 @@ test:
 	@echo "Test 21: uninstall --dry-run zero-mutation contract (UN-02)"
 	@bash scripts/tests/test-uninstall-dry-run.sh
 	@echo ""
+	@echo "Test 22: uninstall backup-before-delete + UN-01 hash-match delete (UN-04)"
+	@bash scripts/tests/test-uninstall-backup.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
