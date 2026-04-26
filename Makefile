@@ -127,6 +127,12 @@ test:
 	@echo "Test 25: installer banner gate (UN-07 — grep 'To remove:' in 3 installers)"
 	@bash scripts/tests/test-install-banner.sh
 	@echo ""
+	@echo "Test 26: uninstall idempotency no-op contract (UN-06)"
+	@bash scripts/tests/test-uninstall-idempotency.sh
+	@echo ""
+	@echo "Test 27: uninstall state-cleanup + sentinel strip + base-plugin invariant (UN-05/UN-06)"
+	@bash scripts/tests/test-uninstall-state-cleanup.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
