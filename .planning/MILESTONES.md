@@ -1,5 +1,24 @@
 # Milestones
 
+## v4.3 Uninstall (Shipped: 2026-04-26)
+
+**Phases completed:** 3 phases, 10 plans, 12 tasks
+
+**Key accomplishments:**
+
+- `scripts/uninstall.sh` skeleton with argparse, state-file load, SHA256 `classify_file` helper, and `is_protected_path` guard — pure read-only diagnostic, zero filesystem mutations, shellcheck-warning clean
+- 1. [Rule 1 - Bug] classify_file path resolution: PROJECT_DIR not CLAUDE_DIR
+- `scripts/uninstall.sh` non-dry-run path: creates `.claude-backup-pre-uninstall-<ts>/` before any `rm`, deletes only hash-matched files (REMOVE_LIST), preserves MODIFIED files (deferred to 18-04), prints 4-group post-run summary. `list_backup_dirs` extended for new pattern. 12-assertion hermetic test proves all invariants.
+- `prompt_modified_for_uninstall()` + MODIFIED_LIST loop added to `scripts/uninstall.sh`. Every MODIFIED file triggers a re-entrant `[y/N/d]` prompt: `y` removes, `N` (default) keeps, `d` shows non-trivial diff and re-prompts. Reads `/dev/tty`; fail-closed `N` when unavailable. `test-uninstall-prompt.sh` proves all three branches via stdin injection — 10 assertions pass including A7 (W2 closure: diff body non-empty).
+- Hermetic 5-assertion bash test that locks the UN-06 no-op contract: absent toolkit-install.json exits 0 with exact log wording and zero filesystem side-effects
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+- One-liner:
+
+---
+
 ## v4.2 Audit System v2 (Shipped: 2026-04-26)
 
 **Phases completed:** 5 phases (13–17), 22 plans, 23 tasks

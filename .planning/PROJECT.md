@@ -47,27 +47,20 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `scripts/uninstall.sh --dry-run` prints chezmoi-grade 4-group preview (`[- REMOVE]` / `[? MODIFIED]` / `[? MISSING]` / total) using existing `dro_*` primitives, exits 0 with zero filesystem mutations; hermetic test (8 assertions) enforces zero-mutation contract — Validated in Phase 18 (UN-02)
 - ✓ Per-MODIFIED-file `[y/N/d]` prompt via `< /dev/tty` with re-entrant `d`-branch diff loop, fail-closed `N` default if `/dev/tty` unavailable, works under `bash <(curl -sSL ...)` — Validated in Phase 18 (UN-03)
 - ✓ Backup-before-delete to `~/.claude-backup-pre-uninstall-<unix-ts>/` via `cp -R` with `toolkit-install.json` snapshot inside backup; `lib/backup.sh` `list_backup_dirs`/`warn_if_too_many_backups` extended for new pattern (enables `--clean-backups` pruning) — Validated in Phase 18 (UN-04)
+- ✓ `strip_sentinel_block()` awk helper strips `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` blocks from `~/.claude/CLAUDE.md` with leading/trailing blank-line trimming; unmatched markers → log_warning + leave-untouched (D-02 no partial-strip); empty file after strip → leave on disk (D-03 least-destruction); base-plugin invariant `diff -q` on sorted `find` output of superpowers + get-shit-done trees fails loudly with `exit 1` + state preserved on mutation (D-10); `~/.claude/toolkit-install.json` deleted as the LAST mutating step (D-06) — Validated in Phase 19: state-cleanup-idempotency (UN-05)
+- ✓ `[[ ! -f "$STATE_FILE" ]]` guard at line 389 fires before lock acquisition / backup / snapshot — second invocation prints exact locked log line `✓ Toolkit not installed; nothing to do.` and exits 0 with zero filesystem mutations (no `.claude-backup-pre-uninstall-*` dir on no-op runs) — Validated in Phase 19 (UN-06)
+- ✓ `manifest.json` `4.3.0` registers `scripts/uninstall.sh` under new `files.scripts[]` array; `init-local.sh --version` derives from manifest at runtime so version-align gate stays a 2-file (manifest + CHANGELOG) atomic bump; identical `To remove: bash <(curl -sSL .../scripts/uninstall.sh)` line in all 3 installers (`init-claude.sh`, `init-local.sh`, `update-claude.sh` with `NO_BANNER=1` guard); `CHANGELOG.md [4.3.0]` Added section covers UN-01..UN-08 — Validated in Phase 20: distribution-tests (UN-07)
+- ✓ `scripts/tests/test-uninstall.sh` round-trip integration test (5 scenarios S1-S5, 18 assertions) exercises real `init-local.sh` → uninstall.sh contract: clean → uninstall → `find .claude -type f == 0`, modified-file `y/N/d` branches via `TK_UNINSTALL_TTY_FROM_STDIN=1`, base-plugin SHA256 invariant, `--dry-run` zero-mutation, double-uninstall no-op; `scripts/tests/test-install-banner.sh` source-grep gate (3 assertions); Makefile Tests 24-27 + `.github/workflows/quality.yml` `validate-templates` job mirrors all 7 uninstall-suite tests (67 assertions) in CI — Validated in Phase 20 (UN-08)
+- ✓ Rule-1 install/uninstall contract gap fix: `scripts/init-local.sh` `INSTALLED_PATHS[]` now tracks 6 previously-untracked groups (cheatsheets×9, lessons-learned, audit-exceptions, scratchpad/current-task.md, CLAUDE.md, settings.json) — surfaced by Phase 20 S1 round-trip; closes silent gap where files were installed but not registered in `toolkit-install.json` — Validated in Phase 20
 
-## Current Milestone: v4.3 Uninstall
+<details>
+<summary>v4.3 requirements (shipped 2026-04-26)</summary>
 
-**Goal:** Ship `scripts/uninstall.sh` — clean reverse of `init-claude.sh`/`init-local.sh` install based on `~/.claude/toolkit-install.json` state.
+- ✓ UN-01..UN-04 (Phase 18 — uninstall.sh foundation: argparse, state load, SHA256 classify, base-plugin guard, dry-run preview, backup-before-delete, [y/N/d] modified prompt)
+- ✓ UN-05..UN-06 (Phase 19 — state cleanup: strip_sentinel_block, base-plugin diff -q invariant, state-file delete LAST, idempotency guard with locked log line)
+- ✓ UN-07..UN-08 (Phase 20 — distribution: manifest.json files.scripts + 4.3.0 bump, "To remove" banner in 3 installers, CHANGELOG [4.3.0], round-trip test 18 assertions, banner gate, CI mirror in quality.yml)
 
-**Target features:**
-
-- `scripts/uninstall.sh` removes all toolkit-installed files from `.claude/` per state manifest
-- `--dry-run` flag previews removal without deleting
-- User-modified files (SHA256 mismatch vs manifest) trigger `[y/N/d]` per-file prompt with default keep
-- Full `.claude/` backup to `~/.claude-backup-pre-uninstall-<unix-ts>/` before any delete
-- Base plugins (`superpowers`, `get-shit-done`) preserved untouched — toolkit-install.json drives the file list, never wildcard
-- Idempotent — second run on already-uninstalled project is a no-op with clear message
-- `manifest.json` registers `scripts/uninstall.sh`; installer post-install banner mentions it; `CHANGELOG.md [4.3.0]` entry
-- Test cell asserts fresh → install → uninstall → fresh state across all 4 install modes
-
-**Why now:** Closes the only REAL finding from the v4.1 ChatGPT pass-3 audit (HARDEN-C-04), deferred through v4.2 as out-of-scope.
-
-### Active
-
-_v4.3 requirements defined inline below — see REQUIREMENTS.md._
+</details>
 
 <details>
 <summary>v4.2 requirements (shipped 2026-04-26)</summary>
@@ -145,12 +138,9 @@ _v4.3 requirements defined inline below — see REQUIREMENTS.md._
 
 ## Current State
 
-**In progress:**
-
-- **v4.3 Uninstall** — Phase 18 complete (2026-04-26): `scripts/uninstall.sh` foundation + `--dry-run` preview + backup-before-delete + `[y/N/d]` modified-file prompt; UN-01..UN-04 satisfied; 30 hermetic test assertions across dry-run/backup/prompt suites; shellcheck clean. Phase 19 (state cleanup + idempotency) and Phase 20 (manifest registration + CHANGELOG + matrix test cell) remain.
-
 **Shipped:**
 
+- **v4.3 Uninstall** (2026-04-26) — 3 phases (18–20), 10 plans, 12 tasks, 8 REQ-IDs (UN-01..UN-08). `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, classifies via SHA256, prompts `[y/N/d]` for modified files, backs up to `~/.claude-backup-pre-uninstall-<ts>/`, strips toolkit sentinel block from `~/.claude/CLAUDE.md`, verifies base-plugin invariant via `diff -q`, deletes state file LAST, idempotent on second invocation. 7 hermetic test files (67 assertions: dry-run + backup + prompt + idempotency + state-cleanup + round-trip + banner-gate). Manifest 4.3.0 registers `files.scripts[]`; identical `To remove` banner in all 3 installers; CI mirror in `quality.yml`. Tagged `v4.3.0`.
 - **v4.2 Audit System v2** (2026-04-26) — 5 phases (13–17), 22 plans, 22 REQ-IDs. Persistent FP allowlist (`.claude/rules/audit-exceptions.md` + `/audit-skip` + `/audit-restore`), `/audit` rewritten to a 6-phase pipeline with 6-step FP recheck and structured reports at `.claude/audits/<type>-<HHMM>.md` (±10 lines verbatim code per finding), mandatory `/council audit-review` pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden), and 49 prompt files spliced across 7 frameworks. Tagged `v4.2.0`.
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
@@ -159,12 +149,15 @@ _v4.3 requirements defined inline below — see REQUIREMENTS.md._
 
 _To be defined via `/gsd-new-milestone`._
 
-Candidate carry-overs from v4.1 audit + v4.0 lockouts:
+Candidate carry-overs after v4.3:
 
-- HARDEN-C-04 — uninstall script (only REAL finding from ChatGPT pass-3 audit, deferred through v4.2)
 - AUDIT-02/04/06/10/15 — Wave B/C hardening deferred from Phase 12 (compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata)
 - Council `audit-review` integration with cloud Sentry/Linear (auto-create issue per Council-confirmed REAL finding) — surfaced from v4.2 deferred list
 - Installable GSD CLI wrapper in toolkit (crosses repo boundary — deferred from v4.1)
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` — wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers (Phase 19 D-01 deferred to v4.4; Phase 19 ships strip-only reader side)
+- `--keep-state` partial-uninstall flag (Phase 19 D-05 deferred to v4.4)
+- `--no-banner` flag for `init-claude.sh` / `init-local.sh` (Phase 20 D-08 deferred to v4.4 if user demand)
+- Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
 
 ## Key Decisions

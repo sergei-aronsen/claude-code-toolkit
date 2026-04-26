@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
-status: complete
-stopped_at: Phase 20 verified PASSED — v4.3 milestone complete
-last_updated: "2026-04-26T16:33:00.000Z"
+status: shipped
+stopped_at: v4.3.0 tagged — 2026-04-26
+last_updated: "2026-04-26T19:00:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 3
@@ -20,18 +20,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.3 milestone complete — awaiting tag commit
+**Current focus:** Planning next milestone — v4.3 Uninstall shipped 2026-04-26
 
 ## Current Position
 
-Milestone: v4.3 Uninstall — COMPLETE (all 3 phases verified)
-Phase: 20 (distribution-tests) — COMPLETE (verified 2026-04-26)
-Next: Tag commit (replace YYYY-MM-DD placeholder → real ISO date, cut v4.3.0 tag)
-Status: All 3 phases verified PASSED. Milestone ready for tag.
+Last shipped: v4.3 Uninstall (Phases 18–20) — tagged v4.3.0 on 2026-04-26
+Next: Run `/gsd-new-milestone` to define next milestone scope
 
-Progress: [██████████] 100%
+Progress: idle (between milestones)
 
 ## Performance Metrics
+
+**v4.3 totals (2026-04-26, single day):**
+
+- Phases: 3 (18–20)
+- Plans: 10
+- Tasks: 12
+- Commits: 50+ (`v4.2.0 → v4.3.0`)
+- Diff: 129 files changed (+11307 / −307)
+- New tests: 7 uninstall-suite files, 67 assertions
+- New CI gate: quality.yml mirrors full uninstall suite
 
 **v4.2 totals (2026-04-25 → 2026-04-26):**
 
