@@ -118,6 +118,9 @@ test:
 	@echo "Test 22: uninstall backup-before-delete + UN-01 hash-match delete (UN-04)"
 	@bash scripts/tests/test-uninstall-backup.sh
 	@echo ""
+	@echo "Test 23: uninstall [y/N/d] prompt loop — UN-03 stdin-injected 3-branch proof"
+	@bash scripts/tests/test-uninstall-prompt.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
