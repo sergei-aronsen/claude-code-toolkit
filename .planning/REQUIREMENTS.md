@@ -27,7 +27,7 @@ The script must leave the system in a known-clean state and survive double-invoc
 
 Wire the new script through manifest, installer banners, CHANGELOG, and CI.
 
-- [ ] **UN-07**: `manifest.json` registers `scripts/uninstall.sh` under `files.scripts[]`. `init-claude.sh`, `init-local.sh`, and `update-claude.sh` end-of-run banners include the line `To remove: bash <(curl -sSL .../scripts/uninstall.sh)` (single-line, no extra prose). `CHANGELOG.md` `[4.3.0]` entry covers UN-01..UN-08 with ship date set when the milestone closes.
+- [x] **UN-07**: `manifest.json` registers `scripts/uninstall.sh` under `files.scripts[]`. `init-claude.sh`, `init-local.sh`, and `update-claude.sh` end-of-run banners include the line `To remove: bash <(curl -sSL .../scripts/uninstall.sh)` (single-line, no extra prose). `CHANGELOG.md` `[4.3.0]` entry covers UN-01..UN-08 with ship date set when the milestone closes.
 - [ ] **UN-08**: New `scripts/tests/test-uninstall.sh` + Makefile `Test 21` assert: (a) fresh install → uninstall → `.claude/` matches a fresh checkout (no toolkit files, no `toolkit-install.json`); (b) modified file detection prompts `y/N/d` and respects each choice; (c) base-plugin files are never touched (compare SP/GSD inventories before vs after); (d) double-uninstall exits 0 with no-op message; (e) `--dry-run` produces zero filesystem changes. CI mirror runs in `.github/workflows/quality.yml`.
 
 ## Future Requirements (Deferred)
