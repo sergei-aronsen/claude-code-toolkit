@@ -197,6 +197,94 @@ classify_file() {
     fi
 }
 
+# prompt_modified_for_uninstall <relative_path>
+# UN-03 [y/N/d] interactive prompt for MODIFIED files.
+# y → rm -f and append to DELETED_LIST
+# N (default) or anything else → append to KEEP_LIST and keep the file
+# d → show diff vs manifest reference (from backup snapshot or remote) and re-prompt
+# Reads via /dev/tty so script works under bash <(curl -sSL ...). Fail-closed N on EOF.
+#
+# `local` is permitted here because we are INSIDE a function body (unlike the
+# MAIN-block code from 18-03 which forbids `local`).
+#
+# TK_UNINSTALL_TTY_FROM_STDIN: CI/test-only seam. When set (non-empty), reads from
+# /dev/stdin instead of /dev/tty. Matches the TK_UNINSTALL_LIB_DIR / TK_UNINSTALL_FILE_SRC
+# convention. NEVER set this in production — it breaks interactive prompts.
+prompt_modified_for_uninstall() {
+    local rel="$1"
+    local local_path="$rel"
+    case "$rel" in
+        /*) : ;;
+        *)  local_path="$PROJECT_DIR/$rel" ;;
+    esac
+
+    # Defense-in-depth: never prompt on a protected path
+    if is_protected_path "$rel"; then
+        log_warning "Skipping prompt for protected path: $rel"
+        KEEP_LIST+=("$rel")
+        return 0
+    fi
+
+    # Reference content for `d`: prefer the test seam (TK_UNINSTALL_FILE_SRC),
+    # fall back to remote (curl from REPO_URL/<rel>). The `d` branch shows a
+    # "reference unavailable" message if neither is available.
+    local reference_tmp
+    reference_tmp=$(mktemp "${TMPDIR:-/tmp}/uninstall-ref.XXXXXX")
+    # shellcheck disable=SC2064  # intentional: capture path at trap-registration time
+    trap "rm -f '$reference_tmp'" RETURN
+
+    local reference_source=""
+    # Try test seam first
+    if [[ -n "${TK_UNINSTALL_FILE_SRC:-}" && -f "$TK_UNINSTALL_FILE_SRC/$rel" ]]; then
+        cp "$TK_UNINSTALL_FILE_SRC/$rel" "$reference_tmp"
+        reference_source="local seam"
+    # Try remote
+    elif curl -sSLf "$REPO_URL/$rel" -o "$reference_tmp" 2>/dev/null; then
+        reference_source="remote ($REPO_URL/$rel)"
+    else
+        rm -f "$reference_tmp"
+        reference_tmp=""
+    fi
+
+    # TTY source. Default /dev/tty; test seam (TK_UNINSTALL_TTY_FROM_STDIN=1) swaps
+    # to /dev/stdin so the test harness can inject answers via a here-document.
+    local tty_target="/dev/tty"
+    [[ -n "${TK_UNINSTALL_TTY_FROM_STDIN:-}" ]] && tty_target="/dev/stdin"
+
+    while :; do
+        local choice=""
+        if ! read -r -p "File $rel modified locally. Remove? [y/N/d]: " choice < "$tty_target" 2>/dev/null; then
+            choice="N"   # fail-closed: tty source unreachable
+        fi
+        case "${choice:-N}" in
+            y|Y)
+                if rm -f "$local_path"; then
+                    DELETED_LIST+=("$rel")
+                    log_success "Removed: $rel"
+                else
+                    DELETE_FAILED_LIST+=("$rel")
+                    log_warning "Failed to remove: $rel"
+                fi
+                return 0
+                ;;
+            d|D)
+                if [[ -n "$reference_tmp" && -f "$reference_tmp" ]]; then
+                    echo "── diff: local vs reference ($reference_source) ──"
+                    diff -u "$local_path" "$reference_tmp" || true
+                    echo "── end diff ──"
+                else
+                    echo "Reference unavailable (no local seam, no network) — diff cannot be shown."
+                fi
+                # re-enter loop for another prompt iteration
+                ;;
+            *)
+                KEEP_LIST+=("$rel")
+                return 0
+                ;;
+        esac
+    done
+}
+
 # ───────── MAIN ─────────
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
@@ -369,6 +457,16 @@ if [[ ${#REMOVE_LIST[@]} -gt 0 ]]; then
     done
 fi
 
+# UN-03: per-modified-file [y/N/d] prompt loop. Runs after REMOVE_LIST delete,
+# after backup, before summary. bash 3.2-safe array-length guard pattern.
+if [[ ${#MODIFIED_LIST[@]} -gt 0 ]]; then
+    echo ""
+    log_info "${#MODIFIED_LIST[@]} file(s) modified since install. Per-file decision required."
+    for rel in "${MODIFIED_LIST[@]}"; do
+        prompt_modified_for_uninstall "$rel"
+    done
+fi
+
 # ───────── Post-run summary (4-group) ─────────
 # IMPORTANT: every array iteration uses the bash 3.2-safe array-length guard
 # pattern — NEVER the inline `[@]:-` default modifier. Empty arrays under
@@ -386,11 +484,10 @@ else
     printf '%bDELETED 0%b\n' "$GREEN" "$NC"
 fi
 
-# MODIFIED entries — kept (18-04 will add prompt to allow removal). Surface as KEPT.
-if [[ ${#MODIFIED_LIST[@]} -gt 0 ]]; then
-    printf '%bKEPT (modified) %d%b — pass through 18-04 [y/N/d] prompt in next plan\n' \
-        "$YELLOW" "${#MODIFIED_LIST[@]}" "$NC"
-    for p in "${MODIFIED_LIST[@]}"; do
+# KEEP_LIST is the post-prompt result (files user chose N on, or default-kept).
+if [[ ${#KEEP_LIST[@]} -gt 0 ]]; then
+    printf '%bKEPT %d%b (locally modified, user chose N)\n' "$YELLOW" "${#KEEP_LIST[@]}" "$NC"
+    for p in "${KEEP_LIST[@]}"; do
         echo "  $p"
     done
 fi
@@ -418,7 +515,6 @@ fi
 
 printf '%bBACKED UP%b to %s\n' "$CYAN" "$NC" "$BACKUP_DIR"
 
-# 18-05+ (Phase 19) will add: state cleanup, idempotency-on-second-run, mode-strip from CLAUDE.md
 echo ""
-log_warning "⚠ State cleanup deferred to v4.3 Phase 19 — toolkit-install.json NOT yet removed"
+log_info "Phase 18 (v4.3 Wave 1) ships file removal. Phase 19 will handle state cleanup ~/.claude/toolkit-install.json + CLAUDE.md sentinel block."
 exit 0

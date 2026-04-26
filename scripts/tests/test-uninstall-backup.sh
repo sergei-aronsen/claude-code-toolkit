@@ -11,7 +11,7 @@
 #   A7.  PROTECTED base-plugin file untouched (byte-identical SHA pre/post)
 #   A8.  Output contains "DELETED 1"
 #   A9.  Output contains "BACKED UP"
-#   A10. Output contains "KEPT (modified) 1"
+#   A10. Output contains "KEPT 1" (18-04 [y/N/d] prompt fail-closed N → KEEP_LIST)
 #   A11. Lock dir cleaned up (released) after exit
 #   A12. list_backup_dirs (scripts/lib/backup.sh) enumerates the new backup dir
 #
@@ -202,8 +202,9 @@ assert_contains 'DELETED 1' "$OUTPUT" "A8: output contains 'DELETED 1'"
 # A9: output contains "BACKED UP"
 assert_contains 'BACKED UP' "$OUTPUT" "A9: output contains 'BACKED UP'"
 
-# A10: output contains "KEPT (modified) 1"
-assert_contains 'KEPT (modified) 1' "$OUTPUT" "A10: output contains 'KEPT (modified) 1'"
+# A10: MODIFIED file kept after fail-closed N prompt (18-04 adds [y/N/d]; /dev/tty
+# unavailable in non-interactive test → fail-closed N → KEEP_LIST → "KEPT 1")
+assert_contains 'KEPT 1' "$OUTPUT" "A10: output contains 'KEPT 1' (fail-closed N via prompt)"
 
 # A11: lock dir cleaned up after exit
 if [ ! -d "$SANDBOX/.claude/.toolkit-install.lock" ]; then
