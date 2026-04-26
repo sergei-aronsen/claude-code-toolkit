@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
-status: verifying
-stopped_at: Completed 20-distribution-tests Plan 03 (UN-08 round-trip test + Makefile Test 24)
-last_updated: "2026-04-26T16:22:00.066Z"
+status: complete
+stopped_at: Phase 20 verified PASSED — v4.3 milestone complete
+last_updated: "2026-04-26T16:33:00.000Z"
 progress:
   total_phases: 3
   completed_phases: 3
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-26)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 20 — Distribution + Tests
+**Current focus:** v4.3 milestone complete — awaiting tag commit
 
 ## Current Position
 
-Milestone: v4.3 Uninstall — in progress (started 2026-04-26)
-Phase: 19 (state-cleanup-idempotency) — COMPLETE (verified 2026-04-26)
-Next: Phase 20 — Distribution + Tests
-Status: Phase 19 verified PASSED. Ready for Phase 20.
+Milestone: v4.3 Uninstall — COMPLETE (all 3 phases verified)
+Phase: 20 (distribution-tests) — COMPLETE (verified 2026-04-26)
+Next: Tag commit (replace YYYY-MM-DD placeholder → real ISO date, cut v4.3.0 tag)
+Status: All 3 phases verified PASSED. Milestone ready for tag.
 
-Progress: [██████░░░░] 67%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-25: v4.1 shipped (Phases 8–12); v4.2 roadmap created (Phases 13–17, 22 REQ-IDs)
 - 2026-04-26: v4.2 shipped — tagged `v4.2.0` + GitHub Release published
 - 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
+- 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
 
 ### Pending Todos
 
@@ -88,7 +89,7 @@ None.
 
 ### Blockers/Concerns
 
-None.
+None. v4.3 awaiting tag commit: replace YYYY-MM-DD placeholder in manifest.json + CHANGELOG.md with real ISO date, then cut `v4.3.0` tag.
 
 ## Deferred Items
 
@@ -104,24 +105,15 @@ Carry-overs available for next milestone scoping:
 | Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
 | Deferred | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: explicitly deferred to v4.4 |
-| Phase 18-core-uninstall-script-dry-run-backup P01 | 10 | 1 tasks | 1 files |
-| Phase 18-core-uninstall-script-dry-run-backup P02 | 15 | 2 tasks | 3 files |
-| Phase 18-core-uninstall-script-dry-run-backup P03 | 6 | 3 tasks | 4 files |
-| Phase 18-core-uninstall-script-dry-run-backup P04 | 8 | 2 tasks | 4 files |
-| Phase 19-state-cleanup-idempotency P01 | 8 | 1 tasks | 1 files |
-| Phase 19-state-cleanup-idempotency P02 | 196 | 3 tasks | 1 files |
-| Phase 19-state-cleanup-idempotency P03 | 2 | 1 tasks | 1 files |
-| Phase 20-distribution-tests P01 | 211 | 3 tasks | 2 files |
-| Phase 20-distribution-tests P02 | 3 | 5 tasks | 5 files |
-| Phase 20-distribution-tests P03 | 35 | 2 tasks | 3 files |
+| Deferred | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 if demand emerges |
+| Deferred | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 if update-claude.sh learns files.scripts iteration |
 
 ## Session Continuity
 
-Last session: 2026-04-26T16:22:00.063Z
-Stopped at: Completed 20-distribution-tests Plan 03 (UN-08 round-trip test + Makefile Test 24)
+Last session: 2026-04-26T16:33:00.000Z
+Stopped at: Phase 20 verified PASSED — v4.3 milestone complete
 Resume file: None
 
-**To resume next session:**
+**To complete milestone:**
 
-- `/gsd-next` — proceed to Phase 20 (Distribution + Tests)
-- `/gsd-progress` — see context + next action
+- Cut `v4.3.0` tag: replace `YYYY-MM-DD` in `manifest.json` and `CHANGELOG.md` with real ISO date, then `git tag v4.3.0`

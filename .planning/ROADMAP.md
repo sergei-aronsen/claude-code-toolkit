@@ -5,7 +5,7 @@
 - ✅ **v4.0 Complement Mode** — Phases 1–7 + 6.1 (shipped 2026-04-21). See `.planning/milestones/v4.0-ROADMAP.md`.
 - ✅ **v4.1 Polish & Upstream** — Phases 8–12 (shipped 2026-04-25). See `.planning/milestones/v4.1-ROADMAP.md`.
 - ✅ **v4.2 Audit System v2** — Phases 13–17 (shipped 2026-04-26). See `.planning/milestones/v4.2-ROADMAP.md`.
-- 🟢 **v4.3 Uninstall** — Phases 18–20 (started 2026-04-26).
+- ✅ **v4.3 Uninstall** — Phases 18–20 (completed 2026-04-26, awaiting tag).
 
 ## Phases
 
@@ -45,11 +45,11 @@
 
 </details>
 
-### 🟢 v4.3 Uninstall (Phases 18–20) — IN PROGRESS
+### ✅ v4.3 Uninstall (Phases 18–20) — COMPLETE (awaiting tag)
 
 - [x] **Phase 18: Core Uninstall — Script + Dry-Run + Backup** — `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json` and removes registered files with `--dry-run` preview, `[y/N/d]` user-modification prompt, and full `.claude/` backup (completed 2026-04-26)
 - [x] **Phase 19: State Cleanup + Idempotency** — Strip toolkit-owned `~/.claude/CLAUDE.md` sections, delete `toolkit-install.json` after success, double-invocation is a no-op (completed 2026-04-26)
-- [x] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, Test 21 fresh→install→uninstall→fresh assertion (completed 2026-04-26)
+- [x] **Phase 20: Distribution + Tests** — `manifest.json` registration, installer post-install banner, `CHANGELOG.md [4.3.0]`, round-trip integration test 18/18 assertions green (completed 2026-04-26, verified 2026-04-26)
 
 ## Phase Details
 
@@ -118,4 +118,4 @@ Plans:
 | v4.0 Complement Mode | 1–7 + 6.1 | 29/29 | ✅ Shipped | 2026-04-21 |
 | v4.1 Polish & Upstream | 8–12 | 13/13 | ✅ Shipped | 2026-04-25 |
 | v4.2 Audit System v2 | 13–17 | 22/22 | ✅ Shipped | 2026-04-26 |
-| v4.3 Uninstall | 18–20 | 0/TBD | 🟢 In progress | — |
+| v4.3 Uninstall | 18–20 | 10/10 | ✅ Complete (awaiting tag) | — |
