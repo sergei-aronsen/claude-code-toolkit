@@ -21,7 +21,7 @@ The script that drives the file removal — must be safe, deterministic, and rev
 The script must leave the system in a known-clean state and survive double-invocation.
 
 - [ ] **UN-05**: After successful removal, `~/.claude/toolkit-install.json` is deleted (toolkit no longer claims to be installed). `~/.claude/CLAUDE.md` toolkit-owned sections (between `<!-- TOOLKIT-START -->` / `<!-- TOOLKIT-END -->` markers if present) are stripped; user-authored sections preserved verbatim. Base plugins (`superpowers`, `get-shit-done`) and their state remain untouched.
-- [ ] **UN-06**: Running `uninstall.sh` twice in a row is idempotent — the second run detects missing `~/.claude/toolkit-install.json`, prints `✓ Toolkit not installed; nothing to do`, and exits 0. No errors, no partial state changes, no orphaned backup directory created on no-op runs.
+- [x] **UN-06**: Running `uninstall.sh` twice in a row is idempotent — the second run detects missing `~/.claude/toolkit-install.json`, prints `✓ Toolkit not installed; nothing to do`, and exits 0. No errors, no partial state changes, no orphaned backup directory created on no-op runs.
 
 ### Distribution + Tests
 
