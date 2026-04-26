@@ -296,6 +296,7 @@ for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
     if [ -f "$cs" ]; then
         filename=$(basename "$cs")
         cp "$cs" "$CLAUDE_DIR/cheatsheets/$filename"
+        INSTALLED_PATHS+=("$CLAUDE_DIR/cheatsheets/$filename")
         echo -e "  ${GREEN}✓${NC} $filename"
     fi
 done
@@ -311,6 +312,7 @@ globs: []
 # Lessons Learned — Audit Log
 <!-- History of lessons saved by /learn. Actual rules are in scoped files (e.g., rules/database.md). -->
 LESSONS
+    INSTALLED_PATHS+=("$LESSONS_FILE")
     echo -e "  ${GREEN}✓${NC} rules/lessons-learned.md (seed)"
 fi
 
@@ -344,6 +346,7 @@ Example entry (this comment is intentionally not a real entry):
 Allowed Council values: unreviewed | council_confirmed_fp | disputed
 -->
 EXCEPTIONS
+    INSTALLED_PATHS+=("$EXCEPTIONS_FILE")
     echo -e "  ${GREEN}✓${NC} rules/audit-exceptions.md (seed)"
 fi
 
@@ -356,6 +359,7 @@ if [ ! -f "$CLAUDE_DIR/scratchpad/current-task.md" ]; then
 
 <!-- Plan Mode scratchpad. Updated by /plan command. -->
 SCRATCHPAD
+    INSTALLED_PATHS+=("$CLAUDE_DIR/scratchpad/current-task.md")
     echo -e "  ${GREEN}✓${NC} scratchpad/current-task.md"
 fi
 
@@ -370,6 +374,7 @@ if [ ! -f "$CLAUDE_DIR/CLAUDE.md" ] && [ ! -f "CLAUDE.md" ]; then
     else
         cp "$BASE_PATH/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
     fi
+    INSTALLED_PATHS+=("$CLAUDE_DIR/CLAUDE.md")
     echo -e "  ${GREEN}✓${NC} CLAUDE.md"
 else
     echo ""
@@ -382,9 +387,11 @@ fi
 if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
     if [ -f "$TEMPLATE_PATH/settings.json" ]; then
         cp "$TEMPLATE_PATH/settings.json" "$CLAUDE_DIR/settings.json"
+        INSTALLED_PATHS+=("$CLAUDE_DIR/settings.json")
         echo -e "  ${GREEN}✓${NC} settings.json"
     elif [ -f "$BASE_PATH/settings.json" ]; then
         cp "$BASE_PATH/settings.json" "$CLAUDE_DIR/settings.json"
+        INSTALLED_PATHS+=("$CLAUDE_DIR/settings.json")
         echo -e "  ${GREEN}✓${NC} settings.json (base)"
     fi
 fi
