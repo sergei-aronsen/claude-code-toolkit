@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Uninstall
 status: verifying
-stopped_at: Completed 20-distribution-tests Plan 01 (manifest + CHANGELOG bump to 4.3.0)
-last_updated: "2026-04-26T16:04:24.922Z"
+stopped_at: Completed 20-distribution-tests Plan 02 (installer banners + Test 25)
+last_updated: "2026-04-26T16:09:14.598Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -69,6 +69,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 19-state-cleanup-idempotency]: SP/GSD synthetic files NOT in toolkit-install.json state — D-11 invariant fires even when state is silent about base-plugin paths (stronger defense-in-depth proof)
 - [Phase 20-distribution-tests]: D-12: init-local.sh reads version from manifest.json at runtime — no init-local.sh edit needed for version-align
 - [Phase 20-distribution-tests]: D-15: YYYY-MM-DD placeholder locked literal in manifest.json and CHANGELOG.md until v4.3.0 tag commit
+- [Phase 20-distribution-tests]: D-06: banner string is byte-identical across all 3 installers — single BANNER= variable in test is the canonical source-of-truth
+- [Phase 20-distribution-tests]: D-09: test uses grep -cF count-mode (exactly 1) not grep -q — catches accidental duplication
 
 ### Roadmap Evolution
 
@@ -107,11 +109,12 @@ Carry-overs available for next milestone scoping:
 | Phase 19-state-cleanup-idempotency P02 | 196 | 3 tasks | 1 files |
 | Phase 19-state-cleanup-idempotency P03 | 2 | 1 tasks | 1 files |
 | Phase 20-distribution-tests P01 | 211 | 3 tasks | 2 files |
+| Phase 20-distribution-tests P02 | 3 | 5 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T16:04:24.919Z
-Stopped at: Completed 20-distribution-tests Plan 01 (manifest + CHANGELOG bump to 4.3.0)
+Last session: 2026-04-26T16:09:14.595Z
+Stopped at: Completed 20-distribution-tests Plan 02 (installer banners + Test 25)
 Resume file: None
 
 **To resume next session:**

@@ -108,7 +108,7 @@ Plans:
 
 Plans:
 - [x] 20-01-PLAN.md — manifest.json + CHANGELOG.md bump to 4.3.0; register scripts/uninstall.sh under files.scripts[] (UN-07 — version-align gate)
-- [ ] 20-02-PLAN.md — Banner echo in 3 installers (init-claude.sh, init-local.sh, update-claude.sh) + test-install-banner.sh source-grep gate + Makefile Test 25 slot (UN-07)
+- [x] 20-02-PLAN.md — Banner echo in 3 installers (init-claude.sh, init-local.sh, update-claude.sh) + test-install-banner.sh source-grep gate + Makefile Test 25 slot (UN-07)
 - [ ] 20-03-PLAN.md — scripts/tests/test-uninstall.sh round-trip integration test (S1-S5 scenarios) + Makefile Test 24 slot (UN-08)
 
 ## Progress
