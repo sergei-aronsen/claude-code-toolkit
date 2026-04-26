@@ -43,6 +43,10 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ Three upstream GSD CLI bugs filed in `gsd-build/get-shit-done` ([#2659](https://github.com/gsd-build/get-shit-done/issues/2659) audit-open ReferenceError, [#2660](https://github.com/gsd-build/get-shit-done/issues/2660) extractOneLinerFromBody returns label, [#2661](https://github.com/gsd-build/get-shit-done/issues/2661) ROADMAP checkbox auto-sync gap) with full repro + suggested fixes; zero toolkit code changes per SC4 — Validated in Phase 10: upstream-gsd-issues (UPSTREAM-01/02/03)
 - ✓ `scripts/lib/dry-run-output.sh` shared library (`dro_init_colors`/`dro_print_header`/`dro_print_file`/`dro_print_total`); chezmoi-grade `[+ INSTALL]` / `[~ UPDATE]` / `[- SKIP]` / `[- REMOVE]` grouped output across `init-claude.sh`, `update-claude.sh` (added `DRY_RUN` flag exiting before backup), `migrate-to-complement.sh` (replaced 1-liner with `[- REMOVE]` group); `${NO_COLOR+x}` + `[ -t 1 ]` gates per [no-color.org](https://no-color.org) — Validated in Phase 11: ux-polish (UX-01)
 - ✓ ChatGPT pass-3 audit verified against codebase (8/15 FALSE, 6/15 PARTIAL deferred to v4.2+, 1/15 REAL = uninstall script as HARDEN-C-04); Wave-A `scripts/validate-commands.py` enforces `## Purpose`/`## Usage` H2 headings on `commands/*.md` via `make validate-commands` + CI — Validated in Phase 12: audit-verification-template-hardening (HARDEN-A-01)
+- ✓ `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, classifies every entry via SHA256 (`is_protected_path` → `MISSING` → SHA compare), removes only hash-match files; superpowers + get-shit-done trees never deleted; defense-in-depth `is_protected_path` re-check at delete time uses absolute paths — Validated in Phase 18: core-uninstall-script-dry-run-backup (UN-01)
+- ✓ `scripts/uninstall.sh --dry-run` prints chezmoi-grade 4-group preview (`[- REMOVE]` / `[? MODIFIED]` / `[? MISSING]` / total) using existing `dro_*` primitives, exits 0 with zero filesystem mutations; hermetic test (8 assertions) enforces zero-mutation contract — Validated in Phase 18 (UN-02)
+- ✓ Per-MODIFIED-file `[y/N/d]` prompt via `< /dev/tty` with re-entrant `d`-branch diff loop, fail-closed `N` default if `/dev/tty` unavailable, works under `bash <(curl -sSL ...)` — Validated in Phase 18 (UN-03)
+- ✓ Backup-before-delete to `~/.claude-backup-pre-uninstall-<unix-ts>/` via `cp -R` with `toolkit-install.json` snapshot inside backup; `lib/backup.sh` `list_backup_dirs`/`warn_if_too_many_backups` extended for new pattern (enables `--clean-backups` pruning) — Validated in Phase 18 (UN-04)
 
 ## Current Milestone: v4.3 Uninstall
 
@@ -141,6 +145,10 @@ _v4.3 requirements defined inline below — see REQUIREMENTS.md._
 
 ## Current State
 
+**In progress:**
+
+- **v4.3 Uninstall** — Phase 18 complete (2026-04-26): `scripts/uninstall.sh` foundation + `--dry-run` preview + backup-before-delete + `[y/N/d]` modified-file prompt; UN-01..UN-04 satisfied; 30 hermetic test assertions across dry-run/backup/prompt suites; shellcheck clean. Phase 19 (state cleanup + idempotency) and Phase 20 (manifest registration + CHANGELOG + matrix test cell) remain.
+
 **Shipped:**
 
 - **v4.2 Audit System v2** (2026-04-26) — 5 phases (13–17), 22 plans, 22 REQ-IDs. Persistent FP allowlist (`.claude/rules/audit-exceptions.md` + `/audit-skip` + `/audit-restore`), `/audit` rewritten to a 6-phase pipeline with 6-step FP recheck and structured reports at `.claude/audits/<type>-<HHMM>.md` (±10 lines verbatim code per finding), mandatory `/council audit-review` pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden), and 49 prompt files spliced across 7 frameworks. Tagged `v4.2.0`.
@@ -201,4 +209,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 — v4.3 Uninstall milestone started. Goal: HARDEN-C-04 uninstall script (only REAL finding from v4.1 audit, deferred through v4.2).*
+*Last updated: 2026-04-26 — Phase 18 complete: uninstall script foundation + dry-run + backup + [y/N/d] prompt shipped (UN-01..UN-04). Phase 19/20 remaining for v4.3.*
