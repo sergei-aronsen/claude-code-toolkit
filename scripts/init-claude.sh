@@ -638,6 +638,27 @@ setup_council() {
     # Download README
     curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || rm -f "$council_dir/README.md"
 
+    # Download audit-review.md prompt (Phase 17 — DIST-01 / D-04)
+    # Idempotent + mtime-aware: only overwrites if upstream is newer than local copy.
+    # NOTE: --force flag (to unconditionally overwrite) is deferred to a future hardening pass.
+    mkdir -p "$council_dir/prompts"
+    if curl -sSLf "$REPO_URL/scripts/council/prompts/audit-review.md" \
+            -o "$council_dir/prompts/audit-review.md.tmp" 2>/dev/null; then
+        if [ ! -f "$council_dir/prompts/audit-review.md" ]; then
+            mv "$council_dir/prompts/audit-review.md.tmp" "$council_dir/prompts/audit-review.md"
+            echo -e "  ${GREEN}✓${NC} prompts/audit-review.md installed"
+        elif [ "$council_dir/prompts/audit-review.md.tmp" -nt "$council_dir/prompts/audit-review.md" ]; then
+            mv "$council_dir/prompts/audit-review.md.tmp" "$council_dir/prompts/audit-review.md"
+            echo -e "  ${GREEN}✓${NC} prompts/audit-review.md (refreshed)"
+        else
+            rm -f "$council_dir/prompts/audit-review.md.tmp"
+            echo -e "  ${GREEN}✓${NC} prompts/audit-review.md (already current)"
+        fi
+    else
+        rm -f "$council_dir/prompts/audit-review.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
+    fi
+
     # Ask to configure now (skip in non-interactive environments)
     echo ""
     local configure
