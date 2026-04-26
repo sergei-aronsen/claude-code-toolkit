@@ -80,10 +80,15 @@ log_error()   { echo -e "${RED}✗${NC} $1"; }
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
+# UN-05 base-plugin invariant snapshots (sorted file lists, pre/post)
+SP_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/sp-snap.XXXXXX")
+GSD_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-snap.XXXXXX")
+SP_AFTER_TMP=$(mktemp "${TMPDIR:-/tmp}/sp-after.XXXXXX")
+GSD_AFTER_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-after.XXXXXX")
 # Trap registered BEFORE acquire_lock so SIGINT mid-acquire still releases cleanly.
 # release_lock is defined in lib/state.sh (sourced below); the 2>/dev/null guard
 # handles the case where the trap fires before sourcing completes.
-trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP"' EXIT
+trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$SP_SNAP_TMP" "$GSD_SNAP_TMP" "$SP_AFTER_TMP" "$GSD_AFTER_TMP"' EXIT
 
 # ───────── source libs HARD-fail (with TK_UNINSTALL_LIB_DIR test seam) ─────────
 for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
@@ -129,6 +134,14 @@ if [[ -n "${TK_UNINSTALL_HOME:-}" ]]; then
 fi
 # shellcheck disable=SC2034  # PROJECT_DIR referenced by helpers in 18-03/04
 PROJECT_DIR="$(dirname "$CLAUDE_DIR")"
+
+# ───────── UN-05: base-plugin paths + TK_UNINSTALL_HOME override ─────────
+SP_DIR="$HOME/.claude/plugins/cache/claude-plugins-official/superpowers"
+GSD_DIR="$HOME/.claude/get-shit-done"
+if [[ -n "${TK_UNINSTALL_HOME:-}" ]]; then
+    SP_DIR="$TK_UNINSTALL_HOME/.claude/plugins/cache/claude-plugins-official/superpowers"
+    GSD_DIR="$TK_UNINSTALL_HOME/.claude/get-shit-done"
+fi
 
 # ───────── is_protected_path <abs_or_rel_path> ─────────
 # Exit 0 (TRUE — protected, do NOT delete) if path matches any of:
@@ -379,6 +392,12 @@ if [[ ! -f "$STATE_FILE" ]]; then
 fi
 
 STATE_JSON=$(read_state) || { log_error "toolkit-install.json unreadable at $STATE_FILE"; exit 1; }
+
+# UN-05 base-plugin invariant: snapshot sorted file lists BEFORE any mutation.
+# Empty if dir absent — not an error, base plugins may not be installed.
+# `|| true` keeps the script alive under set -e if `find` returns non-zero.
+find "$SP_DIR"  -type f 2>/dev/null | sort > "$SP_SNAP_TMP"  || true
+find "$GSD_DIR" -type f 2>/dev/null | sort > "$GSD_SNAP_TMP" || true
 
 # print_uninstall_dry_run — UN-02 chezmoi-grade preview of removal plan.
 # Reads from outer-scope arrays populated by the read-only classification phase:
