@@ -34,7 +34,7 @@ The toolkit should offer to install `superpowers` and/or `get-shit-done` before 
 If the user answers `N` on every modified file in `scripts/uninstall.sh`, the state file is still deleted as the LAST step (UN-05 D-06). Subsequent `uninstall.sh` runs become a no-op even though modified files remain on disk. Add an opt-in flag.
 
 - [x] **KEEP-01**: `scripts/uninstall.sh --keep-state` (and `TK_UNINSTALL_KEEP_STATE=1` env var) preserves `~/.claude/toolkit-install.json` after the run instead of deleting it as the LAST step. All other UN-01..UN-08 invariants stand: SHA256 classify, `[y/N/d]` prompt, base-plugin diff -q, sentinel strip. Documented in `--help` output.
-- [ ] **KEEP-02**: Hermetic test in `scripts/tests/test-uninstall-keep-state.sh` proves a re-run after `--keep-state` sees the same state file and re-classifies the still-modified files correctly. Asserts: state file exists post-run, second invocation is NOT a no-op, MODIFIED list non-empty on second invocation, base-plugin invariant still passes.
+- [x] **KEEP-02**: Hermetic test in `scripts/tests/test-uninstall-keep-state.sh` proves a re-run after `--keep-state` sees the same state file and re-classifies the still-modified files correctly. Asserts: state file exists post-run, second invocation is NOT a no-op, MODIFIED list non-empty on second invocation, base-plugin invariant still passes.
 
 ## Future Requirements
 
