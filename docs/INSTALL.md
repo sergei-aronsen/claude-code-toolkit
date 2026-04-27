@@ -26,6 +26,34 @@ and selects the appropriate mode; pass `--mode <name>` to override.
 
 ---
 
+## Installer Flags
+
+Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
+`init-local.sh --help` for the full canonical list.
+
+| Flag | Applies To | Effect |
+|------|-----------|--------|
+| `--dry-run` | `init-claude.sh`, `init-local.sh` | Show what would be installed without writing files |
+| `--mode <name>` | `init-claude.sh`, `init-local.sh` | Override auto-detected install mode (`standalone`, `complement-sp`, `complement-gsd`, `complement-full`) |
+| `--force` | `init-claude.sh`, `init-local.sh` | Re-install even if `toolkit-install.json` already exists |
+| `--force-mode-change` | `init-claude.sh`, `init-local.sh` | Bypass the mode-change confirmation prompt |
+| `--no-bootstrap` | `init-claude.sh`, `init-local.sh` | Skip the SP / GSD pre-install prompts. Equivalent env var: `TK_NO_BOOTSTRAP=1`. Use this in CI or scripted installs to keep behaviour identical to v4.3. |
+| `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
+
+### `--no-bootstrap` (v4.4+)
+
+By default, `init-claude.sh` and `init-local.sh` ask whether to install the two
+base plugins they complement — `superpowers` and `get-shit-done` — before the
+toolkit's own detection logic runs. Each prompt defaults to `N` and skipping is
+silent. Pass `--no-bootstrap` (or set `TK_NO_BOOTSTRAP=1`) to suppress both
+prompts entirely; downstream toolkit behaviour is byte-identical to v4.3.
+
+The flag is non-interactive-friendly: when stdout is not a terminal (e.g. piped
+install), the prompts already fail closed to `N` without `--no-bootstrap`. Use
+the flag explicitly when you want to make the intent visible in CI logs.
+
+---
+
 ## Mode: standalone
 
 | Scenario | Precondition | Command | Expected stdout headline | `toolkit-install.json` mode | Files landed vs skipped |
