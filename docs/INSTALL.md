@@ -38,6 +38,8 @@ Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
 | `--force` | `init-claude.sh`, `init-local.sh` | Re-install even if `toolkit-install.json` already exists |
 | `--force-mode-change` | `init-claude.sh`, `init-local.sh` | Bypass the mode-change confirmation prompt |
 | `--no-bootstrap` | `init-claude.sh`, `init-local.sh` | Skip the SP / GSD pre-install prompts. Equivalent env var: `TK_NO_BOOTSTRAP=1`. Use this in CI or scripted installs to keep behaviour identical to v4.3. |
+| `--no-banner` | `init-claude.sh`, `init-local.sh` | Suppress the closing `To remove: bash <(curl …)` banner line. Equivalent env: `NO_BANNER=1`. Symmetric with `update-claude.sh` which already honoured this flag. |
+| `--keep-state` | `scripts/uninstall.sh` | Preserve `toolkit-install.json` after uninstall, enabling re-run recovery after a partial-N session. Equivalent env: `TK_UNINSTALL_KEEP_STATE=1`. |
 | `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
 
 ### `--no-bootstrap` (v4.4+)
@@ -51,6 +53,29 @@ prompts entirely; downstream toolkit behaviour is byte-identical to v4.3.
 The flag is non-interactive-friendly: when stdout is not a terminal (e.g. piped
 install), the prompts already fail closed to `N` without `--no-bootstrap`. Use
 the flag explicitly when you want to make the intent visible in CI logs.
+
+### `--no-banner` (v4.4+)
+
+Pass `--no-banner` (or set `NO_BANNER=1`) to suppress the closing
+`To remove: bash <(curl …)` line that both installers print on success. Default behaviour
+(flag absent, env unset) is byte-identical to v4.3. Use in CI pipelines or scripted
+installs where the banner is redundant noise. Symmetric with `update-claude.sh`, which
+has honoured this flag since v4.1 — Phase 23 closes the asymmetry gap.
+
+### `--keep-state` for `uninstall.sh` (v4.4+)
+
+Pass `--keep-state` (or set `TK_UNINSTALL_KEEP_STATE=1`) to preserve
+`~/.claude/toolkit-install.json` after the uninstall run. This is a recovery flag
+for partial-uninstall sessions: if you answered `N` to every modified-file prompt and
+want to re-run the uninstaller to finish the job, the state file must still exist for
+re-classification to work. A subsequent `uninstall.sh` run (with or without the flag)
+proceeds normally — it is NOT a no-op, because the state file is present.
+
+All other UN-01..UN-08 invariants stand: backup is still written to
+`~/.claude-backup-pre-uninstall-<unix-ts>/`, the sentinel block is still stripped from
+`~/.claude/CLAUDE.md`, and the base-plugin `diff -q` invariant still fires. The ONLY
+behavioural delta is the LAST step (`rm -f $STATE_FILE`) — replaced with a `log_info`
+message when `--keep-state` is set.
 
 ---
 
