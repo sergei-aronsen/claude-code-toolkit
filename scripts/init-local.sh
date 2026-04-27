@@ -36,6 +36,10 @@ source "$SCRIPT_DIR/lib/install.sh"
 source "$SCRIPT_DIR/lib/dry-run-output.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/state.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/optional-plugins.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/bootstrap.sh"
 
 # Colors (auto-disabled when stdout is not a tty, per D-36). Reassigned AFTER
 # all library sources because lib/state.sh + detect.sh + lib/install.sh define
@@ -76,6 +80,7 @@ FRAMEWORK=""
 MODE=""
 FORCE=false
 FORCE_MODE_CHANGE=false
+NO_BOOTSTRAP=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -91,12 +96,16 @@ while [[ $# -gt 0 ]]; do
             MODE="$2"; shift 2 ;;
         --force)             FORCE=true;             shift ;;
         --force-mode-change) FORCE_MODE_CHANGE=true; shift ;;
+        --no-bootstrap)
+            NO_BOOTSTRAP=true
+            shift
+            ;;
         --version|-v)
             echo "claude-code-toolkit v$VERSION (local)"
             exit 0
             ;;
         --help|-h)
-            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [framework]"
+            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [--no-bootstrap] [framework]"
             echo ""
             echo "Frameworks: laravel, nextjs, nodejs, python, go, rails, base"
             echo "Modes: standalone, complement-sp, complement-gsd, complement-full"
@@ -106,6 +115,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --mode <name>         Override auto-recommended install mode"
             echo "  --force               Re-install even if state file exists"
             echo "  --force-mode-change   Bypass the mode-change confirmation prompt"
+            echo "  --no-bootstrap        Skip the SP/GSD install prompts (env: TK_NO_BOOTSTRAP=1)"
             echo "  --version             Show version"
             echo "  --help                Show this help"
             exit 0
@@ -130,6 +140,38 @@ if [[ -n "$MODE" ]]; then
         echo "ERROR: invalid --mode value: $MODE" >&2
         echo "Valid modes: ${MODES[*]}" >&2
         exit 1
+    fi
+fi
+
+# ─────────────────────────────────────────────────
+# Phase 21 — BOOTSTRAP-01..04: SP/GSD pre-install bootstrap.
+# init-local.sh asymmetry: lib/bootstrap.sh is sourced early (line ~40), but the
+# bootstrap_base_plugins() call MUST happen AFTER argparse so --no-bootstrap is parsed
+# (RESEARCH.md Pitfall 1). Re-source detect.sh after bootstrap so HAS_SP / HAS_GSD reflect
+# post-bootstrap reality (D-14). detect.sh re-source overwrites color vars unconditionally,
+# so re-apply the color gate (RESEARCH.md Pitfall 2; uninstall.sh lines 109-123 pattern).
+# ─────────────────────────────────────────────────
+if [[ "${NO_BOOTSTRAP:-false}" != "true" && "${TK_NO_BOOTSTRAP:-}" != "1" ]]; then
+    bootstrap_base_plugins
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/detect.sh"
+    # Re-apply color gate after detect.sh source (overwrites RED/GREEN/etc unconditionally).
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        # shellcheck disable=SC2034
+        RED=$'\033[0;31m'
+        GREEN=$'\033[0;32m'
+        YELLOW=$'\033[1;33m'
+        BLUE=$'\033[0;34m'
+        CYAN=$'\033[0;36m'
+        NC=$'\033[0m'
+    else
+        # shellcheck disable=SC2034
+        RED=''
+        GREEN=''
+        YELLOW=''
+        BLUE=''
+        CYAN=''
+        NC=''
     fi
 fi
 
