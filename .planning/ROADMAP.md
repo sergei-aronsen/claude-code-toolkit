@@ -103,7 +103,10 @@
 2. Running `update-claude.sh` when a lib file on disk is stale (different SHA256 from the downloaded version) causes that file to be refreshed using the same diff/backup/safe-write contract as top-level scripts — the post-update file SHA256 matches the manifest fixture (LIB-02)
 3. `scripts/tests/test-update-libs.sh` passes: a deliberately stale `lib/backup.sh` on disk gets refreshed on `update-claude.sh`; post-update SHA256 matches the manifest fixture (LIB-02)
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+- [ ] 22-01-PLAN.md — manifest registration (files.libs[] with 6 entries) + version bump 4.3.0→4.4.0 + CHANGELOG [4.4.0] consolidating Phase 21+22 (LIB-01)
+- [ ] 22-02-PLAN.md — hermetic test scripts/tests/test-update-libs.sh (S1-S5) + Makefile Test 29 + CI step rename Tests 21-29 (LIB-02)
 
 ---
 
