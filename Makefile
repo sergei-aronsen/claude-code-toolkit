@@ -141,6 +141,9 @@ test:
 	@echo "Test 27: uninstall state-cleanup + sentinel strip + base-plugin invariant (UN-05/UN-06)"
 	@bash scripts/tests/test-uninstall-state-cleanup.sh
 	@echo ""
+	@echo "Test 28: bootstrap SP/GSD pre-install prompts (BOOTSTRAP-01..04)"
+	@bash scripts/tests/test-bootstrap.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Validate templates (check core audit prompts for self-check sections)
