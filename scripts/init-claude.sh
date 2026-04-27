@@ -18,7 +18,7 @@ NC='\033[0m'
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 DRY_RUN=false
-NO_BANNER=0
+NO_BANNER=${NO_BANNER:-0}
 FRAMEWORK=""
 
 # Parse arguments

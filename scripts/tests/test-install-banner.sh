@@ -64,12 +64,15 @@ check_banner "scripts/init-claude.sh"   "A1: init-claude.sh contains banner line
 check_banner "scripts/init-local.sh"    "A2: init-local.sh contains banner line (exactly once)"
 check_banner "scripts/update-claude.sh" "A3: update-claude.sh contains banner line (exactly once)"
 
-# A4: init-claude.sh defines NO_BANNER=0 default (BANNER-01)
-if grep -q '^NO_BANNER=0' "$REPO_ROOT/scripts/init-claude.sh"; then
-    assert_pass "A4: init-claude.sh defines NO_BANNER=0 default"
+# A4: init-claude.sh defines NO_BANNER env-form default (BANNER-01)
+# Env-form `${NO_BANNER:-0}` (not bare `=0`) ensures `NO_BANNER=1 init-claude.sh`
+# from the caller environment is honoured — D-04 net-behavior contract.
+# shellcheck disable=SC2016  # single quotes intentional: grep literal '${NO_BANNER:-0}'
+if grep -q '^NO_BANNER=${NO_BANNER:-0}' "$REPO_ROOT/scripts/init-claude.sh"; then
+    assert_pass "A4: init-claude.sh defines NO_BANNER=\${NO_BANNER:-0} default (env-form)"
 else
-    assert_fail "A4: init-claude.sh defines NO_BANNER=0 default" \
-        "pattern '^NO_BANNER=0' not found in scripts/init-claude.sh"
+    assert_fail "A4: init-claude.sh defines NO_BANNER=\${NO_BANNER:-0} default (env-form)" \
+        "pattern '^NO_BANNER=\${NO_BANNER:-0}' not found in scripts/init-claude.sh — env-form required so NO_BANNER=1 caller-env is honoured"
 fi
 
 # A5: init-claude.sh argparse contains --no-banner) NO_BANNER=1 clause (BANNER-01)
@@ -89,15 +92,15 @@ else
         "pattern not found (check for inverted condition or wrong operator)"
 fi
 
-# A7: init-local.sh has all three patterns (BANNER-01)
-# shellcheck disable=SC2016  # single quotes intentional: grep literal '$NO_BANNER' in source file
-if grep -q '^NO_BANNER=0' "$REPO_ROOT/scripts/init-local.sh" && \
+# A7: init-local.sh has all three patterns including env-form default (BANNER-01)
+# shellcheck disable=SC2016  # single quotes intentional: grep literal '${NO_BANNER:-0}' / '$NO_BANNER'
+if grep -q '^NO_BANNER=${NO_BANNER:-0}' "$REPO_ROOT/scripts/init-local.sh" && \
    grep -q -- '--no-banner) NO_BANNER=1' "$REPO_ROOT/scripts/init-local.sh" && \
    grep -q 'if \[\[ \$NO_BANNER -eq 0 \]\]' "$REPO_ROOT/scripts/init-local.sh"; then
-    assert_pass "A7: init-local.sh has NO_BANNER=0, --no-banner clause, and gate"
+    assert_pass "A7: init-local.sh has NO_BANNER=\${NO_BANNER:-0}, --no-banner clause, and gate"
 else
-    assert_fail "A7: init-local.sh has NO_BANNER=0, --no-banner clause, and gate" \
-        "one or more patterns missing — check NO_BANNER=0 default, --no-banner) clause, if [[ \$NO_BANNER -eq 0 ]] gate"
+    assert_fail "A7: init-local.sh has NO_BANNER=\${NO_BANNER:-0}, --no-banner clause, and gate" \
+        "one or more patterns missing — check NO_BANNER=\${NO_BANNER:-0} default, --no-banner) clause, if [[ \$NO_BANNER -eq 0 ]] gate"
 fi
 
 echo ""

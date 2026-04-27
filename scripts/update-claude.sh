@@ -8,7 +8,7 @@ set -euo pipefail
 # ─────────────────────────────────────────────────
 # Phase 4 Plan 04-01 — flag parsing (before color constants)
 # ─────────────────────────────────────────────────
-NO_BANNER=0
+NO_BANNER=${NO_BANNER:-0}
 OFFER_MODE_SWITCH="interactive"
 PRUNE_MODE="interactive"
 # Phase 9 Plan 09-01 — BACKUP-01 --clean-backups flag state

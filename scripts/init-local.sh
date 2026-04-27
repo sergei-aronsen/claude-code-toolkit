@@ -81,7 +81,7 @@ MODE=""
 FORCE=false
 FORCE_MODE_CHANGE=false
 NO_BOOTSTRAP=false
-NO_BANNER=0
+NO_BANNER=${NO_BANNER:-0}
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
