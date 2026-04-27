@@ -83,7 +83,7 @@
 
 **Plans**: 3 plans
 
-- [ ] 21-01-PLAN.md — Library + constants extraction (scripts/lib/bootstrap.sh + TK_SP_INSTALL_CMD/TK_GSD_INSTALL_CMD constants in optional-plugins.sh)
+- [x] 21-01-PLAN.md — Library + constants extraction (scripts/lib/bootstrap.sh + TK_SP_INSTALL_CMD/TK_GSD_INSTALL_CMD constants in optional-plugins.sh)
 - [ ] 21-02-PLAN.md — Installer integration (init-claude.sh + init-local.sh: --no-bootstrap flag, source bootstrap.sh, call bootstrap_base_plugins, re-source detect.sh)
 - [ ] 21-03-PLAN.md — Test + distribution surface (scripts/tests/test-bootstrap.sh, Makefile Test 28, CI mirror, docs/INSTALL.md)
 

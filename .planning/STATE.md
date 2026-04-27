@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: roadmap_ready
-stopped_at: roadmap created — Phase 21 ready to plan
-last_updated: "2026-04-27T00:00:00.000Z"
+status: executing
+stopped_at: Completed 21-01-PLAN.md (bootstrap library foundation)
+last_updated: "2026-04-27T07:28:42.251Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 8
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.4 Bootstrap & Polish — roadmap created, Phase 21 ready to plan
+**Current focus:** Phase 21 — sp-gsd-bootstrap-installer
 
 ## Current Position
 
-Phase: 21 (SP/GSD Bootstrap Installer) — not started
-Plan: —
-Status: Roadmap created, awaiting `/gsd-discuss-phase 21`
-Last activity: 2026-04-27 — v4.4 roadmap created (3 phases, 9 REQ-IDs, 100% coverage)
+Phase: 21 (sp-gsd-bootstrap-installer) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-27
 
 Progress: 0% (0 / 3 phases)
 
@@ -100,6 +101,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 20-distribution-tests]: Canary selection uses jq .installed_files[].path | grep -E '.(md|json)' | head -1 for resilience to future install-set changes
 - [Phase 20-distribution-tests]: Backup path strips .claude/ prefix to match cp -R CLAUDE_DIR layout in .claude-backup-pre-uninstall-* dirs
 - [Phase 20-distribution-tests]: Rule 1 fix: init-local.sh now tracks 13 previously-untracked files (cheatsheets, seed files, CLAUDE.md, settings.json) in INSTALLED_PATHS[] so uninstall can cleanly remove all
+- [Phase 21-01]: Use guarded [[ -z ... ]] && form for TK_SP_INSTALL_CMD / TK_GSD_INSTALL_CMD — allows test-seam override and matches color-guard idiom in optional-plugins.sh
+- [Phase 21-01]: Define _bootstrap_log_info / _bootstrap_log_warning locally in bootstrap.sh — lib/install.sh does not export log_* helpers (RESEARCH.md correction confirmed 2026-04-27)
 
 ### Roadmap Evolution
 
@@ -140,11 +143,12 @@ Carry-overs available for next milestone scoping:
 | In v4.4 Phase 23 | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: deferred to v4.4 — now KEEP-01/KEEP-02 |
 | In v4.4 Phase 23 | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 — now BANNER-01 |
 | In v4.4 Phase 22 | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 — now LIB-01/LIB-02 |
+| Phase 21-sp-gsd-bootstrap-installer P01 | 3m | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-27T00:00:00.000Z
-Stopped at: v4.4 roadmap created — Phase 21 ready for discuss/plan
+Last session: 2026-04-27T07:28:42.248Z
+Stopped at: Completed 21-01-PLAN.md (bootstrap library foundation)
 Resume file: None
 
 **To start v4.4 implementation:**
