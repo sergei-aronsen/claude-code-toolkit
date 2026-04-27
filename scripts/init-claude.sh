@@ -38,6 +38,10 @@ while [[ $# -gt 0 ]]; do
             MODE="$2"; shift 2 ;;
         --force)             FORCE=true;             shift ;;
         --force-mode-change) FORCE_MODE_CHANGE=true; shift ;;
+        --no-bootstrap)
+            NO_BOOTSTRAP=true
+            shift
+            ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
             shift
@@ -45,6 +49,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
+            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --mode <name>, --force, --force-mode-change"
             exit 1
             ;;
     esac
@@ -54,6 +59,7 @@ SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
 MODE="${MODE:-}"
 FORCE="${FORCE:-false}"
 FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
+NO_BOOTSTRAP="${NO_BOOTSTRAP:-false}"
 
 # ─────────────────────────────────────────────────
 # Phase 3 — DETECT-05 wiring (D-30, D-31)
@@ -64,7 +70,8 @@ DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP"' EXIT
+LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX")
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP"' EXIT
 
 if ! curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
@@ -90,12 +97,30 @@ source "$LIB_INSTALL_TMP"
 source "$LIB_DRO_TMP"
 # shellcheck source=/dev/null
 source "$LIB_OPTIONAL_PLUGINS_TMP"
+if ! curl -sSLf "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/bootstrap.sh — aborting"
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$LIB_BOOTSTRAP_TMP"
+
+# ─────────────────────────────────────────────────
+# Phase 21 — BOOTSTRAP-01..04: SP/GSD pre-install bootstrap.
+# Fires after libs are sourced, before manifest+mode resolution.
+# --no-bootstrap (CLI) and TK_NO_BOOTSTRAP=1 (env) skip entirely.
+# After bootstrap returns, detect.sh is re-sourced so HAS_SP / HAS_GSD reflect post-bootstrap state (D-14).
+# ─────────────────────────────────────────────────
+if [[ "${NO_BOOTSTRAP:-false}" != "true" && "${TK_NO_BOOTSTRAP:-}" != "1" ]]; then
+    bootstrap_base_plugins
+    # shellcheck source=/dev/null
+    source "$DETECT_TMP"
+fi
 
 # Manifest version guard (Phase 2 D-01 — hard-fail on schema mismatch). Uses manifest_version
 # field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
 # manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP" "$MANIFEST_TMP"' EXIT
 if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
     echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
     exit 1
