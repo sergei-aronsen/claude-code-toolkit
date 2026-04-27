@@ -18,6 +18,7 @@ NC='\033[0m'
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR=".claude"
 DRY_RUN=false
+NO_BANNER=0
 FRAMEWORK=""
 
 # Parse arguments
@@ -42,6 +43,7 @@ while [[ $# -gt 0 ]]; do
             NO_BOOTSTRAP=true
             shift
             ;;
+        --no-banner) NO_BANNER=1; shift ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
             shift
@@ -49,7 +51,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --mode <name>, --force, --force-mode-change"
+            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --mode <name>, --force, --force-mode-change, --no-banner"
             exit 1
             ;;
     esac
@@ -927,6 +929,8 @@ POSTINSTALL
 main
 
 echo ""
-echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+if [[ $NO_BANNER -eq 0 ]]; then
+    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+fi
 echo ""
 echo "Read .claude/POST_INSTALL.md and show its contents to the user."
