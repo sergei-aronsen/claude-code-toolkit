@@ -106,7 +106,7 @@
 **Plans**: 2 plans
 
 - [x] 22-01-PLAN.md — manifest registration (files.libs[] with 6 entries) + version bump 4.3.0→4.4.0 + CHANGELOG [4.4.0] consolidating Phase 21+22 (LIB-01)
-- [ ] 22-02-PLAN.md — hermetic test scripts/tests/test-update-libs.sh (S1-S5) + Makefile Test 29 + CI step rename Tests 21-29 (LIB-02)
+- [x] 22-02-PLAN.md — hermetic test scripts/tests/test-update-libs.sh (S1-S5) + Makefile Test 29 + CI step rename Tests 21-29 (LIB-02)
 
 ---
 

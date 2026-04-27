@@ -21,7 +21,7 @@ The toolkit should offer to install `superpowers` and/or `get-shit-done` before 
 `scripts/lib/backup.sh`, `dry-run-output.sh`, `install.sh`, and `state.sh` are sourced by every install / update script but live outside `manifest.json`, so `update-claude.sh` silently skips them. Close the gap.
 
 - [x] **LIB-01**: Register `scripts/lib/{backup,dry-run-output,install,state}.sh` in `manifest.json` (either under a new `files.libs[]` array or by extending `files.scripts[]` — pick one and document the choice). Every entry carries a target install path and (where appropriate) `conflicts_with` annotations. `make check` `version-align` and `validate` stay green.
-- [ ] **LIB-02**: `scripts/update-claude.sh` iterates the new manifest section and updates each lib file with the same diff/backup/safe-write contract used for top-level scripts. Hermetic test in `scripts/tests/test-update-libs.sh` proves a stale `lib/backup.sh` on disk gets refreshed on `update-claude.sh`, and that the post-update SHA256 matches the manifest fixture.
+- [x] **LIB-02**: `scripts/update-claude.sh` iterates the new manifest section and updates each lib file with the same diff/backup/safe-write contract used for top-level scripts. Hermetic test in `scripts/tests/test-update-libs.sh` proves a stale `lib/backup.sh` on disk gets refreshed on `update-claude.sh`, and that the post-update SHA256 matches the manifest fixture.
 
 ### `--no-banner` Symmetry
 

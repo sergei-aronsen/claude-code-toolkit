@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-04-27T08:46:23.745Z"
+status: verifying
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-04-27T09:15:12.790Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 Phase: 22 (smart-update-coverage-for-scripts-lib-sh) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-27
 
 Progress: 0% (0 / 3 phases)
@@ -111,6 +111,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 22]: files.libs[] omits description field — matches files.scripts[] convention; descriptions live in lib file headers (D-01)
 - [Phase 22]: No update-claude.sh code changes needed — existing jq .files | to_entries[] | .value[] | .path auto-discovers libs key (D-01 / D-07 zero-special-casing invariant)
 - [Phase 22]: Phase 21 + Phase 22 consolidated into single [4.4.0] CHANGELOG entry — Phase 21 was never separately released
+- [Phase 22]: S1 setup uses empty installed_files[] state file to force stale lib through new-files install path (synthesize_v3_state would record stale SHA, blocking refresh)
+- [Phase 22]: TK_UPDATE_FILE_SRC=REPO_ROOT (not REPO_ROOT/scripts/lib) — seam resolves paths as TK_UPDATE_FILE_SRC/rel where rel=scripts/lib/backup.sh
+- [Phase 22]: S5 asserts file-level removal (backup.sh absent), not directory removal — uninstall.sh removes files but does not rmdir empty parent dirs
 
 ### Roadmap Evolution
 
@@ -155,11 +158,12 @@ Carry-overs available for next milestone scoping:
 | Phase 21 P02 | 8m | 2 tasks | 2 files |
 | Phase 21-sp-gsd-bootstrap-installer P03 | 12m | 3 tasks | 4 files |
 | Phase 22 P01 | 8 | 2 tasks | 2 files |
+| Phase 22 P02 | 25 | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-04-27T08:46:23.742Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-04-27T09:15:12.787Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
 
 **To start v4.4 implementation:**
