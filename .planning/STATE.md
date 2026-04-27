@@ -116,8 +116,8 @@ Carry-overs available for next milestone scoping:
 | WONTFIX | AUDIT-04 merge-strategy | KISS — no multi-template overlay; per-file fallback in installers is sufficient (closed 2026-04-26) |
 | WONTFIX | AUDIT-06 template version pinning | Already covered — `manifest.json` `version` + `~/.claude/.toolkit-version` + smart-update diff (closed 2026-04-26) |
 | Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
-| Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
-| Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
+| v4.4 candidate | SP/GSD bootstrap installer | Interactive `[y/N]` prompts in `init-claude.sh` invoking the canonical install commands directly — `claude plugin install superpowers@claude-plugins-official` for SP and `bash <(curl -sSL .../get-shit-done/main/scripts/install.sh)` for GSD. No forks, no vendoring; toolkit only orchestrates the original installers (re-scoped 2026-04-27 per user direction) |
+| WONTFIX | Council `audit-review` → Sentry/Linear ticket creation | User direction 2026-04-27: Sentry reserved for error monitoring (not tracking); project tracking lives in a separate system. Toolkit stays at the report-artefact boundary (`.claude/audits/<report>.md`) |
 | Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
 | Deferred | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: explicitly deferred to v4.4 |
 | Deferred | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 if demand emerges |
