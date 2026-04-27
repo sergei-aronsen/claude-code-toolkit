@@ -8,6 +8,7 @@
 # Usage:
 #   bash scripts/uninstall.sh               # interactive default
 #   bash scripts/uninstall.sh --dry-run     # preview only, no changes
+#   bash scripts/uninstall.sh --keep-state  # preserve toolkit-install.json for re-run recovery
 #   bash scripts/uninstall.sh --help        # show this usage block
 #
 # Safety invariants:
@@ -21,13 +22,17 @@ set -euo pipefail
 
 # ───────── flag parsing (before color constants) ─────────
 DRY_RUN=0
+KEEP_STATE=${TK_UNINSTALL_KEEP_STATE:-0}
 for arg in "$@"; do
     case "$arg" in
         --dry-run)
             DRY_RUN=1
             ;;
+        --keep-state)
+            KEEP_STATE=1
+            ;;
         --help|-h)
-            sed -n '3,18p' "${BASH_SOURCE[0]}"
+            sed -n '3,19p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
         --no-backup)
@@ -39,9 +44,9 @@ for arg in "$@"; do
             ;;
     esac
 done
-# DRY_RUN is consumed by plans 18-02/03/04 (dry-run output + delete guard); reference here
-# satisfies shellcheck SC2034 so the flag is declared in argparse where it belongs.
-: "$DRY_RUN"
+# DRY_RUN and KEEP_STATE are consumed downstream (dry-run output + state-delete gate);
+# reference here satisfies shellcheck SC2034 so flags are declared in argparse where they belong.
+: "$DRY_RUN" "$KEEP_STATE"
 
 # ───────── ANSI color constants — gated by TTY + NO_COLOR ─────────
 # ANSI color gating: presence of NO_COLOR (any value, including empty string)
