@@ -128,7 +128,7 @@
 
 **Plans**: 3 plans
 
-- [ ] 23-01-PLAN.md — BANNER-01: `--no-banner` symmetry across `init-claude.sh` + `init-local.sh` + extend `test-install-banner.sh` (3→7 source-grep assertions)
+- [x] 23-01-PLAN.md — BANNER-01: `--no-banner` symmetry across `init-claude.sh` + `init-local.sh` + extend `test-install-banner.sh` (3→7 source-grep assertions)
 - [ ] 23-02-PLAN.md — KEEP-01: `--keep-state` flag in `scripts/uninstall.sh` (KEEP_STATE default + argparse clause + state-delete gate at line 653)
 - [ ] 23-03-PLAN.md — KEEP-02: hermetic test `scripts/tests/test-uninstall-keep-state.sh` (S1+S2+S3) + Makefile Test 30 + CI step rename Tests 21-29→Tests 21-30 + CHANGELOG [4.4.0] BANNER/KEEP bullets + docs/INSTALL.md flag rows
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
 status: executing
-stopped_at: Phase 23 context gathered
-last_updated: "2026-04-27T10:28:49.903Z"
-last_activity: 2026-04-27 -- Phase 23 planning complete
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-04-27T10:35:05.882Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 22 — smart-update-coverage-for-scripts-lib-sh
+**Current focus:** Phase 23 — Installer Symmetry & Recovery
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
+Phase: 23 (Installer Symmetry & Recovery) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-27 -- Phase 23 planning complete
+Last activity: 2026-04-27
 
 Progress: 0% (0 / 3 phases)
 
@@ -114,6 +114,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 22]: S1 setup uses empty installed_files[] state file to force stale lib through new-files install path (synthesize_v3_state would record stale SHA, blocking refresh)
 - [Phase 22]: TK_UPDATE_FILE_SRC=REPO_ROOT (not REPO_ROOT/scripts/lib) — seam resolves paths as TK_UPDATE_FILE_SRC/rel where rel=scripts/lib/backup.sh
 - [Phase 22]: S5 asserts file-level removal (backup.sh absent), not directory removal — uninstall.sh removes files but does not rmdir empty parent dirs
+- [Phase 23-01]: Single-line --no-banner) NO_BANNER=1; shift ;; clause form used so grep pattern in A5 assertion matches; SC2016 disable added for intentional single-quoted $NO_BANNER grep patterns in A6/A7
+- [Phase 23-01]: D-06 assumption wrong: init-local.sh already has --help block at HEAD; --no-banner added to both Usage line and options block per R-05
 
 ### Roadmap Evolution
 
@@ -159,12 +161,13 @@ Carry-overs available for next milestone scoping:
 | Phase 21-sp-gsd-bootstrap-installer P03 | 12m | 3 tasks | 4 files |
 | Phase 22 P01 | 8 | 2 tasks | 2 files |
 | Phase 22 P02 | 25 | 3 tasks | 3 files |
+| Phase 23-installer-symmetry-recovery P01 | 15 | 3 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-04-27T09:58:12.814Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-installer-symmetry-recovery/23-CONTEXT.md
+Last session: 2026-04-27T10:35:05.879Z
+Stopped at: Completed 23-01-PLAN.md
+Resume file: None
 
 **To start v4.4 implementation:**
 

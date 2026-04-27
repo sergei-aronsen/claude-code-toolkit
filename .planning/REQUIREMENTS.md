@@ -27,7 +27,7 @@ The toolkit should offer to install `superpowers` and/or `get-shit-done` before 
 
 `update-claude.sh` already honours `--no-banner` to suppress the closing "To remove: bash <(curl …)" banner. `init-claude.sh` and `init-local.sh` print the banner unconditionally. Bring them up to parity.
 
-- [ ] **BANNER-01**: `init-claude.sh` and `init-local.sh` learn `--no-banner` (and `NO_BANNER=1` env var, byte-identical to `update-claude.sh`'s `NO_BANNER=0` default + `--no-banner` flip). When set, the closing "To remove: …" banner is suppressed. When absent, behaviour is unchanged from v4.3. Hermetic test in `scripts/tests/test-install-banner.sh` extended to cover both installers in both modes.
+- [x] **BANNER-01**: `init-claude.sh` and `init-local.sh` learn `--no-banner` (and `NO_BANNER=1` env var, byte-identical to `update-claude.sh`'s `NO_BANNER=0` default + `--no-banner` flip). When set, the closing "To remove: …" banner is suppressed. When absent, behaviour is unchanged from v4.3. Hermetic test in `scripts/tests/test-install-banner.sh` extended to cover both installers in both modes.
 
 ### `--keep-state` Partial-Uninstall Recovery
 
