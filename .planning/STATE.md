@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: executing
-stopped_at: Completed 21-02-PLAN.md (installer wiring)
-last_updated: "2026-04-27T07:37:38.540Z"
+status: verifying
+stopped_at: Completed 21-03-PLAN.md (tests, CI wiring, docs)
+last_updated: "2026-04-27T07:59:19.527Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-27)
 
 Phase: 21 (sp-gsd-bootstrap-installer) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-27
 
 Progress: 0% (0 / 3 phases)
@@ -105,6 +105,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 21-01]: Define _bootstrap_log_info / _bootstrap_log_warning locally in bootstrap.sh — lib/install.sh does not export log_* helpers (RESEARCH.md correction confirmed 2026-04-27)
 - [Phase 21]: init-local.sh now sources lib/optional-plugins.sh (new dependency) before lib/bootstrap.sh so TK_SP/GSD_INSTALL_CMD constants are available when bootstrap.sh loads
 - [Phase 21]: Color re-gate in init-local.sh post-bootstrap block checks both [ -t 1 ] AND [ -z NO_COLOR+x ] — stricter than original gate but correct per uninstall.sh pattern
+- [Phase 21-03]: Use --dry-run base as test driver flags so init-local.sh exits cleanly without writes or framework detection
+- [Phase 21-03]: S3 invokes init-local.sh twice to prove D-16 CLI/env-var equivalence without extra scenario functions
+- [Phase 21-03]: S4 uses PATH=/usr/bin:/bin to exclude real claude binary — avoids test interference in CI
 
 ### Roadmap Evolution
 
@@ -147,11 +150,12 @@ Carry-overs available for next milestone scoping:
 | In v4.4 Phase 22 | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 — now LIB-01/LIB-02 |
 | Phase 21-sp-gsd-bootstrap-installer P01 | 3m | 2 tasks | 2 files |
 | Phase 21 P02 | 8m | 2 tasks | 2 files |
+| Phase 21-sp-gsd-bootstrap-installer P03 | 12m | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-27T07:37:38.537Z
-Stopped at: Completed 21-02-PLAN.md (installer wiring)
+Last session: 2026-04-27T07:59:19.525Z
+Stopped at: Completed 21-03-PLAN.md (tests, CI wiring, docs)
 Resume file: None
 
 **To start v4.4 implementation:**
