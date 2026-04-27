@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: verifying
-stopped_at: Phase 22 context gathered
-last_updated: "2026-04-27T08:23:21.343Z"
+status: executing
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-04-27T08:46:23.745Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 21 — sp-gsd-bootstrap-installer
+**Current focus:** Phase 22 — smart-update-coverage-for-scripts-lib-sh
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 22 (smart-update-coverage-for-scripts-lib-sh) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-27
 
 Progress: 0% (0 / 3 phases)
@@ -108,6 +108,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 21-03]: Use --dry-run base as test driver flags so init-local.sh exits cleanly without writes or framework detection
 - [Phase 21-03]: S3 invokes init-local.sh twice to prove D-16 CLI/env-var equivalence without extra scenario functions
 - [Phase 21-03]: S4 uses PATH=/usr/bin:/bin to exclude real claude binary — avoids test interference in CI
+- [Phase 22]: files.libs[] omits description field — matches files.scripts[] convention; descriptions live in lib file headers (D-01)
+- [Phase 22]: No update-claude.sh code changes needed — existing jq .files | to_entries[] | .value[] | .path auto-discovers libs key (D-01 / D-07 zero-special-casing invariant)
+- [Phase 22]: Phase 21 + Phase 22 consolidated into single [4.4.0] CHANGELOG entry — Phase 21 was never separately released
 
 ### Roadmap Evolution
 
@@ -151,12 +154,13 @@ Carry-overs available for next milestone scoping:
 | Phase 21-sp-gsd-bootstrap-installer P01 | 3m | 2 tasks | 2 files |
 | Phase 21 P02 | 8m | 2 tasks | 2 files |
 | Phase 21-sp-gsd-bootstrap-installer P03 | 12m | 3 tasks | 4 files |
+| Phase 22 P01 | 8 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-27T08:23:21.340Z
-Stopped at: Phase 22 context gathered
-Resume file: .planning/phases/22-smart-update-coverage-for-scripts-lib-sh/22-CONTEXT.md
+Last session: 2026-04-27T08:46:23.742Z
+Stopped at: Completed 22-01-PLAN.md
+Resume file: None
 
 **To start v4.4 implementation:**
 
