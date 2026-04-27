@@ -81,6 +81,7 @@ MODE=""
 FORCE=false
 FORCE_MODE_CHANGE=false
 NO_BOOTSTRAP=false
+NO_BANNER=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -100,12 +101,13 @@ while [[ $# -gt 0 ]]; do
             NO_BOOTSTRAP=true
             shift
             ;;
+        --no-banner) NO_BANNER=1; shift ;;
         --version|-v)
             echo "claude-code-toolkit v$VERSION (local)"
             exit 0
             ;;
         --help|-h)
-            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [--no-bootstrap] [framework]"
+            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [--no-bootstrap] [--no-banner] [framework]"
             echo ""
             echo "Frameworks: laravel, nextjs, nodejs, python, go, rails, base"
             echo "Modes: standalone, complement-sp, complement-gsd, complement-full"
@@ -116,6 +118,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --force               Re-install even if state file exists"
             echo "  --force-mode-change   Bypass the mode-change confirmation prompt"
             echo "  --no-bootstrap        Skip the SP/GSD install prompts (env: TK_NO_BOOTSTRAP=1)"
+            echo "  --no-banner           Suppress closing 'To remove: ...' banner (env: NO_BANNER=1)"
             echo "  --version             Show version"
             echo "  --help                Show this help"
             exit 0
@@ -472,4 +475,6 @@ echo ""
 echo -e "${BLUE}Security setup (recommended):${NC}"
 echo "  $GUIDES_DIR/scripts/setup-security.sh"
 echo ""
-echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+if [[ $NO_BANNER -eq 0 ]]; then
+    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+fi
