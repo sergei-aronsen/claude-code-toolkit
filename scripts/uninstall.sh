@@ -655,10 +655,16 @@ fi
 # Failure logs warning but exits 0: files already removed; orphaned state is recoverable
 # by manual `rm`. Hard-fail on state-delete failure would leave the user thinking the
 # uninstall didn't work when in reality only the bookkeeping is stuck.
-if rm -f "$STATE_FILE"; then
-    log_success "State file removed: $STATE_FILE"
+# When KEEP_STATE=1 (--keep-state or TK_UNINSTALL_KEEP_STATE=1, KEEP-01), the state
+# file is preserved instead — see KEEP-02 test for the re-run recovery contract.
+if [[ $KEEP_STATE -eq 0 ]]; then
+    if rm -f "$STATE_FILE"; then
+        log_success "State file removed: $STATE_FILE"
+    else
+        log_warning "Failed to remove $STATE_FILE — uninstall is complete but state file is orphaned. Remove manually: rm '$STATE_FILE'"
+    fi
 else
-    log_warning "Failed to remove $STATE_FILE — uninstall is complete but state file is orphaned. Remove manually: rm '$STATE_FILE'"
+    log_info "State file preserved (--keep-state): $STATE_FILE"
 fi
 
 echo ""
