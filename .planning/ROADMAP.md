@@ -81,7 +81,11 @@
 3. Running `init-claude.sh --no-bootstrap` (or with `TK_NO_BOOTSTRAP=1` in env) produces zero bootstrap prompts and unchanged v4.3 install behaviour; `--help` output lists the flag; `docs/INSTALL.md` documents it (BOOTSTRAP-04)
 4. `scripts/tests/test-bootstrap.sh` passes all three branches — prompt-y, prompt-N, `--no-bootstrap` skip — with no stdin/TTY assumption failures in piped mode (BOOTSTRAP-04)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 21-01-PLAN.md — Library + constants extraction (scripts/lib/bootstrap.sh + TK_SP_INSTALL_CMD/TK_GSD_INSTALL_CMD constants in optional-plugins.sh)
+- [ ] 21-02-PLAN.md — Installer integration (init-claude.sh + init-local.sh: --no-bootstrap flag, source bootstrap.sh, call bootstrap_base_plugins, re-source detect.sh)
+- [ ] 21-03-PLAN.md — Test + distribution surface (scripts/tests/test-bootstrap.sh, Makefile Test 28, CI mirror, docs/INSTALL.md)
 
 ---
 
@@ -131,4 +135,4 @@
 | v4.1 Polish & Upstream | 8–12 | 13/13 | ✅ Shipped | 2026-04-25 |
 | v4.2 Audit System v2 | 13–17 | 22/22 | ✅ Shipped | 2026-04-26 |
 | v4.3 Uninstall | 18–20 | 10/10 | ✅ Shipped | 2026-04-26 |
-| v4.4 Bootstrap & Polish | 21–23 | 0/~8 | 🚧 In progress | — |
+| v4.4 Bootstrap & Polish | 21–23 | 0/~8 (Phase 21 planned: 3) | 🚧 In progress | — |
