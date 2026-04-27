@@ -58,7 +58,7 @@
 <details>
 <summary>🚧 v4.4 Bootstrap & Polish (Phases 21–23) — IN PROGRESS</summary>
 
-- [ ] **Phase 21: SP/GSD Bootstrap Installer** — Before detection, `init-claude.sh`/`init-local.sh` offer to install SP/GSD via their canonical commands; `--no-bootstrap` skips for CI
+- [x] **Phase 21: SP/GSD Bootstrap Installer** — Before detection, `init-claude.sh`/`init-local.sh` offer to install SP/GSD via their canonical commands; `--no-bootstrap` skips for CI (completed 2026-04-27)
 - [ ] **Phase 22: Smart-Update Coverage for `scripts/lib/*.sh`** — Register `lib/backup.sh`, `lib/dry-run-output.sh`, `lib/install.sh`, `lib/state.sh` in `manifest.json` so `update-claude.sh` keeps them current
 - [ ] **Phase 23: Installer Symmetry & Recovery** — `init-claude.sh`/`init-local.sh` learn `--no-banner`; `uninstall.sh` learns `--keep-state` to preserve state file for partial-uninstall recovery
 
