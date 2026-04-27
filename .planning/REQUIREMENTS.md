@@ -60,14 +60,14 @@ Items deferred to v4.5+:
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| BOOTSTRAP-01 | TBD | Planned |
-| BOOTSTRAP-02 | TBD | Planned |
-| BOOTSTRAP-03 | TBD | Planned |
-| BOOTSTRAP-04 | TBD | Planned |
-| LIB-01 | TBD | Planned |
-| LIB-02 | TBD | Planned |
-| BANNER-01 | TBD | Planned |
-| KEEP-01 | TBD | Planned |
-| KEEP-02 | TBD | Planned |
+| BOOTSTRAP-01 | Phase 21 | Planned |
+| BOOTSTRAP-02 | Phase 21 | Planned |
+| BOOTSTRAP-03 | Phase 21 | Planned |
+| BOOTSTRAP-04 | Phase 21 | Planned |
+| LIB-01 | Phase 22 | Planned |
+| LIB-02 | Phase 22 | Planned |
+| BANNER-01 | Phase 23 | Planned |
+| KEEP-01 | Phase 23 | Planned |
+| KEEP-02 | Phase 23 | Planned |
 
-**Coverage:** 9 / 9 requirements awaiting phase mapping (filled by `gsd-roadmapper`).
+**Coverage:** 9 / 9 requirements mapped to phases (100%).

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: defining_requirements
-stopped_at: milestone scope locked, REQUIREMENTS pending
+status: roadmap_ready
+stopped_at: roadmap created — Phase 21 ready to plan
 last_updated: "2026-04-27T00:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
   percent: 0
 ---
@@ -20,16 +20,32 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.4 Bootstrap & Polish — defining requirements
+**Current focus:** v4.4 Bootstrap & Polish — roadmap created, Phase 21 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 21 (SP/GSD Bootstrap Installer) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-27 — Milestone v4.4 started (SP/GSD bootstrap, manifest libs, --no-banner symmetry, --keep-state)
+Status: Roadmap created, awaiting `/gsd-discuss-phase 21`
+Last activity: 2026-04-27 — v4.4 roadmap created (3 phases, 9 REQ-IDs, 100% coverage)
 
-Progress: 0% (0 / TBD phases)
+Progress: 0% (0 / 3 phases)
+
+```text
+Phase 21 [ ] SP/GSD Bootstrap Installer
+Phase 22 [ ] Smart-Update Coverage for scripts/lib/*.sh
+Phase 23 [ ] Installer Symmetry & Recovery
+```
+
+## Plan Count Estimate
+
+Total plans estimated at ~8 across 3 phases:
+
+- Phase 21 — 3 plans (bootstrap prompt + canonical installer invocation + detection re-run; test harness)
+- Phase 22 — 2 plans (manifest registration; update-claude.sh iteration + test)
+- Phase 23 — 3 plans (--no-banner symmetry + test extension; --keep-state flag; keep-state test harness)
+
+Actual plan count will be set by `/gsd-plan-phase` for each phase.
 
 ## Performance Metrics
 
@@ -92,6 +108,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-26: v4.2 shipped — tagged `v4.2.0` + GitHub Release published
 - 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
 - 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
+- 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
 
 ### Pending Todos
 
@@ -99,7 +116,7 @@ None.
 
 ### Blockers/Concerns
 
-None. v4.3 awaiting tag commit: replace YYYY-MM-DD placeholder in manifest.json + CHANGELOG.md with real ISO date, then cut `v4.3.0` tag.
+None.
 
 ## Deferred Items
 
@@ -118,19 +135,18 @@ Carry-overs available for next milestone scoping:
 | WONTFIX | AUDIT-04 merge-strategy | KISS — no multi-template overlay; per-file fallback in installers is sufficient (closed 2026-04-26) |
 | WONTFIX | AUDIT-06 template version pinning | Already covered — `manifest.json` `version` + `~/.claude/.toolkit-version` + smart-update diff (closed 2026-04-26) |
 | Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
-| v4.4 candidate | SP/GSD bootstrap installer | Interactive `[y/N]` prompts in `init-claude.sh` invoking the canonical install commands directly — `claude plugin install superpowers@claude-plugins-official` for SP and `bash <(curl -sSL .../get-shit-done/main/scripts/install.sh)` for GSD. No forks, no vendoring; toolkit only orchestrates the original installers (re-scoped 2026-04-27 per user direction) |
 | WONTFIX | Council `audit-review` → Sentry/Linear ticket creation | User direction 2026-04-27: Sentry reserved for error monitoring (not tracking); project tracking lives in a separate system. Toolkit stays at the report-artefact boundary (`.claude/audits/<report>.md`) |
-| Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
-| Deferred | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: explicitly deferred to v4.4 |
-| Deferred | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 if demand emerges |
-| Deferred | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 if update-claude.sh learns files.scripts iteration |
+| Deferred to v4.5 | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
+| In v4.4 Phase 23 | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: deferred to v4.4 — now KEEP-01/KEEP-02 |
+| In v4.4 Phase 23 | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 — now BANNER-01 |
+| In v4.4 Phase 22 | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 — now LIB-01/LIB-02 |
 
 ## Session Continuity
 
-Last session: 2026-04-26T16:33:00.000Z
-Stopped at: Phase 20 verified PASSED — v4.3 milestone complete
+Last session: 2026-04-27T00:00:00.000Z
+Stopped at: v4.4 roadmap created — Phase 21 ready for discuss/plan
 Resume file: None
 
-**To complete milestone:**
+**To start v4.4 implementation:**
 
-- Cut `v4.3.0` tag: replace `YYYY-MM-DD` in `manifest.json` and `CHANGELOG.md` with real ISO date, then `git tag v4.3.0`
+- `/gsd-discuss-phase 21` — discuss Phase 21 (SP/GSD Bootstrap Installer) before planning
