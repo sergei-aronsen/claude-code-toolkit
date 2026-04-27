@@ -126,7 +126,11 @@
 4. A second invocation of `uninstall.sh` (without `--keep-state`) after a prior `--keep-state` run is NOT a no-op: it re-classifies the still-present modified files and presents the `[y/N/d]` prompt for each (KEEP-02)
 5. `scripts/tests/test-uninstall-keep-state.sh` passes all four assertions: state file exists post-run, second invocation is not a no-op, MODIFIED list is non-empty on second invocation, base-plugin invariant (`diff -q`) still passes (KEEP-02)
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 23-01-PLAN.md — BANNER-01: `--no-banner` symmetry across `init-claude.sh` + `init-local.sh` + extend `test-install-banner.sh` (3→7 source-grep assertions)
+- [ ] 23-02-PLAN.md — KEEP-01: `--keep-state` flag in `scripts/uninstall.sh` (KEEP_STATE default + argparse clause + state-delete gate at line 653)
+- [ ] 23-03-PLAN.md — KEEP-02: hermetic test `scripts/tests/test-uninstall-keep-state.sh` (S1+S2+S3) + Makefile Test 30 + CI step rename Tests 21-29→Tests 21-30 + CHANGELOG [4.4.0] BANNER/KEEP bullets + docs/INSTALL.md flag rows
 
 ---
 
@@ -138,4 +142,4 @@
 | v4.1 Polish & Upstream | 8–12 | 13/13 | ✅ Shipped | 2026-04-25 |
 | v4.2 Audit System v2 | 13–17 | 22/22 | ✅ Shipped | 2026-04-26 |
 | v4.3 Uninstall | 18–20 | 10/10 | ✅ Shipped | 2026-04-26 |
-| v4.4 Bootstrap & Polish | 21–23 | 0/~8 (Phase 21 planned: 3) | 🚧 In progress | — |
+| v4.4 Bootstrap & Polish | 21–23 | 5/8 (Phase 23 planned: 3) | 🚧 In progress | — |
