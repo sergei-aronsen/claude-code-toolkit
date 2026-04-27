@@ -145,20 +145,33 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Next Milestone Goals
+## Current Milestone: v4.4 Bootstrap & Polish
 
-_To be defined via `/gsd-new-milestone`._
+**Goal:** Streamline first-run UX (toolkit can offer to install SP/GSD via their canonical installers) and close residual smart-update / installer-symmetry gaps surfaced during v4.3.
 
-Candidate carry-overs after v4.3:
+**Target features:**
 
-- AUDIT-02/04/06/10/15 — Wave B/C hardening deferred from Phase 12 (compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata)
-- Council `audit-review` integration with cloud Sentry/Linear (auto-create issue per Council-confirmed REAL finding) — surfaced from v4.2 deferred list
-- Installable GSD CLI wrapper in toolkit (crosses repo boundary — deferred from v4.1)
-- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` — wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers (Phase 19 D-01 deferred to v4.4; Phase 19 ships strip-only reader side)
-- `--keep-state` partial-uninstall flag (Phase 19 D-05 deferred to v4.4)
-- `--no-banner` flag for `init-claude.sh` / `init-local.sh` (Phase 20 D-08 deferred to v4.4 if user demand)
+- **Bootstrap installer** — `init-claude.sh` (and `init-local.sh`) ask `[y/N]` whether to install `superpowers` and/or `get-shit-done` before running detection. Toolkit invokes the canonical commands directly (`claude plugin install superpowers@claude-plugins-official` for SP, `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` for GSD). No forks, no vendoring. Re-runs `detect.sh` after bootstrap so the install proceeds in the correct mode.
+- **Register `scripts/lib/*.sh` in manifest** — close the smart-update gap where `lib/backup.sh`, `lib/dry-run-output.sh`, `lib/install.sh`, `lib/state.sh` are silently skipped on `update-claude.sh` because they are not in `manifest.json`. Add `files.libs[]` (or extend `files.scripts[]`) and teach `update-claude.sh` to iterate it.
+- **`--no-banner` symmetry** — `init-claude.sh` and `init-local.sh` learn the same `--no-banner` flag that `update-claude.sh` already honors. Suppresses the closing "To remove: bash <(curl …)" banner. CI / scripted users get clean output across all installers.
+- **`--keep-state` partial-uninstall recovery** — `scripts/uninstall.sh --keep-state` preserves `~/.claude/toolkit-install.json` after a session where the user answered N on every modified file. Lets a follow-up `uninstall.sh` see what is still on disk instead of a no-op.
+
+**Key context:**
+
+- All four items are scoped to known gaps in shipped behaviour; no new architecture, no new install modes, no breaking changes.
+- Bootstrap installer must respect `< /dev/tty` semantics (default N when no TTY, e.g. piped install) and offer a `--no-bootstrap` opt-out for CI.
+- Manifest registration must keep `make check` `version-align` + `validate` green; consider whether `lib/*.sh` warrants a separate manifest section or extends `files.scripts[]`.
+
+### Carry-overs not in this milestone
+
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers — Phase 19 D-01 deferred indefinitely; Phase 19 already shipped strip-only reader side)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
+- Closed earlier in this cleanup:
+  - AUDIT-10/12/14/15 — already covered by shipped behaviour (manifest + idempotent install + uninstall). Closed 2026-04-26.
+  - AUDIT-02/04/06 — WONTFIX (KISS/YAGNI; no overlay scenario, no lockfile needed). Closed 2026-04-26.
+  - DETECT-FUT-01 — closed by DETECT-06 in v4.1 Phase 9.
+  - Council `audit-review` → Sentry/Linear ticket creation — WONTFIX per user direction (2026-04-27): Sentry reserved for error monitoring (not tracking); project tracking lives outside the toolkit. Audit pipeline terminates at the report artefact.
 
 ## Key Decisions
 
