@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.4
 milestone_name: Bootstrap & Polish
-status: verifying
-stopped_at: Completed 23-03-PLAN.md
-last_updated: "2026-04-27T15:26:30.777Z"
+status: shipped
+stopped_at: v4.4 shipped 2026-04-27 — awaiting /gsd-new-milestone
+last_updated: "2026-04-27T16:28:45.448Z"
 last_activity: 2026-04-27
 progress:
   total_phases: 3
@@ -127,6 +127,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
 - 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
 - 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
+- 2026-04-27: v4.4 shipped — 8/8 plans, 19 tasks, 9/9 REQ-IDs validated; archive at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`; awaiting `v4.4.0` tag on main HEAD
 
 ### Pending Todos
 

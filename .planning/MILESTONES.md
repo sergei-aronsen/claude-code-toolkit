@@ -1,5 +1,28 @@
 # Milestones
 
+## v4.4 Bootstrap & Polish (Shipped: 2026-04-27)
+
+**Phases completed:** 3 phases (21–23), 8 plans, 19 tasks
+**Git range:** `v4.3.0 → v4.4.0` — 62 commits, 59 files changed (+12935 / −71)
+**Timeline:** 2026-04-26 → 2026-04-27
+
+**Delivered:** Streamlined first-run UX so the toolkit can offer to install `superpowers` and `get-shit-done` via their canonical installers before detection runs, closed the silent smart-update gap on `scripts/lib/*.sh`, and finished installer-flag symmetry — `--no-banner` now lives on all three installers and `uninstall.sh` learned `--keep-state` for partial-uninstall recovery.
+
+**Key accomplishments:**
+
+- **SP/GSD Bootstrap Installer (Phase 21 / BOOTSTRAP-01..04)** — `scripts/lib/bootstrap.sh` + `TK_SP_INSTALL_CMD` / `TK_GSD_INSTALL_CMD` constants in `optional-plugins.sh` invoke the canonical upstream installers verbatim (`claude plugin install superpowers@claude-plugins-official` and `bash <(curl -sSL .../get-shit-done/.../install.sh)`); `init-claude.sh` and `init-local.sh` source it before `detect.sh` and re-run detection after bootstrap so `~/.claude/toolkit-install.json` reflects the post-bootstrap mode (`complement-sp`, `complement-gsd`, `complement-full`); fail-closed `N` when `< /dev/tty` is unavailable (CI / piped); `--no-bootstrap` flag and `TK_NO_BOOTSTRAP=1` env var preserve unchanged v4.3 behaviour; `scripts/tests/test-bootstrap.sh` proves three branches (prompt-y, prompt-N, `--no-bootstrap` skip).
+- **Smart-Update Coverage for `scripts/lib/*.sh` (Phase 22 / LIB-01/02)** — `manifest.json` gained a `files.libs[]` registry covering `scripts/lib/{backup,dry-run-output,install,state}.sh`; `update-claude.sh` iterates the new section with the same diff/backup/safe-write contract used for top-level scripts so a stale `lib/backup.sh` on disk gets refreshed on `update-claude.sh` and post-update SHA256 matches the manifest fixture; hermetic 5-scenario regression test in `scripts/tests/test-update-libs.sh` (Makefile Test 29 + CI Tests 21-29).
+- **Installer Flag Symmetry — `--no-banner` (Phase 23 / BANNER-01)** — `init-claude.sh` and `init-local.sh` learned `--no-banner` and `NO_BANNER=1` env-form (`NO_BANNER=${NO_BANNER:-0}` so caller-exported env is honoured byte-identically across all three installers); banner `echo` wrapped in `if [[ $NO_BANNER -eq 0 ]]` gate; `scripts/tests/test-install-banner.sh` extended from 3 to 7 assertions covering env-form default, argparse clause, and gate pattern in both installers.
+- **Partial-Uninstall Recovery — `--keep-state` (Phase 23 / KEEP-01/02)** — `scripts/uninstall.sh --keep-state` (and `TK_UNINSTALL_KEEP_STATE=1` env var) preserves `~/.claude/toolkit-install.json` after the run instead of deleting it as the LAST step (UN-05 D-06), so subsequent `uninstall.sh` runs after `[y/N/d]` rejections are NOT a no-op; all UN-01..UN-08 invariants stand (SHA256 classify, prompt, base-plugin diff, sentinel strip); 11-assertion hermetic test in `scripts/tests/test-uninstall-keep-state.sh` covers S1 (partial-N recovery), S2 (full-y branch), S3 (env-only flag) — Makefile Test 30 + CI Tests 21-30.
+- **Inline correctness fix during ship (WR-01)** — Code review caught that `NO_BANNER=0` clobbered caller-exported env value, breaking the documented `NO_BANNER=1 init-claude.sh` path in BANNER-01; fixed inline as commit `094424c` before merge by switching all three installers to env-form `NO_BANNER=${NO_BANNER:-0}` and updating `test-install-banner.sh` A4/A7 grep patterns.
+
+**Archived:**
+
+- `.planning/milestones/v4.4-ROADMAP.md` — full phase breakdown with all 8 plans
+- `.planning/milestones/v4.4-REQUIREMENTS.md` — 9 REQ-IDs with traceability (BOOTSTRAP-01..04, LIB-01/02, BANNER-01, KEEP-01/02)
+
+---
+
 ## v4.3 Uninstall (Shipped: 2026-04-26)
 
 **Phases completed:** 3 phases, 10 plans, 12 tasks
