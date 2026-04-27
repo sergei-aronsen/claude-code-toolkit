@@ -13,6 +13,11 @@
 [[ -z "${BLUE:-}" ]]   && BLUE='\033[0;34m'
 [[ -z "${NC:-}" ]]     && NC='\033[0m'
 
+# Canonical SP/GSD install commands — single source of truth (D-12).
+# Guards allow caller / test seam to override before sourcing.
+[[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+
 recommend_optional_plugins() {
     echo ""
     echo -e "${CYAN}🧩 Recommended optional plugins:${NC}"
@@ -28,10 +33,10 @@ recommend_optional_plugins() {
     echo -e "    Languages: en + wenyan (Classical Chinese)"
     echo ""
     echo -e "  ${YELLOW}superpowers${NC} (obra) — skills + code-reviewer agent (TK complements)"
-    echo -e "    Install: ${YELLOW}claude plugin install superpowers@claude-plugins-official${NC}"
+    echo -e "    Install: ${YELLOW}${TK_SP_INSTALL_CMD}${NC}"
     echo ""
     echo -e "  ${YELLOW}get-shit-done${NC} (gsd-build) — phase-based workflow (TK complements)"
-    echo -e "    Install: ${YELLOW}bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)${NC}"
+    echo -e "    Install: ${YELLOW}${TK_GSD_INSTALL_CMD}${NC}"
     echo ""
     echo -e "  ${BLUE}Details:${NC} see components/optional-plugins.md in the TK repo"
 }

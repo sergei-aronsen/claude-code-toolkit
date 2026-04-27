@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-04-27
+
+### Added
+
+- **SP/GSD bootstrap installer** (`scripts/lib/bootstrap.sh`, `scripts/lib/optional-plugins.sh`) —
+  BOOTSTRAP-01..04: `init-claude.sh` and `init-local.sh` now offer to install `superpowers`
+  via `claude plugin install superpowers@claude-plugins-official` and `get-shit-done` via the
+  canonical curl install before detection runs. Prompts default to `N`, fail closed when no
+  TTY is available, and `--no-bootstrap` (or `TK_NO_BOOTSTRAP=1`) suppresses them entirely
+  for CI. After bootstrap, `detect.sh` re-runs so the toolkit installs in the correct mode
+  (`complement-sp` / `complement-gsd` / `complement-full`). Hermetic test:
+  `scripts/tests/test-bootstrap.sh` (Test 28).
+
+- **Smart-update coverage for `scripts/lib/*.sh`** — LIB-01: all six sourced helper libraries
+  (`backup.sh`, `bootstrap.sh`, `dry-run-output.sh`, `install.sh`, `optional-plugins.sh`,
+  `state.sh`) registered in `manifest.json` under a new `files.libs[]` array. LIB-02:
+  `update-claude.sh` now refreshes stale lib files using the same diff/backup/safe-write
+  contract as top-level scripts — zero code changes to the update loop required (the existing
+  `jq -c '[.files | to_entries[] | .value[] | .path]'` query auto-discovers the new key).
+  Hermetic test: `scripts/tests/test-update-libs.sh` (Test 29) — five scenarios proving
+  stale-refresh, clean-untouched, fresh-install, modified-file fail-closed, and uninstall
+  round-trip across all six libs.
+
+- **`--no-banner` flag for `init-claude.sh` and `init-local.sh`** — BANNER-01: both
+  installers now accept `--no-banner` (and the `NO_BANNER=1` env var) to suppress the
+  closing `To remove: bash <(curl …)` line. Default behaviour (flag absent) is byte-identical
+  to v4.3. Symmetric with `update-claude.sh`, which already honoured this flag. Hermetic test:
+  `scripts/tests/test-install-banner.sh` extended from 3 to 7 source-grep assertions
+  covering the new defaults, argparse clauses, and gates in both init scripts.
+
+- **`--keep-state` flag for `scripts/uninstall.sh`** — KEEP-01: passing `--keep-state`
+  (or setting `TK_UNINSTALL_KEEP_STATE=1`) preserves `~/.claude/toolkit-install.json`
+  after the run instead of deleting it as the LAST step. All other UN-01..UN-08 invariants
+  (backup, sentinel-strip, base-plugin diff-q) are unchanged. A subsequent `uninstall.sh`
+  invocation sees the state file, re-classifies still-present modified files, and re-presents
+  the `[y/N/d]` prompt — enabling recovery after a partial-N uninstall session.
+
+- **Hermetic test for `--keep-state`** — KEEP-02: `scripts/tests/test-uninstall-keep-state.sh`
+  (Test 30) proves three scenarios end-to-end: N-choice preserves state and second run
+  re-classifies modified files (S1: A1+A2+A3+A4); y-choice preserves state on full-y branch
+  (S2: A1); `TK_UNINSTALL_KEEP_STATE=1` env-only path preserves state with no `--keep-state`
+  flag (S3: A1, D-09 env-precedence).
+
 ## [4.3.0] - 2026-04-26
 
 ### Added

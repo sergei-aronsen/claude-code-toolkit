@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.3
-milestone_name: Uninstall
-status: shipped
-stopped_at: v4.3.0 tagged — 2026-04-26
-last_updated: "2026-04-26T19:00:00.000Z"
+milestone: v4.4
+milestone_name: Bootstrap & Polish
+status: verifying
+stopped_at: Completed 23-03-PLAN.md
+last_updated: "2026-04-27T15:26:30.777Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -17,17 +18,35 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-26)
+See: .planning/PROJECT.md (updated 2026-04-27)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Planning next milestone — v4.3 Uninstall shipped 2026-04-26
+**Current focus:** Phase 23 — Installer Symmetry & Recovery
 
 ## Current Position
 
-Last shipped: v4.3 Uninstall (Phases 18–20) — tagged v4.3.0 on 2026-04-26
-Next: Run `/gsd-new-milestone` to define next milestone scope
+Phase: 23
+Plan: Not started
+Status: Phase complete — ready for verification
+Last activity: 2026-04-27
 
-Progress: idle (between milestones)
+Progress: 0% (0 / 3 phases)
+
+```text
+Phase 21 [ ] SP/GSD Bootstrap Installer
+Phase 22 [ ] Smart-Update Coverage for scripts/lib/*.sh
+Phase 23 [ ] Installer Symmetry & Recovery
+```
+
+## Plan Count Estimate
+
+Total plans estimated at ~8 across 3 phases:
+
+- Phase 21 — 3 plans (bootstrap prompt + canonical installer invocation + detection re-run; test harness)
+- Phase 22 — 2 plans (manifest registration; update-claude.sh iteration + test)
+- Phase 23 — 3 plans (--no-banner symmetry + test extension; --keep-state flag; keep-state test harness)
+
+Actual plan count will be set by `/gsd-plan-phase` for each phase.
 
 ## Performance Metrics
 
@@ -82,6 +101,23 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - [Phase 20-distribution-tests]: Canary selection uses jq .installed_files[].path | grep -E '.(md|json)' | head -1 for resilience to future install-set changes
 - [Phase 20-distribution-tests]: Backup path strips .claude/ prefix to match cp -R CLAUDE_DIR layout in .claude-backup-pre-uninstall-* dirs
 - [Phase 20-distribution-tests]: Rule 1 fix: init-local.sh now tracks 13 previously-untracked files (cheatsheets, seed files, CLAUDE.md, settings.json) in INSTALLED_PATHS[] so uninstall can cleanly remove all
+- [Phase 21-01]: Use guarded [[ -z ... ]] && form for TK_SP_INSTALL_CMD / TK_GSD_INSTALL_CMD — allows test-seam override and matches color-guard idiom in optional-plugins.sh
+- [Phase 21-01]: Define _bootstrap_log_info / _bootstrap_log_warning locally in bootstrap.sh — lib/install.sh does not export log_* helpers (RESEARCH.md correction confirmed 2026-04-27)
+- [Phase 21]: init-local.sh now sources lib/optional-plugins.sh (new dependency) before lib/bootstrap.sh so TK_SP/GSD_INSTALL_CMD constants are available when bootstrap.sh loads
+- [Phase 21]: Color re-gate in init-local.sh post-bootstrap block checks both [ -t 1 ] AND [ -z NO_COLOR+x ] — stricter than original gate but correct per uninstall.sh pattern
+- [Phase 21-03]: Use --dry-run base as test driver flags so init-local.sh exits cleanly without writes or framework detection
+- [Phase 21-03]: S3 invokes init-local.sh twice to prove D-16 CLI/env-var equivalence without extra scenario functions
+- [Phase 21-03]: S4 uses PATH=/usr/bin:/bin to exclude real claude binary — avoids test interference in CI
+- [Phase 22]: files.libs[] omits description field — matches files.scripts[] convention; descriptions live in lib file headers (D-01)
+- [Phase 22]: No update-claude.sh code changes needed — existing jq .files | to_entries[] | .value[] | .path auto-discovers libs key (D-01 / D-07 zero-special-casing invariant)
+- [Phase 22]: Phase 21 + Phase 22 consolidated into single [4.4.0] CHANGELOG entry — Phase 21 was never separately released
+- [Phase 22]: S1 setup uses empty installed_files[] state file to force stale lib through new-files install path (synthesize_v3_state would record stale SHA, blocking refresh)
+- [Phase 22]: TK_UPDATE_FILE_SRC=REPO_ROOT (not REPO_ROOT/scripts/lib) — seam resolves paths as TK_UPDATE_FILE_SRC/rel where rel=scripts/lib/backup.sh
+- [Phase 22]: S5 asserts file-level removal (backup.sh absent), not directory removal — uninstall.sh removes files but does not rmdir empty parent dirs
+- [Phase 23-01]: Single-line --no-banner) NO_BANNER=1; shift ;; clause form used so grep pattern in A5 assertion matches; SC2016 disable added for intentional single-quoted $NO_BANNER grep patterns in A6/A7
+- [Phase 23-01]: D-06 assumption wrong: init-local.sh already has --help block at HEAD; --no-banner added to both Usage line and options block per R-05
+- [Phase 23-installer-symmetry-recovery]: KEEP-01: gate existing rm -f STATE_FILE at D-06 LAST-step position behind KEEP_STATE boolean; inner rm-or-warn block preserved byte-identical; env-var TK_UNINSTALL_KEEP_STATE seeds default, CLI flag overrides
+- [Phase 23-installer-symmetry-recovery]: KEEP-02: 11 assertions across S1+S2+S3; 'Backup created:' as A2 not-a-no-op marker; control assertion confirms UN-05 default unchanged
 
 ### Roadmap Evolution
 
@@ -90,6 +126,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-26: v4.2 shipped — tagged `v4.2.0` + GitHub Release published
 - 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
 - 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
+- 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
 
 ### Pending Todos
 
@@ -97,7 +134,7 @@ None.
 
 ### Blockers/Concerns
 
-None. v4.3 awaiting tag commit: replace YYYY-MM-DD placeholder in manifest.json + CHANGELOG.md with real ISO date, then cut `v4.3.0` tag.
+None.
 
 ## Deferred Items
 
@@ -107,21 +144,35 @@ Carry-overs available for next milestone scoping:
 |----------|------|--------|
 | Locked out | Docker-per-cell isolation | Permanently out (conflicts with POSIX invariant) |
 | Locked out | Auto-cut `git tag` from phase execution | Permanently out (CLAUDE.md "never push main") |
-| Deferred | HARDEN-C-04 — uninstall script | Carry-over from v4.1 audit, deferred through v4.2 |
-| Deferred | AUDIT-02/04/06/10/15 Wave B/C hardening | Compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata |
-| Deferred | Installable GSD CLI wrapper in toolkit | Crosses repo boundary |
-| Deferred | Council `audit-review` → Sentry/Linear ticket creation | Cross-repo automation; revisit after v4.2 stabilises |
-| Deferred | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
-| Deferred | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: explicitly deferred to v4.4 |
-| Deferred | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 if demand emerges |
-| Deferred | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 if update-claude.sh learns files.scripts iteration |
+| Closed | HARDEN-C-04 — uninstall script | Done in v4.3 (`scripts/uninstall.sh`, UN-01..UN-08) |
+| Closed | AUDIT-10 collision detection | Done — already covered by idempotent install + SHA256 manifest diff (closed 2026-04-26) |
+| Closed | AUDIT-12 command markdown linting | Done by HARDEN-A-01 (`scripts/validate-commands.py`) |
+| Closed | AUDIT-14 uninstall semantics | Done by v4.3 Uninstall (closed 2026-04-26) |
+| Closed | AUDIT-15 provenance metadata | Done — already covered by `~/.claude/toolkit-install.json` (closed 2026-04-26) |
+| WONTFIX | AUDIT-02 compat matrix | KISS — install-time picks 1 framework, no overlay scenario (closed 2026-04-26) |
+| WONTFIX | AUDIT-04 merge-strategy | KISS — no multi-template overlay; per-file fallback in installers is sufficient (closed 2026-04-26) |
+| WONTFIX | AUDIT-06 template version pinning | Already covered — `manifest.json` `version` + `~/.claude/.toolkit-version` + smart-update diff (closed 2026-04-26) |
+| Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
+| WONTFIX | Council `audit-review` → Sentry/Linear ticket creation | User direction 2026-04-27: Sentry reserved for error monitoring (not tracking); project tracking lives in a separate system. Toolkit stays at the report-artefact boundary (`.claude/audits/<report>.md`) |
+| Deferred to v4.5 | `--no-council` flag for `/audit` | Was mandatory in v4.2; revisit in v4.3 if pain points emerge |
+| In v4.4 Phase 23 | `--keep-state` flag (partial-uninstall recovery) | Phase 19 D-05: deferred to v4.4 — now KEEP-01/KEEP-02 |
+| In v4.4 Phase 23 | `--no-banner` flag for init-claude.sh / init-local.sh | Phase 20 D-08: deferred to v4.4 — now BANNER-01 |
+| In v4.4 Phase 22 | Register scripts/lib/*.sh in manifest | Phase 20 D-11: deferred to v4.4 — now LIB-01/LIB-02 |
+| Phase 21-sp-gsd-bootstrap-installer P01 | 3m | 2 tasks | 2 files |
+| Phase 21 P02 | 8m | 2 tasks | 2 files |
+| Phase 21-sp-gsd-bootstrap-installer P03 | 12m | 3 tasks | 4 files |
+| Phase 22 P01 | 8 | 2 tasks | 2 files |
+| Phase 22 P02 | 25 | 3 tasks | 3 files |
+| Phase 23-installer-symmetry-recovery P01 | 15 | 3 tasks | 3 files |
+| Phase 23-installer-symmetry-recovery P02 | 5 | 2 tasks | 1 files |
+| Phase 23-installer-symmetry-recovery P03 | 3 | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-04-26T16:33:00.000Z
-Stopped at: Phase 20 verified PASSED — v4.3 milestone complete
+Last session: 2026-04-27T10:46:33.798Z
+Stopped at: Completed 23-03-PLAN.md
 Resume file: None
 
-**To complete milestone:**
+**To start v4.4 implementation:**
 
-- Cut `v4.3.0` tag: replace `YYYY-MM-DD` in `manifest.json` and `CHANGELOG.md` with real ISO date, then `git tag v4.3.0`
+- `/gsd-discuss-phase 21` — discuss Phase 21 (SP/GSD Bootstrap Installer) before planning

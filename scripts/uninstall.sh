@@ -8,6 +8,7 @@
 # Usage:
 #   bash scripts/uninstall.sh               # interactive default
 #   bash scripts/uninstall.sh --dry-run     # preview only, no changes
+#   bash scripts/uninstall.sh --keep-state  # preserve toolkit-install.json for re-run recovery
 #   bash scripts/uninstall.sh --help        # show this usage block
 #
 # Safety invariants:
@@ -21,13 +22,17 @@ set -euo pipefail
 
 # ───────── flag parsing (before color constants) ─────────
 DRY_RUN=0
+KEEP_STATE=${TK_UNINSTALL_KEEP_STATE:-0}
 for arg in "$@"; do
     case "$arg" in
         --dry-run)
             DRY_RUN=1
             ;;
+        --keep-state)
+            KEEP_STATE=1
+            ;;
         --help|-h)
-            sed -n '3,18p' "${BASH_SOURCE[0]}"
+            sed -n '3,19p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
         --no-backup)
@@ -39,9 +44,9 @@ for arg in "$@"; do
             ;;
     esac
 done
-# DRY_RUN is consumed by plans 18-02/03/04 (dry-run output + delete guard); reference here
-# satisfies shellcheck SC2034 so the flag is declared in argparse where it belongs.
-: "$DRY_RUN"
+# DRY_RUN and KEEP_STATE are consumed downstream (dry-run output + state-delete gate);
+# reference here satisfies shellcheck SC2034 so flags are declared in argparse where they belong.
+: "$DRY_RUN" "$KEEP_STATE"
 
 # ───────── ANSI color constants — gated by TTY + NO_COLOR ─────────
 # ANSI color gating: presence of NO_COLOR (any value, including empty string)
@@ -650,10 +655,16 @@ fi
 # Failure logs warning but exits 0: files already removed; orphaned state is recoverable
 # by manual `rm`. Hard-fail on state-delete failure would leave the user thinking the
 # uninstall didn't work when in reality only the bookkeeping is stuck.
-if rm -f "$STATE_FILE"; then
-    log_success "State file removed: $STATE_FILE"
+# When KEEP_STATE=1 (--keep-state or TK_UNINSTALL_KEEP_STATE=1, KEEP-01), the state
+# file is preserved instead — see KEEP-02 test for the re-run recovery contract.
+if [[ $KEEP_STATE -eq 0 ]]; then
+    if rm -f "$STATE_FILE"; then
+        log_success "State file removed: $STATE_FILE"
+    else
+        log_warning "Failed to remove $STATE_FILE — uninstall is complete but state file is orphaned. Remove manually: rm '$STATE_FILE'"
+    fi
 else
-    log_warning "Failed to remove $STATE_FILE — uninstall is complete but state file is orphaned. Remove manually: rm '$STATE_FILE'"
+    log_info "State file preserved (--keep-state): $STATE_FILE"
 fi
 
 echo ""

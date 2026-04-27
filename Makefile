@@ -1,9 +1,11 @@
-.PHONY: help check lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state
 
 # Default target
 help:
 	@echo "Claude Guides - Available commands:"
 	@echo ""
+	@echo "  make check      - Primary quality gate (lint + validate + parity)"
+	@echo "  make check-full - check + bats install matrix (run before push)"
 	@echo "  make lint       - Run all linters (shellcheck + markdownlint)"
 	@echo "  make shellcheck - Check shell scripts"
 	@echo "  make mdlint     - Check markdown files"
@@ -16,6 +18,12 @@ help:
 # Run all checks (documented in CLAUDE.md as primary quality gate)
 check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands cell-parity
 	@echo "All checks passed!"
+
+# Full local validation — `check` + bats install matrix. Run before push to catch
+# bats-only regressions that surfaced 59 commits late during v4.1 (RETROSPECTIVE
+# 2026-04-25). Requires: brew install bats-core. CI runs the matrix separately.
+check-full: check test-matrix-bats
+	@echo "All checks + bats matrix passed!"
 
 # Install dependencies
 install:
@@ -133,7 +141,24 @@ test:
 	@echo "Test 27: uninstall state-cleanup + sentinel strip + base-plugin invariant (UN-05/UN-06)"
 	@bash scripts/tests/test-uninstall-state-cleanup.sh
 	@echo ""
+	@echo "Test 28: bootstrap SP/GSD pre-install prompts (BOOTSTRAP-01..04)"
+	@bash scripts/tests/test-bootstrap.sh
+	@echo ""
+	@echo "Test 29: smart-update coverage for scripts/lib/*.sh (LIB-01..02)"
+	@bash scripts/tests/test-update-libs.sh
+	@echo ""
+	@echo "Test 30: --keep-state partial-uninstall recovery (KEEP-01..02)"
+	@bash scripts/tests/test-uninstall-keep-state.sh
+	@echo ""
 	@echo "All tests passed!"
+
+# Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
+test-update-libs:
+	@bash scripts/tests/test-update-libs.sh
+
+# Test 30 — --keep-state partial-uninstall recovery (KEEP-01..02), invokable standalone
+test-uninstall-keep-state:
+	@bash scripts/tests/test-uninstall-keep-state.sh
 
 # Validate templates (check core audit prompts for self-check sections)
 validate:

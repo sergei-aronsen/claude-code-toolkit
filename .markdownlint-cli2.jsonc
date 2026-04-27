@@ -21,6 +21,7 @@
     ".planning/**",
     ".claude/**",
     "CLAUDE.md",
-    "AUDIT-REPORT.md"
+    "AUDIT-REPORT.md",
+    "scripts/tests/fixtures/**"
   ]
 }

@@ -52,6 +52,10 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - ✓ `manifest.json` `4.3.0` registers `scripts/uninstall.sh` under new `files.scripts[]` array; `init-local.sh --version` derives from manifest at runtime so version-align gate stays a 2-file (manifest + CHANGELOG) atomic bump; identical `To remove: bash <(curl -sSL .../scripts/uninstall.sh)` line in all 3 installers (`init-claude.sh`, `init-local.sh`, `update-claude.sh` with `NO_BANNER=1` guard); `CHANGELOG.md [4.3.0]` Added section covers UN-01..UN-08 — Validated in Phase 20: distribution-tests (UN-07)
 - ✓ `scripts/tests/test-uninstall.sh` round-trip integration test (5 scenarios S1-S5, 18 assertions) exercises real `init-local.sh` → uninstall.sh contract: clean → uninstall → `find .claude -type f == 0`, modified-file `y/N/d` branches via `TK_UNINSTALL_TTY_FROM_STDIN=1`, base-plugin SHA256 invariant, `--dry-run` zero-mutation, double-uninstall no-op; `scripts/tests/test-install-banner.sh` source-grep gate (3 assertions); Makefile Tests 24-27 + `.github/workflows/quality.yml` `validate-templates` job mirrors all 7 uninstall-suite tests (67 assertions) in CI — Validated in Phase 20 (UN-08)
 - ✓ Rule-1 install/uninstall contract gap fix: `scripts/init-local.sh` `INSTALLED_PATHS[]` now tracks 6 previously-untracked groups (cheatsheets×9, lessons-learned, audit-exceptions, scratchpad/current-task.md, CLAUDE.md, settings.json) — surfaced by Phase 20 S1 round-trip; closes silent gap where files were installed but not registered in `toolkit-install.json` — Validated in Phase 20
+- ✓ `scripts/lib/bootstrap.sh` `bootstrap_base_plugins()` runs in `init-claude.sh` + `init-local.sh` BEFORE `detect.sh` — two-prompt SP/GSD pre-install flow; reads `< /dev/tty` (override `TK_BOOTSTRAP_TTY_SRC`) with fail-closed `N` on EOF/no-tty; canonical `TK_SP_INSTALL_CMD` / `TK_GSD_INSTALL_CMD` constants in `optional-plugins.sh:18-19` (single source of truth per D-12); idempotency probes suppress prompts if `~/.claude/plugins/cache/claude-plugins-official/superpowers/` or `~/.claude/get-shit-done/` already exist (D-08); non-fatal `eval` captures rc and warns instead of aborting (D-10); `TK_NO_BOOTSTRAP=1` byte-quiet opt-out (D-17); `--no-bootstrap` CLI flag in both installers + `--help` listing; post-bootstrap `detect.sh` re-source so `HAS_SP`/`HAS_GSD` reflect new state (BOOTSTRAP-03); `scripts/tests/test-bootstrap.sh` 5-scenario hermetic test (26 assertions) wired into Makefile Test 28 + CI `quality.yml` `Tests 21-28` step; `docs/INSTALL.md` `## Installer Flags` section documents `--no-bootstrap` + `TK_NO_BOOTSTRAP` — Validated in Phase 21: sp-gsd-bootstrap-installer (BOOTSTRAP-01..04)
+- ✓ `manifest.json` `4.4.0` registers all six `scripts/lib/*.sh` helpers (`backup`, `bootstrap`, `dry-run-output`, `install`, `optional-plugins`, `state`) under new top-level `files.libs[]` array — `update-claude.sh` auto-discovers them via existing `.files | to_entries[] | .value[] | .path` jq path with ZERO code changes (D-07); `scripts/tests/test-update-libs.sh` hermetic 5-scenario regression test (15 assertions, idempotent) covers stale-refresh / clean-untouched / fresh-install / modified-file-fail-closed / uninstall round-trip via `TK_UPDATE_HOME`/`TK_UPDATE_FILE_SRC`/`TK_UPDATE_MANIFEST_OVERRIDE`/`TK_UPDATE_LIB_DIR`/`TK_UNINSTALL_HOME` seams; wired into Makefile Test 29 (+ standalone `test-update-libs` target) + CI `quality.yml` `Tests 21-29` step; `CHANGELOG.md [4.4.0]` consolidates Phase 21 + Phase 22 in single release entry — Validated in Phase 22: smart-update-coverage-for-scripts-lib-sh (LIB-01, LIB-02)
+- ✓ `scripts/init-claude.sh` + `scripts/init-local.sh` learn `--no-banner` flag and `NO_BANNER=1` env-var (env-form `NO_BANNER=${NO_BANNER:-0}` so caller env is honoured) — byte-symmetric with `update-claude.sh`'s existing flag (also fixed to env-form for true symmetry per WR-01 in Phase 23 REVIEW); `if [[ $NO_BANNER -eq 0 ]]` gate around closing `To remove: bash <(curl …)` echo (D-04); `scripts/tests/test-install-banner.sh` extended 3→7 source-grep assertions (A4-A7 cover env-form default + clause + gate in both init scripts); D-02 banner-string byte-identicality preserved across all 3 installers (`grep -cF` count = 1) — Validated in Phase 23: installer-symmetry-recovery (BANNER-01)
+- ✓ `scripts/uninstall.sh` learns `--keep-state` (and `TK_UNINSTALL_KEEP_STATE=1` env var) gating the existing `rm -f "$STATE_FILE"` block at the UN-05 D-06 LAST-step position (no reorder of backup/snapshot/sentinel-strip/diff-q invariants); `KEEP_STATE=${TK_UNINSTALL_KEEP_STATE:-0}` at top with CLI > env > default precedence (Phase 21 D-16 mirror); replaces `rm -f` with `log_info "State file preserved (--keep-state): $STATE_FILE"` on `--keep-state` branch; `--help` block + `docs/INSTALL.md` Installer Flags row document the surface; `scripts/tests/test-uninstall-keep-state.sh` (260 lines, S1+S2+S3 hermetic scenarios, 11 assertions) proves the four KEEP-02 contract assertions A1-A4 (state file present post-`--keep-state`-N-run, second invocation not a no-op, MODIFIED list non-empty, base-plugin diff-q invariant holds) plus full-y branch + env-only path; wired into Makefile Test 30 + CI `quality.yml` step renamed `Tests 21-29` → `Tests 21-30`; `CHANGELOG.md [4.4.0]` Added gains 3 bullets (BANNER-01 + KEEP-01 + KEEP-02), consolidated v4.4 entry preserved (D-18) — Validated in Phase 23 (KEEP-01, KEEP-02)
 
 <details>
 <summary>v4.3 requirements (shipped 2026-04-26)</summary>
@@ -145,20 +149,33 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Next Milestone Goals
+## Current Milestone: v4.4 Bootstrap & Polish
 
-_To be defined via `/gsd-new-milestone`._
+**Goal:** Streamline first-run UX (toolkit can offer to install SP/GSD via their canonical installers) and close residual smart-update / installer-symmetry gaps surfaced during v4.3.
 
-Candidate carry-overs after v4.3:
+**Target features:**
 
-- AUDIT-02/04/06/10/15 — Wave B/C hardening deferred from Phase 12 (compat matrix, merge strategy, version pinning, collision detection policy, provenance metadata)
-- Council `audit-review` integration with cloud Sentry/Linear (auto-create issue per Council-confirmed REAL finding) — surfaced from v4.2 deferred list
-- Installable GSD CLI wrapper in toolkit (crosses repo boundary — deferred from v4.1)
-- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` — wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers (Phase 19 D-01 deferred to v4.4; Phase 19 ships strip-only reader side)
-- `--keep-state` partial-uninstall flag (Phase 19 D-05 deferred to v4.4)
-- `--no-banner` flag for `init-claude.sh` / `init-local.sh` (Phase 20 D-08 deferred to v4.4 if user demand)
+- **Bootstrap installer** — `init-claude.sh` (and `init-local.sh`) ask `[y/N]` whether to install `superpowers` and/or `get-shit-done` before running detection. Toolkit invokes the canonical commands directly (`claude plugin install superpowers@claude-plugins-official` for SP, `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` for GSD). No forks, no vendoring. Re-runs `detect.sh` after bootstrap so the install proceeds in the correct mode.
+- **Register `scripts/lib/*.sh` in manifest** — close the smart-update gap where `lib/backup.sh`, `lib/dry-run-output.sh`, `lib/install.sh`, `lib/state.sh` are silently skipped on `update-claude.sh` because they are not in `manifest.json`. Add `files.libs[]` (or extend `files.scripts[]`) and teach `update-claude.sh` to iterate it.
+- **`--no-banner` symmetry** — `init-claude.sh` and `init-local.sh` learn the same `--no-banner` flag that `update-claude.sh` already honors. Suppresses the closing "To remove: bash <(curl …)" banner. CI / scripted users get clean output across all installers.
+- **`--keep-state` partial-uninstall recovery** — `scripts/uninstall.sh --keep-state` preserves `~/.claude/toolkit-install.json` after a session where the user answered N on every modified file. Lets a follow-up `uninstall.sh` see what is still on disk instead of a no-op.
+
+**Key context:**
+
+- All four items are scoped to known gaps in shipped behaviour; no new architecture, no new install modes, no breaking changes.
+- Bootstrap installer must respect `< /dev/tty` semantics (default N when no TTY, e.g. piped install) and offer a `--no-bootstrap` opt-out for CI.
+- Manifest registration must keep `make check` `version-align` + `validate` green; consider whether `lib/*.sh` warrants a separate manifest section or extends `files.scripts[]`.
+
+### Carry-overs not in this milestone
+
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers — Phase 19 D-01 deferred indefinitely; Phase 19 already shipped strip-only reader side)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
+- Closed earlier in this cleanup:
+  - AUDIT-10/12/14/15 — already covered by shipped behaviour (manifest + idempotent install + uninstall). Closed 2026-04-26.
+  - AUDIT-02/04/06 — WONTFIX (KISS/YAGNI; no overlay scenario, no lockfile needed). Closed 2026-04-26.
+  - DETECT-FUT-01 — closed by DETECT-06 in v4.1 Phase 9.
+  - Council `audit-review` → Sentry/Linear ticket creation — WONTFIX per user direction (2026-04-27): Sentry reserved for error monitoring (not tracking); project tracking lives outside the toolkit. Audit pipeline terminates at the report artefact.
 
 ## Key Decisions
 
@@ -202,4 +219,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-26 — Phase 18 complete: uninstall script foundation + dry-run + backup + [y/N/d] prompt shipped (UN-01..UN-04). Phase 19/20 remaining for v4.3.*
+*Last updated: 2026-04-27 — Phase 23 complete: installer symmetry & recovery shipped (BANNER-01 + KEEP-01 + KEEP-02). `init-claude.sh` + `init-local.sh` learn `--no-banner` (env-form `NO_BANNER=${NO_BANNER:-0}` so caller env honoured — same fix back-applied to `update-claude.sh` per WR-01); `uninstall.sh` learns `--keep-state` gating state-delete at UN-05 D-06 LAST position; new `test-uninstall-keep-state.sh` (S1+S2+S3, 11 assertions) wired into Makefile Test 30 + CI `Tests 21-30`; `test-install-banner.sh` extended 3→7. v4.4 milestone (Phases 21-23) feature-complete; manifest stays at `4.4.0`; CHANGELOG `[4.4.0]` consolidates Phase 21 + 22 + 23 in single release entry. Ready for `git tag v4.4.0`.*
