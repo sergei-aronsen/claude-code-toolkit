@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] - 2026-04-27
+
+### Added
+
+- **SP/GSD bootstrap installer** (`scripts/lib/bootstrap.sh`, `scripts/lib/optional-plugins.sh`) —
+  BOOTSTRAP-01..04: `init-claude.sh` and `init-local.sh` now offer to install `superpowers`
+  via `claude plugin install superpowers@claude-plugins-official` and `get-shit-done` via the
+  canonical curl install before detection runs. Prompts default to `N`, fail closed when no
+  TTY is available, and `--no-bootstrap` (or `TK_NO_BOOTSTRAP=1`) suppresses them entirely
+  for CI. After bootstrap, `detect.sh` re-runs so the toolkit installs in the correct mode
+  (`complement-sp` / `complement-gsd` / `complement-full`). Hermetic test:
+  `scripts/tests/test-bootstrap.sh` (Test 28).
+
+- **Smart-update coverage for `scripts/lib/*.sh`** — LIB-01: all six sourced helper libraries
+  (`backup.sh`, `bootstrap.sh`, `dry-run-output.sh`, `install.sh`, `optional-plugins.sh`,
+  `state.sh`) registered in `manifest.json` under a new `files.libs[]` array. LIB-02:
+  `update-claude.sh` now refreshes stale lib files using the same diff/backup/safe-write
+  contract as top-level scripts — zero code changes to the update loop required (the existing
+  `jq -c '[.files | to_entries[] | .value[] | .path]'` query auto-discovers the new key).
+  Hermetic test: `scripts/tests/test-update-libs.sh` (Test 29) — five scenarios proving
+  stale-refresh, clean-untouched, fresh-install, modified-file fail-closed, and uninstall
+  round-trip across all six libs.
+
 ## [4.3.0] - 2026-04-26
 
 ### Added
