@@ -547,9 +547,24 @@ def get_git_diff():
     return result
 
 
+def find_project_root():
+    """Resolve the project root: nearest ancestor containing .git/, falling back to cwd.
+
+    Council was previously fixed at Path.cwd() so running `brain "..."` from
+    a subdirectory (e.g. ./src/components/) silently missed the project's
+    CLAUDE.md. Walking up to .git/ finds the same root that git tools use,
+    which is what users expect when they think "project rules".
+    """
+    cwd = Path.cwd().resolve()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return cwd
+
+
 def get_project_rules():
     """Read CLAUDE.md from project root if it exists."""
-    claude_md = Path.cwd() / "CLAUDE.md"
+    claude_md = find_project_root() / "CLAUDE.md"
     if not claude_md.exists():
         return ""
     try:
