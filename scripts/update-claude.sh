@@ -254,10 +254,23 @@ detect_framework() {
 # synthesize_v3_state <manifest_path>
 # D-50: scan $CLAUDE_DIR for manifest-declared files, build installed_csv of absolute paths,
 # call lib/state.sh::write_state. Prints ONE info line explaining the synthesis.
+#
+# Mode policy: v3.x had no install modes — every file in the manifest was
+# installed unconditionally, which is functionally equivalent to mode=standalone.
+# Earlier revisions called recommend_mode() and silently picked complement-sp/
+# complement-gsd/complement-full based on currently-detected base plugins. That
+# meant a v3.x user who had since installed SP would have their mode switched
+# from standalone -> complement-sp without any prompt, and the downstream
+# mode-switch detection (which only fires when STATE_MODE != RECOMMENDED) would
+# pass clean because the synthesized mode already equals the recommendation.
+# Synthesizing with the actual historical mode (standalone) lets that detection
+# block surface the drift and ask the user before removing files.
 synthesize_v3_state() {
     local manifest_file="$1"
-    local mode installed_csv=""
-    mode=$(recommend_mode)
+    local installed_csv=""
+    local mode="standalone"
+    local recommended
+    recommended=$(recommend_mode)
     while IFS= read -r path; do
         if [[ -f "$CLAUDE_DIR/$path" ]]; then
             if [[ -n "$installed_csv" ]]; then installed_csv+=","; fi
@@ -265,6 +278,9 @@ synthesize_v3_state() {
         fi
     done < <(jq -r '.files | to_entries[] | .value[] | .path' "$manifest_file")
     log_info "First update after v3.x — synthesized install state from filesystem (mode=$mode)."
+    if [[ "$recommended" != "$mode" ]]; then
+        log_info "Detected $recommended would be recommended; the mode-switch prompt below will offer a migration."
+    fi
     write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" "" "true"
 }
 
