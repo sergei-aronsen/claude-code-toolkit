@@ -63,6 +63,16 @@ FORCE="${FORCE:-false}"
 FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
 NO_BOOTSTRAP="${NO_BOOTSTRAP:-false}"
 
+# Per-project state file (matches init-local.sh:68 / update-claude.sh:126 pattern).
+# state.sh defaults STATE_FILE/LOCK_DIR to $HOME — re-assert here so D-41/D-42
+# checks below and the eventual write_state target the project, not the user
+# home. Re-asserted again after source state.sh inside download_files() because
+# `source` overwrites these defaults.
+# shellcheck disable=SC2034  # consumed by D-41/D-42 checks below + write_state in lib/state.sh
+STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+# shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
+LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
+
 # ─────────────────────────────────────────────────
 # Phase 3 — DETECT-05 wiring (D-30, D-31)
 # Source detect.sh and lib/install.sh from the remote repo into temp files.
@@ -146,22 +156,24 @@ if [[ -n "$MODE" ]]; then
     fi
 fi
 
-# D-41: re-run delegation. If toolkit-install.json exists and --force absent,
-# print delegation message and exit 0. --force bypasses for intentional re-installs.
-if [[ -f "$HOME/.claude/toolkit-install.json" ]] && [[ "$FORCE" != "true" ]]; then
-    echo "Install already present at ~/.claude/. Use 'update-claude.sh' to refresh or 'init-claude.sh --force' to reinstall."
+# D-41: re-run delegation. If per-project state file exists and --force absent,
+# redirect user to update-claude.sh. --force bypasses for intentional re-installs.
+# Per-project semantics (matches init-local.sh): a fresh install in a different
+# project is NOT blocked by an install in another project.
+if [[ -f "$STATE_FILE" ]] && [[ "$FORCE" != "true" ]]; then
+    echo "Install already present (state: $STATE_FILE). Use 'update-claude.sh' to refresh or 'init-claude.sh --force' to reinstall."
     exit 0
 fi
 
 # D-42: mode-change prompt. Fires only when re-installing (--force) with explicit --mode
 # that differs from the recorded mode. --force-mode-change skips the prompt entirely.
 # Under curl|bash without /dev/tty, fails closed (exits 0 without changes).
-if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$HOME/.claude/toolkit-install.json" ]]; then
-    RECORDED_MODE=$(jq -r '.mode // ""' "$HOME/.claude/toolkit-install.json" 2>/dev/null || echo "")
+if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$STATE_FILE" ]]; then
+    RECORDED_MODE=$(jq -r '.mode // ""' "$STATE_FILE" 2>/dev/null || echo "")
     if [[ -n "$RECORDED_MODE" ]] && [[ "$RECORDED_MODE" != "$MODE" ]]; then
         if [[ "$FORCE_MODE_CHANGE" == "true" ]]; then
             echo "Switching mode: $RECORDED_MODE -> $MODE (--force-mode-change)"
-            cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+            cp "$STATE_FILE" "${STATE_FILE}.bak.$(date +%s)"
         else
             mc_choice=""
             if ! read -r -p "Switching $RECORDED_MODE -> $MODE will rewrite the install. Backup current state and proceed? [y/N]: " mc_choice < /dev/tty 2>/dev/null; then
@@ -169,7 +181,7 @@ if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$HOME/.claude/toolkit-
             fi
             case "${mc_choice:-N}" in
                 y|Y)
-                    cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+                    cp "$STATE_FILE" "${STATE_FILE}.bak.$(date +%s)"
                     ;;
                 *)
                     echo "Aborted. Pass --force-mode-change to bypass the prompt under curl|bash."
@@ -438,14 +450,23 @@ download_files() {
 
     # Source lib/state.sh into a temp file (needed for write_state / acquire_lock)
     LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX")
-    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
     if ! curl -sSLf "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
         echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
         exit 1
     fi
     # shellcheck source=/dev/null
     source "$LIB_STATE_TMP"
-    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    # Re-assert per-project STATE_FILE/LOCK_DIR — state.sh defaults to $HOME and
+    # `source` overwrites the top-of-file assignment. Without this, write_state
+    # below targets ~/.claude/toolkit-install.json while update-claude.sh reads
+    # ./.claude/toolkit-install.json — first update would never see the install
+    # state and would synthesize from filesystem on every run.
+    # shellcheck disable=SC2034  # STATE_FILE consumed by write_state in lib/state.sh
+    STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+    # shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
+    LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
+    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
     acquire_lock || exit 1
 
     # Iterate manifest.files.* — download all entries NOT in skip-list
