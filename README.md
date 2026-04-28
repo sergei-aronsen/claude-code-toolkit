@@ -86,6 +86,12 @@ mode. To override, pass `--mode standalone` (or any other mode name):
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) --mode complement-full
 ```
 
+> **Mode behavior today.** `manifest.json` currently catalogues 7 SP overlaps and 0 GSD
+> overlaps. `complement-sp` and `complement-full` skip the same 7 files; `complement-gsd`
+> skips none — i.e. it is functionally equivalent to `standalone` until GSD-specific
+> conflicts are catalogued. The 4-mode UX is preserved so the manifest can mark GSD
+> overlaps incrementally without an installer rewrite.
+
 ### Upgrading from v3.x
 
 v3.x users who installed SP or GSD after TK should run `scripts/migrate-to-complement.sh` to
