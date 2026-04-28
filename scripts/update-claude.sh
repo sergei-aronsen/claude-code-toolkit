@@ -890,6 +890,23 @@ with open(dst, "wb") as f:
 PYEOF
 }
 
+# prune_claude_md_new_versions — bound the .new.<ts> reconciliation history.
+# A user who never reconciles otherwise accumulates one .new.<epoch> file per
+# update (versioned by Council pass B above to avoid clobbering an in-progress
+# reconcile). Keep the 3 newest by mtime, drop the rest.
+# Glob ${CLAUDE_MD_NEW_FILE}.[0-9]* anchors on the digit-first suffix so we
+# never touch a hand-named foo.new.bak or similar. ls -1t works on BSD + GNU.
+prune_claude_md_new_versions() {
+    local kept=0 f
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        kept=$((kept + 1))
+        if [[ $kept -gt 3 ]]; then
+            rm -f "$f" && log_info "Pruned stale reconciliation: $f"
+        fi
+    done < <(ls -1t "${CLAUDE_MD_NEW_FILE}".[0-9]* 2>/dev/null)
+}
+
 if [[ -n "$CLAUDE_MD_TMP" ]]; then
     if [[ ! -f "$CLAUDE_MD" ]]; then
         # First install — no existing file to preserve.
@@ -903,8 +920,12 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
         if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
            && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
            && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
-            # Unchanged — clear any stale .new from a previous run and stay quiet.
+            # Unchanged — clear any stale .new and any timestamped versions.
+            # User accepted upstream; old reconciliation drafts are now noise.
             rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            for f in "${CLAUDE_MD_NEW_FILE}".[0-9]*; do
+                [[ -f "$f" ]] && rm -f "$f"
+            done
             log_info "CLAUDE.md already matches latest template"
         else
             # Council pass B: don't clobber an existing .new that the user may
@@ -914,6 +935,7 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
                 NEW_STAMP=$(date -u +%s)
                 mv "$CLAUDE_MD_NEW_FILE" "${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
                 log_warning "Preserved prior reconciliation as ${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+                prune_claude_md_new_versions
             fi
             mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
             log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"
