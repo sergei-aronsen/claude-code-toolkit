@@ -107,6 +107,55 @@ _bridge_global_dir() {
     esac
 }
 
+# _bridge_cli_label — map target name to user-facing CLI label for prompt strings.
+# Args: $1=target (gemini|codex)
+# Output: 'Gemini CLI' or 'OpenAI Codex CLI' on stdout.
+# Returns: 0 on known target, 1 on bad target (no stdout output).
+_bridge_cli_label() {
+    local target="$1"
+    case "$target" in
+        gemini) echo "Gemini CLI" ;;
+        codex)  echo "OpenAI Codex CLI" ;;
+        *)      return 1 ;;
+    esac
+}
+
+# _bridge_cli_version — probe CLI version, fail-soft.
+# Args: $1=target (gemini|codex)
+# Output: first line of `<cli> --version` on stdout (empty string if probe fails).
+# Returns: 0 always (fail-soft so the TUI/prompt can still render without a version suffix).
+# NOTE: head -1 is BSD/GNU portable; no GNU-only flags.
+_bridge_cli_version() {
+    local target="$1"
+    case "$target" in
+        gemini) gemini --version 2>/dev/null | head -1 || echo "" ;;
+        codex)  codex  --version 2>/dev/null | head -1 || echo "" ;;
+        *)      echo "" ;;
+    esac
+}
+
+# _bridge_match — comma-list membership test for --bridges <list> flag.
+# Args: $1=target (gemini|codex), $2=comma-separated list (e.g., "gemini,codex" or "gemini, codex")
+# Returns: 0 if $1 appears as a token in $2 (whitespace-trimmed), 1 otherwise.
+# Bash 3.2 portable: no associative arrays, no mapfile. IFS-split + trim via param expansion.
+_bridge_match() {
+    local target="$1" list="$2"
+    [[ -z "$list" ]] && return 1
+    local saved_ifs="$IFS"
+    IFS=','
+    # shellcheck disable=SC2206  # word-split on comma is the contract
+    local tokens=($list)
+    IFS="$saved_ifs"
+    local tok
+    for tok in "${tokens[@]+"${tokens[@]}"}"; do
+        # trim leading/trailing whitespace (Bash 3.2 portable)
+        tok="${tok#"${tok%%[![:space:]]*}"}"
+        tok="${tok%"${tok##*[![:space:]]}"}"
+        [[ "$tok" == "$target" ]] && return 0
+    done
+    return 1
+}
+
 # _bridge_write_file — atomic-ish file write with banner heredoc + verbatim source.
 # Args: $1=source-path (must exist), $2=target-abs-path
 # Returns: 0=success, 1=missing source, 2=mkdir/write blocked.
