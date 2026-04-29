@@ -158,6 +158,47 @@ The components page and the MCPs page are mutually exclusive within a single inv
 To install components AND MCPs, run `install.sh` twice: once without `--mcps` for the
 components checklist, and once with `--mcps` for the MCP catalog.
 
+### --skills flag
+
+Install curated skills from the toolkit's marketplace mirror.
+
+```bash
+# TUI mode — interactive 22-skill catalog with detect status
+bash scripts/install.sh --skills
+
+# Non-interactive — install all uninstalled skills (default-set)
+bash scripts/install.sh --skills --yes
+
+# Re-install (overwrite existing skills)
+bash scripts/install.sh --skills --yes --force
+
+# Dry-run preview (no filesystem writes)
+bash scripts/install.sh --skills --yes --dry-run
+```
+
+Skills install to `~/.claude/skills/<name>/`. Skills are detected via directory
+presence (`[ -d ~/.claude/skills/<name>/ ]`).
+
+**Idempotent semantics:**
+
+- Without `--force`: already-installed skills are skipped (status `skipped: already installed`).
+- With `--force`: existing target directory is removed before re-copy.
+
+**Failure handling:** A failed skill copy does not block the rest. Per-skill status
+appears in the post-install summary as `installed ✓`, `skipped`, `would-install`,
+or `failed (exit N)`.
+
+**Removing a skill:** `rm -rf ~/.claude/skills/<name>` (no dedicated
+`--skills-remove` flag — manual deletion is sufficient).
+
+**Mirror provenance:** All 22 skills are sourced from upstream and committed to
+`templates/skills-marketplace/` as a static snapshot. Re-sync via
+`scripts/sync-skills-mirror.sh` (maintainer tool). See `docs/SKILLS-MIRROR.md`
+for license + upstream URL per skill.
+
+**Mutex with `--mcps`:** `--mcps` and `--skills` cannot be combined in the same
+invocation. Run two separate commands.
+
 ### Backwards compatibility
 
 All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
