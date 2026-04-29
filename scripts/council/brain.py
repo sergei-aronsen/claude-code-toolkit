@@ -82,6 +82,50 @@ AUDIT_REVIEW_GPT_SYSTEM = (
     "the bracketed <verdict-table> and <missed-findings> blocks per the prompt."
 )
 
+# ─────────────────────────────────────────────────
+# Externalized system prompts (Phase 24 Sub-Phase 2)
+# ─────────────────────────────────────────────────
+#
+# The four system prompts above (GEMINI_SYSTEM, GPT_SYSTEM, AUDIT_REVIEW_*) are
+# editable as files under ~/.claude/council/prompts/. load_prompt() reads them
+# at first use and caches the contents per process. The embedded constants act
+# as a self-contained fallback so brain.py keeps working before any installer
+# has populated the prompts directory (first-run case).
+
+PROMPTS_DIR = Path.home() / ".claude" / "council" / "prompts"
+
+PROMPT_FALLBACKS = {
+    "skeptic-system": GEMINI_SYSTEM,
+    "pragmatist-system": GPT_SYSTEM,
+    "audit-review-skeptic": AUDIT_REVIEW_GEMINI_SYSTEM,
+    "audit-review-pragmatist": AUDIT_REVIEW_GPT_SYSTEM,
+}
+
+_PROMPT_CACHE = {}
+
+
+def load_prompt(name):
+    """Return the system prompt body for `name`.
+
+    Looks for `~/.claude/council/prompts/<name>.md` first; falls back to the
+    embedded constant when the file is missing or unreadable. Cached per process
+    so repeated `_run_validate_plan` phases don't re-read the file from disk.
+    """
+    if name in _PROMPT_CACHE:
+        return _PROMPT_CACHE[name]
+    path = PROMPTS_DIR / f"{name}.md"
+    text = None
+    try:
+        if path.is_file():
+            text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        text = None
+    if not text:
+        text = PROMPT_FALLBACKS.get(name, "")
+    _PROMPT_CACHE[name] = text
+    return text
+
+
 # Council audit-review constants
 COUNCIL_SLOT_PLACEHOLDER = "_pending — run /council audit-review_"  # U+2014 em-dash
 COUNCIL_VERDICT_HEADER = "| ID | verdict | confidence | justification |"
@@ -681,7 +725,7 @@ def ask_chatgpt(prompt, config, system_prompt=None):
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt or GPT_SYSTEM},
+            {"role": "system", "content": system_prompt or load_prompt("pragmatist-system")},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.2
@@ -751,7 +795,7 @@ def dispatch_audit_review_chatgpt(prompt, config):
     stub = os.getenv("COUNCIL_STUB_CHATGPT")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_chatgpt(prompt, config, system_prompt=AUDIT_REVIEW_GPT_SYSTEM)
+    return ask_chatgpt(prompt, config, system_prompt=load_prompt("audit-review-pragmatist"))
 
 
 def run_audit_review(report_path_str, config):
@@ -931,7 +975,7 @@ def _run_validate_plan(plan, config):
     if config.get("_gemini_available", True):
         print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
 
-        context_prompt = f"""{GEMINI_SYSTEM}
+        context_prompt = f"""{load_prompt("skeptic-system")}
 
 Review the project structure and the implementation plan.
 
@@ -958,7 +1002,7 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
     files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
 
-    skeptic_prompt = f"""{GEMINI_SYSTEM}
+    skeptic_prompt = f"""{load_prompt("skeptic-system")}
 {rules_block}
 
 FILES CONTEXT:
