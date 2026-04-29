@@ -92,7 +92,13 @@
 4. Passing `--yes` flag (or piping stdin without a TTY) bypasses the menu and installs the default set non-interactively, enabling CI use
 5. Existing `bash <(curl -sSL .../scripts/init-claude.sh)` URL invocations continue to work byte-identically with all v4.4 flags (`--no-bootstrap`, `--no-banner`, `TK_NO_BOOTSTRAP`, `NO_BANNER`) unchanged, and the 26-assertion `test-bootstrap.sh` stays green
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 24-01-PLAN.md — `lib/detect2.sh` centralized is_*_installed wrapper (Wave 1; DET-01..DET-05)
+- [ ] 24-02-PLAN.md — `lib/tui.sh` Bash 3.2 TUI checklist + confirm prompt (Wave 1; TUI-01..TUI-06)
+- [ ] 24-03-PLAN.md — `lib/dispatch.sh` six dispatchers + `--yes` flag wiring on setup-security.sh and install-statusline.sh (Wave 2; DISPATCH-01, DISPATCH-02)
+- [ ] 24-04-PLAN.md — top-level `scripts/install.sh` orchestrator + `test-install-tui.sh` ≥15 assertions + Makefile/CI Test 31 (Wave 3; TUI-07, DISPATCH-03, BACKCOMPAT-01)
+- [ ] 24-05-PLAN.md — `manifest.json` distribution wiring (3 libs + install.sh) + `docs/INSTALL.md` user-facing flag table (Wave 3, parallel with Plan 04; BACKCOMPAT-01, TUI-07)
 
 **UI hint**: yes
 
@@ -162,7 +168,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Unified TUI Installer + Centralized Detection | 0/5 | Not started | - |
+| 24. Unified TUI Installer + Centralized Detection | 0/5 | Plans ready | - |
 | 25. MCP Selector | 0/4 | Not started | - |
 | 26. Skills Selector | 0/3 | Not started | - |
 | 27. Marketplace Publishing + Claude Desktop Reach | 0/4 | Not started | - |
