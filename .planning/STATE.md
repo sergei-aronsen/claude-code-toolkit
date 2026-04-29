@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 24-03-dispatch-and-yes-wiring-PLAN.md
-last_updated: "2026-04-29T10:59:15.098Z"
+stopped_at: Completed 24-04-install-orchestrator-and-tests-PLAN.md
+last_updated: "2026-04-29T11:20:01.331Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
-  percent: 60
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 24 (unified-tui-installer-centralized-detection) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -94,6 +94,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 24]: D-24: curl-pipe detection via BASH_SOURCE[0]==/dev/fd/* or $0==bash
 - [Phase 24]: D-25: dispatcher contract: each accepts --force/--dry-run/--yes, returns exit code unchanged
 - [Phase 24]: D-26: setup-security.sh --yes active (future read guards); install-statusline.sh --yes no-op
+- [Phase 24]: run_cleanup uses if/then not && to prevent empty-array condition from setting EXIT trap exit code
+- [Phase 24]: S9 uses non-existent TTY path not /dev/null to trigger D-05 fork (/dev/null is readable)
+- [Phase 24]: Test seam overrides use real bash scripts (_NOOP_SCRIPT) not ':' builtin
 
 ### Key v4.5 Constraints (from research)
 
@@ -155,11 +158,12 @@ Carry-overs available for next milestone scoping:
 | Phase 24 P01 | 15m | 3 tasks | 2 files |
 | Phase 24 P02 | 6 | 3 tasks | 1 files |
 | Phase 24 P03 | 4min | 4 tasks | 3 files |
+| Phase 24 P04 | 180 | 3 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T10:59:15.095Z
-Stopped at: Completed 24-03-dispatch-and-yes-wiring-PLAN.md
+Last session: 2026-04-29T11:20:01.328Z
+Stopped at: Completed 24-04-install-orchestrator-and-tests-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**

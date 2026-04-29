@@ -18,7 +18,7 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 - [x] **TUI-04**: Each item displays label + status (`[ ]`, `[x]`, `[installed ✓]`) + optional description on focused row. Selection visually distinguished (reverse video or arrow indicator).
 - [x] **TUI-05**: Confirmation step before any installer runs (`Install N component(s)? [y/N]`). Default N. Cancel returns to menu without changes.
 - [x] **TUI-06**: `--no-color` and `${NO_COLOR+x}` honored ([no-color.org](https://no-color.org)). `[ -t 1 ]` gates color output.
-- [ ] **TUI-07**: `scripts/tests/test-install-tui.sh` hermetic test (≥15 assertions): keystroke injection via fixture file, no-TTY fallback path, `--yes` non-interactive default-set, `--dry-run` zero-mutation, `--force` re-runs detected components.
+- [x] **TUI-07**: `scripts/tests/test-install-tui.sh` hermetic test (≥15 assertions): keystroke injection via fixture file, no-TTY fallback path, `--yes` non-interactive default-set, `--dry-run` zero-mutation, `--force` re-runs detected components.
 
 #### Centralized detection v2
 
@@ -32,11 +32,11 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 - [x] **DISPATCH-01**: `scripts/lib/dispatch.sh` exposes per-component dispatchers (`dispatch_toolkit`, `dispatch_security`, `dispatch_rtk`, `dispatch_statusline`) that invoke existing per-component scripts as `bash -c` subprocesses with appropriate flags. Order-of-operations contract: SP/GSD → toolkit → security → RTK → statusline.
 - [x] **DISPATCH-02**: `setup-security.sh` learns `--yes` flag that gates every interactive `read -r -p` block (use safe defaults). `install-statusline.sh` learns `--yes` as accepted-but-no-op (semantic symmetry). `init-claude.sh` already non-interactive — no flag added.
-- [ ] **DISPATCH-03**: `scripts/install.sh` is a new top-level orchestrator (NOT a trampoline). Sources `lib/{tui,detect2,dispatch}.sh`, runs detection → TUI → confirmation → dispatch → post-install summary. Failure of step N reports per-component status; remaining components continue (configurable via `--fail-fast`).
+- [x] **DISPATCH-03**: `scripts/install.sh` is a new top-level orchestrator (NOT a trampoline). Sources `lib/{tui,detect2,dispatch}.sh`, runs detection → TUI → confirmation → dispatch → post-install summary. Failure of step N reports per-component status; remaining components continue (configurable via `--fail-fast`).
 
 #### Backwards compatibility
 
-- [ ] **BACKCOMPAT-01**: Existing `init-claude.sh` URL stays valid and unchanged. v4.4 BOOTSTRAP-01..04 contract preserved (26-assertion `test-bootstrap.sh` stays green throughout Phase 24). `bootstrap.sh` becomes the no-TTY fallback for SP/GSD prompts only — TUI replaces the interactive layer above it. `--no-bootstrap`, `--no-banner`, `TK_NO_BOOTSTRAP`, `NO_BANNER` env-vars/flags preserved on all paths.
+- [x] **BACKCOMPAT-01**: Existing `init-claude.sh` URL stays valid and unchanged. v4.4 BOOTSTRAP-01..04 contract preserved (26-assertion `test-bootstrap.sh` stays green throughout Phase 24). `bootstrap.sh` becomes the no-TTY fallback for SP/GSD prompts only — TUI replaces the interactive layer above it. `--no-bootstrap`, `--no-banner`, `TK_NO_BOOTSTRAP`, `NO_BANNER` env-vars/flags preserved on all paths.
 
 ### Phase 25 — MCP Selector
 
