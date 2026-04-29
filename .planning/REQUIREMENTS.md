@@ -33,13 +33,13 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Sync on update (`update-claude.sh` extension)
 
-- [ ] **BRIDGE-SYNC-01**: `update-claude.sh` iterates `bridges[]` from `toolkit-install.json`. For each bridge:
+- [x] **BRIDGE-SYNC-01**: `update-claude.sh` iterates `bridges[]` from `toolkit-install.json`. For each bridge:
   - Compute current SHA256 of source `CLAUDE.md` and bridge file.
   - If `source_sha256` changed AND `bridge_sha256` matches recorded (no user edits): re-copy + update both SHAs in state. Log `[~ UPDATE] GEMINI.md` (chezmoi-grade output via `dro_*` helpers from v4.1 UX-01).
   - If `bridge_sha256` differs from recorded (user edits detected): prompt `[y/N/d]` (overwrite / keep / show diff). `N` is default. `d` shows diff and re-prompts. Mirrors v4.3 UN-03 contract.
   - If `user_owned: true` (set by `--break-bridge`): skip silently, log `[- SKIP] GEMINI.md (--break-bridge)`.
-- [ ] **BRIDGE-SYNC-02**: `update-claude.sh --break-bridge <target>` flag sets `user_owned: true` for the named bridge in toolkit-install.json. Subsequent `update-claude.sh` runs skip that bridge. Reversible: `--restore-bridge <target>` clears the flag (re-syncs on next update).
-- [ ] **BRIDGE-SYNC-03**: When `CLAUDE.md` itself was deleted by user (rare), `update-claude.sh` does NOT delete bridges; logs `[? ORPHANED] GEMINI.md (CLAUDE.md missing)` and continues. Bridges become user-owned by default in that case.
+- [x] **BRIDGE-SYNC-02**: `update-claude.sh --break-bridge <target>` flag sets `user_owned: true` for the named bridge in toolkit-install.json. Subsequent `update-claude.sh` runs skip that bridge. Reversible: `--restore-bridge <target>` clears the flag (re-syncs on next update).
+- [x] **BRIDGE-SYNC-03**: When `CLAUDE.md` itself was deleted by user (rare), `update-claude.sh` does NOT delete bridges; logs `[? ORPHANED] GEMINI.md (CLAUDE.md missing)` and continues. Bridges become user-owned by default in that case.
 
 ### Install-time UX (`scripts/install.sh` + `init-claude.sh` + `init-local.sh`)
 
