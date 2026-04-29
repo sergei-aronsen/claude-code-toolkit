@@ -677,6 +677,7 @@ recommend_statusline() {
 # Setup Supreme Council (integrated)
 setup_council() {
     local council_dir="$HOME/.claude/council"
+    local commands_dir="$HOME/.claude/commands"
 
     echo ""
     echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
@@ -691,6 +692,28 @@ setup_council() {
         echo -e "  Install Python 3.8+ and run: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-council.sh)${NC}"
         return
     fi
+
+    # Source cli-recommendations helper (Phase 24 Sub-Phase 1) and surface CLI
+    # availability before the user picks Gemini CLI vs API. Test seam:
+    # TK_COUNCIL_LIB_DIR=<path> uses local copies (init-local.sh / hermetic tests).
+    local lib_cli_tmp
+    lib_cli_tmp=$(mktemp "${TMPDIR:-/tmp}/cli-recommendations.XXXXXX")
+    if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" ]]; then
+        cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$lib_cli_tmp"
+        # shellcheck source=/dev/null
+        source "$lib_cli_tmp"
+    elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$lib_cli_tmp" 2>/dev/null; then
+        # shellcheck source=/dev/null
+        source "$lib_cli_tmp"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Could not fetch cli-recommendations.sh — skipping CLI hints"
+        recommend_clis() { :; }
+    fi
+    rm -f "$lib_cli_tmp"
+
+    echo -e "  ${BLUE}Provider CLI availability:${NC}"
+    recommend_clis
+    echo ""
 
     # Download brain.py
     mkdir -p "$council_dir"
@@ -725,6 +748,27 @@ setup_council() {
     else
         rm -f "$council_dir/prompts/audit-review.md.tmp"
         echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
+    fi
+
+    # Install /council slash command globally (Phase 24 Sub-Phase 1).
+    # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
+    # ~/.claude/commands/, not in per-project ./.claude/commands/.
+    mkdir -p "$commands_dir"
+    if curl -sSLf "$REPO_URL/commands/council.md" \
+            -o "$commands_dir/council.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/council.md" ]; then
+            mv "$commands_dir/council.md.tmp" "$commands_dir/council.md"
+            echo -e "  ${GREEN}✓${NC} commands/council.md installed (global)"
+        elif [ "$commands_dir/council.md.tmp" -nt "$commands_dir/council.md" ]; then
+            mv "$commands_dir/council.md.tmp" "$commands_dir/council.md"
+            echo -e "  ${GREEN}✓${NC} commands/council.md (refreshed)"
+        else
+            rm -f "$commands_dir/council.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/council.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/council.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
     fi
 
     # Ask to configure now (skip in non-interactive environments)

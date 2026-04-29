@@ -302,15 +302,9 @@ Load: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 
-## Supreme Council (Optional)
+## Supreme Council
 
-For high-stakes changes, use multi-AI review:
-`/council "feature description"` or `brain "feature description"`
-
-**When to use:** New features, security, refactoring, payments, breaking API changes.
-**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
-
-Full guide: `components/supreme-council.md`
+> Supreme Council is global — see `~/.claude/CLAUDE.md` "Supreme Council" section.
 
 ---
 

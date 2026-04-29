@@ -272,7 +272,19 @@ These tools provide defense layers beyond prompt-based rules:
 
 ---
 
-## 15. USER PREFERENCES (customize this section)
+## 15. SUPREME COUNCIL
+
+For high-stakes changes, use multi-AI review:
+`/council "feature description"` or `brain "feature description"`
+
+**When to use:** New features, security, refactoring, payments, breaking API changes.
+**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
+
+Full guide: `components/supreme-council.md`
+
+---
+
+## 16. USER PREFERENCES (customize this section)
 
 > Add your personal rules below. These apply to ALL projects on this machine.
 > Keep it short (under 20 lines) — this file loads into every message.

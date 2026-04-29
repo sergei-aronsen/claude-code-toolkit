@@ -177,6 +177,72 @@ short_hash() {
     fi
 }
 
+# cleanup_stale_council_command (Phase 24 Sub-Phase 1)
+# v4.4 installs put commands/council.md into per-project ./.claude/commands/.
+# v4.5 ships it globally via setup-council.sh. Detect leftover local copies
+# and offer interactive removal. Idempotent — no-op if nothing to clean.
+#
+# Behaviour matrix:
+#   local exists, global missing → recommend running setup-council.sh first.
+#   local exists, global same    → safe to remove local (it's a duplicate).
+#   local exists, global differs → may be user customization; warn + prompt.
+#   local missing                → no-op.
+cleanup_stale_council_command() {
+    local local_council="$CLAUDE_DIR/commands/council.md"
+    local global_council="$HOME/.claude/commands/council.md"
+
+    [[ -f "$local_council" ]] || return 0
+
+    local local_hash="" global_hash="" hashes_differ=false
+    local_hash=$(sha256_file "$local_council" 2>/dev/null || echo "")
+    if [[ -f "$global_council" ]]; then
+        global_hash=$(sha256_file "$global_council" 2>/dev/null || echo "")
+        if [[ -n "$local_hash" && -n "$global_hash" && "$local_hash" != "$global_hash" ]]; then
+            hashes_differ=true
+        fi
+    fi
+
+    echo ""
+    log_warning "Stale per-project Council command detected:"
+    echo "    $local_council"
+    if [[ ! -f "$global_council" ]]; then
+        echo "    Global counterpart at $global_council does NOT exist."
+        echo "    Run setup-council.sh first, then re-run this migration."
+        return 0
+    fi
+    if [[ "$hashes_differ" == "true" ]]; then
+        echo "    Global $global_council exists with DIFFERENT contents."
+        echo "    Your local file may carry user customizations."
+    else
+        echo "    Global counterpart exists at $global_council (identical content)."
+    fi
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+        echo "    [dry-run] would offer interactive removal."
+        return 0
+    fi
+
+    if [[ $YES -eq 1 ]]; then
+        rm -f "$local_council"
+        log_success "Removed $local_council (--yes)"
+        return 0
+    fi
+
+    local choice=""
+    if ! read -r -p "Remove stale per-project council.md? [y/N]: " choice < /dev/tty 2>/dev/null; then
+        choice="N"
+    fi
+    case "${choice:-N}" in
+        y|Y)
+            rm -f "$local_council"
+            log_success "Removed $local_council"
+            ;;
+        *)
+            log_info "Kept $local_council"
+            ;;
+    esac
+}
+
 # ───────── MAIN ─────────
 
 [[ ! -d "$CLAUDE_DIR" ]] && { log_error "$CLAUDE_DIR not found. Nothing to migrate."; exit 1; }
@@ -223,6 +289,9 @@ done < <(jq -r '.[]' <<<"$SKIP_SET_JSON")
 
 if [[ ${#DUPLICATES[@]} -eq 0 ]]; then
     log_success "No duplicate files found on disk. Nothing to migrate."
+    # Phase 24 SP1: even with no SP/GSD duplicates, a v4.4 install may still
+    # carry the legacy per-project council.md leftover. Run cleanup hook.
+    cleanup_stale_council_command
     exit 0
 fi
 
@@ -277,6 +346,9 @@ if [[ $DRY_RUN -eq 1 ]]; then
     done
     echo ""
     dro_print_total "${#DUPLICATES[@]}"
+    # Phase 24 SP1: surface stale per-project council.md preview alongside
+    # SP/GSD duplicates so dry-run users see the full picture.
+    cleanup_stale_council_command
     exit 0
 fi
 
@@ -432,4 +504,8 @@ echo ""
 if [[ $VERBOSE -eq 1 ]]; then
     log_info "State written to: $STATE_FILE"
 fi
+
+# Phase 24 SP1: clean up legacy per-project council.md alongside SP/GSD migration.
+cleanup_stale_council_command
+
 log_warning "⚠ Restart Claude Code to apply changes."
