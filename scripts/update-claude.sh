@@ -19,7 +19,17 @@ DRY_RUN_CLEAN=0
 # which only governs --clean-backups). The --dry-run arg sets BOTH so existing
 # `--clean-backups --dry-run` workflow continues unchanged (RESEARCH Pitfall 3).
 DRY_RUN=0
-for arg in "$@"; do
+# Phase 29 BRIDGE-SYNC-02 flag state. Empty string = flag not present.
+# When set, the script enters a state-only short-circuit mode (mutate
+# user_owned in bridges[], exit 0; do NOT run the regular update flow).
+BREAK_BRIDGE=""
+RESTORE_BRIDGE=""
+# 1-token form (--break-bridge=gemini) handled inside the loop.
+# 2-token form (--break-bridge gemini) handled via the i+1 peek below.
+i=1
+while [[ $i -le $# ]]; do
+    arg="${!i}"
+    next_idx=$((i + 1))
     case "$arg" in
         --no-banner) NO_BANNER=1 ;;
         --offer-mode-switch=yes)                       OFFER_MODE_SWITCH="yes" ;;
@@ -31,8 +41,29 @@ for arg in "$@"; do
         --clean-backups)  CLEAN_BACKUPS=1 ;;
         --keep=*)         KEEP_N="${arg#--keep=}" ;;
         --dry-run)        DRY_RUN=1; DRY_RUN_CLEAN=1 ;;
+        --break-bridge=*)   BREAK_BRIDGE="${arg#--break-bridge=}" ;;
+        --restore-bridge=*) RESTORE_BRIDGE="${arg#--restore-bridge=}" ;;
+        --break-bridge)
+            if [[ $next_idx -le $# ]]; then
+                BREAK_BRIDGE="${!next_idx}"
+                i=$next_idx
+            else
+                echo "Usage: --break-bridge <target>  (target: gemini | codex)" >&2
+                exit 2
+            fi
+            ;;
+        --restore-bridge)
+            if [[ $next_idx -le $# ]]; then
+                RESTORE_BRIDGE="${!next_idx}"
+                i=$next_idx
+            else
+                echo "Usage: --restore-bridge <target>  (target: gemini | codex)" >&2
+                exit 2
+            fi
+            ;;
         *) ;;
     esac
+    i=$((i + 1))
 done
 
 RED='\033[0;31m'
@@ -57,8 +88,9 @@ LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
+LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
 
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
@@ -81,7 +113,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -135,6 +167,60 @@ log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
+
+# ─────────────────────────────────────────────────
+# Phase 29 BRIDGE-SYNC-02 — --break-bridge / --restore-bridge state-only dispatch
+# Runs AFTER lib sourcing (needs _bridge_set_user_owned) and AFTER STATE_FILE/LOCK_DIR
+# test-seam overrides. Mutates user_owned in bridges[], exits 0 — never enters
+# the regular update flow.
+# ─────────────────────────────────────────────────
+if [[ -n "$BREAK_BRIDGE" || -n "$RESTORE_BRIDGE" ]]; then
+    # Mutually exclusive: refuse both at once.
+    if [[ -n "$BREAK_BRIDGE" && -n "$RESTORE_BRIDGE" ]]; then
+        echo -e "${RED}✗${NC} --break-bridge and --restore-bridge are mutually exclusive" >&2
+        exit 2
+    fi
+
+    if [[ -n "$BREAK_BRIDGE" ]]; then
+        # Case-insensitive normalization without ${var,,} (Bash 3.2 invariant).
+        _bb_target=$(echo "$BREAK_BRIDGE" | tr '[:upper:]' '[:lower:]')
+        case "$_bb_target" in
+            gemini|codex) : ;;
+            *)
+                echo -e "${RED}✗${NC} --break-bridge target must be 'gemini' or 'codex' (got: $BREAK_BRIDGE)" >&2
+                exit 2
+                ;;
+        esac
+        # Honor TK_UPDATE_HOME for state file path so tests share the same seam.
+        export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+        if _bridge_set_user_owned "$_bb_target" true; then
+            log_success "Bridge sync disabled for target=$_bb_target (user_owned=true). Run --restore-bridge $_bb_target to re-enable."
+            exit 0
+        else
+            log_error "Failed to flip user_owned for target=$_bb_target. Inspect $STATE_FILE manually."
+            exit 1
+        fi
+    fi
+
+    if [[ -n "$RESTORE_BRIDGE" ]]; then
+        _rb_target=$(echo "$RESTORE_BRIDGE" | tr '[:upper:]' '[:lower:]')
+        case "$_rb_target" in
+            gemini|codex) : ;;
+            *)
+                echo -e "${RED}✗${NC} --restore-bridge target must be 'gemini' or 'codex' (got: $RESTORE_BRIDGE)" >&2
+                exit 2
+                ;;
+        esac
+        export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+        if _bridge_set_user_owned "$_rb_target" false; then
+            log_success "Bridge sync re-enabled for target=$_rb_target (user_owned=false). Next update-claude.sh will re-sync."
+            exit 0
+        else
+            log_error "Failed to flip user_owned for target=$_rb_target. Inspect $STATE_FILE manually."
+            exit 1
+        fi
+    fi
+fi
 
 # _fmt_age — internal helper; prints e.g. "14d 3h", "5h 12m", "47m", "<1m"
 _fmt_age() {
@@ -680,7 +766,7 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"

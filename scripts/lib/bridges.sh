@@ -38,13 +38,19 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
-# Source sibling libs. BASH_SOURCE[0]:- guards against unset under set -u when
-# sourced via process substitution (Bash 3.2 portability).
-_BRIDGES_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)"
-# shellcheck source=/dev/null
-source "${_BRIDGES_LIB_DIR}/state.sh"
-# shellcheck source=/dev/null
-source "${_BRIDGES_LIB_DIR}/dry-run-output.sh"
+# Source sibling libs only if not already available.
+# Guards against the case where bridges.sh is sourced from a tmpfile by
+# update-claude.sh (which already sourced state.sh + dry-run-output.sh
+# into the current shell from their own tmpfiles — BASH_SOURCE[0] would
+# resolve to the tmpdir, not scripts/lib/, causing a "No such file" error).
+if ! command -v write_state >/dev/null 2>&1; then
+    # BASH_SOURCE[0]:- guards against unset under set -u (Bash 3.2 portability).
+    _BRIDGES_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)"
+    # shellcheck source=/dev/null
+    source "${_BRIDGES_LIB_DIR}/state.sh"
+    # shellcheck source=/dev/null
+    source "${_BRIDGES_LIB_DIR}/dry-run-output.sh"
+fi
 
 # ──────────────────────────────────────────────────────────────────────────
 # Internal helpers (prefixed with _bridge_, not part of public API)
