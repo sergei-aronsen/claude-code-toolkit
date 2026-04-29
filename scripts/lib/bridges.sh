@@ -247,3 +247,191 @@ bridge_create_global() {
 
     return 0
 }
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 29 helpers — bridges[] state-only mutations + drift prompt
+# ──────────────────────────────────────────────────────────────────────────
+
+# _bridge_set_user_owned — flip user_owned on every bridges[] entry whose
+# target matches. Single-flag-many-rows resolution: --break-bridge gemini
+# affects both project and global gemini bridges (per CONTEXT.md decision).
+# Args: $1=target (gemini|codex), $2=value (true|false)
+# Returns: 0=success, 1=python failure / lock failure, 3=bad args
+_bridge_set_user_owned() {
+    local target="$1" value="$2"
+    case "$target" in gemini|codex) : ;; *) return 3 ;; esac
+    case "$value"  in true|false)   : ;; *) return 3 ;; esac
+
+    local home state_file
+    home="$(_bridge_home)"
+    state_file="${home}/.claude/toolkit-install.json"
+
+    # No state file means there is nothing to mutate — treat as success no-op.
+    [[ -f "$state_file" ]] || return 0
+
+    local saved_lock_dir="${LOCK_DIR:-}"
+    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+
+    if ! acquire_lock; then
+        LOCK_DIR="$saved_lock_dir"
+        return 1
+    fi
+
+    local rc=0
+    python3 - "$target" "$value" "$state_file" <<'PYEOF' || rc=1
+import json, os, sys, tempfile
+
+target, value, state_path = sys.argv[1:4]
+new_user_owned = (value == "true")
+
+with open(state_path) as f:
+    state = json.load(f)
+
+bridges = state.get("bridges", [])
+for e in bridges:
+    if e.get("target") == target:
+        e["user_owned"] = new_user_owned
+state["bridges"] = bridges
+
+out_dir = os.path.dirname(os.path.abspath(state_path))
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix="toolkit-install.", suffix=".tmp")
+try:
+    with os.fdopen(tmp_fd, "w") as f:
+        json.dump(state, f, indent=2)
+        f.write("\n")
+    os.replace(tmp_path, state_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
+
+    release_lock
+    LOCK_DIR="$saved_lock_dir"
+    return $rc
+}
+
+# _bridge_remove_state_entry — remove one bridges[] entry matching the
+# (target, scope, path) triple. Atomic patch via tempfile + os.replace.
+# Args: $1=target (gemini|codex), $2=scope (project|global), $3=path (abs)
+# Returns: 0=success (or no-op if not found / no state file), 1=python failure
+_bridge_remove_state_entry() {
+    local target="$1" scope="$2" path="$3"
+
+    local home state_file
+    home="$(_bridge_home)"
+    state_file="${home}/.claude/toolkit-install.json"
+
+    [[ -f "$state_file" ]] || return 0   # no state = nothing to remove
+
+    local saved_lock_dir="${LOCK_DIR:-}"
+    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+
+    if ! acquire_lock; then
+        LOCK_DIR="$saved_lock_dir"
+        return 1
+    fi
+
+    local rc=0
+    python3 - "$target" "$scope" "$path" "$state_file" <<'PYEOF' || rc=1
+import json, os, sys, tempfile
+
+target, scope, path, state_path = sys.argv[1:5]
+
+with open(state_path) as f:
+    state = json.load(f)
+
+bridges = state.get("bridges", [])
+filtered = [
+    e for e in bridges
+    if not (
+        e.get("target") == target
+        and e.get("scope")  == scope
+        and e.get("path")   == path
+    )
+]
+state["bridges"] = filtered
+
+out_dir = os.path.dirname(os.path.abspath(state_path))
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix="toolkit-install.", suffix=".tmp")
+try:
+    with os.fdopen(tmp_fd, "w") as f:
+        json.dump(state, f, indent=2)
+        f.write("\n")
+    os.replace(tmp_path, state_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
+
+    release_lock
+    LOCK_DIR="$saved_lock_dir"
+    return $rc
+}
+
+# bridge_prompt_drift — interactive [y/N/d] for a drifted bridge file.
+# Returns: 0 = overwrite, 1 = keep (default; covers EOF / unknown / N).
+# 'd' shows a diff between the bridge file on disk and the would-be-rewritten
+# content (banner + verbatim source) and re-prompts.
+# Args: $1=bridge_path (the on-disk drifted bridge), $2=source_path (the
+#       canonical CLAUDE.md the rewrite would copy from)
+#
+# TTY source: < /dev/tty by default. TK_BRIDGE_TTY_SRC overrides — when set
+# (non-empty), reads from that path instead. Mirrors
+# scripts/uninstall.sh:233 TK_UNINSTALL_TTY_FROM_STDIN convention.
+bridge_prompt_drift() {
+    local bridge_path="$1" source_path="$2"
+
+    local tty_target="/dev/tty"
+    if [[ -n "${TK_BRIDGE_TTY_SRC:-}" ]]; then
+        tty_target="$TK_BRIDGE_TTY_SRC"
+    fi
+
+    # Build the would-be-rewritten content into a tempfile so 'd' can diff.
+    local tmp_new
+    tmp_new=$(mktemp "${TMPDIR:-/tmp}/bridge-drift.XXXXXX")
+    # shellcheck disable=SC2064  # capture path at trap-registration time
+    trap "rm -f '$tmp_new'" RETURN
+    if [[ -f "$source_path" ]]; then
+        {
+            cat <<'BANNER'
+<!--
+  Auto-generated from CLAUDE.md by claude-code-toolkit (v4.7+).
+  Edit CLAUDE.md (canonical source). This file regenerates on update-claude.sh.
+  To stop sync: run `update-claude.sh --break-bridge <name>`.
+-->
+BANNER
+            echo ""
+            cat "$source_path"
+        } > "$tmp_new" 2>/dev/null || true
+    fi
+
+    while :; do
+        local choice=""
+        if ! read -r -p "Bridge ${bridge_path} modified locally. Overwrite? [y/N/d]: " choice < "$tty_target" 2>/dev/null; then
+            choice="N"
+        fi
+        case "${choice:-N}" in
+            y|Y)
+                return 0 ;;
+            d|D)
+                if [[ -s "$tmp_new" ]]; then
+                    echo "── diff: bridge vs would-be-rewrite ──"
+                    diff -u "$bridge_path" "$tmp_new" || true
+                    echo "── end diff ──"
+                else
+                    echo "Reference unavailable (source missing) — diff cannot be shown."
+                fi
+                ;;
+            *)
+                return 1 ;;
+        esac
+    done
+}
