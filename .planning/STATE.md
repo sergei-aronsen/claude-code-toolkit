@@ -1,52 +1,38 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.4
-milestone_name: Bootstrap & Polish
-status: shipped
-stopped_at: v4.4 shipped 2026-04-27 — awaiting /gsd-new-milestone
-last_updated: "2026-04-27T16:28:45.448Z"
-last_activity: 2026-04-27
+milestone: v4.5
+milestone_name: Install Flow UX & Desktop Reach
+status: defining-requirements
+stopped_at: v4.5 milestone initialized — REQUIREMENTS + ROADMAP pending
+last_updated: "2026-04-29T00:00:00.000Z"
+last_activity: 2026-04-29
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-27)
+See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 23 — Installer Symmetry & Recovery
+**Current focus:** v4.5 milestone — defining requirements and roadmap.
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-27
-
-Progress: 0% (0 / 3 phases)
-
-```text
-Phase 21 [ ] SP/GSD Bootstrap Installer
-Phase 22 [ ] Smart-Update Coverage for scripts/lib/*.sh
-Phase 23 [ ] Installer Symmetry & Recovery
-```
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-29 — Milestone v4.5 started
 
 ## Plan Count Estimate
 
-Total plans estimated at ~8 across 3 phases:
-
-- Phase 21 — 3 plans (bootstrap prompt + canonical installer invocation + detection re-run; test harness)
-- Phase 22 — 2 plans (manifest registration; update-claude.sh iteration + test)
-- Phase 23 — 3 plans (--no-banner symmetry + test extension; --keep-state flag; keep-state test harness)
-
-Actual plan count will be set by `/gsd-plan-phase` for each phase.
+Plan count to be set by `/gsd-plan-phase` for each phase. Roadmap will be authored by `gsd-roadmapper` in this workflow run; phase numbering continues from v4.4 (next phase = 24).
 
 ## Performance Metrics
 
@@ -128,6 +114,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.2 highlights:
 - 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
 - 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
 - 2026-04-27: v4.4 shipped — 8/8 plans, 19 tasks, 9/9 REQ-IDs validated; archive at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`; awaiting `v4.4.0` tag on main HEAD
+- 2026-04-29: v4.5 milestone scoped — Install Flow UX & Desktop Reach; Phase 24 (Unified TUI Installer + centralized detection — Code) + Phase 25 (Marketplace + Claude Desktop reach — cross-runtime)
 
 ### Pending Todos
 
@@ -170,10 +157,10 @@ Carry-overs available for next milestone scoping:
 
 ## Session Continuity
 
-Last session: 2026-04-27T10:46:33.798Z
-Stopped at: Completed 23-03-PLAN.md
+Last session: 2026-04-29
+Stopped at: v4.5 milestone initialization in progress (REQUIREMENTS + ROADMAP next)
 Resume file: None
 
-**To start v4.4 implementation:**
+**To start v4.5 implementation (after roadmap approval):**
 
-- `/gsd-discuss-phase 21` — discuss Phase 21 (SP/GSD Bootstrap Installer) before planning
+- `/gsd-discuss-phase 24` — discuss Phase 24 (Unified TUI Installer) before planning
