@@ -140,7 +140,10 @@
   3. `--no-bridges` flag and `TK_NO_BRIDGES=1` env var on any of `init-claude.sh`, `init-local.sh`, `install.sh` skip every bridge prompt and create zero bridges (mirrors v4.4 `--no-bootstrap` symmetry).
   4. `--bridges gemini,codex` flag forces non-interactive bridge creation for the named CLIs; absent CLI under `--fail-fast` exits 1; absent CLI without `--fail-fast` warns and continues.
   5. v4.6 BACKCOMPAT-01 invariant holds: `init-claude.sh` URL stays byte-identical and v4.4 `test-bootstrap.sh` PASS=26 + v4.6 `test-install-tui.sh` PASS=43 stay green throughout this phase.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 30-01-PLAN.md — Wave 1 helpers (bridges.sh: bridge_install_prompts + _bridge_cli_version/_bridge_cli_label/_bridge_match; dispatch.sh: TK_DISPATCH_ORDER append)
+- [ ] 30-02-PLAN.md — Wave 2 install.sh (conditional TUI rows + dispatch case + --no-bridges / --bridges flags + mutex)
+- [ ] 30-03-PLAN.md — Wave 2 init-claude.sh + init-local.sh post-install bridge_install_prompts call + new test-bridges-install-ux.sh hermetic suite (>=12 assertions)
 **UI hint**: yes
 
 ### Phase 31: Distribution + Tests + Docs
@@ -176,5 +179,5 @@
 |-------|----------------|--------|-----------|
 | 28. Bridge Foundation | 3/3 | Complete   | 2026-04-29 |
 | 29. Sync & Uninstall Integration | 3/3 | Complete   | 2026-04-29 |
-| 30. Install-time UX | 0/TBD | Not started | - |
+| 30. Install-time UX | 0/3 | Planned     | - |
 | 31. Distribution + Tests + Docs | 0/TBD | Not started | - |
