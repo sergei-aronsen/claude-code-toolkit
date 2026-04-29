@@ -193,6 +193,13 @@ tui_checklist() {
 
     FOCUS_IDX=0
 
+    # WR-04: Save the parent script's EXIT trap before installing our own.
+    # `trap -p EXIT` prints the parent's trap definition (or empty if unset).
+    # We restore it on normal return so that parent cleanup (e.g. install.sh's
+    # run_cleanup for tmpfiles) is not silently dropped after tui_checklist returns.
+    local _parent_exit_trap
+    _parent_exit_trap=$(trap -p EXIT 2>/dev/null || echo "")
+
     # CRITICAL (TUI-03): trap MUST be registered BEFORE _tui_enter_raw.
     # The || true on the handler prevents compounding failures.
     trap '_tui_restore || true' EXIT INT TERM
@@ -250,7 +257,15 @@ tui_checklist() {
     done
 
     _tui_restore
-    trap - EXIT INT TERM
+    # WR-04: Restore parent EXIT trap so that the caller's cleanup is preserved.
+    # If the parent had a trap, `eval` re-installs it verbatim (output of `trap -p`
+    # is in shell-readable syntax). If not, clear our handler with `trap - EXIT`.
+    if [[ -n "$_parent_exit_trap" ]]; then
+        eval "$_parent_exit_trap"
+    else
+        trap - EXIT
+    fi
+    trap - INT TERM
 
     return "$rc"
 }
