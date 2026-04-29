@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 25-01-mcp-catalog-and-loader-PLAN.md
-last_updated: "2026-04-29T12:08:27.502Z"
+stopped_at: Completed 25-02-wizard-and-secrets-PLAN.md
+last_updated: "2026-04-29T12:17:49.416Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
-  percent: 67
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 25 (MCP Selector) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -102,6 +102,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 24]: libs[] entries sorted alphabetically; scripts[] is order-preserving (install.sh appended after uninstall.sh)
 - [Phase 25]: mcp_catalog_load uses join('') for install_args (not unit-separator join); callers access raw JSON arrays directly
 - [Phase 25]: is_mcp_installed three-state return 0/1/2: 0=installed, 1=not-installed, 2=CLI-absent (MCP-02 fail-soft)
+- [Phase 25]: mcp_catalog_load join separator was already $'\037' (SUMMARY note was a display artifact — no bug)
+- [Phase 25]: dry-run skips only claude mcp add invocation — secrets collection runs even in dry-run mode
+- [Phase 25]: TK_MCP_TTY_SRC + TK_MCP_CONFIG_HOME seams mirror Phase 24 TK_TUI_TTY_SRC / TK_BOOTSTRAP_TTY_SRC pattern exactly
 
 ### Key v4.5 Constraints (from research)
 
@@ -166,11 +169,12 @@ Carry-overs available for next milestone scoping:
 | Phase 24 P04 | 180 | 3 tasks | 5 files |
 | Phase 24 P05 | 10 | 3 tasks | 2 files |
 | Phase 25 P01 | 108 | 2 tasks | 2 files |
+| Phase 25 P02 | 304 | 2 tasks | 3 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T12:08:27.498Z
-Stopped at: Completed 25-01-mcp-catalog-and-loader-PLAN.md
+Last session: 2026-04-29T12:17:49.412Z
+Stopped at: Completed 25-02-wizard-and-secrets-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
