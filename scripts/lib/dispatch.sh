@@ -144,11 +144,11 @@ dispatch_toolkit() {
     : "$yes"
 
     if [[ -n "${TK_DISPATCH_OVERRIDE_TOOLKIT:-}" ]]; then
-        if [[ "$dry_run" -eq 1 && "${#pass_args[@]}" -eq 0 ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] toolkit (would run override: $TK_DISPATCH_OVERRIDE_TOOLKIT)"
             return 0
         fi
-        bash "$TK_DISPATCH_OVERRIDE_TOOLKIT" "${pass_args[@]}"
+        bash "$TK_DISPATCH_OVERRIDE_TOOLKIT" ${pass_args[@]+"${pass_args[@]}"}
         return $?
     fi
 
@@ -158,11 +158,11 @@ dispatch_toolkit() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/init-claude.sh") "${pass_args[@]}"
+        bash <(curl -sSL "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path init-claude.sh)"
-        bash "$sibling" "${pass_args[@]}"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 
@@ -186,7 +186,7 @@ dispatch_security() {
             echo "[+ INSTALL] security (would run override: $TK_DISPATCH_OVERRIDE_SECURITY)"
             return 0
         fi
-        bash "$TK_DISPATCH_OVERRIDE_SECURITY" "${pass_args[@]}"
+        bash "$TK_DISPATCH_OVERRIDE_SECURITY" ${pass_args[@]+"${pass_args[@]}"}
         return $?
     fi
 
@@ -196,11 +196,11 @@ dispatch_security() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/setup-security.sh") "${pass_args[@]}"
+        bash <(curl -sSL "$TK_REPO_URL/scripts/setup-security.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path setup-security.sh)"
-        bash "$sibling" "${pass_args[@]}"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 
@@ -259,7 +259,7 @@ dispatch_statusline() {
             echo "[+ INSTALL] statusline (would run override: $TK_DISPATCH_OVERRIDE_STATUSLINE)"
             return 0
         fi
-        bash "$TK_DISPATCH_OVERRIDE_STATUSLINE" "${pass_args[@]}"
+        bash "$TK_DISPATCH_OVERRIDE_STATUSLINE" ${pass_args[@]+"${pass_args[@]}"}
         return $?
     fi
 
@@ -269,10 +269,10 @@ dispatch_statusline() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/install-statusline.sh") "${pass_args[@]}"
+        bash <(curl -sSL "$TK_REPO_URL/scripts/install-statusline.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install-statusline.sh)"
-        bash "$sibling" "${pass_args[@]}"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
