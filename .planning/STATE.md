@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
-status: Roadmap created — ready for `/gsd-plan-phase 28`
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-04-29T18:06:51.060Z"
+status: In progress — Phase 29 Plan 01 complete
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-04-29T18:42:35Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 9
+  completed_plans: 5
+  percent: 56
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.7 Multi-CLI Bridge — Phase 28 (Bridge Foundation) — pending plan
+**Current focus:** v4.7 Multi-CLI Bridge — Phase 29 (Sync & Uninstall Integration) — Plan 01 complete
 
 ## Current Position
 
 ```text
-Phase 28 [ ] Phase 29 [ ] Phase 30 [ ] Phase 31 [ ]
-  0%                                                100%
-|-------------------------------------------------------|
+Phase 28 [x] Phase 29 [1/3] Phase 30 [ ] Phase 31 [ ]
+  56%                                               100%
+|---------------------------------------|-----------|---|
 ```
 
-Phase: 28
-Plan: Not started
-Status: Roadmap created — ready for `/gsd-plan-phase 28`
+Phase: 29
+Plan: 01 complete (29-02 and 29-03 ready to run in parallel)
+Status: In progress — Phase 29 Plan 01 complete
 Last activity: 2026-04-29
 
 ## Plan Count Estimate
@@ -97,6 +97,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - [Phase 28-bridge-foundation]: Codex bridge filename locked as AGENTS.md (not CODEX.md) per OpenAI standard
 - [Phase 28]: Source libs at top level in test scripts, not inside scenario functions, to avoid Bash RETURN-trap pitfall where source fires RETURN trap on completion
 - [Phase 28]: Use EXIT trap with _SANDBOXES array for hermetic test cleanup instead of per-scenario RETURN traps
+- [Phase 29-01]: write_state bridges_json default '[]' means preserve-on-disk (not wipe-to-empty); non-default JSON overrides disk (used by update-claude.sh)
+- [Phase 29-01]: bridge_prompt_drift fails closed — EOF / empty / unknown input returns 1 (keep); only explicit y/Y returns 0 (overwrite)
+- [Phase 29-01]: TK_BRIDGE_TTY_SRC test seam mirrors TK_UNINSTALL_TTY_FROM_STDIN; /dev/tty is production default
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -177,15 +180,16 @@ Carry-overs available for next milestone scoping:
 | Phase 28 P01 | 10m | 2 tasks | 1 files |
 | Phase 28-bridge-foundation P02 | 20 | 4 tasks | 1 files |
 | Phase 28 P03 | 26m | 2 tasks | 1 files |
+| Phase 29-01 | ~25m | 3 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T18:06:51.057Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-04-29T18:42:35Z
+Stopped at: Completed 29-01-PLAN.md
 Resume file: None
 
 **Next steps:**
 
-- `/gsd-plan-phase 28` — decompose Phase 28 (Bridge Foundation) into executable plans
-- After Phase 28 ships, Phase 29 + Phase 30 unlock as Wave 2 (parallelizable)
+- 29-02 (sync loop in update-claude.sh) and 29-03 (uninstall integration + tests) are now unblocked — run in parallel
+- Phase 30 (Install-time UX) unlocks after Phase 29 complete
 - Phase 31 closes the milestone with manifest 4.7.0 bump + tests + docs + CHANGELOG entry
