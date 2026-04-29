@@ -79,6 +79,66 @@ message when `--keep-state` is set.
 
 ---
 
+## install.sh (unified entry, v4.5+)
+
+`scripts/install.sh` is the single entry point for the unified TUI installer flow
+introduced in v4.5. It complements the per-component `init-claude.sh` /
+`setup-security.sh` / `install-statusline.sh` URLs (which all continue to work
+unchanged — BACKCOMPAT-01).
+
+### Quick start
+
+```bash
+# Interactive — TUI checklist with arrow/space/enter navigation
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
+
+# Non-interactive — install all uninstalled components in canonical order
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes
+
+# Re-run everything regardless of detection
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes --force
+```
+
+### Flags
+
+| Flag | Effect |
+|------|--------|
+| `--yes` | Skip TUI; install all uninstalled components in canonical order (superpowers, get-shit-done, toolkit, security, rtk, statusline) |
+| `--yes --force` | Skip TUI; re-run all components regardless of detection |
+| `--dry-run` | Show what would run without invoking any installer |
+| `--force` | Re-run already-installed components |
+| `--fail-fast` | Stop on first component failure (default behaviour: continue-on-error) |
+| `--no-color` | Disable ANSI output. Also honoured via `NO_COLOR` env per [no-color.org](https://no-color.org) |
+| `--no-banner` | Suppress the closing `To remove: ...` banner line. Also honoured via `NO_BANNER=1` env |
+| `--help` | Print usage and exit 0 |
+
+### TUI controls
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move focus up/down |
+| `space` | Toggle current item (already-installed items are immutable) |
+| `enter` | Confirm selection |
+| `q` or `Ctrl-C` | Cancel without installing |
+
+After `enter`, a confirmation prompt asks `Install N component(s)? [y/N]` (default
+`N` cancels). Already-installed components render as `[installed ✓]` and are
+pre-unchecked; uninstalled components are pre-checked.
+
+### Backwards compatibility
+
+All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
+`TK_NO_BOOTSTRAP`, `NO_BANNER`) are preserved unchanged. The 26-assertion
+`test-bootstrap.sh` regression test stays green throughout v4.5. Both entry
+points coexist indefinitely; there is no deprecation schedule for
+`init-claude.sh`.
+
+When `/dev/tty` is unavailable (CI, piped install) and `--yes` is not passed,
+`install.sh` exits 0 with a "no-TTY, run with `--yes` for non-interactive
+install" message. This is the same fail-closed behaviour as v4.4 `bootstrap.sh`.
+
+---
+
 ## Mode: standalone
 
 | Scenario | Precondition | Command | Expected stdout headline | `toolkit-install.json` mode | Files landed vs skipped |

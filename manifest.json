@@ -217,6 +217,9 @@
     "scripts": [
       {
         "path": "scripts/uninstall.sh"
+      },
+      {
+        "path": "scripts/install.sh"
       }
     ],
     "libs": [
@@ -225,6 +228,12 @@
       },
       {
         "path": "scripts/lib/bootstrap.sh"
+      },
+      {
+        "path": "scripts/lib/detect2.sh"
+      },
+      {
+        "path": "scripts/lib/dispatch.sh"
       },
       {
         "path": "scripts/lib/dry-run-output.sh"
@@ -237,6 +246,9 @@
       },
       {
         "path": "scripts/lib/state.sh"
+      },
+      {
+        "path": "scripts/lib/tui.sh"
       }
     ]
   },
