@@ -276,3 +276,158 @@ mcp_secrets_set() {
     fi
     return 0
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-MCP install wizard (MCP-04)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# _mcp_resolve_claude_bin — echo path to claude binary (honors TK_MCP_CLAUDE_BIN seam).
+# Returns 1 if no binary is found (caller handles fail-soft warning + return 2).
+_mcp_resolve_claude_bin() {
+    if [[ -n "${TK_MCP_CLAUDE_BIN:-}" ]]; then
+        echo "$TK_MCP_CLAUDE_BIN"
+        return 0
+    fi
+    if command -v claude >/dev/null 2>&1; then
+        echo "claude"
+        return 0
+    fi
+    return 1
+}
+
+# _mcp_lookup_index — echo 0-based index of <name> in MCP_NAMES[]; returns 1 if absent.
+# Requires mcp_catalog_load to have been called first.
+_mcp_lookup_index() {
+    local target="$1"
+    local i
+    for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
+        if [[ "${MCP_NAMES[$i]}" == "$target" ]]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# mcp_wizard_run <name> [--dry-run] — drive the per-MCP install flow.
+# Steps:
+#   1. Resolve catalog index for <name>; error if not in curated catalog.
+#   2. Check claude CLI presence (test-seam aware); absent → warn once + return 2.
+#   3. If requires_oauth=1: skip env-prompt step, print OAuth notice.
+#   4. For each env_var_key in MCP_ENV_KEYS[idx] (semicolon-split):
+#        prompt with read -rsp (hidden input) via TK_MCP_TTY_SRC,
+#        retry up to 3 times on empty input,
+#        persist via mcp_secrets_set (collision prompt + 0600 enforcement inside).
+#   5. If --dry-run: print "[+ INSTALL] mcp <name> (would run: <cmd>)" → return 0, no writes.
+#   6. Invoke `env KEY=VALUE... <claude_bin> mcp add <install_args>`.
+#      Return the exact exit code of that invocation.
+# Returns:
+#   0  install success (or dry-run)
+#   1  missing argument, unknown MCP name, or required key not provided after 3 attempts
+#   2  claude CLI absent (fail-soft, MCP-02)
+#   N  exit code propagated from `claude mcp add` (N > 0 on install failure)
+mcp_wizard_run() {
+    local name=""
+    local dry_run=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run) dry_run=1 ;;
+            -*) echo -e "${YELLOW}!${NC} mcp_wizard_run: ignoring unknown flag $1" >&2 ;;
+            *)  [[ -z "$name" ]] && name="$1" ;;
+        esac
+        shift
+    done
+
+    if [[ -z "$name" ]]; then
+        echo -e "${RED}✗${NC} mcp_wizard_run: missing MCP name argument" >&2
+        return 1
+    fi
+
+    # Ensure catalog is loaded.
+    if [[ "${#MCP_NAMES[@]}" -eq 0 ]]; then
+        mcp_catalog_load || return 1
+    fi
+
+    local idx
+    if ! idx=$(_mcp_lookup_index "$name"); then
+        echo -e "${RED}✗${NC} mcp_wizard_run: '$name' not in curated catalog" >&2
+        return 1
+    fi
+
+    # Resolve claude binary (fail-soft when absent).
+    local claude_bin
+    if ! claude_bin=$(_mcp_resolve_claude_bin); then
+        if [[ -z "${_MCP_CLI_WARNED:-}" ]]; then
+            echo -e "${YELLOW}!${NC} claude CLI not found — cannot install MCPs from here. See docs/MCP-SETUP.md" >&2
+            _MCP_CLI_WARNED=1
+        fi
+        return 2
+    fi
+
+    local oauth="${MCP_OAUTH[$idx]}"
+    local env_keys_csv="${MCP_ENV_KEYS[$idx]}"
+    local install_args_packed="${MCP_INSTALL_ARGS[$idx]}"
+
+    # Reconstruct install_args[] from the unit-separator-packed string (ASCII 31 = $'\037').
+    local IFS_SAVED="$IFS"
+    IFS=$'\037'
+    # shellcheck disable=SC2206
+    local install_args=( $install_args_packed )
+    IFS="$IFS_SAVED"
+
+    local tty_src="${TK_MCP_TTY_SRC:-/dev/tty}"
+
+    # Collect env vars (skipped for OAuth-only MCPs).
+    local exported_env=()
+    if [[ "$oauth" -eq 1 ]]; then
+        echo "OAuth flow handled by claude mcp add — follow CLI prompts."
+    elif [[ -n "$env_keys_csv" ]]; then
+        local IFS_SAVED2="$IFS"
+        IFS=';'
+        # shellcheck disable=SC2206
+        local env_keys=( $env_keys_csv )
+        IFS="$IFS_SAVED2"
+        local env_key
+        for env_key in "${env_keys[@]}"; do
+            [[ -z "$env_key" ]] && continue
+            local collected_value=""
+            local attempts=0
+            while [[ -z "$collected_value" && "$attempts" -lt 3 ]]; do
+                if ! read -rsp "${env_key}: " collected_value < "$tty_src" 2>/dev/null; then
+                    collected_value=""
+                fi
+                # Print newline after hidden input so terminal cursor advances.
+                printf '\n' >&2
+                attempts=$((attempts + 1))
+                if [[ -z "$collected_value" ]]; then
+                    echo -e "${YELLOW}!${NC} ${env_key} cannot be empty (attempt ${attempts}/3)" >&2
+                fi
+            done
+            if [[ -z "$collected_value" ]]; then
+                echo -e "${RED}✗${NC} mcp_wizard_run: missing required key ${env_key} after 3 attempts" >&2
+                return 1
+            fi
+            # Persist to mcp-config.env (handles 0600 + collision prompt).
+            if ! mcp_secrets_set "$env_key" "$collected_value"; then
+                return 1
+            fi
+            # Queue for export to child process only (scoped via `env` below).
+            exported_env+=("${env_key}=${collected_value}")
+            # Overwrite local copy immediately — never let it linger as a named var.
+            collected_value=""
+        done
+    fi
+
+    # Dry-run early-out — no file writes beyond secrets already persisted above.
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] mcp ${name} (would run: ${claude_bin} mcp add ${install_args[*]})"
+        return 0
+    fi
+
+    # Invoke claude mcp add with env vars scoped to the child process only.
+    if [[ "${#exported_env[@]}" -gt 0 ]]; then
+        env "${exported_env[@]}" "$claude_bin" mcp add "${install_args[@]}"
+    else
+        "$claude_bin" mcp add "${install_args[@]}"
+    fi
+}
