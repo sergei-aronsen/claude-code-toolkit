@@ -124,7 +124,10 @@
   3. Running `update-claude.sh --break-bridge gemini` flips `user_owned: true` for that bridge, and the very next `update-claude.sh` run logs `[- SKIP] GEMINI.md (--break-bridge)` and performs no copy; `--restore-bridge gemini` reverses the flag and the next run re-syncs.
   4. When `CLAUDE.md` is deleted, `update-claude.sh` logs `[? ORPHANED] GEMINI.md (CLAUDE.md missing)` and leaves the bridge file on disk; no exit-1.
   5. Running `uninstall.sh` removes clean bridges as `[- REMOVE]`, prompts `[y/N/d]` for user-modified bridges, preserves bridges under `--keep-state`, and the v4.3 `diff -q` base-plugin invariant remains green.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 29-01-PLAN.md — Foundation primitives (extend `write_state` to 10-arg `bridges_json`, add `_bridge_set_user_owned`/`_bridge_remove_state_entry`/`bridge_prompt_drift` helpers, update `init-local.sh` + `migrate-to-complement.sh` callers)
+- [ ] 29-02-PLAN.md — Sync loop in `update-claude.sh` (`--break-bridge`/`--restore-bridge` flags + `sync_bridges()` decision tree with `[~ UPDATE]`/`[~ MODIFIED]`/`[- SKIP]`/`[? ORPHANED]` logging)
+- [ ] 29-03-PLAN.md — Uninstall integration in `uninstall.sh` + new hermetic `scripts/tests/test-bridges-sync.sh` (≥10 assertions; BACKCOMPAT-01 PASS=26/43/5)
 
 ### Phase 30: Install-time UX
 
