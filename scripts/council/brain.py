@@ -120,25 +120,73 @@ PROMPT_FALLBACKS = {
 _PROMPT_CACHE = {}
 
 
+_COUNCIL_LANG = "en"  # Phase 24 SP9 — flipped to "ru" by --lang or auto-detect
+
+
+def set_council_lang(lang):
+    """Set the active language code (e.g. 'en', 'ru'). Clears the prompt cache
+    so existing entries do not bleed across languages within a single process.
+    """
+    global _COUNCIL_LANG, _PROMPT_CACHE
+    if not lang:
+        return
+    if lang == _COUNCIL_LANG:
+        return
+    _COUNCIL_LANG = lang
+    _PROMPT_CACHE = {}
+
+
+def detect_council_lang(default="en"):
+    """Phase 24 SP9 — auto-detect Council language from ~/.claude/CLAUDE.md.
+
+    Reads the first 500 chars of the global CLAUDE.md (if present) and
+    classifies as Russian when the Cyrillic-character ratio exceeds 0.2.
+    Returns the detected language code or `default`.
+    """
+    path = Path.home() / ".claude" / "CLAUDE.md"
+    if not path.is_file():
+        return default
+    try:
+        sample = path.read_text(encoding="utf-8", errors="replace")[:500]
+    except OSError:
+        return default
+    if not sample:
+        return default
+    cyrillic = sum(1 for ch in sample if "Ѐ" <= ch <= "ӿ")
+    ratio = cyrillic / max(1, len(sample))
+    return "ru" if ratio > 0.2 else default
+
+
 def load_prompt(name):
     """Return the system prompt body for `name`.
 
-    Looks for `~/.claude/council/prompts/<name>.md` first; falls back to the
-    embedded constant when the file is missing or unreadable. Cached per process
-    so repeated `_run_validate_plan` phases don't re-read the file from disk.
+    Lookup order (Phase 24 SP9):
+      1. `~/.claude/council/prompts/<lang>/<name>.md` for the active language.
+      2. `~/.claude/council/prompts/<name>.md` (English / default).
+      3. Embedded `PROMPT_FALLBACKS` constant.
+
+    Cached per (lang, name) within a process; set_council_lang() clears the
+    cache when the language switches.
     """
-    if name in _PROMPT_CACHE:
-        return _PROMPT_CACHE[name]
-    path = PROMPTS_DIR / f"{name}.md"
+    cache_key = f"{_COUNCIL_LANG}::{name}"
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
+    candidates = []
+    if _COUNCIL_LANG and _COUNCIL_LANG != "en":
+        candidates.append(PROMPTS_DIR / _COUNCIL_LANG / f"{name}.md")
+    candidates.append(PROMPTS_DIR / f"{name}.md")
     text = None
-    try:
-        if path.is_file():
-            text = path.read_text(encoding="utf-8").strip()
-    except OSError:
-        text = None
+    for path in candidates:
+        try:
+            if path.is_file():
+                text = path.read_text(encoding="utf-8").strip()
+                if text:
+                    break
+        except OSError:
+            text = None
     if not text:
         text = PROMPT_FALLBACKS.get(name, "")
-    _PROMPT_CACHE[name] = text
+    _PROMPT_CACHE[cache_key] = text
     return text
 
 
@@ -173,22 +221,30 @@ def load_persona(domain, role):
     """Return the persona overlay text for (domain, role) or '' when none.
 
     role must be 'skeptic' or 'pragmatist'. domain 'general' always returns
-    empty string. Cached per process via _PROMPT_CACHE.
+    empty string. Lookup prefers the language-localized
+    `personas/<lang>/<domain>-<role>.md` (SP9) before falling back to the
+    canonical English overlay. Cached per (lang, domain, role).
     """
     if not domain or domain == "general":
         return ""
     if role not in ("skeptic", "pragmatist"):
         return ""
-    cache_key = f"persona::{domain}-{role}"
+    cache_key = f"persona::{_COUNCIL_LANG}::{domain}-{role}"
     if cache_key in _PROMPT_CACHE:
         return _PROMPT_CACHE[cache_key]
-    path = PROMPTS_DIR / "personas" / f"{domain}-{role}.md"
+    candidates = []
+    if _COUNCIL_LANG and _COUNCIL_LANG != "en":
+        candidates.append(PROMPTS_DIR / "personas" / _COUNCIL_LANG / f"{domain}-{role}.md")
+    candidates.append(PROMPTS_DIR / "personas" / f"{domain}-{role}.md")
     text = ""
-    try:
-        if path.is_file():
-            text = path.read_text(encoding="utf-8").strip()
-    except OSError:
-        text = ""
+    for path in candidates:
+        try:
+            if path.is_file():
+                text = path.read_text(encoding="utf-8").strip()
+                if text:
+                    break
+        except OSError:
+            text = ""
     _PROMPT_CACHE[cache_key] = text
     return text
 
@@ -2800,6 +2856,16 @@ def main():
         ),
     )
     parser.add_argument(
+        "--lang",
+        choices=["en", "ru", "auto"],
+        default="auto",
+        help=(
+            "Phase 24 SP9 — Council prompt language. `auto` (default) reads "
+            "~/.claude/CLAUDE.md and switches to ru when Cyrillic ratio > 0.2. "
+            "`en` and `ru` force the explicit language."
+        ),
+    )
+    parser.add_argument(
         "plan",
         nargs="?",
         default=None,
@@ -2814,6 +2880,14 @@ def main():
         else:
             parser.print_help()
             sys.exit(1)
+
+    # Phase 24 SP9 — resolve language BEFORE any prompt is loaded so the
+    # very first load_prompt() call picks the right locale.
+    chosen_lang = getattr(args, "lang", "auto") or "auto"
+    if chosen_lang == "auto":
+        chosen_lang = detect_council_lang(default="en")
+    set_council_lang(chosen_lang)
+    _debug(f"council lang: {chosen_lang}")
 
     # Phase 24 SP8 — short-circuit into the dry-run preview before
     # load_config() so users with no Council install yet can still
