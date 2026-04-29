@@ -50,9 +50,12 @@ Output: `.claude/scratchpad/council-report.md`
 brain --mode audit-review --report <path>
 ```
 
-Per-finding verdict table (`REAL / FALSE_POSITIVE / NEEDS_MORE_CONTEXT`)
-plus an in-place rewrite of the report's `## Council verdict` slot and
-the YAML `council_pass:` frontmatter key. Mandatory in `/audit` Phase 5.
+Per-finding verdict table with header
+`| ID | verdict | confidence | justification |` (`REAL / FALSE_POSITIVE
+/ NEEDS_MORE_CONTEXT`) plus an in-place rewrite of the report's
+`## Council verdict` slot and the YAML `council_pass:` frontmatter key.
+Mandatory in `/audit` Phase 5. Prompt template:
+`scripts/council/prompts/audit-review.md`.
 
 ### retro
 
@@ -174,38 +177,12 @@ Key concerns: [3-bullet TL;DR].
 
 ## Output Format
 
-Markdown report header (after `--format markdown`, the default):
-
-```text
-============================================================
-📋 SUPREME COUNCIL REPORT
-============================================================
-
-🧐 THE SKEPTIC (Gemini ...): ... VERDICT: ...
-🔨 THE PRAGMATIST (ChatGPT ...): ... VERDICT: ...
-
-------------------------------------------------------------
-  Skeptic:    <v>
-  Pragmatist: <v>
-  Final:      <v> — <one-line reason>
-------------------------------------------------------------
-
-✅|💡|🔄|⛔ VERDICT: <final>
-============================================================
-```
-
-JSON shape (`--format json`):
-
-```json
-{
-  "verdict": "PROCEED|SIMPLIFY|RETHINK|SKIP",
-  "skeptic": "...", "pragmatist": "...",
-  "concerns_skeptic": [...], "concerns_pragmatist": [...],
-  "domain": "security|performance|ux|migration|general",
-  "fallback_used": {"skeptic": false, "pragmatist": false},
-  "cache_hit": false
-}
-```
+Markdown (default) prints `📋 SUPREME COUNCIL REPORT` with Skeptic +
+Pragmatist sections, a per-reviewer summary line, and the final verdict.
+JSON (`--format json`) emits one line:
+`{verdict, skeptic, pragmatist, concerns_skeptic[], concerns_pragmatist[],
+domain, fallback_used: {skeptic, pragmatist}, cache_hit}`.
+Full schema and examples live in `docs/COUNCIL.md`.
 
 ---
 
@@ -214,6 +191,6 @@ JSON shape (`--format json`):
 - `/plan` → `/council` → implement → `/verify` → `/audit security` → `/deploy`
 - `/audit` invokes Council in Phase 5 mandatorily — no `--no-council` flag.
 - `/council clear-cache` empties `~/.claude/council/cache/`.
-- `/council-stats` shows token usage and cost from `~/.claude/council/usage.jsonl`.
+- `/council-stats` shows token usage and cost from `usage.jsonl`.
 
 Deep documentation: `docs/COUNCIL.md`.
