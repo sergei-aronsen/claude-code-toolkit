@@ -144,43 +144,37 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 **Shipped:**
 
+- **v4.5 Install Flow UX & Desktop Reach** (2026-04-29) — 4 phases (24–27), 17 plans, 42 tasks, 36 REQ-IDs (TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01, MCP-01..05, MCP-SEC-01/02, SKILL-01..05, MKT-01..04, DESK-01..04). Single guided TUI installer (`scripts/install.sh`) replaces 5 separate curl-bash invocations: `scripts/lib/{tui,detect2,dispatch}.sh` foundation + 6-component selector. Phase 25 ships 9-MCP curated TUI (`scripts/lib/mcp-catalog.json` + `mcp.sh`) with hidden-input wizard and `~/.claude/mcp-config.env` (mode 0600). Phase 26 mirrors 22 curated skills under `templates/skills-marketplace/<name>/` installable via `cp -R` to `~/.claude/skills/`. Phase 27 publishes plugin marketplace (`.claude-plugin/marketplace.json` + 3 sub-plugins `tk-skills`/`tk-commands`/`tk-framework-rules` via relative symlinks) + `docs/CLAUDE_DESKTOP.md` capability matrix + auto-routing to `--skills-only` when `claude` CLI absent. 5 hermetic test suites (PASS=104+: test-install-tui 43, test-mcp-selector 21, test-install-skills 15, test-update-libs 15, test-bootstrap 26 unchanged). Manifest 4.4.0 → 4.5.0 with new `files.skills_marketplace[]` (22 entries). 8 HUMAN-UAT items deferred (live PTY + external CLI) and 5 advisory code-review WRs. Tagged `v4.5.0`.
 - **v4.4 Bootstrap & Polish** (2026-04-27) — 3 phases (21–23), 8 plans, 19 tasks, 9 REQ-IDs (BOOTSTRAP-01..04, LIB-01/02, BANNER-01, KEEP-01/02). `scripts/lib/bootstrap.sh` invokes canonical SP/GSD installers (`claude plugin install superpowers@claude-plugins-official`, `bash <(curl -sSL .../get-shit-done/.../install.sh)`) before `detect.sh` and re-runs detection after; `< /dev/tty` with fail-closed `N`; `--no-bootstrap` + `TK_NO_BOOTSTRAP=1` opt-out. `manifest.json` gained `files.libs[]` covering `scripts/lib/{backup,bootstrap,dry-run-output,install,optional-plugins,state}.sh` so `update-claude.sh` refreshes them via existing jq path. `init-claude.sh` + `init-local.sh` learned `--no-banner` (env-form `NO_BANNER=${NO_BANNER:-0}` for byte-symmetry). `scripts/uninstall.sh --keep-state` (and `TK_UNINSTALL_KEEP_STATE=1`) preserves `~/.claude/toolkit-install.json` for partial-uninstall recovery. 30 Makefile tests + CI Tests 21-30. Tagged `v4.4.0`.
 - **v4.3 Uninstall** (2026-04-26) — 3 phases (18–20), 10 plans, 12 tasks, 8 REQ-IDs (UN-01..UN-08). `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, classifies via SHA256, prompts `[y/N/d]` for modified files, backs up to `~/.claude-backup-pre-uninstall-<ts>/`, strips toolkit sentinel block from `~/.claude/CLAUDE.md`, verifies base-plugin invariant via `diff -q`, deletes state file LAST, idempotent on second invocation. 7 hermetic test files (67 assertions: dry-run + backup + prompt + idempotency + state-cleanup + round-trip + banner-gate). Manifest 4.3.0 registers `files.scripts[]`; identical `To remove` banner in all 3 installers; CI mirror in `quality.yml`. Tagged `v4.3.0`.
 - **v4.2 Audit System v2** (2026-04-26) — 5 phases (13–17), 22 plans, 22 REQ-IDs. Persistent FP allowlist (`.claude/rules/audit-exceptions.md` + `/audit-skip` + `/audit-restore`), `/audit` rewritten to a 6-phase pipeline with 6-step FP recheck and structured reports at `.claude/audits/<type>-<HHMM>.md` (±10 lines verbatim code per finding), mandatory `/council audit-review` pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden), and 49 prompt files spliced across 7 frameworks. Tagged `v4.2.0`.
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Current Milestone: v4.5 Install Flow UX & Desktop Reach
+## Next Milestone Goals (v4.6 — TBD)
 
-**Goal:** Replace the multi-command first-run flow with a single TUI installer that bundles three selectors (Components / MCPs / Skills), and publish the toolkit as a Claude Code plugin marketplace so Claude Desktop users get the value surface architecturally available to them.
+v4.5 milestone archive: `.planning/milestones/v4.5-{ROADMAP,REQUIREMENTS}.md`. Audit: `.planning/v4.5-MILESTONE-AUDIT.md` (passed, 36/36 REQ-IDs).
 
-**Target features:**
+**Pending HUMAN-UAT from v4.5** (run when convenient — not blocking ship):
 
-- **Phase 24 — Unified TUI Installer (Components Selector + shared lib)** — one curl-bash entry point (`scripts/install.sh`) opens a pure-bash checklist (arrow + space + enter via `< /dev/tty`, Bash 3.2 compat, no deps). Components selector: Toolkit / superpowers / GSD / Security Pack / RTK / Statusline. Auto-detect installed, pre-check + `[installed ✓]` label. `--force` re-runs detected, `--yes` uses default-set for CI. Old per-component scripts retained as advanced fallback. Foundation libs (`scripts/lib/{tui,detect2,dispatch}.sh`) reused by Phases 25–26. Extends `scripts/lib/detect.sh` with `cc-safety-net` via `command -v` (covers brew **and** npm), statusline via `~/.claude/statusline.sh` + settings.json scan, RTK via `command -v rtk`. Each component exposes `is_<name>_installed` returning 0/1.
+- Phase 24: live PTY interactive TUI render + Ctrl-C terminal restore
+- Phase 25: live PTY MCP wizard with real `claude` CLI detection + hidden-input visual confirmation
+- Phase 26: live PTY interactive 22-row Skills TUI render
+- Phase 27: live `claude plugin marketplace add ./` smoke + Claude Desktop end-to-end install
 
-- **Phase 25 — MCP Selector** — second TUI page (or separate `--mcps` invocation) lists 9 curated MCP servers: `context7`, `magic`, `notebooklm`, `openrouter`, `playwright`, `sentry`, `sequential-thinking`, `toolbox`, `youtrack`. TK ships `templates/mcps/<name>/{mcp.json, setup.sh, config-prompt.txt}` per MCP. Per-MCP install wizard collects required secrets/URLs inline (`read -rs` for sensitive values), persists to `~/.claude/mcp-config.env` with mode `0600` (gitignored, never committed), then runs `claude mcp add ... -- ...` with values plumbed in. Detection: `claude mcp list` parsing. `--mcps-only` install path.
+**Optional follow-ups:**
 
-- **Phase 26 — Skills Selector** — third TUI page lists ~22 curated skills mirrored in `templates/skills-marketplace/<name>/SKILL.md` (sourced from skills.sh upstream, license-audited). Skills: `ai-models`, `analytics-tracking`, `chrome-extension-development`, `copywriting`, `docx`, `find-skills`, `firecrawl`, `i18n-localization`, `memo-skill`, `next-best-practices`, `notebooklm`, `pdf`, `resend`, `seo-audit`, `shadcn`, `stripe-best-practices`, `tailwind-design-system`, `typescript-advanced-types`, `ui-ux-pro-max`, `vercel-composition-patterns`, `vercel-react-best-practices`, `webapp-testing`. Selected skills copy from `templates/skills-marketplace/<name>/` to `~/.claude/skills/<name>/`. Detection via directory presence. Sync upstream once per milestone.
+- `/gsd-code-review-fix 24` to address 4 advisory WR findings in `tui.sh` + 1 in `dispatch.sh` (low real-world risk).
+- Submit toolkit to upstream Anthropic marketplace registry (MKT-04 follow-up; manual).
 
-- **Phase 27 — Marketplace Publishing + Claude Desktop reach** — `.claude-plugin/marketplace.json` at repo root + `plugins/{tk-skills,tk-commands,tk-framework-rules}/.claude-plugin/plugin.json` per sub-plugin. Schema verified against live `claude plugin marketplace add` invocation. `docs/CLAUDE_DESKTOP.md` documents capability matrix (Code tab full parity vs remote/Chat tab gaps). Skills audited via `scripts/validate-skills-desktop.sh` for Bash/Code-only assumptions. Phase 24 installer detects Desktop-only users and routes to `--skills-only` install path under `~/.claude/plugins/`.
-
-**Key context:**
-
-- Four phases. Phase 24 ships first (foundation lib + Components selector). Phases 25/26/27 can run in parallel after Phase 24 lands (independent file surfaces, all reuse `tui.sh`).
-- `scripts/install.sh` becomes a 3-page wizard: Components → MCPs → Skills. Each page can be skipped (`--components-only`, `--mcps-only`, `--skills-only`). All-default flow (`--yes`) installs only what's currently uninstalled, no overwrites without `--force`.
-- Existing `scripts/lib/bootstrap.sh` (v4.4 BOOTSTRAP-01..04) survives as no-tty fallback for SP/GSD prompts only — Phase 24 TUI replaces the interactive layer above it. `--no-bootstrap`, `--no-banner` flags preserved. 26-assertion `test-bootstrap.sh` stays green throughout.
-- **Secret handling (Phase 25)**: `~/.claude/mcp-config.env` mode `0600`, gitignored, owner-only readable. TUI uses `read -rs` (no echo) for keys. Documented as plaintext-on-disk so users can swap to a secret manager if they want.
-- Constraint: POSIX bash 3.2+ (verified `read -rsn1` + `read -rsn2` pattern, no `read -N`, no float `-t`), `curl | bash` compat (`< /dev/tty` reads only), no Node/Python in install path. Marketplace ships Markdown + JSON only.
-- Detection invariant: filesystem-primary; `claude` CLI cross-check secondary (per v4.1 DETECT-06). Phase 25 needs `claude mcp list` parsing — fail-soft if CLI absent.
-- Backwards compatibility: existing `init-claude.sh` URL stays valid (calls run unchanged). `install.sh` is a new independent entry point — no trampoline.
-
-### Carry-overs not in this milestone
+**Carry-overs from previous milestones (still deferred):**
 
 - `--no-council` flag for `/audit` — keep deferred (mandatory pass guarantees FP discipline; revisit if friction surfaces)
-- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers; reader side already shipped in v4.3)
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — reader side already shipped in v4.3)
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
-- Skill install via skills.sh trampoline — rejected in favour of TK-mirror approach (no external runtime dependency)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
+
+v4.6 scope to be defined via `/gsd-new-milestone` when ready.
 
 ## Key Decisions
 
@@ -224,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-29 — **v4.5 Install Flow UX & Desktop Reach** scoped via `/gsd-new-milestone`. Two phases: Phase 24 (Unified TUI Installer + centralized detection — Code) and Phase 25 (Marketplace + Claude Desktop reach — cross-runtime). Phase numbering continues from v4.4 (24, 25). v4.4 archived at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`.*
+*Last updated: 2026-04-29 — **v4.5 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.5`. 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs, 28/28 cross-phase connections wired, 5 of 6 E2E flows verified (1 platform-boundary deferred). 8 HUMAN-UAT items + 5 advisory WRs deferred — not blocking ship. v4.5 archived at `.planning/milestones/v4.5-{ROADMAP,REQUIREMENTS}.md`. Tagged `v4.5.0`.*

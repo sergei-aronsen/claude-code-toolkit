@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
-status: verifying
-stopped_at: Completed 27-04-docs-manifest-changelog-PLAN.md
-last_updated: "2026-04-29T15:03:20.157Z"
+status: shipped
+stopped_at: Milestone v4.5 archived; ready for v4.6 scoping via /gsd-new-milestone
+last_updated: "2026-04-29T16:00:00.000Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
@@ -204,10 +204,12 @@ Carry-overs available for next milestone scoping:
 
 ## Session Continuity
 
-Last session: 2026-04-29T14:57:40.618Z
-Stopped at: Completed 27-04-docs-manifest-changelog-PLAN.md
+Last session: 2026-04-29T16:00:00.000Z
+Stopped at: v4.5 milestone shipped + archived (4 phases, 17 plans, 36/36 REQ-IDs)
 Resume file: None
 
-**To start v4.5 implementation:**
+**Next steps:**
 
-- `/gsd-plan-phase 24` — plan Phase 24 (Unified TUI Installer + Centralized Detection)
+- `git tag -a v4.5.0` (LOCAL only — push manually per CLAUDE.md "never push main")
+- `/gsd-new-milestone` — scope v4.6
+- Optional: `/gsd-code-review-fix 24` — address 4 advisory WR findings in Phase 24 review

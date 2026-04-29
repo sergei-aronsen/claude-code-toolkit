@@ -1,5 +1,35 @@
 # Milestones
 
+## v4.5 Install Flow UX & Desktop Reach (Shipped: 2026-04-29)
+
+**Phases completed:** 4 phases (24–27), 17 plans, 42 tasks
+**Git range:** `v4.4.0 → v4.5.0` — 50+ commits, 429 files changed (+86,348 / −67)
+**Timeline:** 2026-04-29 single-day intensive
+**Audit:** `.planning/v4.5-MILESTONE-AUDIT.md` — passed (36/36 REQ-IDs, 28/28 connections, 5 of 6 E2E flows verified)
+
+**Delivered:** Replaced 5 separate curl-bash invocations with a single guided TUI installer (Components / MCPs / Skills) and published the toolkit as a Claude Code plugin marketplace so Claude Desktop users get the value surface architecturally available to them.
+
+**Key accomplishments:**
+
+- **Unified TUI Installer + Centralized Detection (Phase 24 / TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01)** — `scripts/lib/{tui,detect2,dispatch}.sh` foundation libs with Bash 3.2 compatible `tui_checklist` (no `read -N`, no float `-t`, no `declare -n` namerefs; `read -rsn1` + `read -rsn2` for arrow tail), `< /dev/tty` with `TK_TUI_TTY_SRC` test seam and fail-closed default-set on no-TTY, `trap '<restore-stty>' EXIT INT TERM` registered before raw mode, three-layer NO_COLOR gate per [no-color.org](https://no-color.org). Six binary `is_*_installed` probes in `detect2.sh` (toolkit, superpowers, gsd, security, rtk, statusline) with `cc-safety-net` brew+npm coverage fix. `scripts/install.sh` (440 LOC) orchestrates detection → TUI → confirmation → dispatch → summary with `--yes`, `--dry-run`, `--force`, `--fail-fast`, `--no-color`, `--no-banner` flags. `test-install-tui.sh` PASS=43 (38 base + 5 from S10). `init-claude.sh` URL stays byte-identical with all v4.4 flags.
+- **MCP Selector (Phase 25 / MCP-01..05, MCP-SEC-01/02)** — 9-MCP curated catalog at `scripts/lib/mcp-catalog.json` (context7, firecrawl, magic, notion, openrouter, playwright, resend, sentry, sequential-thinking) loaded via `scripts/lib/mcp.sh` (433 LOC); `is_mcp_installed` 3-state probe (0/1/2 with CLI-absent fail-soft); per-MCP wizard with hidden-input `read -rsp` for API keys, never echoed; `~/.claude/mcp-config.env` mode 0600 enforcement via `mcp_secrets_set` with `[y/N]` collision prompt; `scripts/install.sh --mcps` flag routing. Test suites: `test-mcp-selector.sh` PASS=21, `test-mcp-secrets.sh` PASS=11, `test-mcp-wizard.sh` PASS=14. `docs/MCP-SETUP.md` documents the plaintext-on-disk caveat + rotate-to-secret-manager recipe. Adjusted scope: replaced per-MCP `templates/mcps/<name>/{mcp.json,setup.sh,config-prompt.txt}` directory tree with a single JSON catalog — simpler, no duplication for zero-config MCPs.
+- **Skills Selector (Phase 26 / SKILL-01..05)** — 22-skill marketplace mirror under `templates/skills-marketplace/<name>/` (ai-models, analytics-tracking, chrome-extension-development, copywriting, docx, find-skills, firecrawl, i18n-localization, memo-skill, next-best-practices, notebooklm, pdf, resend, seo-audit, shadcn, stripe-best-practices, tailwind-design-system, typescript-advanced-types, ui-ux-pro-max, vercel-composition-patterns, vercel-react-best-practices, webapp-testing). License preservation: 2 skills with upstream `LICENSE` mirrored as-is, 20 received `SKILL-LICENSE.md` provenance fallback. `scripts/lib/skills.sh` exposes `SKILLS_CATALOG[]` + `is_skill_installed` (`[ -d ]` probe) + `skills_install` (cp -R, returns 2 without `--force`); `scripts/sync-skills-mirror.sh` standalone maintainer tool with `--dry-run`. `scripts/install.sh --skills` flag. `test-install-skills.sh` PASS=15. `manifest.json` `files.skills_marketplace[]` 22 entries auto-discovered by `update-claude.sh` via existing LIB-01 D-07 jq path. `docs/SKILLS-MIRROR.md` records mirror date + upstream URLs + re-sync procedure.
+- **Marketplace Publishing + Claude Desktop Reach (Phase 27 / MKT-01..04, DESK-01..04)** — `.claude-plugin/marketplace.json` at repo root with 3 sub-plugins (`tk-skills` Desktop-compatible, `tk-commands` Code-only, `tk-framework-rules` Code-only); 4 relative symlinks (mode 120000) point sub-plugin trees at existing repo content for zero duplication. Decision: `plugin.json` is single source of truth for version (marketplace.json entries omit version — silently overridden). `scripts/validate-skills-desktop.sh` heuristic-greps for `(Read|Write|Bash|Grep|Edit|Task)\(` to flag Code-only skills; result: 20 of 22 PASS, 2 (firecrawl, shadcn) FLAG informational — well above the 4-skill DESK-04 gate. `scripts/validate-marketplace.sh` gated by opt-in `TK_HAS_CLAUDE_CLI=1` env var. `scripts/install.sh --skills-only` flag + auto-routing when `command -v claude` fails. `docs/CLAUDE_DESKTOP.md` 94-line capability matrix (Code tab parity vs remote/Chat tab gaps). `manifest.json` 4.4.0 → 4.5.0; `CHANGELOG.md [4.5.0]` consolidated entry. CI step `Tests 21-33` + dedicated DESK-02/04 + MKT-03 jobs.
+- **Cross-phase wiring verified end-to-end** — `gsd-integration-checker` confirmed all 28 expected connections wired (Phase 24 libs consumed by 25/26/27; install.sh extended with `--mcps`/`--skills`/`--skills-only` without flag-mutex breakage; mirror reachable from `tk-skills` symlink; manifest 4.5.0 registers all libs/scripts/skills_marketplace[]). Fix commit `f2c607d` resolved 3 minor gaps surfaced during integration check (CHANGELOG `templates/mcps/` reference removed, MCP names corrected, `validate-marketplace` CI step added). All 5 hermetic test suites pass concurrently. BACKCOMPAT-01 invariant preserved end-to-end (`test-bootstrap.sh` PASS=26 unchanged).
+
+**Tech debt acknowledged (not blocking ship):**
+
+- 8 HUMAN-UAT items deferred (live-PTY or external-CLI dependent — cannot be automated): Phase 24 interactive TUI render + Ctrl-C restore; Phase 25 interactive TUI + real-CLI MCP detection + hidden-input visual UX; Phase 26 interactive 22-row TUI render; Phase 27 live `claude plugin marketplace add` smoke + Claude Desktop end-to-end install.
+- 5 advisory code-review WR findings in Phase 24 (`tui.sh` seam-bypass + EXIT-trap clobber + `dispatch.sh` `eval` env-var injection — low real-world risk; tracked in `.planning/phases/24-unified-tui-installer-centralized-detection/24-REVIEW.md`).
+- MKT-03 partial: marketplace structure verified statically; live runtime smoke deferred as HUMAN-UAT.
+
+**Archived:**
+
+- `.planning/milestones/v4.5-ROADMAP.md` — full phase breakdown with all 17 plans
+- `.planning/milestones/v4.5-REQUIREMENTS.md` — 36 REQ-IDs with traceability + adjustments table
+
+---
+
 ## v4.4 Bootstrap & Polish (Shipped: 2026-04-27)
 
 **Phases completed:** 3 phases (21–23), 8 plans, 19 tasks
