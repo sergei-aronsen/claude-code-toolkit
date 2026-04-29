@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
 status: executing
-stopped_at: Completed 30-01-PLAN.md
-last_updated: "2026-04-29T19:42:54.768Z"
+stopped_at: Completed 30-02-PLAN.md
+last_updated: "2026-04-29T19:51:17.765Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -104,6 +104,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - [Phase 29]: bridges.sh sibling-source guarded by write_state presence check to survive tmpfile sourcing in update-claude.sh
 - [Phase 29-sync-uninstall-integration]: classify_bridge_file bypasses is_protected_path; REMOVE_LIST loop has bridge bypass; self-deadlock guard in all bridge state helpers
 - [Phase 30-install-time-ux]: bridge_install_prompts defaults Y at install-time (additive UX); dispatch cases deferred to install.sh (Plan 30-02); _bridge_match uses IFS-split for Bash 3.2 portability
+- [Phase 30-install-time-ux]: Bridge dispatch shim inlined in install.sh (not separate lib) — fewer files
+- [Phase 30-install-time-ux]: All TUI/dispatch loops use array-length-driven C-style for-loops (BACKCOMPAT-01)
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -188,11 +190,12 @@ Carry-overs available for next milestone scoping:
 | Phase 29 P02 | 35 | 2 tasks | 2 files |
 | Phase 29-sync-uninstall-integration P03 | 50 | 2 tasks | 4 files |
 | Phase 30-install-time-ux P01 | 12 | 4 tasks | 2 files |
+| Phase 30-install-time-ux P02 | 30 | 4 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T19:42:54.765Z
-Stopped at: Completed 30-01-PLAN.md
+Last session: 2026-04-29T19:51:17.761Z
+Stopped at: Completed 30-02-PLAN.md
 Resume file: None
 
 **Next steps:**

@@ -43,7 +43,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Install-time UX (`scripts/install.sh` + `init-claude.sh` + `init-local.sh`)
 
-- [ ] **BRIDGE-UX-01**: `scripts/install.sh` (v4.6 unified TUI) gains 2 new component rows in the Components page when their CLI is detected:
+- [x] **BRIDGE-UX-01**: `scripts/install.sh` (v4.6 unified TUI) gains 2 new component rows in the Components page when their CLI is detected:
   - `[ ] Gemini CLI bridge   (CLAUDE.md → GEMINI.md)   [detected: gemini@<version>]`
   - `[ ] Codex CLI bridge    (CLAUDE.md → AGENTS.md)   [detected: codex@<version>]`
   Items NOT shown when CLI absent (no clutter for users who don't have these CLIs).
