@@ -42,6 +42,8 @@ FAIL_FAST=0
 MCPS=0
 SKILLS=0
 SKILLS_ONLY=0
+NO_BRIDGES=false
+BRIDGES_FORCE=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -52,6 +54,13 @@ while [[ $# -gt 0 ]]; do
         --force)       FORCE=1;               shift ;;
         --fail-fast)   FAIL_FAST=1;           shift ;;
         --no-banner)   NO_BANNER=1;           shift ;;
+        --no-bridges)  NO_BRIDGES=true;       shift ;;
+        --bridges)
+            if [[ -z "${2:-}" ]]; then
+                echo -e "${RED}Error:${NC} --bridges requires a comma-separated target list (e.g. --bridges gemini,codex)" >&2
+                exit 1
+            fi
+            BRIDGES_FORCE="$2"; shift 2 ;;
         --mcps)        MCPS=1;                shift ;;
         --skills)      SKILLS=1;              shift ;;
         --skills-only) SKILLS_ONLY=1; SKILLS=1; shift ;;
@@ -67,6 +76,8 @@ Flags:
   --fail-fast   Stop on first component failure (default: continue-on-error)
   --no-color    Disable ANSI output (also honored via NO_COLOR env)
   --no-banner   Suppress closing removal banner
+  --no-bridges  Skip Gemini/Codex bridge prompts unconditionally (env: TK_NO_BRIDGES=1)
+  --bridges LIST  Force-create bridges for comma-listed CLIs (e.g. gemini,codex)
   --mcps        Install curated MCP servers via TUI catalog (Phase 25)
   --skills      Install curated skills via TUI catalog (Phase 26)
   --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
@@ -83,6 +94,22 @@ USAGE
             ;;
     esac
 done
+
+# BRIDGE-UX-03 + BRIDGE-UX-04: --no-bridges and --bridges are mutually exclusive.
+# Mirrors the v4.4 --no-bootstrap / --bootstrap-only precedent (exit 2 on user-error).
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo -e "${RED}Error:${NC} --no-bridges and --bridges are mutually exclusive" >&2
+    exit 2
+fi
+# TK_NO_BRIDGES=1 env-var equivalent of --no-bridges (BRIDGE-UX-03 symmetry).
+if [[ "${TK_NO_BRIDGES:-}" == "1" ]]; then
+    NO_BRIDGES=true
+fi
+# Re-check mutex after env-var coalesce (TK_NO_BRIDGES=1 + --bridges X also exit 2).
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo -e "${RED}Error:${NC} --no-bridges (or TK_NO_BRIDGES=1) and --bridges are mutually exclusive" >&2
+    exit 2
+fi
 
 # ─────────────────────────────────────────────────
 # Source the three Phase 24 libs.
@@ -137,6 +164,7 @@ _source_lib dry-run-output
 _source_lib detect2
 _source_lib tui
 _source_lib dispatch
+_source_lib bridges
 
 # MCPS=1 path needs the MCP catalog + wizard library.
 if [[ "$MCPS" -eq 1 ]]; then
