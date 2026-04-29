@@ -49,15 +49,19 @@ _TUI_SAVED_STTY=""
 
 # Enter raw mode: hide cursor, save stty, disable canonical mode + echo.
 # All TTY access uses per-read redirection (TK_TUI_TTY_SRC test seam, mirrors bootstrap.sh:42-48).
+# WR-02: cursor-hide writes to $tty_target (not hard-coded /dev/tty) to honor the
+# test seam consistently — prevents tests from leaking real-terminal state changes.
 _tui_enter_raw() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
     _TUI_SAVED_STTY=$(stty -g <"$tty_target" 2>/dev/null || echo "")
-    printf '\e[?25l' > /dev/tty 2>/dev/null || true   # hide cursor
+    printf '\e[?25l' > "$tty_target" 2>/dev/null || true   # hide cursor
     stty -icanon -echo <"$tty_target" 2>/dev/null || true
 }
 
 # Restore terminal mode. Triple-fallback: saved string → stty sane → silent || true.
 # Always restores cursor visibility. Idempotent — safe to call multiple times.
+# WR-02: cursor-show writes to $tty_target (not hard-coded /dev/tty) to honor the
+# test seam consistently.
 _tui_restore() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
     if [[ -n "$_TUI_SAVED_STTY" ]]; then
@@ -66,7 +70,7 @@ _tui_restore() {
     else
         stty sane <"$tty_target" 2>/dev/null || true
     fi
-    printf '\e[?25h' > /dev/tty 2>/dev/null || true   # show cursor
+    printf '\e[?25h' > "$tty_target" 2>/dev/null || true   # show cursor
     _TUI_SAVED_STTY=""
 }
 
