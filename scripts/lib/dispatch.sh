@@ -36,6 +36,14 @@
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
 # Reuse canonical SP/GSD install commands from optional-plugins.sh (D-04).
+#
+# SECURITY (WR-01): TK_SP_INSTALL_CMD and TK_GSD_INSTALL_CMD are TRUSTED installer
+# inputs — they are passed to `eval` to support shell-pipe constructs like
+# `bash <(curl ...)`. Authors MUST NOT populate these variables from untrusted
+# data (user form fields, untrusted env, network input). The default values are
+# safe literals; overrides are intended only for forks/mirrors and tests.
+# For test injection, prefer TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD which take
+# a path to a script (no eval, executed via `bash <path>`).
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
 [[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
 
