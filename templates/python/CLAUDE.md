@@ -33,7 +33,7 @@ the full experience; TK will auto-detect them and skip duplicate files.
 2. **Architecture:** KISS, YAGNI, DO NOT create files without confirmation
 3. **Workflow:** Plan Mode before code, 3 phases (Research → Plan → Execute)
 4. **Git:** Conventional Commits, DO NOT push to main directly, RUN LINTERS before commit
-5. **Language:** ALL code comments, commit messages, and docs in English only
+5. **Language:** ALL code comments, commits, docs, AND public GitHub content (PR titles/bodies, issue comments, code reviews, release notes) in English only — no exceptions, even if chat is non-English
 6. **Directory:** STAY in current working directory, DO NOT cd to parent/sibling folders
 7. **Types:** ALWAYS use type hints, mypy must pass
 8. **User-Agent:** NEVER use default library UA, ALWAYS set real browser User-Agent
@@ -242,7 +242,7 @@ Full guide: `components/production-safety.md`
 - Single responsibility per module
 - Type hints are mandatory
 - Docstrings for public API
-- **All code comments, commit messages, and documentation in English** regardless of conversation language
+- **All code comments, commit messages, documentation, AND public GitHub content (PR titles/bodies, issue titles/comments, code review comments, release notes, repo wiki) in English** regardless of conversation language. The boundary is "publishes to GitHub" — chat replies, scratchpad notes, and `.planning/` artifacts can stay in the user's preferred language; once content lands on github.com, switch to English.
 
 ---
 
@@ -351,15 +351,9 @@ On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.cl
 
 ---
 
-## Supreme Council (Optional)
+## Supreme Council
 
-For high-stakes changes, use multi-AI review:
-`/council "feature description"` or `brain "feature description"`
-
-**When to use:** New features, security, refactoring, payments, breaking API changes.
-**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
-
-Full guide: `components/supreme-council.md`
+> Supreme Council is global — see `~/.claude/CLAUDE.md` "Supreme Council" section.
 
 ---
 

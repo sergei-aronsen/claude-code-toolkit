@@ -91,6 +91,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI workflow** (`quality.yml`) gains a dedicated
   `DESK-02/DESK-04 — Skills Desktop-safety audit` step.
 
+## [4.5.0] - 2026-04-29
+
+### Phase 24 Sub-Phase 1 — Globalize Council artifacts
+
+#### Added
+
+- **Global `/council` slash command** — `setup-council.sh` and
+  `init-claude.sh::setup_council` now download `commands/council.md`
+  upstream into `~/.claude/commands/` (alongside the existing
+  `~/.claude/council/brain.py`, `~/.claude/council/config.json`, and
+  `~/.claude/council/prompts/audit-review.md` artifacts). Idempotent +
+  mtime-aware download mirrors the `prompts/audit-review.md` pattern.
+  Result: one global Council install drives every project, no per-project
+  duplication.
+
+- **`scripts/lib/cli-recommendations.sh`** — shared helper that detects
+  whether `gemini` (Gemini CLI) and `codex` (Codex CLI) are on `$PATH`
+  and prints install hints for whichever is missing. Sourced by both
+  `setup-council.sh` and `init-claude.sh::setup_council`. Output is
+  appended to `~/.claude/council/setup.log` for later auditing.
+  Detection is informational only — never blocks setup.
+
+- **Supreme Council section in `templates/global/CLAUDE.md`** —
+  new section 15, with `## 16. USER PREFERENCES` renumbered from 15.
+  Carries the v4.4 per-project Council description verbatim;
+  Sub-Phase 2 will rewrite the body around the FP-recheck mandate.
+
+- **Stale per-project `council.md` cleanup** in
+  `scripts/migrate-to-complement.sh` — runs at the dry-run preview, the
+  "no SP/GSD duplicates found" early exit, and the production tail.
+  Detects `./.claude/commands/council.md` left over from v4.4 installs,
+  warns when a global counterpart with different sha256 exists (possible
+  user customization), and prompts for interactive removal. `--yes`
+  accepts automatically; idempotent on re-run.
+
+- **`verify-install.sh` Council checks** — Section 5 now verifies
+  `~/.claude/commands/council.md` exists, `brain.py` is `+x`,
+  `config.json` permissions are `0600` (BSD `stat -f %Lp` with GNU
+  `stat -c %a` fallback), and `alias brain=` is declared in
+  `.zshrc` / `.bash_profile` / `.bashrc`.
+
+#### Changed
+
+- **Per-project `commands/council.md` no longer ships** — removed from
+  `manifest.json::files.commands[]`. Smart-update / fresh installs no
+  longer copy it into `./.claude/commands/`. Existing v4.4 installs keep
+  their local copy until `migrate-to-complement.sh` is run.
+- **`templates/{base,go,laravel,nextjs,nodejs,python,rails}/CLAUDE.md`** —
+  `## Supreme Council (Optional)` body shrinks to a one-line pointer
+  (`> Supreme Council is global — see ~/.claude/CLAUDE.md ...`). Heading
+  drops the `(Optional)` suffix to match
+  `manifest.json::claude_md_sections.system`.
+- **`scripts/validate-manifest.py`** — new `GLOBAL_ONLY_COMMANDS` set
+  exempts `council.md` from the disk-to-manifest drift check so the file
+  can stay in `commands/` for upstream curl fetches without re-triggering
+  drift.
+- **`README.md`** — Killer Features row notes `/council` is now installed
+  globally to `~/.claude/commands/`.
+
+#### Notes
+
+This release closes Phase 24 Sub-Phase 1 (Globalize Council artifacts).
+Sub-Phases 2–11 (file-based prompts, FP-recheck, context enrichment,
+cost tracking, OpenRouter / Codex CLI fallback, caching, GSD
+integration, QoL flags, multilingual prompts, MCP server) follow under
+the same v4.5.0 heading as they ship.
+
 ## [4.4.0] - 2026-04-27
 
 ### Added

@@ -66,9 +66,6 @@
         "path": "commands/context-prime.md"
       },
       {
-        "path": "commands/council.md"
-      },
-      {
         "path": "commands/debug.md",
         "conflicts_with": [
           "superpowers"
@@ -234,6 +231,9 @@
       },
       {
         "path": "scripts/lib/bootstrap.sh"
+      },
+      {
+        "path": "scripts/lib/cli-recommendations.sh"
       },
       {
         "path": "scripts/lib/detect2.sh"

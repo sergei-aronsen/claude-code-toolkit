@@ -198,4 +198,4 @@ Credentials in `.env` — see `DATABASE_*`, `API_KEY_*` variables.
 4. **One rule file per domain** — not per lesson (avoid file explosion)
 5. **Update immediately** — when facts change, update rules/ right away
 6. **No credentials in git** — only `.env` variable names, never values
-7. **Write in English** — all rules and docs in English regardless of conversation language
+7. **Write in English** — all rules, docs, and public GitHub content (PR titles/bodies, issue comments, code reviews, release notes) in English regardless of conversation language; chat replies and `.planning/` artifacts can stay in the user's preferred language
