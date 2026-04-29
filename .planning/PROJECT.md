@@ -144,6 +144,7 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 **Shipped:**
 
+- **v4.7 Multi-CLI Bridge** (2026-04-29) — 4 phases (28–31), 12 plans, 35 tasks, 18 REQ-IDs (BRIDGE-DET-01..03, BRIDGE-GEN-01..04, BRIDGE-SYNC-01..03, BRIDGE-UN-01..02, BRIDGE-UX-01..04, BRIDGE-DIST-01..02, BRIDGE-TEST-01, BRIDGE-DOCS-01..02). `scripts/lib/bridges.sh` (700+ lines) ships `bridge_create_project` / `bridge_create_global` writing `GEMINI.md` (Gemini CLI) + `AGENTS.md` (OpenAI Codex CLI — NOT `CODEX.md`, OpenAI standard) with byte-identical 4-line auto-generated HTML banner; registers in `~/.claude/toolkit-install.json` `bridges[]` with both `source_sha256` and `bridge_sha256`. `update-claude.sh` `sync_bridges()` decision tree: SKIP / ORPHANED / drift `[y/N/d]` / REWRITE / in-sync. `--break-bridge <target>` / `--restore-bridge <target>` flags flip `user_owned`. `install.sh` TUI conditional rows for detected CLIs + dispatch shim. `init-claude.sh` / `init-local.sh` post-install per-CLI prompt with `TK_BRIDGE_TTY_SRC` test seam, fail-closed N on no-TTY. `--no-bridges` + `TK_NO_BRIDGES=1` opt-out, `--bridges gemini,codex` force-create with `--fail-fast` exit 1 on absent CLI. `state.sh::write_state` extended to 10-arg with `bridges_json` passthrough (backward-compatible default `'[]'`). `uninstall.sh` includes bridges in REMOVE_LIST + `[y/N/d]` for modified bridges + state purge gated on `--keep-state`. 3 new hermetic test suites: `test-bridges-foundation.sh` (PASS=5), `test-bridges-sync.sh` (PASS=25), `test-bridges-install-ux.sh` (PASS=20) + `test-bridges.sh` aggregator (PASS=50). 3 WR bugs fixed inline: WR-01 Phase 29 (uninstall protect bypass), WR-02 Phase 29 (state file path mismatch), WR-01 Phase 30 (silent --bridges fail). Manifest 4.6.0 → 4.7.0 with `scripts/lib/bridges.sh` registered (auto-discovered via existing v4.4 LIB-01 D-07 jq path). `docs/BRIDGES.md` (168 lines, 9 sections) + INSTALL.md flag rows + README Killer Features. BACKCOMPAT-01 preserved (test-bootstrap PASS=26, test-install-tui PASS=43). Tagged `v4.7.0`.
 - **v4.6 Install Flow UX & Desktop Reach** (2026-04-29) — 4 phases (24–27), 17 plans, 42 tasks, 36 REQ-IDs (TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01, MCP-01..05, MCP-SEC-01/02, SKILL-01..05, MKT-01..04, DESK-01..04). Single guided TUI installer (`scripts/install.sh`) replaces 5 separate curl-bash invocations: `scripts/lib/{tui,detect2,dispatch}.sh` foundation + 6-component selector. Phase 25 ships 9-MCP curated TUI (`scripts/lib/mcp-catalog.json` + `mcp.sh`) with hidden-input wizard and `~/.claude/mcp-config.env` (mode 0600). Phase 26 mirrors 22 curated skills under `templates/skills-marketplace/<name>/` installable via `cp -R` to `~/.claude/skills/`. Phase 27 publishes plugin marketplace (`.claude-plugin/marketplace.json` + 3 sub-plugins `tk-skills`/`tk-commands`/`tk-framework-rules` via relative symlinks) + `docs/CLAUDE_DESKTOP.md` capability matrix + auto-routing to `--skills-only` when `claude` CLI absent. 5 hermetic test suites (PASS=104+: test-install-tui 43, test-mcp-selector 21, test-install-skills 15, test-update-libs 15, test-bootstrap 26 unchanged). Manifest 4.4.0 → 4.6.0 with new `files.skills_marketplace[]` (22 entries). 8 HUMAN-UAT items deferred (live PTY + external CLI) and 5 advisory code-review WRs. Tagged `v4.6.0`.
 - **v4.4 Bootstrap & Polish** (2026-04-27) — 3 phases (21–23), 8 plans, 19 tasks, 9 REQ-IDs (BOOTSTRAP-01..04, LIB-01/02, BANNER-01, KEEP-01/02). `scripts/lib/bootstrap.sh` invokes canonical SP/GSD installers (`claude plugin install superpowers@claude-plugins-official`, `bash <(curl -sSL .../get-shit-done/.../install.sh)`) before `detect.sh` and re-runs detection after; `< /dev/tty` with fail-closed `N`; `--no-bootstrap` + `TK_NO_BOOTSTRAP=1` opt-out. `manifest.json` gained `files.libs[]` covering `scripts/lib/{backup,bootstrap,dry-run-output,install,optional-plugins,state}.sh` so `update-claude.sh` refreshes them via existing jq path. `init-claude.sh` + `init-local.sh` learned `--no-banner` (env-form `NO_BANNER=${NO_BANNER:-0}` for byte-symmetry). `scripts/uninstall.sh --keep-state` (and `TK_UNINSTALL_KEEP_STATE=1`) preserves `~/.claude/toolkit-install.json` for partial-uninstall recovery. 30 Makefile tests + CI Tests 21-30. Tagged `v4.4.0`.
 - **v4.3 Uninstall** (2026-04-26) — 3 phases (18–20), 10 plans, 12 tasks, 8 REQ-IDs (UN-01..UN-08). `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, classifies via SHA256, prompts `[y/N/d]` for modified files, backs up to `~/.claude-backup-pre-uninstall-<ts>/`, strips toolkit sentinel block from `~/.claude/CLAUDE.md`, verifies base-plugin invariant via `diff -q`, deletes state file LAST, idempotent on second invocation. 7 hermetic test files (67 assertions: dry-run + backup + prompt + idempotency + state-cleanup + round-trip + banner-gate). Manifest 4.3.0 registers `files.scripts[]`; identical `To remove` banner in all 3 installers; CI mirror in `quality.yml`. Tagged `v4.3.0`.
@@ -151,34 +152,17 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Current Milestone: v4.7 Multi-CLI Bridge
+## Next Milestone Goals (TBD)
 
-**Goal:** Make the toolkit's CLAUDE.md (project-level and global) usable by other agentic CLIs (Gemini CLI, OpenAI Codex CLI) without forcing the user to maintain duplicate files manually.
+_v4.7 Multi-CLI Bridge shipped. Next milestone scoping pending — run `/gsd-new-milestone` to define goals._
 
-**Target features:**
+**Pending HUMAN-UAT from prior milestones** (run when convenient — not blocking):
 
-- **Bridge generation** — at install time, detect installed CLIs (`gemini`, `codex`) and offer to create per-CLI files (`GEMINI.md`, `AGENTS.md`) as plain copies of `CLAUDE.md` (project-level) or `~/.claude/CLAUDE.md` (global). Plain copy chosen over symlink so users can apply CLI-specific edits if they want.
-- **Drift detection on update** — `update-claude.sh` tracks bridge files in `~/.claude/toolkit-install.json` with SHA256. On update, if `CLAUDE.md` changed: re-copy to bridges; if a bridge was user-edited: prompt `[y/N/d]` (keep / overwrite / diff) mirroring v4.3 UN-03.
-- **Auto-generated header banner** — every bridge file carries a top-of-file HTML comment: `<!-- Auto-generated from CLAUDE.md by claude-code-toolkit. Edit CLAUDE.md (canonical source). Re-run update-claude.sh to refresh. -->`. Documents the contract.
-- **Opt-out per bridge** — `update-claude.sh --break-bridge gemini` (or `codex`) marks the file as user-owned in toolkit-install.json so subsequent runs don't sync it.
-- **Symmetric uninstall** — `uninstall.sh` removes bridge files like any other tracked TK artifact, with `[y/N/d]` prompt on drift, base-plugin invariant intact.
-- **Optional substitution layer** (deferred to v4.8 if friction): minimal whitelist replacement (e.g., "Claude Code" → "Gemini CLI") with a flag `--substitute-branding`. **Not in v4.7 scope** — plain copy first, substitution later if users ask for it.
-
-**Key context:**
-
-- Bridge file conventions confirmed: Gemini CLI reads `GEMINI.md`; OpenAI Codex CLI reads `AGENTS.md` (NOT `CODEX.md` — `AGENTS.md` is the OpenAI standard).
-- Plain copy over symlink: chosen because users may want CLI-specific edits, and symlink locks all CLIs to byte-identical content. Drift handled via SHA256 + prompt, not by abandoning copy semantics.
-- Bash 3.2 compatibility: no `declare -A` (associative arrays); use parallel arrays + index loop if substitution lands later.
-- Detection strategy: filesystem-primary (existing `~/.gemini/`, `~/.codex/` dirs) + `command -v` cross-check. Fail-soft when CLI absent (no error, just no bridge offered).
-- Reuses Phase 24 (v4.6) `lib/{tui,detect2,dispatch}.sh` foundation — bridges become new dispatchable components.
-- BACKCOMPAT-01 invariant from v4.6: `init-claude.sh` URL stays byte-identical with v4.6 flags + bridge prompts are skip-by-default in `--yes` / no-TTY paths.
-
-**Pending HUMAN-UAT from v4.6** (run when convenient — not blocking ship):
-
-- Phase 24: live PTY interactive TUI render + Ctrl-C terminal restore
-- Phase 25: live PTY MCP wizard with real `claude` CLI detection + hidden-input visual confirmation
-- Phase 26: live PTY interactive 22-row Skills TUI render
-- Phase 27: live `claude plugin marketplace add ./` smoke + Claude Desktop end-to-end install
+- Phase 24 (v4.6): live PTY interactive TUI render + Ctrl-C terminal restore
+- Phase 25 (v4.6): live PTY MCP wizard with real `claude` CLI detection + hidden-input visual confirmation
+- Phase 26 (v4.6): live PTY interactive 22-row Skills TUI render
+- Phase 27 (v4.6): live `claude plugin marketplace add ./` smoke + Claude Desktop end-to-end install
+- Phase 28-30 (v4.7): live Gemini CLI / OpenAI Codex CLI integration smoke (real CLIs installed, real bridge files written, real drift prompts)
 
 **Carry-overs from previous milestones (still deferred):**
 

@@ -8,26 +8,11 @@
 - ✅ **v4.3 Uninstall** — Phases 18–20 (shipped 2026-04-26). See `.planning/milestones/v4.3-ROADMAP.md`.
 - ✅ **v4.4 Bootstrap & Polish** — Phases 21–23 (shipped 2026-04-27). See `.planning/milestones/v4.4-ROADMAP.md`.
 - ✅ **v4.6 Install Flow UX & Desktop Reach** — Phases 24–27 (shipped 2026-04-29). See `.planning/milestones/v4.6-ROADMAP.md`.
-- 🚧 **v4.7 Multi-CLI Bridge** — Phases 28–31 (active, scoped 2026-04-29).
+- ✅ **v4.7 Multi-CLI Bridge** — Phases 28–31 (shipped 2026-04-29). See `.planning/milestones/v4.7-ROADMAP.md`.
 
-## v4.7 Multi-CLI Bridge — Active
+## Active Milestone
 
-**Goal:** Copy `CLAUDE.md` → `GEMINI.md` (Gemini CLI) and `CLAUDE.md` → `AGENTS.md` (OpenAI Codex CLI) at install time with SHA256 drift tracking and a `[y/N/d]` prompt on update, so users running multiple agentic CLIs do not maintain duplicate context files manually.
-
-**Coverage:** 18 v4.7 REQ-IDs mapped 1:1 across 4 phases. 100% coverage, no orphans.
-
-**Wave plan:**
-
-- **Wave 1:** Phase 28 (foundation) — must complete first
-- **Wave 2:** Phases 29 + 30 (sync + UX) — can run in parallel after Phase 28 ships
-- **Wave 3:** Phase 31 (distribution + tests + docs) — depends on 28 + 29 + 30
-
-## Phases
-
-- [ ] **Phase 28: Bridge Foundation** — Detect Gemini/Codex CLIs and ship `bridges.sh` lib that generates plain-copy bridge files with SHA256 tracking.
-- [ ] **Phase 29: Sync & Uninstall Integration** — `update-claude.sh` syncs bridges with `[y/N/d]` drift prompt + `--break-bridge` opt-out; `uninstall.sh` removes bridges symmetrically.
-- [x] **Phase 30: Install-time UX** — `install.sh` TUI rows + per-CLI prompts in `init-claude.sh` / `init-local.sh` + `--no-bridges` / `--bridges <list>` flags.
-- [ ] **Phase 31: Distribution + Tests + Docs** — manifest 4.7.0 bump, `test-bridges.sh` (≥15 assertions), `docs/BRIDGES.md` + `INSTALL.md`/README updates, CHANGELOG `[4.7.0]`.
+_None — ready for next milestone (`/gsd-new-milestone`)._
 
 <details>
 <summary>✅ v4.0 Complement Mode (Phases 1–7 + 6.1) — SHIPPED 2026-04-21</summary>
