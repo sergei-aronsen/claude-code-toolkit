@@ -157,7 +157,10 @@
   3. `docs/BRIDGES.md` documents supported CLIs (Gemini → `GEMINI.md`, Codex → `AGENTS.md` per OpenAI standard), plain-copy semantics + drift behavior, opt-out mechanics (`--no-bridges`, `--break-bridge`, `--restore-bridge`), and the symlink-vs-copy tradeoff rationale.
   4. `docs/INSTALL.md` `Installer Flags` table gains rows for `--no-bridges`, `--bridges <list>`, `--break-bridge <name>`, `--restore-bridge <name>`; README "Killer Features" grid mentions multi-CLI bridge support.
   5. `CHANGELOG.md [4.7.0]` is a single consolidated entry covering all 18 BRIDGE-* requirements (mirrors v4.4/v4.6 consolidation pattern); `make check` green; CI `validate-templates` green.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 31-01-PLAN.md — Manifest registration (`scripts/lib/bridges.sh` in `files.libs[]`) + version bump to 4.7.0 in manifest + 3 plugin.json files + CHANGELOG `[4.7.0]` consolidated entry
+- [ ] 31-02-PLAN.md — Aggregator test (`scripts/tests/test-bridges.sh` wrapping the 3 existing bridge suites = 50 assertions) + CI integration (`quality.yml` test-init-script append)
+- [ ] 31-03-PLAN.md — `docs/BRIDGES.md` (NEW, 9 sections) + `docs/INSTALL.md` Installer Flags table extension (4 new flag rows + Multi-CLI Bridges sub-section) + README Killer Features grid row
 
 ---
 
@@ -171,7 +174,7 @@
 | v4.3 Uninstall | 18–20 | 10/10 | ✅ Shipped | 2026-04-26 |
 | v4.4 Bootstrap & Polish | 21–23 | 8/8 | ✅ Shipped | 2026-04-27 |
 | v4.6 Install Flow UX & Desktop Reach | 24–27 | 17/17 | ✅ Shipped | 2026-04-29 |
-| v4.7 Multi-CLI Bridge | 28–31 | 0/TBD | 🚧 Active | TBD |
+| v4.7 Multi-CLI Bridge | 28–31 | 0/14 (planned) | 🚧 Active | TBD |
 
 ## v4.7 Progress
 
