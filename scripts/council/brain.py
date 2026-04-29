@@ -41,6 +41,22 @@ TREE_EXCLUDE = "node_modules|dist|.git|__pycache__|env|venv|vendor|.next|.nuxt|t
 MAX_TOTAL_CONTEXT = 200000  # 200K characters total file context limit
 MAX_GIT_DIFF = 30000        # 30K characters git diff limit
 MAX_PROJECT_RULES = 10000   # 10K characters CLAUDE.md limit
+MAX_README = 10000          # 10K characters README.md limit (Phase 24 SP3)
+MAX_RECENT_LOG = 5000       # 5K characters git log -20 limit (SP3)
+MAX_TODOS = 5000            # 5K characters TODO/FIXME grep limit (SP3)
+MAX_PLANNING = 10000        # 10K characters .planning/PROJECT.md limit (SP3)
+MAX_TEST_FILE = 20000       # 20K characters per matching test file (SP3)
+
+
+def _debug(msg):
+    """Emit a stderr trace line when COUNCIL_DEBUG=1 is set.
+
+    Used by SP3 context-enrichment helpers so users running
+    `COUNCIL_DEBUG=1 brain "..."` can verify which blocks fed into the
+    Skeptic / Pragmatist prompts and see redaction counts.
+    """
+    if os.environ.get("COUNCIL_DEBUG") == "1":
+        print(f"[council:debug] {msg}", file=sys.stderr)
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -82,6 +98,176 @@ AUDIT_REVIEW_GPT_SYSTEM = (
     "the bracketed <verdict-table> and <missed-findings> blocks per the prompt."
 )
 
+# ─────────────────────────────────────────────────
+# Externalized system prompts (Phase 24 Sub-Phase 2)
+# ─────────────────────────────────────────────────
+#
+# The four system prompts above (GEMINI_SYSTEM, GPT_SYSTEM, AUDIT_REVIEW_*) are
+# editable as files under ~/.claude/council/prompts/. load_prompt() reads them
+# at first use and caches the contents per process. The embedded constants act
+# as a self-contained fallback so brain.py keeps working before any installer
+# has populated the prompts directory (first-run case).
+
+PROMPTS_DIR = Path.home() / ".claude" / "council" / "prompts"
+
+PROMPT_FALLBACKS = {
+    "skeptic-system": GEMINI_SYSTEM,
+    "pragmatist-system": GPT_SYSTEM,
+    "audit-review-skeptic": AUDIT_REVIEW_GEMINI_SYSTEM,
+    "audit-review-pragmatist": AUDIT_REVIEW_GPT_SYSTEM,
+}
+
+_PROMPT_CACHE = {}
+
+
+_COUNCIL_LANG = "en"  # Phase 24 SP9 — flipped to "ru" by --lang or auto-detect
+
+
+def set_council_lang(lang):
+    """Set the active language code (e.g. 'en', 'ru'). Clears the prompt cache
+    so existing entries do not bleed across languages within a single process.
+    """
+    global _COUNCIL_LANG, _PROMPT_CACHE
+    if not lang:
+        return
+    if lang == _COUNCIL_LANG:
+        return
+    _COUNCIL_LANG = lang
+    _PROMPT_CACHE = {}
+
+
+def detect_council_lang(default="en"):
+    """Phase 24 SP9 — auto-detect Council language from ~/.claude/CLAUDE.md.
+
+    Reads the first 500 chars of the global CLAUDE.md (if present) and
+    classifies as Russian when the Cyrillic-character ratio exceeds 0.2.
+    Returns the detected language code or `default`.
+    """
+    path = Path.home() / ".claude" / "CLAUDE.md"
+    if not path.is_file():
+        return default
+    try:
+        sample = path.read_text(encoding="utf-8", errors="replace")[:500]
+    except OSError:
+        return default
+    if not sample:
+        return default
+    cyrillic = sum(1 for ch in sample if "Ѐ" <= ch <= "ӿ")
+    ratio = cyrillic / max(1, len(sample))
+    return "ru" if ratio > 0.2 else default
+
+
+def load_prompt(name):
+    """Return the system prompt body for `name`.
+
+    Lookup order (Phase 24 SP9):
+      1. `~/.claude/council/prompts/<lang>/<name>.md` for the active language.
+      2. `~/.claude/council/prompts/<name>.md` (English / default).
+      3. Embedded `PROMPT_FALLBACKS` constant.
+
+    Cached per (lang, name) within a process; set_council_lang() clears the
+    cache when the language switches.
+    """
+    cache_key = f"{_COUNCIL_LANG}::{name}"
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
+    candidates = []
+    if _COUNCIL_LANG and _COUNCIL_LANG != "en":
+        candidates.append(PROMPTS_DIR / _COUNCIL_LANG / f"{name}.md")
+    candidates.append(PROMPTS_DIR / f"{name}.md")
+    text = None
+    for path in candidates:
+        try:
+            if path.is_file():
+                text = path.read_text(encoding="utf-8").strip()
+                if text:
+                    break
+        except OSError:
+            text = None
+    if not text:
+        text = PROMPT_FALLBACKS.get(name, "")
+    _PROMPT_CACHE[cache_key] = text
+    return text
+
+
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 8 — domain detection + persona overlays
+# ─────────────────────────────────────────────────
+# detect_domain() classifies the plan into one of {security, performance,
+# ux, migration, general}. When non-general, the matching persona overlay
+# under prompts/personas/<domain>-<role>.md is prepended to the base
+# Skeptic / Pragmatist system prompt. Overlays are optional — missing
+# files degrade gracefully to the base prompt.
+
+DOMAIN_PATTERNS = (
+    ("security", re.compile(r"\b(auth|password|crypto|JWT|token|session)\b", re.IGNORECASE)),
+    ("performance", re.compile(r"\b(perf|latency|cache|N\+1|slow|optimi[sz]e)\b", re.IGNORECASE)),
+    ("ux", re.compile(r"\b(UI|UX|accessibility|a11y|WCAG|screen reader)\b", re.IGNORECASE)),
+    ("migration", re.compile(r"\b(?:migration|backwards|deprecat\w*)\b", re.IGNORECASE)),
+)
+
+
+def detect_domain(plan_text):
+    """Classify a plan into a domain bucket. Returns 'general' on no match."""
+    if not plan_text:
+        return "general"
+    for label, pat in DOMAIN_PATTERNS:
+        if pat.search(plan_text):
+            return label
+    return "general"
+
+
+def load_persona(domain, role):
+    """Return the persona overlay text for (domain, role) or '' when none.
+
+    role must be 'skeptic' or 'pragmatist'. domain 'general' always returns
+    empty string. Lookup prefers the language-localized
+    `personas/<lang>/<domain>-<role>.md` (SP9) before falling back to the
+    canonical English overlay. Cached per (lang, domain, role).
+    """
+    if not domain or domain == "general":
+        return ""
+    if role not in ("skeptic", "pragmatist"):
+        return ""
+    cache_key = f"persona::{_COUNCIL_LANG}::{domain}-{role}"
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
+    candidates = []
+    if _COUNCIL_LANG and _COUNCIL_LANG != "en":
+        candidates.append(PROMPTS_DIR / "personas" / _COUNCIL_LANG / f"{domain}-{role}.md")
+    candidates.append(PROMPTS_DIR / "personas" / f"{domain}-{role}.md")
+    text = ""
+    for path in candidates:
+        try:
+            if path.is_file():
+                text = path.read_text(encoding="utf-8").strip()
+                if text:
+                    break
+        except OSError:
+            text = ""
+    _PROMPT_CACHE[cache_key] = text
+    return text
+
+
+def compose_system_prompt(role, plan, domain=None):
+    """Build the full system prompt for `role`.
+
+    Loads the base system prompt for the role and, when the plan classifies
+    into a non-general domain, prepends the matching persona overlay
+    separated by a `---` divider. Falls through to the base prompt when no
+    overlay exists.
+    """
+    base = load_prompt(f"{role}-system")
+    if domain is None:
+        domain = detect_domain(plan)
+    overlay = load_persona(domain, role)
+    if not overlay:
+        _debug(f"persona: role={role} domain={domain} overlay=none")
+        return base
+    _debug(f"persona: role={role} domain={domain} overlay=loaded ({len(overlay)} chars)")
+    return f"{overlay}\n\n---\n\n{base}"
+
+
 # Council audit-review constants
 COUNCIL_SLOT_PLACEHOLDER = "_pending — run /council audit-review_"  # U+2014 em-dash
 COUNCIL_VERDICT_HEADER = "| ID | verdict | confidence | justification |"
@@ -109,6 +295,35 @@ def is_error_response(text):
     if not text:
         return True
     return any(text.startswith(p) for p in ERROR_PREFIXES)
+
+
+def _extract_concerns(text):
+    """Phase 24 SP8 — pull bullet items from a `## Concerns` section.
+
+    The Skeptic prompt asks for "max 3" concerns under that heading; the
+    Pragmatist's "## Production Readiness" / "## Maintenance Forecast"
+    sections may or may not use the same name. We scan for any `## Concerns`
+    (case-insensitive) header and harvest list bullets up to the next
+    heading. Returns up to 3 concise strings.
+    """
+    if not text:
+        return []
+    m = re.search(
+        r"##\s*Concerns[^\n]*\n(.*?)(?=\n##\s|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if not m:
+        return []
+    body = m.group(1)
+    bullets = re.findall(r"^[\s>]*[-*•]\s+(.+)$|^[\s>]*\d+[.)]\s+(.+)$", body, re.MULTILINE)
+    out = []
+    for bullet_pair in bullets:
+        for grp in bullet_pair:
+            if grp and grp.strip():
+                out.append(grp.strip())
+                break
+    return out[:3]
 
 
 def extract_verdict(text):
@@ -392,6 +607,23 @@ def load_config():
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
 
+    # Phase 24 SP5 defaults \u2014 additive, do not require config.json rewrite.
+    config["gemini"].setdefault("thinking_budget", 32768)
+    # OpenAI mode: if not set, prefer codex CLI when available, else api.
+    if "mode" not in config["openai"]:
+        config["openai"]["mode"] = "cli" if shutil.which("codex") else "api"
+    config["openai"].setdefault("reasoning_effort", "high")
+    config["openai"].setdefault("cli_reasoning_effort", "high")
+    fallback = config.setdefault("fallback", {})
+    openrouter = fallback.setdefault("openrouter", {})
+    openrouter.setdefault("api_key", os.getenv("OPENROUTER_API_KEY", ""))
+    openrouter.setdefault("models", [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free",
+    ])
+
     # Audit BRAIN-M5 + Council pass C: pre-flight WARN per provider, fail
     # only if BOTH providers are unavailable. Single-reviewer Council is a
     # legitimate use case (e.g. user with only a Gemini CLI install).
@@ -410,7 +642,13 @@ def load_config():
             print(f"   Set GEMINI_API_KEY env var or edit {CONFIG_PATH}")
             config["_gemini_available"] = False
 
-    if not config["openai"].get("api_key"):
+    if config["openai"].get("mode") == "cli":
+        if shutil.which("codex") is None:
+            print("\u26a0\ufe0f  OpenAI CLI mode selected but 'codex' is not in PATH.")
+            print("   Install: npm install -g @openai/codex   # or: brew install --cask codex")
+            print(f"   Or switch to API mode by editing {CONFIG_PATH}")
+            config["_openai_available"] = False
+    elif not config["openai"].get("api_key"):
         print("\u26a0\ufe0f  OpenAI API key not configured.")
         print(f"   Set OPENAI_API_KEY env var or edit {CONFIG_PATH}")
         config["_openai_available"] = False
@@ -577,6 +815,600 @@ def get_project_rules():
 
 
 # ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 3 — context enrichment helpers
+# ─────────────────────────────────────────────────
+#
+# Each helper returns a string capped to its dedicated MAX_* constant so the
+# total context budget stays predictable. _truncate() appends a visible marker
+# that downstream readers (Skeptic, Pragmatist) can tell apart from real EOF.
+
+def _truncate(text, limit, marker="(context truncated)"):
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n... {marker}"
+
+
+def get_readme():
+    """Read project README.md (capped at MAX_README)."""
+    path = find_project_root() / "README.md"
+    if not path.is_file():
+        _debug("README.md: not found")
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        _debug(f"README.md: read failed ({exc})")
+        return ""
+    out = _truncate(text, MAX_README)
+    _debug(f"README.md: {len(out)} chars (capped at {MAX_README})")
+    return out
+
+
+def get_recent_log():
+    """Last 20 commits (`git log --oneline -20`), capped at MAX_RECENT_LOG."""
+    result = run_command(
+        ["git", "log", "--oneline", "-20"], timeout=10
+    )
+    if not result or result.startswith("Error"):
+        _debug("git log: empty or error")
+        return ""
+    out = _truncate(result, MAX_RECENT_LOG)
+    _debug(f"git log: {len(out)} chars (capped at {MAX_RECENT_LOG})")
+    return out
+
+
+def get_todos():
+    """Grep TODO|FIXME|HACK|XXX markers across top-level source dirs.
+
+    Skips vendored / generated paths. Uses git ls-files when available for an
+    accurate file list (respects .gitignore); falls back to a recursive walk
+    bounded by TREE_EXCLUDE.
+    """
+    root = find_project_root()
+    skip_dirs = {
+        "node_modules", "dist", ".git", "__pycache__", "env", "venv",
+        "vendor", ".next", ".nuxt", "tmp", "log", ".planning",
+    }
+    pattern = re.compile(r"\b(TODO|FIXME|HACK|XXX)\b")
+
+    files = []
+    listing = run_command(["git", "ls-files"], timeout=10)
+    if listing and not listing.startswith("Error"):
+        for rel in listing.splitlines():
+            if not rel:
+                continue
+            parts = rel.split("/")
+            if any(p in skip_dirs for p in parts):
+                continue
+            files.append(root / rel)
+    else:
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            if any(p in skip_dirs for p in path.parts):
+                continue
+            files.append(path)
+
+    hits = []
+    total = 0
+    for path in files:
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as fh:
+                for lineno, line in enumerate(fh, start=1):
+                    if pattern.search(line):
+                        rel = path.relative_to(root)
+                        snippet = line.rstrip()[:200]
+                        hits.append(f"{rel}:{lineno}: {snippet}")
+                        total += len(hits[-1]) + 1
+                        if total >= MAX_TODOS:
+                            break
+        except (OSError, UnicodeDecodeError):
+            continue
+        if total >= MAX_TODOS:
+            break
+
+    if not hits:
+        _debug("TODOs: 0 hits")
+        return ""
+    out = _truncate("\n".join(hits), MAX_TODOS)
+    _debug(f"TODOs: {len(hits)} hits, {len(out)} chars")
+    return out
+
+
+def get_planning_context():
+    """Read .planning/PROJECT.md if present (capped at MAX_PLANNING)."""
+    path = find_project_root() / ".planning" / "PROJECT.md"
+    if not path.is_file():
+        _debug(".planning/PROJECT.md: not found")
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        _debug(f".planning/PROJECT.md: read failed ({exc})")
+        return ""
+    out = _truncate(text, MAX_PLANNING)
+    _debug(f".planning/PROJECT.md: {len(out)} chars (capped at {MAX_PLANNING})")
+    return out
+
+
+def get_tests_for(file_paths):
+    """Locate test files matching each source path.
+
+    For every input path, look for siblings under common test layouts:
+      tests/<basename>*       __tests__/<basename>*       test_<basename>*
+    Returns a concatenated string (file-marker headers) capped at
+    MAX_TOTAL_CONTEXT to stay inside the global budget.
+    """
+    if not file_paths:
+        return ""
+    root = find_project_root()
+    seen = set()
+    blocks = []
+    total = 0
+
+    for raw in file_paths:
+        try:
+            src = Path(raw)
+            if not src.is_absolute():
+                src = (root / src).resolve()
+            stem = src.stem
+            parents = [src.parent] + list(src.parent.parents)
+        except OSError:
+            continue
+
+        candidates = []
+        for parent in parents:
+            for sub in ("tests", "__tests__"):
+                test_dir = parent / sub
+                if test_dir.is_dir():
+                    candidates.extend(test_dir.glob(f"{stem}*"))
+                    candidates.extend(test_dir.glob(f"test_{stem}*"))
+            candidates.extend(parent.glob(f"test_{stem}*"))
+            candidates.extend(parent.glob(f"{stem}.test.*"))
+            candidates.extend(parent.glob(f"{stem}.spec.*"))
+
+        for cand in candidates:
+            if not cand.is_file():
+                continue
+            try:
+                rel = cand.resolve().relative_to(root)
+            except (OSError, ValueError):
+                continue
+            key = str(rel)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                text = cand.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            text = _truncate(text, MAX_TEST_FILE, marker="(test file truncated)")
+            block = f"\n--- TEST FILE: {key} ---\n{text}\n"
+            if total + len(block) > MAX_TOTAL_CONTEXT:
+                break
+            blocks.append(block)
+            total += len(block)
+
+    if not blocks:
+        _debug("tests-for: 0 matches")
+        return ""
+    _debug(f"tests-for: {len(blocks)} files, {total} chars")
+    return "".join(blocks)
+
+
+def apply_context_budget(blocks, hard_limit=MAX_TOTAL_CONTEXT):
+    """Truncate a list of (label, body) blocks proportionally to fit hard_limit.
+
+    Returns the same list with `body` shrunk so the sum of len(body) <= hard_limit.
+    Each shrunk block keeps a visible "(context truncated)" marker.
+    """
+    total = sum(len(body) for _, body in blocks)
+    if total <= hard_limit:
+        return blocks
+    scale = hard_limit / total
+    out = []
+    for label, body in blocks:
+        if not body:
+            out.append((label, body))
+            continue
+        target = max(0, int(len(body) * scale) - 32)
+        out.append((label, _truncate(body, target)))
+    _debug(
+        f"budget: total={total} > limit={hard_limit}; scaled by {scale:.2f}"
+    )
+    return out
+
+
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 3 — privacy redaction
+# ─────────────────────────────────────────────────
+#
+# Default patterns cover the most common secret shapes; users can append more
+# via ~/.claude/council/redaction-patterns.txt (one Python regex per line, #
+# comments allowed).
+
+REDACTION_PATTERNS_PATH = Path.home() / ".claude" / "council" / "redaction-patterns.txt"
+
+DEFAULT_REDACTION_PATTERNS = [
+    # OpenAI-style API keys
+    r"sk-[A-Za-z0-9_\-]{20,}",
+    r"sk-proj-[A-Za-z0-9_\-]{20,}",
+    # Generic provider keys: KEY=value or KEY: value with high-entropy tail
+    r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}['\"]?",
+    # Bearer tokens
+    r"(?i)bearer\s+[A-Za-z0-9_\-\.=]{20,}",
+    # JWT (three base64url segments)
+    r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+",
+    # AWS access key / secret access key
+    r"AKIA[0-9A-Z]{16}",
+    r"(?i)aws[_-]?secret[_-]?access[_-]?key\s*[:=]\s*['\"]?[A-Za-z0-9/+=]{30,}['\"]?",
+    # GitHub PATs (classic + fine-grained)
+    r"ghp_[A-Za-z0-9]{30,}",
+    r"github_pat_[A-Za-z0-9_]{40,}",
+    # Google API keys
+    r"AIza[0-9A-Za-z_\-]{30,}",
+    # Slack tokens
+    r"xox[baprs]-[A-Za-z0-9-]{10,}",
+]
+
+_REDACTION_CACHE = None
+
+
+def _load_redaction_patterns():
+    """Compile default + user patterns once per process. Bad regexes warn but don't crash."""
+    global _REDACTION_CACHE
+    if _REDACTION_CACHE is not None:
+        return _REDACTION_CACHE
+    raw = list(DEFAULT_REDACTION_PATTERNS)
+    if REDACTION_PATTERNS_PATH.is_file():
+        try:
+            for line in REDACTION_PATTERNS_PATH.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    raw.append(line)
+        except OSError:
+            pass
+    compiled = []
+    for pat in raw:
+        try:
+            compiled.append(re.compile(pat))
+        except re.error as exc:
+            print(f"⚠️  invalid redaction pattern {pat!r}: {exc}", file=sys.stderr)
+    _REDACTION_CACHE = compiled
+    _debug(f"redaction: loaded {len(compiled)} patterns")
+    return compiled
+
+
+def redact_context(text, label="<unlabeled>"):
+    """Replace matches of every redaction pattern with ***REDACTED***.
+
+    Logs the per-block redaction count to stderr (without revealing content).
+    """
+    if not text:
+        return text
+    patterns = _load_redaction_patterns()
+    redacted = text
+    count = 0
+    for pat in patterns:
+        new, n = pat.subn("***REDACTED***", redacted)
+        count += n
+        redacted = new
+    if count:
+        print(
+            f"ℹ️  Redacted {count} secret(s) in {label} before sending to providers",
+            file=sys.stderr,
+        )
+    return redacted
+
+
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 4 — usage logging + pricing
+# ─────────────────────────────────────────────────
+#
+# Every Council API call appends one JSON line to usage.jsonl. Token counts
+# come from the provider's response when available (Gemini usageMetadata,
+# OpenAI usage object); CLI calls fall back to a chars/4 estimate marked
+# with `"estimated": true`. Cost is multiplied through pricing.json which
+# users maintain (rates ship as DEFAULT_PRICING fallback).
+
+import datetime
+import hashlib
+
+USAGE_LOG_PATH = Path.home() / ".claude" / "council" / "usage.jsonl"
+PRICING_PATH = Path.home() / ".claude" / "council" / "pricing.json"
+
+# $/1M tokens. Indicative rates as of Q1 2026 — users can override via
+# ~/.claude/council/pricing.json. CLI calls (Gemini CLI / Codex CLI) cost
+# zero per token under subscription, modeled with both rates = 0.
+DEFAULT_PRICING = {
+    "gemini-3-pro-preview": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "gemini-2.5-pro": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "gpt-5.2-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
+    "gpt-5.2": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "o3-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
+    "o3": {"input_per_1m": 2.0, "output_per_1m": 8.0},
+    # CLI-driven calls — covered by subscription, no per-token cost
+    "gemini-cli": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+    "codex-cli": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+    # OpenRouter free tier
+    "openrouter-free": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+}
+
+_PRICING_CACHE = None
+_LAST_USAGE = None  # populated by ask_*; consumed by record_usage()
+
+
+def _load_pricing():
+    """Merge user pricing.json on top of DEFAULT_PRICING. Cached per process."""
+    global _PRICING_CACHE
+    if _PRICING_CACHE is not None:
+        return _PRICING_CACHE
+    pricing = dict(DEFAULT_PRICING)
+    if PRICING_PATH.is_file():
+        try:
+            user_pricing = json.loads(PRICING_PATH.read_text(encoding="utf-8"))
+            if isinstance(user_pricing, dict):
+                for model, rates in user_pricing.items():
+                    if isinstance(rates, dict):
+                        pricing[model] = rates
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"⚠️  pricing.json unreadable: {exc}", file=sys.stderr)
+    _PRICING_CACHE = pricing
+    return pricing
+
+
+def _estimate_tokens(text):
+    """Approximate token count when the provider doesn't report usage.
+
+    Heuristic: 1 token ≈ 4 characters of English-like text. Conservative — over-
+    counts for code-heavy prompts, which is the side users want for cost
+    forecasting.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
+def _compute_cost(model, tokens_in, tokens_out):
+    """Return cost in USD for `tokens_in` input + `tokens_out` output of `model`.
+
+    Falls back to zero when the model is missing from pricing — avoids fake cost
+    spikes when DEFAULT_PRICING lags behind Council's configured model list.
+    """
+    pricing = _load_pricing()
+    rates = pricing.get(model) or {}
+    in_rate = float(rates.get("input_per_1m", 0.0))
+    out_rate = float(rates.get("output_per_1m", 0.0))
+    return round(
+        (tokens_in / 1_000_000.0) * in_rate
+        + (tokens_out / 1_000_000.0) * out_rate,
+        6,
+    )
+
+
+def _set_last_usage(provider, model, tokens_in, tokens_out, estimated=False):
+    """Stash the just-completed call's token usage for the next record_usage()."""
+    global _LAST_USAGE
+    _LAST_USAGE = {
+        "provider": provider,
+        "model": model,
+        "tokens_in": int(tokens_in or 0),
+        "tokens_out": int(tokens_out or 0),
+        "estimated": bool(estimated),
+    }
+
+
+def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
+    """Append one JSON line to usage.jsonl with the last call's tokens + cost.
+
+    Silent when no preceding ask_* set _LAST_USAGE (e.g. early error path) so
+    failed calls never write half-formed records. Users opt out by setting
+    COUNCIL_NO_USAGE_LOG=1 (rare — used by CI to keep the file clean).
+    """
+    global _LAST_USAGE
+    if _LAST_USAGE is None or os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
+        return
+    snapshot = _LAST_USAGE
+    _LAST_USAGE = None
+    cost = _compute_cost(
+        snapshot["model"], snapshot["tokens_in"], snapshot["tokens_out"]
+    )
+    record = {
+        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "mode": mode,
+        "provider": snapshot["provider"],
+        "model": snapshot["model"],
+        "tokens_in": snapshot["tokens_in"],
+        "tokens_out": snapshot["tokens_out"],
+        "cost_usd": cost,
+        "estimated": snapshot["estimated"],
+        "verdict": verdict,
+        "fallback_used": bool(fallback_used),
+        "plan_hash": plan_hash,
+    }
+    try:
+        USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
+    _debug(
+        f"usage: {snapshot['provider']}/{snapshot['model']} "
+        f"in={snapshot['tokens_in']} out={snapshot['tokens_out']} "
+        f"cost=${cost:.6f} verdict={verdict}"
+    )
+
+
+def log_cache_hit(plan_hash, verdict):
+    """Phase 24 SP6 — append a zero-token cache_hit record to usage.jsonl.
+
+    A cache hit makes no provider call, so _LAST_USAGE is empty. We still
+    want one row per /council invocation so `brain stats` shows cache
+    activity and confirms the user wasn't billed for the replay.
+    """
+    if os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
+        return
+    record = {
+        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "mode": "validate-plan-cache-hit",
+        "provider": "cache",
+        "model": "cache",
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "cost_usd": 0.0,
+        "estimated": False,
+        "verdict": verdict,
+        "fallback_used": False,
+        "plan_hash": plan_hash,
+        "cache_hit": True,
+    }
+    try:
+        USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
+    _debug(f"usage: cache_hit verdict={verdict}")
+
+
+def _hash_plan(plan):
+    """Stable 16-hex-char digest of the plan / report content. None on empty input."""
+    if not plan:
+        return None
+    return hashlib.sha256(plan.encode("utf-8", errors="replace")).hexdigest()[:16]
+
+
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 6 — Content-hash cache
+# ─────────────────────────────────────────────────
+# Two `/council "<same plan>"` calls within TTL share a cached report and skip
+# all provider calls. Cache key combines plan text + git HEAD + cwd so that
+# (a) different projects never collide, and (b) any new commit busts the
+# cache even when the plan string is unchanged. CLI flag `--no-cache`
+# forces a fresh call. TTL comes from config.cache.ttl_days (default 7).
+
+CACHE_DIR = Path.home() / ".claude" / "council" / "cache"
+
+
+def _git_head():
+    """Current commit SHA for cache scoping. Empty string outside a repo."""
+    try:
+        out = run_command(["git", "rev-parse", "HEAD"], timeout=5)
+        return (out or "").strip()
+    except Exception:
+        return ""
+
+
+def _cache_key(plan, git_head, cwd):
+    """sha256 of `plan|git_head|cwd` — the unit of cache identity."""
+    blob = "|".join([plan or "", git_head or "", str(cwd or "")])
+    return hashlib.sha256(blob.encode("utf-8", errors="replace")).hexdigest()
+
+
+def _cache_path(key):
+    return CACHE_DIR / f"{key}.json"
+
+
+def _cache_ttl_days(config):
+    cache_cfg = (config or {}).get("cache") or {}
+    try:
+        return float(cache_cfg.get("ttl_days", 7))
+    except (TypeError, ValueError):
+        return 7.0
+
+
+def _get_cached(key, ttl_days):
+    """Return cached payload dict if present and within TTL, else None."""
+    if not key:
+        return None
+    p = _cache_path(key)
+    if not p.is_file():
+        return None
+    try:
+        age_seconds = datetime.datetime.now().timestamp() - p.stat().st_mtime
+        if age_seconds > ttl_days * 86400:
+            return None
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        _debug(f"cache read failed: {e}")
+        return None
+
+
+def _set_cached(key, payload):
+    if not key:
+        return
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(_cache_path(key), json.dumps(payload, ensure_ascii=False, indent=2))
+    except OSError as e:
+        _debug(f"cache write failed: {e}")
+
+
+def cost_confirm_gate(prompt_text, model, label="<call>"):
+    """Phase 24 Sub-Phase 4 — optional pre-call cost prompt.
+
+    When env COUNCIL_COST_CONFIRM_THRESHOLD is set to a positive float, estimate
+    the prompt's input cost (tokens × input rate from pricing.json) and prompt
+    the user to confirm before send when the estimate exceeds the threshold.
+
+    Returns True when the call should proceed, False when the user declines.
+    Always returns True when:
+      - the env var is unset or zero (default disabled)
+      - stdin is not a TTY (CI / piped-in runs — never block silently)
+      - estimated cost is below the threshold
+    """
+    raw = os.environ.get("COUNCIL_COST_CONFIRM_THRESHOLD", "").strip()
+    if not raw:
+        return True
+    try:
+        threshold = float(raw)
+    except ValueError:
+        print(
+            f"⚠️  COUNCIL_COST_CONFIRM_THRESHOLD={raw!r} is not a number — ignoring",
+            file=sys.stderr,
+        )
+        return True
+    if threshold <= 0:
+        return True
+
+    pricing = _load_pricing()
+    rates = pricing.get(model) or {}
+    in_rate = float(rates.get("input_per_1m", 0.0))
+    if in_rate <= 0:
+        return True  # CLI / free-tier models never trigger the gate.
+
+    estimated_in = _estimate_tokens(prompt_text)
+    estimated_cost = (estimated_in / 1_000_000.0) * in_rate
+    if estimated_cost < threshold:
+        return True
+
+    if not sys.stdin.isatty():
+        print(
+            f"⚠️  Estimated input cost ${estimated_cost:.4f} for {label} ({model}, "
+            f"~{estimated_in} tokens) exceeds COUNCIL_COST_CONFIRM_THRESHOLD=${threshold:.4f}, "
+            "but stdin is not a TTY — proceeding anyway.",
+            file=sys.stderr,
+        )
+        return True
+
+    msg = (
+        f"\n💰 Cost-confirm gate ({label}):\n"
+        f"   model:           {model}\n"
+        f"   estimated tokens (input): {estimated_in}\n"
+        f"   estimated cost:  ${estimated_cost:.4f} input only\n"
+        f"   threshold:       ${threshold:.4f} (COUNCIL_COST_CONFIRM_THRESHOLD)\n"
+        f"\n   Proceed? [y/N]: "
+    )
+    print(msg, end="", file=sys.stderr, flush=True)
+    try:
+        with open("/dev/tty", "r") as tty:
+            answer = tty.readline().strip().lower()
+    except OSError:
+        answer = ""
+    return answer in ("y", "yes")
+
+
+# ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
 
@@ -585,11 +1417,18 @@ def ask_gemini_cli(prompt, model, file_paths=None):
     if file_paths:
         file_refs = "\n".join(f"@{p}" for p in file_paths)
         prompt = f"{file_refs}\n\n{prompt}"
-    return run_command(
+    result = run_command(
         ["gemini", "--model", model],
         input_text=prompt,
         timeout=120
     )
+    # Gemini CLI does not surface token counts — estimate from chars/4.
+    _set_last_usage(
+        "gemini-cli", model,
+        _estimate_tokens(prompt), _estimate_tokens(result),
+        estimated=True,
+    )
+    return result
 
 
 def ask_gemini_api(prompt, model, api_key, config=None):
@@ -615,6 +1454,13 @@ def ask_gemini_api(prompt, model, api_key, config=None):
             "temperature": 0.2
         }
     }
+    # Phase 24 SP5 — pin Gemini thinking budget. Default 32768 (max public).
+    thinking_budget = (config or {}).get("gemini", {}).get("thinking_budget", 32768) if config else 32768
+    if thinking_budget:
+        payload["generationConfig"]["thinkingConfig"] = {
+            "includeThoughts": True,
+            "thinkingBudget": int(thinking_budget),
+        }
 
     # Audit BRAIN-H3: pass JSON via stdin instead of a tempfile so the full
     # prompt (which can include 200K chars of project source) doesn't sit on
@@ -643,10 +1489,19 @@ def ask_gemini_api(prompt, model, api_key, config=None):
 
         try:
             data = json.loads(result)
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
         except (json.JSONDecodeError, KeyError, IndexError):
             error = f"Gemini API error: {result[:500]}"
             return sanitize_error(error, config) if config else error
+        usage = data.get("usageMetadata", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "gemini",
+            model,
+            usage.get("promptTokenCount", _estimate_tokens(prompt)),
+            usage.get("candidatesTokenCount", _estimate_tokens(text)),
+            estimated="promptTokenCount" not in usage,
+        )
+        return text
     finally:
         if os.path.exists(hdr.name):
             os.unlink(hdr.name)
@@ -666,14 +1521,182 @@ def ask_gemini(prompt, config, file_paths=None):
 # ChatGPT integration (curl-only, no pip deps)
 # ─────────────────────────────────────────────────
 
+REASONING_MODELS = {
+    "gpt-5.2", "gpt-5.2-pro",
+    "o3", "o3-pro", "o3-mini",
+}
+
+
+def ask_chatgpt_cli(prompt, model, reasoning_effort="high", system_prompt=None):
+    """Query ChatGPT via Codex CLI (non-interactive `codex exec`).
+
+    Codex CLI ships under ChatGPT Plus/Pro subscriptions — no per-token cost
+    when the user is signed in. Accepts the same prompt body as the API path;
+    we prepend the system prompt because Codex CLI does not split system /
+    user roles.
+
+    Reasoning effort is pinned via `--config model_reasoning_effort=<level>`
+    (Codex CLI accepts low | medium | high; default is medium). We default to
+    high because Council runs are infrequent and we want the strongest review
+    Codex can produce.
+
+    Honors COUNCIL_STUB_CHATGPT for test harnesses (mirrors dispatch helpers).
+    """
+    stub = os.getenv("COUNCIL_STUB_CHATGPT")
+    if stub:
+        return run_command([stub], timeout=60)
+
+    full_prompt = (
+        f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+    )
+    cmd = [
+        "codex", "exec",
+        "--model", model,
+        "--config", f"model_reasoning_effort={reasoning_effort}",
+        "-",  # read prompt from stdin
+    ]
+    result = run_command(cmd, input_text=full_prompt, timeout=180)
+    if is_error_response(result):
+        return result
+    _set_last_usage(
+        "codex-cli", "codex-cli",
+        _estimate_tokens(full_prompt), _estimate_tokens(result),
+        estimated=True,
+    )
+    return result
+
+
+def ask_openrouter(prompt, api_key, models, system_prompt=None):
+    """Try each model in `models` in order via OpenRouter chat-completions API.
+
+    Returns the first successful text. Raises (returns the last error string)
+    only when every model in the chain fails — so the caller can flag the
+    record `fallback_used: true` regardless of which OpenRouter model
+    eventually answered.
+
+    Honors COUNCIL_STUB_OPENROUTER for test harnesses (mirror of the OpenAI /
+    Gemini stubs).
+    """
+    stub = os.getenv("COUNCIL_STUB_OPENROUTER")
+    if stub:
+        result = run_command([stub], timeout=60)
+        _set_last_usage(
+            "openrouter", "openrouter-stub",
+            _estimate_tokens(prompt), _estimate_tokens(result),
+            estimated=True,
+        )
+        return result
+
+    if not api_key:
+        return "Error: OpenRouter API key not set (check config.fallback.openrouter.api_key)"
+
+    last_error = "Error: OpenRouter chain exhausted (no models configured)"
+    for model in models or []:
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt or ""},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+        }
+        if not payload["messages"][0]["content"]:
+            payload["messages"] = payload["messages"][1:]
+
+        hdr = tempfile.NamedTemporaryFile(
+            mode="w", delete=False, prefix="council_or_hdr_", suffix=".txt"
+        )
+        try:
+            os.chmod(hdr.name, 0o600)
+            hdr.write(
+                f"Authorization: Bearer {api_key}\n"
+                f"Content-Type: application/json\n"
+                f"User-Agent: {USER_AGENT}\n"
+                f"HTTP-Referer: https://github.com/sergei-aronsen/claude-code-toolkit\n"
+                f"X-Title: Supreme Council\n"
+            )
+            hdr.close()
+            body = json.dumps(payload, ensure_ascii=False)
+            result = run_command([
+                "curl", "-sSf",
+                "https://openrouter.ai/api/v1/chat/completions",
+                "-H", f"@{hdr.name}",
+                "--data-binary", "@-",
+            ], input_text=body, timeout=180)
+        finally:
+            if os.path.exists(hdr.name):
+                os.unlink(hdr.name)
+
+        if is_error_response(result):
+            last_error = result
+            continue
+        try:
+            data = json.loads(result)
+            text = data["choices"][0]["message"]["content"]
+        except (json.JSONDecodeError, KeyError, IndexError):
+            last_error = f"OpenRouter parse error ({model}): {result[:300]}"
+            continue
+        usage = data.get("usage", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "openrouter", model,
+            usage.get("prompt_tokens", _estimate_tokens(prompt)),
+            usage.get("completion_tokens", _estimate_tokens(text)),
+            estimated="prompt_tokens" not in usage,
+        )
+        return text
+
+    return last_error
+
+
+def call_with_fallback(primary_callable, fallback_prompt, fallback_system, config, label):
+    """Run `primary_callable()` and, on failure, fall through to OpenRouter chain.
+
+    Returns (text, fallback_used). Caller decides what mode/verdict to record.
+    OpenRouter is invoked only when the primary returns an error response AND
+    config.fallback.openrouter.api_key (or COUNCIL_STUB_OPENROUTER stub) is set.
+    """
+    text = primary_callable()
+    if not is_error_response(text):
+        return text, False
+
+    fb_cfg = (config.get("fallback", {}) or {}).get("openrouter", {}) or {}
+    api_key = fb_cfg.get("api_key", "")
+    models = fb_cfg.get("models", [])
+    if not (api_key or os.getenv("COUNCIL_STUB_OPENROUTER")) or not models:
+        _debug(f"fallback: {label} — primary failed, OpenRouter not configured")
+        return text, False
+
+    print(
+        f"⚠️  {label} primary backend failed — retrying via OpenRouter free chain",
+        file=sys.stderr,
+    )
+    fb_text = ask_openrouter(
+        fallback_prompt, api_key, models, system_prompt=fallback_system
+    )
+    return fb_text, True
+
+
 def ask_chatgpt(prompt, config, system_prompt=None):
-    """Query ChatGPT via OpenAI API using curl.
+    """Query ChatGPT via OpenAI API or Codex CLI based on config.openai.mode.
 
     `system_prompt` overrides the default Pragmatist persona — used by
-    audit-review mode to swap in AUDIT_REVIEW_GPT_SYSTEM (WR-01 fix).
+    audit-review mode to swap in the audit-review-pragmatist file (WR-01 fix).
+    Reasoning effort defaults to `high` and is configurable via
+    config.openai.reasoning_effort (API) and config.openai.cli_reasoning_effort
+    (Codex CLI).
     """
-    api_key = config["openai"].get("api_key", "")
+    mode = config["openai"].get("mode", "api")
     model = config["openai"]["model"]
+    if mode == "cli":
+        cli_effort = config["openai"].get("cli_reasoning_effort", "high")
+        return ask_chatgpt_cli(
+            prompt, model,
+            reasoning_effort=cli_effort,
+            system_prompt=system_prompt,
+        )
+
+    api_key = config["openai"].get("api_key", "")
+    reasoning_effort = config["openai"].get("reasoning_effort", "high")
 
     if not api_key:
         return "Error: OpenAI API key not set (check config or OPENAI_API_KEY env)"
@@ -681,11 +1704,15 @@ def ask_chatgpt(prompt, config, system_prompt=None):
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt or GPT_SYSTEM},
+            {"role": "system", "content": system_prompt or load_prompt("pragmatist-system")},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.2
     }
+    # Phase 24 SP5 — pin reasoning effort to max for the gpt-5.2 / o3 family.
+    # Older models that don't accept the field are silently skipped.
+    if model in REASONING_MODELS:
+        payload["reasoning"] = {"effort": reasoning_effort}
 
     # Audit BRAIN-H4: write the Authorization header to a 0600 tempfile and
     # pass via `-H @file` so the API key never appears in `ps`/argv. Audit
@@ -717,9 +1744,18 @@ def ask_chatgpt(prompt, config, system_prompt=None):
             return sanitize_error(result, config)
         try:
             data = json.loads(result)
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError):
             return sanitize_error(f"OpenAI API error: {result[:500]}", config)
+        usage = data.get("usage", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "openai",
+            model,
+            usage.get("prompt_tokens", _estimate_tokens(prompt)),
+            usage.get("completion_tokens", _estimate_tokens(text)),
+            estimated="prompt_tokens" not in usage,
+        )
+        return text
     finally:
         if os.path.exists(hdr.name):
             os.unlink(hdr.name)
@@ -730,7 +1766,7 @@ def ask_chatgpt(prompt, config, system_prompt=None):
 # ─────────────────────────────────────────────────
 
 
-def dispatch_audit_review_gemini(prompt, config):
+def dispatch_audit_review_gemini(prompt, config, plan_hash=None):
     """Gemini dispatch for audit-review mode.
 
     Honors COUNCIL_STUB_GEMINI env var (RESEARCH.md §5) — when set, the value
@@ -740,10 +1776,12 @@ def dispatch_audit_review_gemini(prompt, config):
     stub = os.getenv("COUNCIL_STUB_GEMINI")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_gemini(prompt, config)
+    result = ask_gemini(prompt, config)
+    record_usage("audit-review-skeptic", plan_hash=plan_hash)
+    return result
 
 
-def dispatch_audit_review_chatgpt(prompt, config):
+def dispatch_audit_review_chatgpt(prompt, config, plan_hash=None):
     """ChatGPT dispatch for audit-review mode.
 
     Honors COUNCIL_STUB_CHATGPT env var (RESEARCH.md §5).
@@ -751,7 +1789,9 @@ def dispatch_audit_review_chatgpt(prompt, config):
     stub = os.getenv("COUNCIL_STUB_CHATGPT")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_chatgpt(prompt, config, system_prompt=AUDIT_REVIEW_GPT_SYSTEM)
+    result = ask_chatgpt(prompt, config, system_prompt=load_prompt("audit-review-pragmatist"))
+    record_usage("audit-review-pragmatist", plan_hash=plan_hash)
+    return result
 
 
 def run_audit_review(report_path_str, config):
@@ -790,6 +1830,7 @@ def run_audit_review(report_path_str, config):
         return 1
 
     prompt = prompt_template.replace("{REPORT_CONTENT}", report_content)
+    plan_hash = _hash_plan(report_content)
 
     # 3. Parallel dispatch (D-08, COUNCIL-06)
     stub_gemini = os.getenv("COUNCIL_STUB_GEMINI")
@@ -812,8 +1853,8 @@ def run_audit_review(report_path_str, config):
     print("\n\U0001f9e0 Council audit-review: dispatching Gemini and ChatGPT in parallel...")
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future_g = executor.submit(dispatch_audit_review_gemini, prompt, config)
-        future_c = executor.submit(dispatch_audit_review_chatgpt, prompt, config)
+        future_g = executor.submit(dispatch_audit_review_gemini, prompt, config, plan_hash)
+        future_c = executor.submit(dispatch_audit_review_chatgpt, prompt, config, plan_hash)
         try:
             gemini_raw = future_g.result(timeout=90)
         except FuturesTimeoutError:
@@ -912,18 +1953,90 @@ def run_audit_review(report_path_str, config):
 # ─────────────────────────────────────────────────
 
 def _run_validate_plan(plan, config):
-    """Existing Phase 1-4 validate-plan flow. Behavior is byte-identical
-    to the v3.0.0 brain.py main() body — no logic changes here.
+    """Existing Phase 1-4 validate-plan flow plus SP6 cache short-circuit.
+
+    Cache key = sha256(plan|git_head|cwd). On hit within TTL we replay the
+    cached display + report file and skip every provider call (Skeptic,
+    Pragmatist, Discovery). `--no-cache` flag forces a fresh run.
     """
     validate_plan(plan)
+    plan_hash = _hash_plan(plan)
+
+    # ── Phase 24 SP8 — domain detection (used by persona overlays + JSON output) ──
+    domain = detect_domain(plan)
+    _debug(f"domain detected: {domain}")
+
+    # ── Phase 24 SP6 — pre-call cache lookup ──
+    no_cache = bool(config.get("_no_cache"))
+    git_head = _git_head()
+    cache_key = _cache_key(plan, git_head, Path.cwd()) if not no_cache else None
+    cached = _get_cached(cache_key, _cache_ttl_days(config)) if cache_key else None
+    if cached:
+        ts = cached.get("ts", "?")
+        if config.get("_format") == "json":
+            json_payload = {
+                "verdict": cached.get("final_verdict"),
+                "skeptic": cached.get("skeptic_decision"),
+                "pragmatist": cached.get("pragmatist_decision"),
+                "skeptic_text": cached.get("skeptic_verdict", ""),
+                "pragmatist_text": cached.get("pragmatist_verdict", ""),
+                "concerns_skeptic": _extract_concerns(cached.get("skeptic_verdict", "")),
+                "concerns_pragmatist": _extract_concerns(cached.get("pragmatist_verdict", "")),
+                "domain": cached.get("domain", domain),
+                "plan_hash": plan_hash,
+                "git_head": git_head,
+                "fallback_used": {
+                    "skeptic": bool(cached.get("fallback_used_skeptic", False)),
+                    "pragmatist": bool(cached.get("fallback_used_pragmatist", False)),
+                },
+                "cache_hit": True,
+                "cached_ts": ts,
+            }
+            print(json.dumps(json_payload, ensure_ascii=False))
+            log_cache_hit(plan_hash, cached.get("final_verdict"))
+            return
+        print(f"\n♻️  [cached {ts}] Returning previous Council report — no API calls.")
+        print("   (use --no-cache to force a fresh run)")
+        print(cached.get("display_text", ""))
+        scratchpad = Path.cwd() / ".claude" / "scratchpad"
+        scratchpad.mkdir(parents=True, exist_ok=True)
+        vp_report_path = scratchpad / "council-report.md"
+        vp_report_path.write_text(cached.get("report_md", ""), encoding="utf-8")
+        print(f"Report saved: {vp_report_path}")
+        log_cache_hit(plan_hash, cached.get("final_verdict"))
+        return
 
     project_map = get_project_structure()
     git_diff = get_git_diff()
     project_rules = get_project_rules()
 
+    # Phase 24 SP3 — extra context blocks for Skeptic + Pragmatist.
+    # Each fetch is capped to its own MAX_* limit; the budget pass below scales
+    # them down proportionally if their sum threatens MAX_TOTAL_CONTEXT.
+    readme = get_readme()
+    planning_md = get_planning_context()
+    recent_log = get_recent_log()
+    todos = get_todos()
+
     # Build shared context blocks
     diff_block = f"\nGIT CHANGES:\n{git_diff}" if git_diff else ""
     rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
+
+    enrichment_pairs = [
+        ("README", readme),
+        ("PLANNING CONTEXT", planning_md),
+        ("RECENT COMMITS", recent_log),
+        ("TODOS / FIXMES", todos),
+    ]
+    # Reserve ~20% of the budget for files_content + diff and let the
+    # enrichment blocks share the rest (4/5ths of the cap).
+    enrichment_budget = (MAX_TOTAL_CONTEXT * 4) // 5
+    enrichment_pairs = apply_context_budget(enrichment_pairs, hard_limit=enrichment_budget)
+    enrichment_block = "".join(
+        f"\n{label}:\n{redact_context(body, label=label)}\n"
+        for label, body in enrichment_pairs
+        if body
+    )
 
     # ── Phase 1: Context Discovery (skip if Gemini unavailable) ──
     files_content = ""
@@ -931,7 +2044,7 @@ def _run_validate_plan(plan, config):
     if config.get("_gemini_available", True):
         print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
 
-        context_prompt = f"""{GEMINI_SYSTEM}
+        context_prompt = f"""{compose_system_prompt("skeptic", plan, domain=domain)}
 
 Review the project structure and the implementation plan.
 
@@ -943,7 +2056,15 @@ PLAN: {plan}
 List the file paths (comma-separated) that are critical to review for this plan.
 Reply ONLY with the comma-separated list of file paths. No explanations."""
 
+        gemini_model_eff = (
+            "gemini-cli" if config["gemini"].get("mode", "cli") == "cli"
+            else config["gemini"].get("model", "gemini-3-pro-preview")
+        )
+        if not cost_confirm_gate(context_prompt, gemini_model_eff, label="discovery"):
+            print("\n⏹  Council discovery aborted by cost-confirm gate.", file=sys.stderr)
+            sys.exit(2)
         files_to_read = ask_gemini(context_prompt, config)
+        record_usage("validate-plan-discovery", plan_hash=plan_hash)
 
         if files_to_read and "/" in files_to_read and not is_error_response(files_to_read):
             file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
@@ -951,19 +2072,32 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
             file_paths = get_validated_paths(file_list)
             files_content = read_files(file_list)
 
+    # SP3 — auto-include matching tests for whichever source files Gemini picked.
+    tests_for_files = get_tests_for(file_paths) if file_paths else ""
+    tests_block = (
+        f"\nMATCHING TESTS:\n{redact_context(tests_for_files, label='MATCHING TESTS')}\n"
+        if tests_for_files else ""
+    )
+
+    # SP3 — redact files_content + git diff before sending to providers.
+    files_content_redacted = redact_context(files_content, label="FILES CONTEXT") if files_content else ""
+    diff_block_redacted = (
+        f"\nGIT CHANGES:\n{redact_context(git_diff, label='GIT CHANGES')}" if git_diff else ""
+    )
+
     # ── Phase 2: The Skeptic (Gemini) ──
     print("\U0001f9d0 [The Skeptic]: Challenging plan justification...")
 
     # In CLI mode, Gemini reads files natively via @file (no content in prompt)
     use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
-    files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
+    files_in_prompt = "" if use_native_files else (files_content_redacted if files_content_redacted else "(no files read)")
 
-    skeptic_prompt = f"""{GEMINI_SYSTEM}
-{rules_block}
+    skeptic_prompt = f"""{compose_system_prompt("skeptic", plan, domain=domain)}
+{rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
 {files_in_prompt}
-{diff_block}
+{diff_block_redacted}
 
 IMPLEMENTATION PLAN:
 {plan}
@@ -989,11 +2123,36 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
+    # SP8 — default fallback flags so JSON output (and cache writes) always
+    # carry a known shape even when a reviewer was skipped at config time.
+    fallback_used_skeptic = False
+    fallback_used_pragmatist = False
+
     if config.get("_gemini_available", True):
-        gemini_verdict = ask_gemini(
-            skeptic_prompt, config,
-            file_paths=file_paths if use_native_files else None
+        gemini_model_eff = (
+            "gemini-cli" if config["gemini"].get("mode", "cli") == "cli"
+            else config["gemini"].get("model", "gemini-3-pro-preview")
         )
+        if not cost_confirm_gate(skeptic_prompt, gemini_model_eff, label="Skeptic"):
+            gemini_verdict = "Error: Skeptic call declined by cost-confirm gate"
+            fallback_used_skeptic = False
+        else:
+            gemini_verdict, fallback_used_skeptic = call_with_fallback(
+                lambda: ask_gemini(
+                    skeptic_prompt, config,
+                    file_paths=file_paths if use_native_files else None,
+                ),
+                fallback_prompt=skeptic_prompt,
+                fallback_system=compose_system_prompt("skeptic", plan, domain=domain),
+                config=config,
+                label="Skeptic",
+            )
+            record_usage(
+                "validate-plan-skeptic",
+                verdict=(extract_verdict(gemini_verdict) if not is_error_response(gemini_verdict) else None),
+                plan_hash=plan_hash,
+                fallback_used=fallback_used_skeptic,
+            )
     else:
         gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
 
@@ -1002,11 +2161,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 
     pragmatist_prompt = f"""Review this implementation plan and The Skeptic's assessment.
 Do NOT repeat The Skeptic's points. Focus on what they missed or got wrong.
-{rules_block}
+{rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
-{files_content if files_content else "(no files read)"}
-{diff_block}
+{files_content_redacted if files_content_redacted else "(no files read)"}
+{diff_block_redacted}
 
 PLAN:
 {plan}
@@ -1036,7 +2195,28 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - SKIP — this doesn't need to be done"""
 
     if config.get("_openai_available", True):
-        gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+        openai_model_eff = (
+            "codex-cli" if config["openai"].get("mode") == "cli"
+            else config["openai"].get("model", "gpt-5.2")
+        )
+        if not cost_confirm_gate(pragmatist_prompt, openai_model_eff, label="Pragmatist"):
+            gpt_verdict = "Error: Pragmatist call declined by cost-confirm gate"
+            fallback_used_pragmatist = False
+        else:
+            pragmatist_system = compose_system_prompt("pragmatist", plan, domain=domain)
+            gpt_verdict, fallback_used_pragmatist = call_with_fallback(
+                lambda: ask_chatgpt(pragmatist_prompt, config, system_prompt=pragmatist_system),
+                fallback_prompt=pragmatist_prompt,
+                fallback_system=pragmatist_system,
+                config=config,
+                label="Pragmatist",
+            )
+            record_usage(
+                "validate-plan-pragmatist",
+                verdict=(extract_verdict(gpt_verdict) if not is_error_response(gpt_verdict) else None),
+                plan_hash=plan_hash,
+                fallback_used=fallback_used_pragmatist,
+            )
     else:
         gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
 
@@ -1074,18 +2254,67 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
         final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
 
-    print("\n" + "=" * 60)
-    print("\U0001f4cb SUPREME COUNCIL REPORT")
-    print("=" * 60)
-    print(f"\n\U0001f9d0 THE SKEPTIC (Gemini {config['gemini']['model']}):")
-    print(gemini_verdict)
-    print(f"\n\U0001f528 THE PRAGMATIST (ChatGPT {config['openai']['model']}):")
-    print(gpt_verdict)
-    print("\n" + "-" * 60)
-    print(f"  Skeptic:    {skeptic_decision}")
-    print(f"  Pragmatist: {pragmatist_decision}")
-    print(f"  Final:      {final_verdict} — {VERDICTS[final_verdict]}")
-    print("-" * 60)
+    # ── Phase 24 SP8 — JSON output mode short-circuits the markdown report ──
+    if config.get("_format") == "json":
+        json_payload = {
+            "verdict": final_verdict,
+            "skeptic": skeptic_decision,
+            "pragmatist": pragmatist_decision,
+            "skeptic_text": gemini_verdict,
+            "pragmatist_text": gpt_verdict,
+            "concerns_skeptic": _extract_concerns(gemini_verdict),
+            "concerns_pragmatist": _extract_concerns(gpt_verdict),
+            "domain": domain,
+            "plan_hash": plan_hash,
+            "git_head": git_head,
+            "fallback_used": {
+                "skeptic": bool(fallback_used_skeptic),
+                "pragmatist": bool(fallback_used_pragmatist),
+            },
+            "skeptic_failed": skeptic_failed,
+            "pragmatist_failed": pragmatist_failed,
+            "cache_hit": False,
+        }
+        print(json.dumps(json_payload, ensure_ascii=False))
+        # Still cache the run so a later non-JSON call hits the same content
+        # hash; we just store an empty display_text since JSON consumers don't
+        # need the markdown block.
+        if cache_key and not (skeptic_failed and pragmatist_failed):
+            _set_cached(cache_key, {
+                "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "plan_hash": plan_hash,
+                "git_head": git_head,
+                "skeptic_verdict": gemini_verdict,
+                "pragmatist_verdict": gpt_verdict,
+                "skeptic_decision": skeptic_decision,
+                "pragmatist_decision": pragmatist_decision,
+                "final_verdict": final_verdict,
+                "display_text": "",
+                "report_md": "",
+                "domain": domain,
+                "fallback_used_skeptic": bool(fallback_used_skeptic),
+                "fallback_used_pragmatist": bool(fallback_used_pragmatist),
+            })
+        return
+
+    # SP6 — render display block as one string so cache replay reproduces
+    # identical output on a hit.
+    display_text = (
+        "\n" + "=" * 60 + "\n"
+        + "\U0001f4cb SUPREME COUNCIL REPORT\n"
+        + "=" * 60 + "\n"
+        + f"\n\U0001f9d0 THE SKEPTIC (Gemini {config['gemini']['model']}):\n"
+        + gemini_verdict + "\n"
+        + f"\n\U0001f528 THE PRAGMATIST (ChatGPT {config['openai']['model']}):\n"
+        + gpt_verdict + "\n"
+    )
+    display_text += (
+        "\n" + "-" * 60 + "\n"
+        + f"  Skeptic:    {skeptic_decision}\n"
+        + f"  Pragmatist: {pragmatist_decision}\n"
+        + f"  Final:      {final_verdict} — {VERDICTS[final_verdict]}\n"
+        + "-" * 60 + "\n"
+    )
 
     verdict_icons = {
         "PROCEED": "\u2705",
@@ -1093,15 +2322,35 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         "RETHINK": "\U0001f504",
         "SKIP": "\u26d4",
     }
-    print(f"\n{verdict_icons[final_verdict]} VERDICT: {final_verdict}")
-    print("=" * 60 + "\n")
+    display_text += (
+        f"\n{verdict_icons[final_verdict]} VERDICT: {final_verdict}\n"
+        + "=" * 60 + "\n"
+    )
+    print(display_text)
 
     # Save report to scratchpad
     scratchpad = Path.cwd() / ".claude" / "scratchpad"
     scratchpad.mkdir(parents=True, exist_ok=True)
     vp_report_path = scratchpad / "council-report.md"
 
+    # ── Phase 24 SP8 — TL;DR auto-summary at the top of the report ──
+    tldr_concerns = (_extract_concerns(gemini_verdict)
+                     + _extract_concerns(gpt_verdict))[:3]
+    tldr_lines = ["## TL;DR", "", f"- Verdict: **{final_verdict}** — {VERDICTS[final_verdict]}"]
+    if tldr_concerns:
+        tldr_lines.append("- Top concerns:")
+        for c in tldr_concerns:
+            tldr_lines.append(f"  - {c}")
+    else:
+        tldr_lines.append("- No concerns extracted — see full reviewer text below.")
+    tldr_lines.append(f"- Domain: {domain}")
+    tldr_block = "\n".join(tldr_lines)
+
     report = f"""# Supreme Council Review Report
+
+{tldr_block}
+
+---
 
 ## Verdict: {final_verdict}
 
@@ -1138,8 +2387,418 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     vp_report_path.write_text(report, encoding="utf-8")
     print(f"Report saved: {vp_report_path}")
 
+    # ── Phase 24 SP6 — store cache snapshot for future identical calls ──
+    if cache_key and not (skeptic_failed and pragmatist_failed):
+        _set_cached(cache_key, {
+            "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "plan_hash": plan_hash,
+            "git_head": git_head,
+            "skeptic_verdict": gemini_verdict,
+            "pragmatist_verdict": gpt_verdict,
+            "skeptic_decision": skeptic_decision,
+            "pragmatist_decision": pragmatist_decision,
+            "final_verdict": final_verdict,
+            "display_text": display_text,
+            "report_md": report,
+        })
+
+
+def _run_dry_run(plan):
+    """Phase 24 SP8 — preview prompts and estimated cost without API calls.
+
+    Builds the same context blocks that _run_validate_plan would assemble
+    (project rules, README, planning context, recent commits, todos, git
+    diff, redacted), runs detect_domain, composes the Skeptic and
+    Pragmatist system prompts (with persona overlays), prints both prompts
+    plus a cost estimate. Never calls a provider.
+    """
+    validate_plan(plan)
+    domain = detect_domain(plan)
+    project_rules = get_project_rules()
+    readme = get_readme()
+    planning_md = get_planning_context()
+    recent_log = get_recent_log()
+    todos = get_todos()
+    git_diff = get_git_diff()
+
+    enrichment_pairs = [
+        ("README", readme),
+        ("PLANNING CONTEXT", planning_md),
+        ("RECENT COMMITS", recent_log),
+        ("TODOS / FIXMES", todos),
+    ]
+    enrichment_budget = (MAX_TOTAL_CONTEXT * 4) // 5
+    enrichment_pairs = apply_context_budget(enrichment_pairs, hard_limit=enrichment_budget)
+    enrichment_block = "".join(
+        f"\n{label}:\n{redact_context(body, label=label)}\n"
+        for label, body in enrichment_pairs
+        if body
+    )
+    rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
+    diff_block = f"\nGIT CHANGES:\n{redact_context(git_diff, label='GIT CHANGES')}" if git_diff else ""
+
+    skeptic_system = compose_system_prompt("skeptic", plan, domain=domain)
+    pragmatist_system = compose_system_prompt("pragmatist", plan, domain=domain)
+
+    skeptic_prompt = f"""{skeptic_system}
+{rules_block}{enrichment_block}
+
+IMPLEMENTATION PLAN:
+{plan}
+"""
+    pragmatist_prompt = f"""{pragmatist_system}
+
+(In a real run the Pragmatist also receives the Skeptic's full verdict
+appended after this point; dry-run substitutes a placeholder.)
+
+PLAN:
+{plan}
+"""
+
+    pricing = _load_pricing()
+    skeptic_tokens = _estimate_tokens(skeptic_prompt)
+    pragmatist_tokens = _estimate_tokens(pragmatist_prompt)
+
+    def _estimate_cost(model_key, tokens_in):
+        rate = float((pricing.get(model_key) or {}).get("input_per_1m", 0.0))
+        return (tokens_in / 1_000_000.0) * rate, rate
+
+    sk_cost, sk_rate = _estimate_cost("gemini-3-pro-preview", skeptic_tokens)
+    pr_cost, pr_rate = _estimate_cost("gpt-5.2", pragmatist_tokens)
+
+    print("=" * 60)
+    print("🌵 SUPREME COUNCIL DRY-RUN — no API calls will be made")
+    print("=" * 60)
+    print(f"Plan length:  {len(plan)} chars")
+    print(f"Domain:       {domain}")
+    print(f"Skeptic ~tok: {skeptic_tokens}  (gemini-3-pro-preview @ ${sk_rate:.2f}/M in -> ~${sk_cost:.4f})")
+    print(f"Pragmatist ~tok: {pragmatist_tokens}  (gpt-5.2 @ ${pr_rate:.2f}/M in -> ~${pr_cost:.4f})")
+    print(f"Estimated input cost: ~${sk_cost + pr_cost:.4f} (output not estimated)")
+    print("=" * 60)
+    print("\n--- SKEPTIC PROMPT ---\n")
+    print(skeptic_prompt)
+    print("\n--- PRAGMATIST PROMPT ---\n")
+    print(pragmatist_prompt)
+    print("\n=" * 1 + "=" * 59)
+    print("Dry-run complete. Re-run without --dry-run to actually call providers.")
+    return 0
+
+
+def _run_retro(commit_sha, config):
+    """Phase 24 SP8 — retrospective post-implementation review.
+
+    Reads the commit's diff plus a prior Council report (if any), asks
+    the Pragmatist to compare what shipped against what was approved,
+    and prints an ALIGNED / DRIFT / UNCLEAR verdict.
+
+    Lookups:
+      - `git show <sha>`           — body of the commit (message + diff).
+      - `.claude/scratchpad/council-report.md` at HEAD~1 of <sha>, if any.
+        Falls back to current scratchpad copy when the historical version
+        is not in tree.
+
+    Output is markdown to stdout; exit codes:
+      0  ALIGNED, no drift detected
+      0  UNCLEAR, model could not decide (still informational)
+      1  DRIFT, the implementation deviates from the approved plan
+      2  Setup error (no commit, git missing, model failure)
+    """
+    if not commit_sha:
+        print("\n❌ retro mode requires --commit <sha>", file=sys.stderr)
+        return 2
+
+    # Pull commit body (message + diff) within MAX_GIT_DIFF cap.
+    git_show = run_command(["git", "show", commit_sha], timeout=30)
+    if not git_show or git_show.startswith("Error"):
+        print(f"\n❌ git show {commit_sha} failed: {git_show}", file=sys.stderr)
+        return 2
+    git_show = _truncate(git_show, MAX_GIT_DIFF)
+
+    # Try to recover the Council report that existed just before this commit.
+    prior_report = run_command(
+        ["git", "show", f"{commit_sha}~1:.claude/scratchpad/council-report.md"],
+        timeout=10,
+    ) or ""
+    if not prior_report or prior_report.startswith("Error"):
+        report_path = Path.cwd() / ".claude" / "scratchpad" / "council-report.md"
+        prior_report = report_path.read_text(encoding="utf-8") if report_path.is_file() else ""
+    prior_report = _truncate(prior_report or "(no prior Council report on file)", 30000)
+
+    pragmatist_system = compose_system_prompt("pragmatist", git_show)
+    retro_prompt = f"""{pragmatist_system}
+
+You are reviewing whether a shipped commit matches the implementation plan
+that the Council approved BEFORE the commit was made. The two inputs are:
+
+PRIOR COUNCIL REPORT (approved plan + verdict):
+{redact_context(prior_report, label='PRIOR REPORT')}
+
+---
+
+COMMIT {commit_sha} (full diff + message):
+{redact_context(git_show, label='COMMIT')}
+
+---
+
+Compare what shipped against what was approved. Use this structure:
+
+## Alignment Summary
+One paragraph: did the implementation match the approved plan?
+
+## Specific Drift (if any)
+- Bullet list of concrete deviations: feature added that wasn't approved,
+  approved item missing, scope expanded, etc. Empty list when fully aligned.
+
+## Verdict
+End with exactly one line:
+VERDICT: ALIGNED   — implementation matches what Council approved
+VERDICT: DRIFT     — implementation deviates from approved plan
+VERDICT: UNCLEAR   — insufficient context to decide
+"""
+
+    if not config.get("_openai_available", True):
+        print("\n❌ Pragmatist (ChatGPT) unavailable — retro mode needs at least one reviewer.", file=sys.stderr)
+        return 2
+
+    print(f"\n🔁 Retrospective review of commit {commit_sha[:12]}...")
+    response, fallback_used = call_with_fallback(
+        lambda: ask_chatgpt(retro_prompt, config, system_prompt=pragmatist_system),
+        fallback_prompt=retro_prompt,
+        fallback_system=pragmatist_system,
+        config=config,
+        label="Retro",
+    )
+    record_usage("retro", verdict=None, plan_hash=_hash_plan(commit_sha),
+                 fallback_used=fallback_used)
+
+    if is_error_response(response):
+        print(f"\n❌ Retro reviewer failed: {response}", file=sys.stderr)
+        return 2
+
+    text_upper = response.upper()
+    m = re.search(r"VERDICT:\s*(ALIGNED|DRIFT|UNCLEAR)", text_upper)
+    verdict = m.group(1) if m else "UNCLEAR"
+
+    print("=" * 60)
+    print("🔁 SUPREME COUNCIL — RETROSPECTIVE REPORT")
+    print("=" * 60)
+    print(f"Commit: {commit_sha}")
+    print(response)
+    print("=" * 60)
+    print(f"VERDICT: {verdict}")
+    print("=" * 60)
+
+    if config.get("_format") == "json":
+        print(json.dumps({
+            "mode": "retro",
+            "commit": commit_sha,
+            "verdict": verdict,
+            "review_text": response,
+            "fallback_used": bool(fallback_used),
+        }, ensure_ascii=False))
+
+    return 1 if verdict == "DRIFT" else 0
+
+
+def cmd_stats(argv):
+    """Render usage.jsonl as a human or CSV summary.
+
+    Phase 24 Sub-Phase 4. Reads ~/.claude/council/usage.jsonl, filters by
+    --day / --week / --month / --total / --since / --until, groups by
+    (provider, model, mode), totals tokens + cost. Returns 0 on success and
+    a non-zero exit code only on argument errors.
+    """
+    parser = argparse.ArgumentParser(
+        prog="brain stats",
+        description="Summarize Council usage from ~/.claude/council/usage.jsonl",
+    )
+    period = parser.add_mutually_exclusive_group()
+    period.add_argument("--day", action="store_true", help="last 24h")
+    period.add_argument("--week", action="store_true", help="last 7 days")
+    period.add_argument("--month", action="store_true", help="last 30 days")
+    period.add_argument("--total", action="store_true", help="all time (default)")
+    parser.add_argument("--since", help="ISO date (YYYY-MM-DD), inclusive")
+    parser.add_argument("--until", help="ISO date (YYYY-MM-DD), inclusive")
+    parser.add_argument("--csv", action="store_true", help="emit CSV instead of table")
+    args = parser.parse_args(argv)
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    since_dt = None
+    until_dt = None
+    if args.day:
+        since_dt = now - datetime.timedelta(days=1)
+    elif args.week:
+        since_dt = now - datetime.timedelta(days=7)
+    elif args.month:
+        since_dt = now - datetime.timedelta(days=30)
+
+    if args.since:
+        try:
+            since_dt = datetime.datetime.strptime(args.since, "%Y-%m-%d")
+        except ValueError:
+            parser.error(f"--since must be YYYY-MM-DD, got {args.since!r}")
+    if args.until:
+        try:
+            # Inclusive: end of the requested day.
+            until_dt = (
+                datetime.datetime.strptime(args.until, "%Y-%m-%d")
+                + datetime.timedelta(days=1)
+            )
+        except ValueError:
+            parser.error(f"--until must be YYYY-MM-DD, got {args.until!r}")
+
+    if not USAGE_LOG_PATH.is_file():
+        if args.csv:
+            print("provider,model,mode,calls,tokens_in,tokens_out,cost_usd")
+        else:
+            print(f"No usage data yet at {USAGE_LOG_PATH}")
+        return 0
+
+    groups = {}
+    total_calls = 0
+    total_in = 0
+    total_out = 0
+    total_cost = 0.0
+    skipped = 0
+
+    with USAGE_LOG_PATH.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                skipped += 1
+                continue
+            ts = rec.get("ts", "")
+            try:
+                rec_dt = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                skipped += 1
+                continue
+            if since_dt and rec_dt < since_dt:
+                continue
+            if until_dt and rec_dt >= until_dt:
+                continue
+            key = (
+                rec.get("provider", "?"),
+                rec.get("model", "?"),
+                rec.get("mode", "?"),
+            )
+            agg = groups.setdefault(
+                key, {"calls": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+            )
+            agg["calls"] += 1
+            agg["tokens_in"] += int(rec.get("tokens_in", 0))
+            agg["tokens_out"] += int(rec.get("tokens_out", 0))
+            agg["cost_usd"] += float(rec.get("cost_usd", 0.0))
+            total_calls += 1
+            total_in += int(rec.get("tokens_in", 0))
+            total_out += int(rec.get("tokens_out", 0))
+            total_cost += float(rec.get("cost_usd", 0.0))
+
+    rows = sorted(
+        ((p, m, mo, agg) for (p, m, mo), agg in groups.items()),
+        key=lambda r: (r[0], r[1], r[2]),
+    )
+
+    if args.csv:
+        print("provider,model,mode,calls,tokens_in,tokens_out,cost_usd")
+        for prov, model, mode, agg in rows:
+            print(
+                f"{prov},{model},{mode},{agg['calls']},"
+                f"{agg['tokens_in']},{agg['tokens_out']},{agg['cost_usd']:.6f}"
+            )
+        return 0
+
+    period_label = (
+        "last 24h" if args.day
+        else "last 7 days" if args.week
+        else "last 30 days" if args.month
+        else "all time"
+    )
+    if args.since or args.until:
+        s = args.since or "—"
+        u = args.until or "—"
+        period_label = f"since {s} until {u}"
+
+    print(f"Council usage — {period_label}")
+    print(f"  calls={total_calls}  tokens_in={total_in}  tokens_out={total_out}  cost=${total_cost:.4f}")
+    if skipped:
+        print(f"  ({skipped} malformed line(s) skipped)")
+    if not rows:
+        return 0
+    header = ("provider", "model", "mode", "calls", "in", "out", "$cost")
+    widths = [
+        max(len(header[i]), max((len(str(_row(r, i))) for r in rows), default=0))
+        for i in range(7)
+    ]
+    fmt = "  " + "  ".join(f"{{:<{w}}}" for w in widths)
+    print(fmt.format(*header))
+    print(fmt.format(*("-" * w for w in widths)))
+    for r in rows:
+        print(fmt.format(*[_row(r, i) for i in range(7)]))
+    return 0
+
+
+def cmd_clear_cache(argv):
+    """Phase 24 SP6 — empty the content-hash cache directory.
+
+    Called via `brain clear-cache` (and the /council clear-cache slash
+    command). Removes every <key>.json under ~/.claude/council/cache/
+    but leaves the directory itself in place. Returns 0 even when the
+    cache dir doesn't exist yet — first /council on a fresh install is
+    not an error.
+    """
+    parser = argparse.ArgumentParser(
+        prog="brain clear-cache",
+        description="Remove all cached Council results.",
+    )
+    parser.parse_args(argv)
+    if not CACHE_DIR.is_dir():
+        print(f"No cache to clear at {CACHE_DIR}")
+        return 0
+    removed = 0
+    for entry in CACHE_DIR.glob("*.json"):
+        try:
+            entry.unlink()
+            removed += 1
+        except OSError as exc:
+            print(f"⚠️  could not remove {entry}: {exc}", file=sys.stderr)
+    print(f"Cleared {removed} cached entr{'y' if removed == 1 else 'ies'} in {CACHE_DIR}")
+    return 0
+
+
+def _row(group_row, idx):
+    """Helper for cmd_stats table formatting."""
+    prov, model, mode, agg = group_row
+    if idx == 0:
+        return prov
+    if idx == 1:
+        return model
+    if idx == 2:
+        return mode
+    if idx == 3:
+        return str(agg["calls"])
+    if idx == 4:
+        return str(agg["tokens_in"])
+    if idx == 5:
+        return str(agg["tokens_out"])
+    return f"${agg['cost_usd']:.4f}"
+
 
 def main():
+    # Phase 24 Sub-Phase 4 — split off the stats subcommand BEFORE argparse so
+    # the existing positional `plan` argument keeps backwards-compat behavior.
+    if len(sys.argv) >= 2 and sys.argv[1] == "stats":
+        sys.exit(cmd_stats(sys.argv[2:]))
+
+    # Phase 24 Sub-Phase 6 — same pattern for `clear-cache`. Empties the
+    # SP6 content-hash cache so the next /council run starts fresh.
+    if len(sys.argv) >= 2 and sys.argv[1] == "clear-cache":
+        sys.exit(cmd_clear_cache(sys.argv[2:]))
+
     parser = argparse.ArgumentParser(
         prog="brain",
         description=(
@@ -1149,7 +2808,7 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["validate-plan", "audit-review"],
+        choices=["validate-plan", "audit-review", "retro"],
         default=None,
         help="Council mode (default: validate-plan when a positional plan is given)",
     )
@@ -1157,6 +2816,54 @@ def main():
         "--report",
         default=None,
         help="Path to audit report (required when --mode audit-review)",
+    )
+    parser.add_argument(
+        "--commit",
+        default=None,
+        help=(
+            "Phase 24 SP8 — commit SHA for --mode retro. Council reads the "
+            "commit diff + the Council report saved before the commit, then "
+            "renders an ALIGNED / DRIFT / UNCLEAR verdict on whether the "
+            "implementation matches what was approved."
+        ),
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help=(
+            "Phase 24 SP6 — bypass the content-hash cache and force a fresh "
+            "Council run even when an identical request is cached."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Phase 24 SP8 — build the full Skeptic + Pragmatist prompts, "
+            "print them with an estimated cost, and exit 0 without calling "
+            "any provider. Use to preview cost or audit redaction."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=["markdown", "json"],
+        default="markdown",
+        help=(
+            "Phase 24 SP8 — output shape for validate-plan. `markdown` (default) "
+            "prints the human report; `json` emits a single-line JSON object "
+            "{verdict, skeptic, pragmatist, concerns, fallback_used, ...} "
+            "for tooling integration."
+        ),
+    )
+    parser.add_argument(
+        "--lang",
+        choices=["en", "ru", "auto"],
+        default="auto",
+        help=(
+            "Phase 24 SP9 — Council prompt language. `auto` (default) reads "
+            "~/.claude/CLAUDE.md and switches to ru when Cyrillic ratio > 0.2. "
+            "`en` and `ru` force the explicit language."
+        ),
     )
     parser.add_argument(
         "plan",
@@ -1174,13 +2881,40 @@ def main():
             parser.print_help()
             sys.exit(1)
 
+    # Phase 24 SP9 — resolve language BEFORE any prompt is loaded so the
+    # very first load_prompt() call picks the right locale.
+    chosen_lang = getattr(args, "lang", "auto") or "auto"
+    if chosen_lang == "auto":
+        chosen_lang = detect_council_lang(default="en")
+    set_council_lang(chosen_lang)
+    _debug(f"council lang: {chosen_lang}")
+
+    # Phase 24 SP8 — short-circuit into the dry-run preview before
+    # load_config() so users with no Council install yet can still
+    # estimate cost. dry_run still needs config for pricing rates,
+    # but tolerates missing API keys.
+    if getattr(args, "dry_run", False):
+        if args.mode == "audit-review":
+            print("\n⚠️  --dry-run is only supported in validate-plan mode.", file=sys.stderr)
+            sys.exit(2)
+        if not args.plan:
+            print("\n❌ --dry-run requires a positional plan argument.", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(_run_dry_run(args.plan))
+
     config = load_config()
+    config["_no_cache"] = bool(args.no_cache)
+    config["_format"] = getattr(args, "format", "markdown")
 
     if args.mode == "audit-review":
         if not args.report:
             parser.error("--report is required with --mode audit-review")
         rc = run_audit_review(args.report, config)
         sys.exit(rc)
+    elif args.mode == "retro":
+        if not args.commit:
+            parser.error("--commit <sha> is required with --mode retro")
+        sys.exit(_run_retro(args.commit, config))
     else:
         if not args.plan:
             print("\n❌ validate-plan mode requires a positional plan argument",

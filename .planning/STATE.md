@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: none
 milestone_name: ""
 status: ready_for_new_milestone
-stopped_at: v4.7 Multi-CLI Bridge shipped + tagged + archived
-last_updated: "2026-04-29T22:00:00.000Z"
+stopped_at: v4.7 Council Rework + v4.8 Multi-CLI Bridge both shipped + tagged + archived
+last_updated: "2026-04-29T22:30:00.000Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.7 Multi-CLI Bridge — Phase 30 (Install-time UX) — All 3 plans complete
+**Current focus:** none — v4.8 Multi-CLI Bridge shipped, awaiting next milestone via `/gsd-new-milestone`
 
 ## Current Position
 

@@ -1,0 +1,37 @@
+# Supreme Council — secret-redaction patterns
+#
+# Source of truth: claude-code-toolkit/templates/council-redaction-patterns.txt
+# Installed to:    ~/.claude/council/redaction-patterns.txt
+#
+# brain.py applies one Python regex per non-comment line on every Council
+# prompt block before it goes to Gemini / OpenAI / OpenRouter / Codex CLI.
+# Matches are replaced with ***REDACTED*** and a count is logged to stderr.
+#
+# brain.py also ships a built-in baseline (DEFAULT_REDACTION_PATTERNS).
+# Lines below augment that baseline — they do not replace it. To customize:
+#   1. Edit this file in place (your edits are preserved on update via the
+#      .upstream-new.md sidecar pattern, mirroring system prompts).
+#   2. Add patterns specific to your codebase (e.g., internal API keys with
+#      a known prefix, customer IDs, etc.).
+#   3. Test a pattern locally:
+#        python3 -c "import re; print(re.search(r'<your-pattern>', '<sample>'))"
+#
+# Lines starting with `#` and blank lines are ignored. Invalid regexes log a
+# warning to stderr and are skipped — they do not abort the run.
+
+# Stripe live keys
+sk_live_[A-Za-z0-9]{24,}
+rk_live_[A-Za-z0-9]{24,}
+pk_live_[A-Za-z0-9]{24,}
+
+# Stripe restricted keys
+rk_test_[A-Za-z0-9]{24,}
+
+# Anthropic API keys
+sk-ant-(api|admin)[A-Za-z0-9_\-]{20,}
+
+# Generic high-entropy hex secrets >= 32 chars (catches CSRF tokens, signing keys)
+\b[a-f0-9]{32,}\b
+
+# Generic .env-style assignment with quoted secret value
+(?im)^[A-Z][A-Z0-9_]+=['\"][A-Za-z0-9_\-./+=]{16,}['\"]\s*$

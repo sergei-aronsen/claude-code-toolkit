@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.7.0] - 2026-04-29
+## [4.8.0] - 2026-04-29
 
 ### Added — Multi-CLI Bridge
 
@@ -113,6 +113,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `test-install-tui.sh` PASS=43 unchanged
   - All 7 v4.3 uninstall-suite tests unchanged
   - All v4.6 MCP / Skills / Marketplace tests unchanged
+
+## [4.7.0] - 2026-04-29
+
+### Phase 24 Sub-Phases 2–10 — Council rework
+
+#### Added — Sub-Phase 2 (editable system prompts)
+
+- Externalized Skeptic / Pragmatist / audit-review system prompts to
+  `~/.claude/council/prompts/*.md`. brain.py reads them via `load_prompt()`
+  and falls back to embedded constants when files are missing.
+- Mandatory FP-recheck + Confidence triad + code citation block in every
+  verdict per the new prompt template.
+- `.upstream-new.md` sidecar pattern preserves user edits on update,
+  mirroring `setup-security.sh`.
+
+#### Added — Sub-Phase 3 (context enrichment + redaction)
+
+- Context bundle now includes README head, `.planning/PROJECT.md`,
+  recent git log, TODO/FIXME grep, and matching test files for any
+  source files Gemini selects in discovery.
+- `apply_context_budget()` proportional truncation guards a 200K total
+  context cap.
+- `redact_context()` strips Stripe live keys, Anthropic `sk-ant-`,
+  generic high-entropy hex, and `.env` quoted secrets before sending.
+  Patterns live in editable `~/.claude/council/redaction-patterns.txt`.
+- `COUNCIL_DEBUG=1` stderr trace shows context block sizes + redaction
+  counts.
+
+#### Added — Sub-Phase 4 (cost tracking)
+
+- Append-only `~/.claude/council/usage.jsonl` log of every Council call
+  with provider, model, mode, tokens, dollar cost, and verdict.
+- `pricing.json` overlays a built-in `DEFAULT_PRICING` table; CLI
+  providers cost $0 with chars/4 estimated tokens marked
+  `estimated: true`.
+- New `/council-stats` slash command renders `--day | --week | --month
+  | --total | --since/--until | --csv` summaries from the log.
+- Optional `COUNCIL_COST_CONFIRM_THRESHOLD=<usd>` cost gate prompts the
+  user before any call whose estimated input cost exceeds the threshold;
+  CI / non-TTY runs auto-proceed with stderr warning.
+
+#### Added — Sub-Phase 5 (provider hardening + fallback)
+
+- Codex CLI provider for ChatGPT (mode: cli) using `codex exec --model
+  X --config model_reasoning_effort=Y -`.
+- `reasoning.effort` pinned to `high` for the gpt-5.2 / o3 family
+  (configurable via `config.openai.reasoning_effort`).
+- Gemini `thinkingConfig.thinkingBudget=32768` set for the API path.
+- OpenRouter free-model fallback chain (`tencent/hy3-preview:free`,
+  `nvidia/nemotron-3-super-120b-a12b:free`,
+  `inclusionai/ling-2.6-1t:free`, `openrouter/free`) kicks in when the
+  primary backend errors. Recorded with `fallback_used: true`.
+- `setup-council.sh` wizard now prompts for Codex CLI vs API and
+  optional OpenRouter key.
+
+#### Added — Sub-Phase 6 (content-hash cache)
+
+- `~/.claude/council/cache/<key>.json` cache keyed by
+  sha256(plan | git_head | cwd). Hits within TTL replay output with a
+  `[cached <ts>]` marker and zero provider calls.
+- TTL configurable via `config.cache.ttl_days` (default 7).
+- `--no-cache` flag bypasses for one run.
+- New `/council clear-cache` slash command + `brain clear-cache`
+  subcommand.
+- Cache hits log a `cache_hit: true` row to `usage.jsonl` so
+  `/council-stats` reflects savings.
+
+#### Added — Sub-Phase 7 (GSD integration)
+
+- `templates/base/skills/council-integration/SKILL.md` documents
+  the integration patterns for `/gsd-plan-phase --council`,
+  `/gsd-execute-phase --council`, and the audit Council pass.
+  Verdict-handling rules (PROCEED / SIMPLIFY / RETHINK / SKIP) +
+  troubleshooting matrix.
+- Skill triggers in `skill-rules.json` + manifest registration.
+
+#### Added — Sub-Phase 8 (QoL features)
+
+- `detect_domain()` classifies the plan into security / performance /
+  ux / migration / general from regex on plan keywords.
+- 8 persona overlay prompts under
+  `templates/council-prompts/personas/`. Non-general domains layer the
+  matching `<domain>-skeptic.md` / `<domain>-pragmatist.md` overlay on
+  top of the base prompt at every reviewer call site.
+- `--dry-run` flag builds the full Skeptic + Pragmatist prompts (with
+  context, persona, redaction) and prints them with an estimated cost.
+  Exits 0 without API calls.
+- `--format json` emits a single-line JSON object
+  `{verdict, skeptic, pragmatist, concerns_skeptic[], concerns_pragmatist[],
+  domain, plan_hash, git_head, fallback_used: {skeptic, pragmatist},
+  cache_hit, ...}` for tooling integration. Cache hits also emit JSON
+  with `cache_hit: true`.
+- TL;DR auto-summary block at the top of every written
+  `council-report.md` carries verdict + top 3 concerns + detected
+  domain.
+- New `--mode retro --commit <sha>` retrospective review reads the
+  commit diff plus the prior Council report and renders ALIGNED /
+  DRIFT / UNCLEAR.
+
+#### Added — Sub-Phase 9 (multilingual prompts)
+
+- Russian translations of the four system prompts under
+  `templates/council-prompts/ru/`.
+- `--lang en|ru|auto` flag (default `auto`). `auto` reads the first
+  500 chars of `~/.claude/CLAUDE.md` and switches to ru when the
+  Cyrillic ratio exceeds 0.2.
+- `load_prompt()` and `load_persona()` lookup order:
+  `<lang>/<name>.md` → `<name>.md` → embedded fallback.
+- Verdict tokens stay English so the orchestrator's parser remains
+  language-agnostic.
+
+#### Added — Sub-Phase 10 (docs + version bump)
+
+- Rewrite of `commands/council.md` covering all new flags and modes.
+- New `docs/COUNCIL.md` deep reference: architecture, provider matrix,
+  cost considerations, customization (prompt editing, redaction
+  patterns, persona prompts, ru locale), MCP integration pointer.
+- README "Killer Features" row refreshed; pointer to
+  `docs/COUNCIL.md`.
+- Manifest version bumped from 4.6.0 to 4.7.0; plugin manifests
+  follow.
+
+#### Notes
+
+Sub-Phase 11 (MCP server for Claude Desktop) is in progress on the
+same milestone branch and will ship under a subsequent CHANGELOG
+entry. Sub-Phase 1 already shipped under [4.5.0] - 2026-04-29.
 
 ## [4.6.0] - 2026-04-29
 

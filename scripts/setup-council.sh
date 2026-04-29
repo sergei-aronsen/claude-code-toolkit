@@ -31,7 +31,8 @@ fi
 # Source cli-recommendations helper (Phase 24 Sub-Phase 1).
 # Test seam: TK_COUNCIL_LIB_DIR=<path> uses local copies (init-local.sh / hermetic tests).
 LIB_CLI_TMP=$(mktemp "${TMPDIR:-/tmp}/cli-recommendations.XXXXXX")
-trap 'rm -f "$LIB_CLI_TMP"' EXIT
+LIB_PROMPTS_TMP=$(mktemp "${TMPDIR:-/tmp}/council-prompts.XXXXXX")
+trap 'rm -f "$LIB_CLI_TMP" "$LIB_PROMPTS_TMP"' EXIT
 
 if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" ]]; then
     cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$LIB_CLI_TMP"
@@ -43,6 +44,21 @@ elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$LIB_CLI_TMP"
 else
     echo -e "${YELLOW}⚠${NC} Could not fetch cli-recommendations.sh — skipping CLI hints"
     recommend_clis() { :; }
+fi
+
+# Source council-prompts helper (Phase 24 Sub-Phase 2).
+if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/council-prompts.sh" ]]; then
+    cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$LIB_PROMPTS_TMP"
+    # shellcheck source=/dev/null
+    source "$LIB_PROMPTS_TMP"
+elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$LIB_PROMPTS_TMP" 2>/dev/null; then
+    # shellcheck source=/dev/null
+    source "$LIB_PROMPTS_TMP"
+else
+    echo -e "${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
+    install_council_system_prompts() { :; }
+    install_council_personas() { :; }
+    install_council_ru_prompts() { :; }
 fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -160,10 +176,32 @@ echo ""
 # ─────────────────────────────────────────────────
 
 echo -e "${CYAN}Step 3: OpenAI (ChatGPT) configuration${NC}"
+echo ""
+echo -e "  Choose OpenAI access method:"
+echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
+echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
+echo ""
 
+OPENAI_MODE="api"
 OPENAI_KEY=""
 
-if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+if ! read -r -p "  Enter choice [1/2] (default: 1 if codex on PATH, else 2): " OPENAI_CHOICE < /dev/tty 2>/dev/null; then
+    OPENAI_CHOICE=""
+fi
+if [[ -z "$OPENAI_CHOICE" ]]; then
+    OPENAI_CHOICE=$(command -v codex >/dev/null 2>&1 && echo "1" || echo "2")
+fi
+
+if [[ "$OPENAI_CHOICE" == "1" ]]; then
+    OPENAI_MODE="cli"
+    if ! command -v codex &>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC} Codex CLI not found. Install:"
+        echo -e "      npm install -g @openai/codex   # or: brew install --cask codex"
+        echo -e "      codex login"
+    else
+        echo -e "  ${GREEN}✓${NC} Codex CLI found"
+    fi
+elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
     OPENAI_KEY="$OPENAI_API_KEY"
     echo -e "  ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
 else
@@ -173,6 +211,32 @@ else
     if [[ -z "$OPENAI_KEY" ]]; then
         echo -e "  ${YELLOW}⚠${NC} You'll need to add it later to config.json"
         echo -e "  Get key: https://platform.openai.com/api-keys"
+    fi
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 3b: OpenRouter fallback (optional)
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 3b: OpenRouter free-tier fallback (optional)${NC}"
+echo -e "  When the primary backend fails (quota / 5xx / network), Council can"
+echo -e "  retry through a free-model chain on OpenRouter. Skip if you only want"
+echo -e "  to use the primary providers configured above."
+echo ""
+
+OPENROUTER_KEY=""
+if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+    OPENROUTER_KEY="$OPENROUTER_API_KEY"
+    echo -e "  ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
+else
+    read -rs -p "  Enter OpenRouter API key (or press Enter to skip): " OPENROUTER_KEY < /dev/tty 2>/dev/null || true
+    echo ""
+    if [[ -z "$OPENROUTER_KEY" ]]; then
+        echo -e "  ${YELLOW}⚠${NC} OpenRouter fallback disabled — Council still works with primary only."
+    else
+        echo -e "  ${GREEN}✓${NC} OpenRouter fallback configured"
     fi
 fi
 
@@ -194,6 +258,17 @@ else
     rm -f "$COUNCIL_DIR/brain.py"
     echo -e "  ${RED}✗${NC} Failed to download brain.py"
     exit 1
+fi
+
+# Phase 24 SP11 — download MCP server so Claude Desktop can call /council
+# without dropping to the terminal. brain.py is the dependency; we already
+# have it on disk at this point.
+if curl -sSLf "$REPO_URL/scripts/council/mcp-server.py" -o "$COUNCIL_DIR/mcp-server.py" 2>/dev/null; then
+    chmod +x "$COUNCIL_DIR/mcp-server.py"
+    echo -e "  ${GREEN}✓${NC} mcp-server.py"
+else
+    rm -f "$COUNCIL_DIR/mcp-server.py"
+    echo -e "  ${YELLOW}⚠${NC} mcp-server.py (Claude Desktop integration optional, skipping)"
 fi
 
 # Download README
@@ -225,6 +300,31 @@ else
     echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
 fi
 
+# Install editable system prompts (Phase 24 Sub-Phase 2).
+# Skeptic / Pragmatist / audit-review pair land in ~/.claude/council/prompts/.
+# brain.py reads them via load_prompt() and falls back to embedded constants
+# when files are missing.
+install_council_system_prompts
+
+# Install Russian translations (Phase 24 SP9) — selected via --lang ru or
+# auto-detection of cyrillic CLAUDE.md.
+install_council_ru_prompts
+
+# Install domain persona overlays (Phase 24 SP8). detect_domain() in brain.py
+# classifies the plan into security / performance / ux / migration and the
+# corresponding overlay is prepended to the base Skeptic / Pragmatist prompt.
+install_council_personas
+
+# Install redaction-patterns.txt (Phase 24 Sub-Phase 3) so brain.py can
+# augment its built-in DEFAULT_REDACTION_PATTERNS with project-specific
+# secret shapes. User edits preserved via .upstream-new.txt sidecar.
+install_council_redaction_patterns
+
+# Install pricing.json (Phase 24 Sub-Phase 4) so brain.py can compute
+# accurate $ cost per call for /council stats. User edits preserved via
+# .upstream-new.json sidecar.
+install_council_pricing
+
 # Install /council slash command globally (Phase 24 Sub-Phase 1).
 # Same idempotent + mtime-aware pattern as audit-review.md above. Council is
 # a global feature — its slash command lives in ~/.claude/commands/, not in
@@ -248,6 +348,42 @@ else
     echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
 fi
 
+# Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
+if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+        -o "$COMMANDS_DIR/council-stats.md.tmp" 2>/dev/null; then
+    if [ ! -f "$COMMANDS_DIR/council-stats.md" ]; then
+        mv "$COMMANDS_DIR/council-stats.md.tmp" "$COMMANDS_DIR/council-stats.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md installed (global)"
+    elif [ "$COMMANDS_DIR/council-stats.md.tmp" -nt "$COMMANDS_DIR/council-stats.md" ]; then
+        mv "$COMMANDS_DIR/council-stats.md.tmp" "$COMMANDS_DIR/council-stats.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md (refreshed)"
+    else
+        rm -f "$COMMANDS_DIR/council-stats.md.tmp"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md (already current)"
+    fi
+else
+    rm -f "$COMMANDS_DIR/council-stats.md.tmp"
+    echo -e "  ${YELLOW}⚠${NC} commands/council-stats.md (not critical)"
+fi
+
+# Install /council clear-cache slash command globally (Phase 24 Sub-Phase 6).
+if curl -sSLf "$REPO_URL/commands/council-clear-cache.md" \
+        -o "$COMMANDS_DIR/council-clear-cache.md.tmp" 2>/dev/null; then
+    if [ ! -f "$COMMANDS_DIR/council-clear-cache.md" ]; then
+        mv "$COMMANDS_DIR/council-clear-cache.md.tmp" "$COMMANDS_DIR/council-clear-cache.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md installed (global)"
+    elif [ "$COMMANDS_DIR/council-clear-cache.md.tmp" -nt "$COMMANDS_DIR/council-clear-cache.md" ]; then
+        mv "$COMMANDS_DIR/council-clear-cache.md.tmp" "$COMMANDS_DIR/council-clear-cache.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (refreshed)"
+    else
+        rm -f "$COMMANDS_DIR/council-clear-cache.md.tmp"
+        echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (already current)"
+    fi
+else
+    rm -f "$COMMANDS_DIR/council-clear-cache.md.tmp"
+    echo -e "  ${YELLOW}⚠${NC} commands/council-clear-cache.md (not critical)"
+fi
+
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -267,18 +403,37 @@ else
     # shellcheck disable=SC2016
     GEMINI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_KEY")
     # shellcheck disable=SC2016
+    OPENAI_MODE_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_MODE")
+    # shellcheck disable=SC2016
     OPENAI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_KEY")
+    # shellcheck disable=SC2016
+    OPENROUTER_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENROUTER_KEY")
 
     cat > "$CONFIG_FILE" << CONFIGEOF
 {
   "gemini": {
     "mode": $GEMINI_MODE_JSON,
     "api_key": $GEMINI_KEY_JSON,
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": $OPENAI_MODE_JSON,
     "api_key": $OPENAI_KEY_JSON,
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": $OPENROUTER_KEY_JSON,
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF
@@ -315,6 +470,72 @@ else
     } >> "$SHELL_RC"
     echo -e "  ${GREEN}✓${NC} Added alias 'brain' to $SHELL_RC"
     echo -e "  Run: ${YELLOW}source $SHELL_RC${NC} to activate"
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 6b: Claude Desktop MCP registration (Phase 24 SP11)
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 6b: Claude Desktop MCP integration (optional)${NC}"
+
+case "$(uname -s)" in
+    Darwin) DESKTOP_CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+    Linux)  DESKTOP_CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
+    MINGW*|MSYS*|CYGWIN*) DESKTOP_CFG="${APPDATA:-$HOME/AppData/Roaming}/Claude/claude_desktop_config.json" ;;
+    *)      DESKTOP_CFG="" ;;
+esac
+
+if [[ ! -f "$COUNCIL_DIR/mcp-server.py" ]]; then
+    echo -e "  ${YELLOW}⚠${NC} mcp-server.py not installed — skipping Claude Desktop registration"
+elif [[ -z "$DESKTOP_CFG" ]]; then
+    echo -e "  ${YELLOW}⚠${NC} Unrecognized platform — skipping Claude Desktop registration"
+else
+    if [[ -f "$DESKTOP_CFG" ]]; then
+        echo -e "  Detected Claude Desktop config: ${BLUE}$DESKTOP_CFG${NC}"
+    else
+        echo -e "  Claude Desktop config not found at ${BLUE}$DESKTOP_CFG${NC}"
+        echo -e "  (Skip if you do not use Claude Desktop.)"
+    fi
+    printf "  Register Council as MCP server in Claude Desktop? [y/N]: "
+    read -r CD_ANSWER < /dev/tty
+    if [[ "$CD_ANSWER" =~ ^[Yy] ]]; then
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo -e "  ${RED}✗${NC} python3 missing — Claude Desktop integration aborted"
+        else
+            mkdir -p "$(dirname "$DESKTOP_CFG")"
+            if [[ -f "$DESKTOP_CFG" ]]; then
+                cp "$DESKTOP_CFG" "${DESKTOP_CFG}.bak.$(date -u +%s)"
+                echo -e "  ${GREEN}✓${NC} Existing config backed up"
+            fi
+            CD_TMP="$(mktemp "${TMPDIR:-/tmp}/claude_desktop_config.XXXXXX")"
+            COUNCIL_DIR_ESC="$COUNCIL_DIR" python3 - "$DESKTOP_CFG" "$CD_TMP" <<'PYEOF'
+import json, os, sys
+src, dst = sys.argv[1], sys.argv[2]
+council_dir = os.environ["COUNCIL_DIR_ESC"]
+data = {}
+if os.path.isfile(src):
+    try:
+        with open(src, "r", encoding="utf-8") as fh:
+            data = json.load(fh) or {}
+    except json.JSONDecodeError:
+        data = {}
+servers = data.setdefault("mcpServers", {})
+servers["supreme-council"] = {
+    "command": "python3",
+    "args": [os.path.join(council_dir, "mcp-server.py")],
+}
+with open(dst, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+PYEOF
+            mv "$CD_TMP" "$DESKTOP_CFG"
+            echo -e "  ${GREEN}✓${NC} supreme-council MCP server registered"
+            echo -e "  Restart Claude Desktop to load it."
+        fi
+    else
+        echo -e "  Skipped Claude Desktop registration."
+    fi
 fi
 
 echo ""

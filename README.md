@@ -139,7 +139,7 @@ remove duplicate files with per-file confirmation and a full pre-migration backu
 | **Knowledge Persistence** | Project facts in `.claude/rules/` — auto-loaded every session, committed to git, available on any machine |
 | **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
 | **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
-| **Supreme Council** | `/council` (installed globally to `~/.claude/commands/`) sends plans to Gemini + ChatGPT for independent review before coding |
+| **Supreme Council** | `/council` (global) sends plans to Gemini + ChatGPT for independent review with persona overlays, content-hash cache, cost gate, OpenRouter fallback, ru locale, and `--format json` output. Deep reference: [`docs/COUNCIL.md`](docs/COUNCIL.md) |
 | **Structured Workflow** | 3 mandatory phases: RESEARCH (read-only) → PLAN (scratchpad) → EXECUTE (after confirmation) |
 | **Multi-CLI Bridges** | Auto-sync `CLAUDE.md` to Gemini CLI's `GEMINI.md` and OpenAI Codex's `AGENTS.md`. Drift-detected, opt-out via `--no-bridges`. See [docs/BRIDGES.md](docs/BRIDGES.md) |
 

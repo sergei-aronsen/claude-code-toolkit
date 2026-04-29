@@ -2,10 +2,25 @@
   "gemini": {
     "mode": "cli",
     "api_key": "",
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": "api",
     "api_key": "",
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": "",
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
