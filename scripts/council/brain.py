@@ -241,6 +241,35 @@ def is_error_response(text):
     return any(text.startswith(p) for p in ERROR_PREFIXES)
 
 
+def _extract_concerns(text):
+    """Phase 24 SP8 — pull bullet items from a `## Concerns` section.
+
+    The Skeptic prompt asks for "max 3" concerns under that heading; the
+    Pragmatist's "## Production Readiness" / "## Maintenance Forecast"
+    sections may or may not use the same name. We scan for any `## Concerns`
+    (case-insensitive) header and harvest list bullets up to the next
+    heading. Returns up to 3 concise strings.
+    """
+    if not text:
+        return []
+    m = re.search(
+        r"##\s*Concerns[^\n]*\n(.*?)(?=\n##\s|\Z)",
+        text,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if not m:
+        return []
+    body = m.group(1)
+    bullets = re.findall(r"^[\s>]*[-*•]\s+(.+)$|^[\s>]*\d+[.)]\s+(.+)$", body, re.MULTILINE)
+    out = []
+    for bullet_pair in bullets:
+        for grp in bullet_pair:
+            if grp and grp.strip():
+                out.append(grp.strip())
+                break
+    return out[:3]
+
+
 def extract_verdict(text):
     """Extract verdict from reviewer response.
 
@@ -1888,6 +1917,28 @@ def _run_validate_plan(plan, config):
     cached = _get_cached(cache_key, _cache_ttl_days(config)) if cache_key else None
     if cached:
         ts = cached.get("ts", "?")
+        if config.get("_format") == "json":
+            json_payload = {
+                "verdict": cached.get("final_verdict"),
+                "skeptic": cached.get("skeptic_decision"),
+                "pragmatist": cached.get("pragmatist_decision"),
+                "skeptic_text": cached.get("skeptic_verdict", ""),
+                "pragmatist_text": cached.get("pragmatist_verdict", ""),
+                "concerns_skeptic": _extract_concerns(cached.get("skeptic_verdict", "")),
+                "concerns_pragmatist": _extract_concerns(cached.get("pragmatist_verdict", "")),
+                "domain": cached.get("domain", domain),
+                "plan_hash": plan_hash,
+                "git_head": git_head,
+                "fallback_used": {
+                    "skeptic": bool(cached.get("fallback_used_skeptic", False)),
+                    "pragmatist": bool(cached.get("fallback_used_pragmatist", False)),
+                },
+                "cache_hit": True,
+                "cached_ts": ts,
+            }
+            print(json.dumps(json_payload, ensure_ascii=False))
+            log_cache_hit(plan_hash, cached.get("final_verdict"))
+            return
         print(f"\n♻️  [cached {ts}] Returning previous Council report — no API calls.")
         print("   (use --no-cache to force a fresh run)")
         print(cached.get("display_text", ""))
@@ -2016,6 +2067,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - RETHINK — the problem is real, but the solution is wrong
 - SKIP — this doesn't need to be done"""
 
+    # SP8 — default fallback flags so JSON output (and cache writes) always
+    # carry a known shape even when a reviewer was skipped at config time.
+    fallback_used_skeptic = False
+    fallback_used_pragmatist = False
+
     if config.get("_gemini_available", True):
         gemini_model_eff = (
             "gemini-cli" if config["gemini"].get("mode", "cli") == "cli"
@@ -2141,6 +2197,49 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         skeptic_rank = VERDICT_PRIORITY.index(skeptic_decision)
         pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
         final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
+
+    # ── Phase 24 SP8 — JSON output mode short-circuits the markdown report ──
+    if config.get("_format") == "json":
+        json_payload = {
+            "verdict": final_verdict,
+            "skeptic": skeptic_decision,
+            "pragmatist": pragmatist_decision,
+            "skeptic_text": gemini_verdict,
+            "pragmatist_text": gpt_verdict,
+            "concerns_skeptic": _extract_concerns(gemini_verdict),
+            "concerns_pragmatist": _extract_concerns(gpt_verdict),
+            "domain": domain,
+            "plan_hash": plan_hash,
+            "git_head": git_head,
+            "fallback_used": {
+                "skeptic": bool(fallback_used_skeptic),
+                "pragmatist": bool(fallback_used_pragmatist),
+            },
+            "skeptic_failed": skeptic_failed,
+            "pragmatist_failed": pragmatist_failed,
+            "cache_hit": False,
+        }
+        print(json.dumps(json_payload, ensure_ascii=False))
+        # Still cache the run so a later non-JSON call hits the same content
+        # hash; we just store an empty display_text since JSON consumers don't
+        # need the markdown block.
+        if cache_key and not (skeptic_failed and pragmatist_failed):
+            _set_cached(cache_key, {
+                "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "plan_hash": plan_hash,
+                "git_head": git_head,
+                "skeptic_verdict": gemini_verdict,
+                "pragmatist_verdict": gpt_verdict,
+                "skeptic_decision": skeptic_decision,
+                "pragmatist_decision": pragmatist_decision,
+                "final_verdict": final_verdict,
+                "display_text": "",
+                "report_md": "",
+                "domain": domain,
+                "fallback_used_skeptic": bool(fallback_used_skeptic),
+                "fallback_used_pragmatist": bool(fallback_used_pragmatist),
+            })
+        return
 
     # SP6 — render display block as one string so cache replay reproduces
     # identical output on a hit.
@@ -2547,6 +2646,17 @@ def main():
         ),
     )
     parser.add_argument(
+        "--format",
+        choices=["markdown", "json"],
+        default="markdown",
+        help=(
+            "Phase 24 SP8 — output shape for validate-plan. `markdown` (default) "
+            "prints the human report; `json` emits a single-line JSON object "
+            "{verdict, skeptic, pragmatist, concerns, fallback_used, ...} "
+            "for tooling integration."
+        ),
+    )
+    parser.add_argument(
         "plan",
         nargs="?",
         default=None,
@@ -2577,6 +2687,7 @@ def main():
 
     config = load_config()
     config["_no_cache"] = bool(args.no_cache)
+    config["_format"] = getattr(args, "format", "markdown")
 
     if args.mode == "audit-review":
         if not args.report:
