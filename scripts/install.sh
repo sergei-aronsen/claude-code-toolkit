@@ -874,7 +874,10 @@ for ((i=0; i<_disp_count; i++)); do
         gemini-bridge|codex-bridge)
             _bridge_target="${local_name%-bridge}"
             local_rc=0
-            if [[ -n "$stderr_tmp" ]]; then
+            if [[ "$DRY_RUN" -eq 1 ]]; then
+                # Dry-run: announce would-install without touching any files.
+                : # local_rc stays 0; status set to would-install below.
+            elif [[ -n "$stderr_tmp" ]]; then
                 ( bridge_create_global "$_bridge_target" ) 2>"$stderr_tmp" || local_rc=$?
             else
                 bridge_create_global "$_bridge_target" || local_rc=$?
