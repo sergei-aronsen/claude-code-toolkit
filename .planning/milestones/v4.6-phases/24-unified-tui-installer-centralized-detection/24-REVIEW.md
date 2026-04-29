@@ -247,11 +247,11 @@ assert_not_contains "installed ✓" "$OUTPUT" "S4_dry_run: summary must NOT show
 
 ---
 
-### IN-05: `manifest.json` version field (`4.4.0`) does not reflect the v4.5 work introduced in this phase
+### IN-05: `manifest.json` version field (`4.4.0`) does not reflect the v4.6 work introduced in this phase
 
 **File:** `manifest.json:3`
 
-**Issue:** `manifest.json` declares `"version": "4.4.0"` and `"updated": "2026-04-27"`, yet Phase 24 introduces new distributable files (`scripts/install.sh`, `scripts/lib/detect2.sh`, `scripts/lib/dispatch.sh`, `scripts/lib/tui.sh`) that are now listed in the `"scripts"` and `"libs"` sections. The `version-align` CI check (Makefile:247) validates that `manifest.json` version == `CHANGELOG.md` top entry == `init-local.sh --version`. If `CHANGELOG.md` or `init-local.sh` already carry `4.5.0`, this field will cause the CI gate to fail. If they also still say `4.4.0`, the version is consistent but silently misrepresents the new release.
+**Issue:** `manifest.json` declares `"version": "4.4.0"` and `"updated": "2026-04-27"`, yet Phase 24 introduces new distributable files (`scripts/install.sh`, `scripts/lib/detect2.sh`, `scripts/lib/dispatch.sh`, `scripts/lib/tui.sh`) that are now listed in the `"scripts"` and `"libs"` sections. The `version-align` CI check (Makefile:247) validates that `manifest.json` version == `CHANGELOG.md` top entry == `init-local.sh --version`. If `CHANGELOG.md` or `init-local.sh` already carry `4.6.0`, this field will cause the CI gate to fail. If they also still say `4.4.0`, the version is consistent but silently misrepresents the new release.
 
 **Fix:** Bump `manifest.json` version (and `updated`) to match the target release version for Phase 24 before merging. Confirm alignment via `make version-align`.
 

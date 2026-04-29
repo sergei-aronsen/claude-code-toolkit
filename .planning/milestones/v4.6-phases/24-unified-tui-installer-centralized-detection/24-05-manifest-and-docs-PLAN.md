@@ -24,7 +24,7 @@ must_haves:
     - "manifest.json files.libs[] contains entries for tui.sh, detect2.sh, dispatch.sh (auto-discovered by update-claude.sh jq path)"
     - "manifest.json files.scripts[] contains an entry for install.sh (top-level script)"
     - "test-update-libs.sh stays green — the new lib entries trigger zero-special-casing in update-claude.sh per LIB-01 D-07 invariant"
-    - "docs/INSTALL.md gains an `## install.sh (unified entry, v4.5+)` section with a flag table parallel to the existing init-claude.sh table"
+    - "docs/INSTALL.md gains an `## install.sh (unified entry, v4.6+)` section with a flag table parallel to the existing init-claude.sh table"
     - "Documented flags: --yes, --yes --force, --dry-run, --force, --fail-fast, --no-color, --no-banner, --help"
     - "BACKCOMPAT-01 invariant: existing `## Mode: standalone` etc. install-matrix sections remain untouched"
     - "markdownlint passes after docs/INSTALL.md edit (MD040, MD031, MD032, MD026 strict)"
@@ -47,7 +47,7 @@ must_haves:
 ---
 
 <objective>
-Wire the four new files (`scripts/lib/tui.sh`, `scripts/lib/detect2.sh`, `scripts/lib/dispatch.sh`, `scripts/install.sh`) into `manifest.json` so smart-update / update-claude.sh covers them automatically. Add a user-facing `## install.sh (unified entry, v4.5+)` section to `docs/INSTALL.md` documenting the new orchestrator's flag set.
+Wire the four new files (`scripts/lib/tui.sh`, `scripts/lib/detect2.sh`, `scripts/lib/dispatch.sh`, `scripts/install.sh`) into `manifest.json` so smart-update / update-claude.sh covers them automatically. Add a user-facing `## install.sh (unified entry, v4.6+)` section to `docs/INSTALL.md` documenting the new orchestrator's flag set.
 
 This plan runs in Wave 3 PARALLEL with Plan 04 (different files: Plan 04 touches `scripts/install.sh` + tests + Makefile + quality.yml; Plan 05 touches `manifest.json` + `docs/INSTALL.md` — zero file overlap).
 
@@ -240,7 +240,7 @@ Critical rules:
 1. **Schema discipline**: each entry is `{"path": "<relative-path>"}` — no extra fields. The existing `lib/install.sh` entry (different from the new top-level `scripts/install.sh`) does NOT have any extra fields; the new entries match.
 2. **Alphabetical order in libs[]**: the three new entries slot at the correct positions — `detect2.sh` after `bootstrap.sh`, `dispatch.sh` after `detect2.sh`, `tui.sh` after `state.sh` (alphabetic).
 3. **Append in scripts[]**: order is not strictly alphabetical in the existing array; append `install.sh` after `uninstall.sh` for now (this is the project convention for additive entries).
-4. **DO NOT modify** the `manifest_version`, `version`, `updated`, or any other top-level field in this plan. The version bump to 4.5.0 is deferred to Phase 27 distribution phase per CONTEXT.md "Deferred Ideas" — auto-bump manifest.json version is explicitly out of scope.
+4. **DO NOT modify** the `manifest_version`, `version`, `updated`, or any other top-level field in this plan. The version bump to 4.6.0 is deferred to Phase 27 distribution phase per CONTEXT.md "Deferred Ideas" — auto-bump manifest.json version is explicitly out of scope.
 5. After editing, run `python3 -m json.tool manifest.json > /dev/null` to confirm valid JSON.
 6. Run `jq '.files.libs[].path' manifest.json` and confirm the new three paths appear in the output.
 
@@ -268,7 +268,7 @@ Implements LIB-01 D-07 zero-special-casing invariant (new libs auto-discovered b
 </task>
 
 <task type="auto">
-  <name>Task 2: Add `## install.sh (unified entry, v4.5+)` section to docs/INSTALL.md (D-31)</name>
+  <name>Task 2: Add `## install.sh (unified entry, v4.6+)` section to docs/INSTALL.md (D-31)</name>
   <files>docs/INSTALL.md</files>
 
   <read_first>
@@ -278,7 +278,7 @@ Implements LIB-01 D-07 zero-special-casing invariant (new libs auto-discovered b
   </read_first>
 
   <behavior>
-    - docs/INSTALL.md gains a new H2 section `## install.sh (unified entry, v4.5+)` between the existing `## Installer Flags` (with all its subsections through `### --keep-state for uninstall.sh (v4.4+)`) and the existing `## Mode: standalone` H2
+    - docs/INSTALL.md gains a new H2 section `## install.sh (unified entry, v4.6+)` between the existing `## Installer Flags` (with all its subsections through `### --keep-state for uninstall.sh (v4.4+)`) and the existing `## Mode: standalone` H2
     - The section contains a flag table parallel to the existing one's format
     - The section includes a brief invocation example showing `bash <(curl -sSL .../scripts/install.sh) --yes` and a paragraph noting BACKCOMPAT-01 (init-claude.sh URL still works)
     - markdownlint passes (`make mdlint` exits 0)
@@ -305,10 +305,10 @@ message when `--keep-state` is set.
 
 ---
 
-## install.sh (unified entry, v4.5+)
+## install.sh (unified entry, v4.6+)
 
 `scripts/install.sh` is the single entry point for the unified TUI installer flow
-introduced in v4.5. It complements the per-component `init-claude.sh` /
+introduced in v4.6. It complements the per-component `init-claude.sh` /
 `setup-security.sh` / `install-statusline.sh` URLs (which all continue to work
 unchanged — BACKCOMPAT-01).
 
@@ -355,7 +355,7 @@ pre-unchecked; uninstalled components are pre-checked.
 
 All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
 `TK_NO_BOOTSTRAP`, `NO_BANNER`) are preserved unchanged. The 26-assertion
-`test-bootstrap.sh` regression test stays green throughout v4.5. Both entry
+`test-bootstrap.sh` regression test stays green throughout v4.6. Both entry
 points coexist indefinitely; there is no deprecation schedule for
 `init-claude.sh`.
 
@@ -377,7 +377,7 @@ Critical rules:
    - MD026: no trailing punctuation in headings (no `?`, `!`, `:`, `.`)
    - Linkify [no-color.org](https://no-color.org) explicitly (one of the project's existing patterns)
 2. **Section position**: AFTER `### --keep-state for uninstall.sh (v4.4+)` block (closing line: "behavioural delta is the LAST step ... when `--keep-state` is set."), BEFORE `## Mode: standalone`. The existing `---` separator stays where it is (right before `## Mode: standalone`); the new section gets its own `---` separator at the end before the existing one. Net result: TWO `---` separators consecutively — one closing the new section, one opening `## Mode: standalone`. (This is the pattern the existing file uses for section boundaries.)
-3. **Heading style**: H2 for the section title (`## install.sh (unified entry, v4.5+)`); H3 for subsections (`### Quick start`, `### Flags`, etc.). Mirrors existing `### --keep-state for uninstall.sh (v4.4+)` H3 pattern.
+3. **Heading style**: H2 for the section title (`## install.sh (unified entry, v4.6+)`); H3 for subsections (`### Quick start`, `### Flags`, etc.). Mirrors existing `### --keep-state for uninstall.sh (v4.4+)` H3 pattern.
 4. **TUI controls table**: documents the D-18 key bindings (no vim-j/k per D-18). The "[installed ✓]" glyph is documented per D-17.
 5. **Run `make mdlint`** after the edit to confirm no lint regressions. Common fixups: trailing spaces, missing language tags on fenced blocks, blank lines around tables.
 
@@ -385,11 +385,11 @@ Implements D-31 documentation surface: install.sh flags documented alongside (NO
   </action>
 
   <verify>
-    <automated>grep -q '## install.sh (unified entry, v4.5+)' docs/INSTALL.md && grep -q '## Mode: standalone' docs/INSTALL.md && grep -q '\-\-fail-fast' docs/INSTALL.md && grep -q 'BACKCOMPAT-01' docs/INSTALL.md && make mdlint</automated>
+    <automated>grep -q '## install.sh (unified entry, v4.6+)' docs/INSTALL.md && grep -q '## Mode: standalone' docs/INSTALL.md && grep -q '\-\-fail-fast' docs/INSTALL.md && grep -q 'BACKCOMPAT-01' docs/INSTALL.md && make mdlint</automated>
   </verify>
 
   <acceptance_criteria>
-    - `docs/INSTALL.md` contains heading `## install.sh (unified entry, v4.5+)`
+    - `docs/INSTALL.md` contains heading `## install.sh (unified entry, v4.6+)`
     - The new section sits BEFORE `## Mode: standalone` (verified by line-number check: `grep -n '^## ' docs/INSTALL.md` shows `install.sh` line < `Mode: standalone` line)
     - Section contains `### Quick start`, `### Flags`, `### TUI controls`, `### Backwards compatibility` H3 subsections
     - Flag table includes all 8 flags: `--yes`, `--yes --force`, `--dry-run`, `--force`, `--fail-fast`, `--no-color`, `--no-banner`, `--help`
@@ -420,7 +420,7 @@ If `make check` fails on:
 - shellcheck — Phase 24 doesn't add new shell scripts in this plan; failure indicates an unrelated regression. Stop and investigate.
 - mdlint — fix the offending markdown (likely in docs/INSTALL.md). Common: missing fenced code language, missing blank lines, trailing punctuation in heading.
 - validate-manifest — JSON schema mismatch in manifest.json. Run `python3 scripts/validate-manifest.py` to see the exact error.
-- version-align — `version` field in manifest.json must equal CHANGELOG.md top entry version. Phase 24 does NOT bump the version (deferred to Phase 27); if CHANGELOG.md has been pre-bumped to 4.5.0 elsewhere, this check would fail and that's a Plan-05 boundary issue. STOP and ask.
+- version-align — `version` field in manifest.json must equal CHANGELOG.md top entry version. Phase 24 does NOT bump the version (deferred to Phase 27); if CHANGELOG.md has been pre-bumped to 4.6.0 elsewhere, this check would fail and that's a Plan-05 boundary issue. STOP and ask.
 
 2. Run BACKCOMPAT-01 + Phase 22 LIB-01 invariant tests:
 
@@ -446,10 +446,10 @@ The new lib entries auto-discover via the existing update-claude.sh
 jq path (.files | to_entries[] | .value[] | .path) per LIB-01 D-07
 zero-special-casing invariant. test-update-libs.sh stays green: 15
 assertions confirm smart-update covers the new files. Manifest version
-unchanged (4.5.0 bump deferred to Phase 27 distribution phase per
+unchanged (4.6.0 bump deferred to Phase 27 distribution phase per
 CONTEXT.md "Deferred Ideas").
 
-docs/INSTALL.md gains a new "## install.sh (unified entry, v4.5+)"
+docs/INSTALL.md gains a new "## install.sh (unified entry, v4.6+)"
 section between the existing "## Installer Flags" subsections and
 "## Mode: standalone". Documents:
   - Flag set: --yes, --yes --force, --dry-run, --force, --fail-fast,
@@ -540,7 +540,7 @@ bash scripts/tests/test-bootstrap.sh
 - `manifest.json` has new entries for `scripts/install.sh` and `scripts/lib/{tui,detect2,dispatch}.sh`
 - JSON valid; auto-discovery via existing jq path works (LIB-01 D-07 zero-special-casing)
 - `test-update-libs.sh` 15 assertions stay green
-- `docs/INSTALL.md` has new `## install.sh (unified entry, v4.5+)` section with flag table + TUI controls + BACKCOMPAT note
+- `docs/INSTALL.md` has new `## install.sh (unified entry, v4.6+)` section with flag table + TUI controls + BACKCOMPAT note
 - markdownlint passes
 - All existing v4.4 sections in `docs/INSTALL.md` UNCHANGED (D-31)
 - `test-bootstrap.sh` 26 assertions stay green (BACKCOMPAT-01)

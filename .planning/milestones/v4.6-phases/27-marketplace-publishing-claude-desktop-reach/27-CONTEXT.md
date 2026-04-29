@@ -33,16 +33,16 @@ Out of scope: actual marketplace.json publication PR to upstream Anthropic regis
 ### Sub-Plugin Structure
 
 - **`plugins/tk-skills/`** (Desktop-compatible):
-  - `.claude-plugin/plugin.json` — version 4.5.0, category "skills", tags ["mirror", "marketplace"], description "22 curated skills mirrored from skills.sh"
+  - `.claude-plugin/plugin.json` — version 4.6.0, category "skills", tags ["mirror", "marketplace"], description "22 curated skills mirrored from skills.sh"
   - `skills/` symlink or directory mirror of `templates/skills-marketplace/<name>/` content
   - LICENSE file at sub-plugin root
 
 - **`plugins/tk-commands/`** (Code only):
-  - `.claude-plugin/plugin.json` — version 4.5.0, category "commands", tags ["slash-commands", "code-only"], description "29 slash commands for Claude Code workflows"
+  - `.claude-plugin/plugin.json` — version 4.6.0, category "commands", tags ["slash-commands", "code-only"], description "29 slash commands for Claude Code workflows"
   - `commands/` directory mirror of repo `commands/*.md`
 
 - **`plugins/tk-framework-rules/`** (Code only):
-  - `.claude-plugin/plugin.json` — version 4.5.0, category "rules", tags ["framework-templates", "code-only"]
+  - `.claude-plugin/plugin.json` — version 4.6.0, category "rules", tags ["framework-templates", "code-only"]
   - `templates/` mirror of `templates/{base,laravel,rails,nextjs,nodejs,python,go}/`
 
 - **Mirroring strategy:** Symlinks at first, with `make build-marketplace` target that resolves to real copies for distribution. (Symlinks keep CI simple and the plugin tree stays in sync with primary content.)
@@ -83,9 +83,9 @@ Out of scope: actual marketplace.json publication PR to upstream Anthropic regis
 
 ### Version Source-of-Truth (MKT-02)
 
-- All `plugin.json` files declare version `4.5.0` (the milestone version).
-- `manifest.json` v4.5.0 bumped in this phase (final phase of v4.5 milestone).
-- `CHANGELOG.md [4.5.0]` section documents Phase 24-27 deliverables in one entry (mirrors v4.4 consolidation).
+- All `plugin.json` files declare version `4.6.0` (the milestone version).
+- `manifest.json` v4.6.0 bumped in this phase (final phase of v4.6 milestone).
+- `CHANGELOG.md [4.6.0]` section documents Phase 24-27 deliverables in one entry (mirrors v4.4 consolidation).
 
 ### Claude's Discretion
 
@@ -111,8 +111,8 @@ Out of scope: actual marketplace.json publication PR to upstream Anthropic regis
 - `make` targets idempotent.
 
 ### Integration Points
-- `manifest.json` — version 4.4.0 → 4.5.0 bump.
-- `CHANGELOG.md` — new `[4.5.0]` section consolidating phases 24-27.
+- `manifest.json` — version 4.4.0 → 4.6.0 bump.
+- `CHANGELOG.md` — new `[4.6.0]` section consolidating phases 24-27.
 - `Makefile` — new targets: `validate-marketplace`, `validate-skills-desktop`, `build-marketplace` (optional). `make check` chain extended.
 - `.github/workflows/quality.yml` — extend "Tests 21-33" step + new "validate-marketplace" + "validate-skills-desktop" steps.
 - `README.md` — new "Install via marketplace" section.

@@ -249,7 +249,7 @@ Create `scripts/install.sh` (top-level — NOT lib/install.sh) with this structu
 ```bash
 #!/bin/bash
 
-# Claude Code Toolkit — Unified Install Orchestrator (v4.5+)
+# Claude Code Toolkit — Unified Install Orchestrator (v4.6+)
 #
 # Single entry point that:
 #   1. Sources lib/{tui,detect2,dispatch}.sh (local clone or curl|bash)

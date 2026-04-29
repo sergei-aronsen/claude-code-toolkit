@@ -1,7 +1,7 @@
 ---
 phase: 24-unified-tui-installer-centralized-detection
 fixed_at: 2026-04-29T15:33:47Z
-review_path: .planning/milestones/v4.5-phases/24-unified-tui-installer-centralized-detection/24-REVIEW.md
+review_path: .planning/milestones/v4.6-phases/24-unified-tui-installer-centralized-detection/24-REVIEW.md
 iteration: 1
 findings_in_scope: 4
 fixed: 4
@@ -12,7 +12,7 @@ status: all_fixed
 # Phase 24: Code Review Fix Report
 
 **Fixed at:** 2026-04-29T15:33:47Z
-**Source review:** `.planning/milestones/v4.5-phases/24-unified-tui-installer-centralized-detection/24-REVIEW.md`
+**Source review:** `.planning/milestones/v4.6-phases/24-unified-tui-installer-centralized-detection/24-REVIEW.md`
 **Iteration:** 1
 
 **Summary:**
@@ -60,7 +60,7 @@ Per `fix_scope=critical_warning`, the following IN-* findings were NOT addressed
 - **IN-02** — `detect2.sh` source-path edge case when `BASH_SOURCE[0]` is empty (subtle correctness risk only in unusual contexts).
 - **IN-03** — `install.sh` `SELECTION_RC=$?` dead code (already annotated `reserved for future use`).
 - **IN-04** — `test-install-tui.sh` `assert_not_contains "installed"` substring breadth (currently passes; tighten if future output adds containing strings).
-- **IN-05** — `manifest.json` version `4.4.0` → `4.5.0` — **already_fixed in Phase 27** (per orchestrator's note; manifest version bump landed with the v4.5 milestone alignment work).
+- **IN-05** — `manifest.json` version `4.4.0` → `4.6.0` — **already_fixed in Phase 27** (per orchestrator's note; manifest version bump landed with the v4.6 milestone alignment work).
 
 These can be addressed in a follow-up `fix_scope=all` pass if desired.
 

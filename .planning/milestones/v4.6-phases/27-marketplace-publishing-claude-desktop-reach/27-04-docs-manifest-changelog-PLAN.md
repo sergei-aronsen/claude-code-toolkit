@@ -20,9 +20,9 @@ must_haves:
     - "docs/CLAUDE_DESKTOP.md is read-time-under-1-minute (concise; aim for <120 lines of body)"
     - "README.md gains an 'Install via marketplace' subsection alongside the existing curl-bash install instructions, with copy-pasteable command (`claude plugin marketplace add sergei-aronsen/claude-code-toolkit`)"
     - "docs/INSTALL.md gains a parallel 'Install via marketplace' section AND a 'Claude Desktop users' subsection pointing to docs/CLAUDE_DESKTOP.md"
-    - "manifest.json `version` field updated from 4.4.0 → 4.5.0 and `updated` field updated to today's date (2026-04-29)"
+    - "manifest.json `version` field updated from 4.4.0 → 4.6.0 and `updated` field updated to today's date (2026-04-29)"
     - "manifest.json registers all four new files added in Plans 01-03 (`scripts/validate-skills-desktop.sh` + `scripts/validate-marketplace.sh` under `files.scripts`; the `.claude-plugin/marketplace.json` and `plugins/` trees are repo-side metadata, NOT user-installable, so NOT in manifest)"
-    - "CHANGELOG.md gains a new `[4.5.0] - 2026-04-29` section that consolidates Phase 24-27 deliverables (mirrors v4.4 consolidation pattern)"
+    - "CHANGELOG.md gains a new `[4.6.0] - 2026-04-29` section that consolidates Phase 24-27 deliverables (mirrors v4.4 consolidation pattern)"
     - "`make check` (which includes `version-align`) passes after all changes"
   artifacts:
     - path: "docs/CLAUDE_DESKTOP.md"
@@ -36,11 +36,11 @@ must_haves:
       provides: "Marketplace install section + Desktop users pointer"
       contains: "marketplace.json"
     - path: "manifest.json"
-      provides: "Version 4.5.0 + new validators registered under files.scripts"
-      contains: '"version": "4.5.0"'
+      provides: "Version 4.6.0 + new validators registered under files.scripts"
+      contains: '"version": "4.6.0"'
     - path: "CHANGELOG.md"
-      provides: "[4.5.0] release entry consolidating Phase 24-27"
-      contains: "## [4.5.0]"
+      provides: "[4.6.0] release entry consolidating Phase 24-27"
+      contains: "## [4.6.0]"
   key_links:
     - from: "README.md"
       to: "docs/CLAUDE_DESKTOP.md"
@@ -57,13 +57,13 @@ must_haves:
     - from: "CHANGELOG.md"
       to: "manifest.json"
       via: "version-align Make target verifies both sides"
-      pattern: '## \[4.5.0\]'
+      pattern: '## \[4.6.0\]'
 ---
 
 <objective>
-Land the user-facing surface for v4.5: Claude Desktop documentation, marketplace
-install instructions in README + INSTALL.md, manifest version bump 4.4.0 → 4.5.0
-(the **final** v4.5 milestone bump), CHANGELOG `[4.5.0]` consolidating Phase 24-27.
+Land the user-facing surface for v4.6: Claude Desktop documentation, marketplace
+install instructions in README + INSTALL.md, manifest version bump 4.4.0 → 4.6.0
+(the **final** v4.6 milestone bump), CHANGELOG `[4.6.0]` consolidating Phase 24-27.
 
 This plan ships in Wave 4 because:
 
@@ -77,7 +77,7 @@ Per CONTEXT.md decisions:
 - **Read-time target:** under 1 minute (DESK-01). Keep it concise.
 - **Marketplace as Desktop-only path:** explicitly state `/plugin marketplace add ./local-dir` is blocked — marketplace.json upstream is the only Desktop install channel.
 - **Both channels documented as equivalent for Code users** (MKT-04). Marketplace is the only path for Desktop.
-- **Version source-of-truth (per CONTEXT.md "Version Source-of-Truth"):** manifest.json bumped to 4.5.0; CHANGELOG `[4.5.0]` consolidates Phase 24-27 in one entry (mirrors v4.4).
+- **Version source-of-truth (per CONTEXT.md "Version Source-of-Truth"):** manifest.json bumped to 4.6.0; CHANGELOG `[4.6.0]` consolidates Phase 24-27 in one entry (mirrors v4.4).
 - **manifest scope:** the `.claude-plugin/marketplace.json` + `plugins/` trees are repo-side metadata for the marketplace tooling, NOT user-installable files distributed via curl-bash. They go in git but NOT in `manifest.json`. Only the new VALIDATORS (`validate-skills-desktop.sh` + `validate-marketplace.sh`) are added to `files.scripts[]`.
 
 Output: 1 new doc file + 3 modified docs + 2 modified config files.
@@ -119,7 +119,7 @@ manifest.json current state (top fields, lines 1-10):
 ```
 
 Target state in Plan 04:
-- `"version": "4.5.0"`
+- `"version": "4.6.0"`
 - `"updated": "2026-04-29"`
 - `files.scripts[]` array gains 2 entries: `scripts/validate-skills-desktop.sh` and `scripts/validate-marketplace.sh` (sorted alphabetically with existing scripts).
 
@@ -142,7 +142,7 @@ CHANGELOG.md current top entry (lines 8-65):
 Plan 04 inserts a NEW top entry BEFORE [4.4.0]:
 
 ```markdown
-## [4.5.0] - 2026-04-29
+## [4.6.0] - 2026-04-29
 
 ### Added
 
@@ -159,7 +159,7 @@ Plan 04 inserts a NEW top entry BEFORE [4.4.0]:
 ```
 
 Existing CHANGELOG `[4.4.0]` entry stays UNTOUCHED below the new entry — it's
-historic. The new entry consolidates ALL of v4.5 (Phases 24-27) in one block,
+historic. The new entry consolidates ALL of v4.6 (Phases 24-27) in one block,
 just like `[4.4.0]` consolidated Phases 21-23.
 
 README.md install section reference (lines 60-105 — read existing structure to
@@ -465,7 +465,7 @@ test -f docs/CLAUDE_DESKTOP.md \
 </task>
 
 <task type="auto">
-  <name>Task 2: Bump manifest.json to 4.5.0 + register validators + add CHANGELOG [4.5.0] entry</name>
+  <name>Task 2: Bump manifest.json to 4.6.0 + register validators + add CHANGELOG [4.6.0] entry</name>
   <files>
     manifest.json,
     CHANGELOG.md
@@ -481,7 +481,7 @@ test -f docs/CLAUDE_DESKTOP.md \
 
 1. Update top-level fields in manifest.json:
 
-   - Change `"version": "4.4.0"` to `"version": "4.5.0"`
+   - Change `"version": "4.4.0"` to `"version": "4.6.0"`
    - Change `"updated": "2026-04-27"` to `"updated": "2026-04-29"`
 
 2. Add two new entries to `files.scripts[]` array. Use jq to discover existing
@@ -519,14 +519,14 @@ test -f docs/CLAUDE_DESKTOP.md \
    and Plan 01 frontmatter, they live in git but stay out of the install
    manifest.
 
-### Step B: Add CHANGELOG [4.5.0] entry
+### Step B: Add CHANGELOG [4.6.0] entry
 
 Insert the following block at the TOP of the CHANGELOG, AFTER the existing
 preamble (lines 1-7: title + format note + semver note) and BEFORE the existing
 `## [4.4.0] - 2026-04-27` section:
 
 ```markdown
-## [4.5.0] - 2026-04-29
+## [4.6.0] - 2026-04-29
 
 ### Added
 
@@ -565,7 +565,7 @@ preamble (lines 1-7: title + format note + semver note) and BEFORE the existing
   `tk-skills` is Desktop-Code-tab compatible; `tk-commands` and
   `tk-framework-rules` are Code-only. Sub-plugin content trees are relative
   symlinks into the canonical repo content (zero duplication, zero drift).
-  Version is the single source of truth in each `plugin.json` (4.5.0);
+  Version is the single source of truth in each `plugin.json` (4.6.0);
   `marketplace.json` plugin entries do not declare versions per spec.
 
 - **Marketplace + Desktop-skills validators** (`scripts/validate-marketplace.sh`,
@@ -601,7 +601,7 @@ preamble (lines 1-7: title + format note + semver note) and BEFORE the existing
 
 ### Changed
 
-- **Manifest version** bumped from 4.4.0 to 4.5.0 (final v4.5 milestone bump).
+- **Manifest version** bumped from 4.4.0 to 4.6.0 (final v4.6 milestone bump).
   `init-local.sh --version` derives from manifest at runtime, so no script
   changes needed.
 
@@ -626,7 +626,7 @@ make version-align
 Expected output:
 
 ```text
-✅ Version aligned: 4.5.0
+✅ Version aligned: 4.6.0
 ```
 
 If this fails, fix whichever side is out of sync (manifest.json `version`,
@@ -652,49 +652,49 @@ re-verify the validators exist and are listed correctly.
 
 ```bash
 git add manifest.json CHANGELOG.md
-git commit -m "chore(27): bump manifest 4.4.0 → 4.5.0, register validators, consolidate v4.5 CHANGELOG (final v4.5 milestone bump)"
+git commit -m "chore(27): bump manifest 4.4.0 → 4.6.0, register validators, consolidate v4.6 CHANGELOG (final v4.6 milestone bump)"
 ```
 
-After this commit, the v4.5 milestone is content-complete. Final tagging
-(`v4.5.0`) is a maintainer manual step per CLAUDE.md "never push directly to
+After this commit, the v4.6 milestone is content-complete. Final tagging
+(`v4.6.0`) is a maintainer manual step per CLAUDE.md "never push directly to
 main" — out of scope for this plan.
   </action>
   <verify>
     <automated>
-test "$(jq -r '.version' manifest.json)" = "4.5.0" \
+test "$(jq -r '.version' manifest.json)" = "4.6.0" \
   && test "$(jq -r '.updated' manifest.json)" = "2026-04-29" \
   && jq -e '.files.scripts[] | select(.path == "scripts/validate-skills-desktop.sh")' manifest.json >/dev/null \
   && jq -e '.files.scripts[] | select(.path == "scripts/validate-marketplace.sh")' manifest.json >/dev/null \
   && python3 -c "import json; json.load(open('manifest.json'))" \
   && python3 scripts/validate-manifest.py \
-  && grep -q '## \[4.5.0\] - 2026-04-29' CHANGELOG.md \
+  && grep -q '## \[4.6.0\] - 2026-04-29' CHANGELOG.md \
   && grep -q 'Plugin marketplace surface' CHANGELOG.md \
   && grep -q 'Desktop-only auto-routing' CHANGELOG.md \
   && grep -q 'Claude Desktop capability matrix' CHANGELOG.md \
   && CHANGELOG_VER=$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/') \
-  && test "$CHANGELOG_VER" = "4.5.0" \
+  && test "$CHANGELOG_VER" = "4.6.0" \
   && make version-align > /tmp/va.out 2>&1 \
-  && grep -q 'Version aligned: 4.5.0' /tmp/va.out \
+  && grep -q 'Version aligned: 4.6.0' /tmp/va.out \
   && make check > /tmp/check.out 2>&1 \
   && grep -q 'All checks passed' /tmp/check.out \
-  && echo "PASS: manifest=4.5.0, CHANGELOG=[4.5.0], make check green"
+  && echo "PASS: manifest=4.6.0, CHANGELOG=[4.6.0], make check green"
     </automated>
   </verify>
   <done>
-    - `manifest.json` `.version == "4.5.0"`, `.updated == "2026-04-29"`
+    - `manifest.json` `.version == "4.6.0"`, `.updated == "2026-04-29"`
     - `manifest.json` `.files.scripts[]` includes both `scripts/validate-skills-desktop.sh` and `scripts/validate-marketplace.sh`
     - `python3 scripts/validate-manifest.py` exits 0
-    - `CHANGELOG.md` top entry is `## [4.5.0] - 2026-04-29` with `### Added` containing all eight Phase-24-27 deliverables (Unified TUI installer, MCP catalog, Skills mirror, Plugin marketplace, Validators, Desktop routing, Capability matrix, Marketplace docs)
-    - `make version-align` reports `Version aligned: 4.5.0`
+    - `CHANGELOG.md` top entry is `## [4.6.0] - 2026-04-29` with `### Added` containing all eight Phase-24-27 deliverables (Unified TUI installer, MCP catalog, Skills mirror, Plugin marketplace, Validators, Desktop routing, Capability matrix, Marketplace docs)
+    - `make version-align` reports `Version aligned: 4.6.0`
     - `make check` exits 0 with `All checks passed!`
   </done>
   <acceptance_criteria>
-    - `jq -r '.version' manifest.json` returns `4.5.0`
+    - `jq -r '.version' manifest.json` returns `4.6.0`
     - `jq -r '.updated' manifest.json` returns `2026-04-29`
     - `jq '[.files.scripts[].path] | sort | unique | length' manifest.json` equals the actual script count (no duplicate path entries)
     - `jq -e '[.files.scripts[].path] | contains(["scripts/validate-skills-desktop.sh", "scripts/validate-marketplace.sh"])' manifest.json` returns `true`
-    - `head -10 CHANGELOG.md | grep -c '## \[4.5.0\]'` returns `1`
-    - `grep -A 200 '## \[4.5.0\]' CHANGELOG.md | grep -c -E '(MKT-|DESK-|TUI-|MCP-|SKILL-|DET-|DISPATCH-|BACKCOMPAT-)'` returns ≥ 5 (multiple requirement IDs cited)
+    - `head -10 CHANGELOG.md | grep -c '## \[4.6.0\]'` returns `1`
+    - `grep -A 200 '## \[4.6.0\]' CHANGELOG.md | grep -c -E '(MKT-|DESK-|TUI-|MCP-|SKILL-|DET-|DISPATCH-|BACKCOMPAT-)'` returns ≥ 5 (multiple requirement IDs cited)
     - `make version-align` exits 0
     - `make check` exits 0
     - `python3 scripts/validate-manifest.py` exits 0
@@ -708,19 +708,19 @@ After both tasks:
 
 1. `docs/CLAUDE_DESKTOP.md` exists with the documented capability matrix (DESK-01 satisfied).
 2. `README.md` and `docs/INSTALL.md` carry marketplace install sections (MKT-04 satisfied).
-3. `manifest.json` is at version 4.5.0 with the two new validators registered.
-4. `CHANGELOG.md` has `[4.5.0] - 2026-04-29` consolidating Phase 24-27.
+3. `manifest.json` is at version 4.6.0 with the two new validators registered.
+4. `CHANGELOG.md` has `[4.6.0] - 2026-04-29` consolidating Phase 24-27.
 5. `make version-align` and `make check` both pass.
 
 Phase 27 is content-complete. The maintainer's manual final step is to tag
-`v4.5.0` (per CLAUDE.md "never push directly to main").
+`v4.6.0` (per CLAUDE.md "never push directly to main").
 </verification>
 
 <success_criteria>
 - `docs/CLAUDE_DESKTOP.md` exists with capability matrix readable in <1 min (DESK-01)
 - README + docs/INSTALL.md document marketplace install channel as equivalent for Code users; marketplace-only for Desktop (MKT-04)
-- manifest.json version 4.5.0 + updated 2026-04-29 + 2 new validators registered
-- CHANGELOG.md top entry `[4.5.0] - 2026-04-29` consolidates all Phase 24-27 deliverables
+- manifest.json version 4.6.0 + updated 2026-04-29 + 2 new validators registered
+- CHANGELOG.md top entry `[4.6.0] - 2026-04-29` consolidates all Phase 24-27 deliverables
 - `make version-align` and `make check` both green
 - markdownlint clean on all touched docs
 </success_criteria>
@@ -732,5 +732,5 @@ After completion, create `.planning/phases/27-marketplace-publishing-claude-desk
 - `version_align_result`: actual output of `make version-align`
 - `make_check_result`: exit code + key output line of final `make check`
 - Notes on what was added to manifest.json files.scripts[] (path entries, sort position)
-- Indication that v4.5 is content-complete — only `git tag v4.5.0` remains for the maintainer
+- Indication that v4.6 is content-complete — only `git tag v4.6.0` remains for the maintainer
 </output>

@@ -58,15 +58,15 @@ User explicitly delegated all gray-area calls in `discuss-phase` ("сам при
 - **D-12:** `--yes` default-set = **"all uninstalled components, in canonical dispatch order"**. Matches the TUI pre-check logic: a TUI user would see exactly these items pre-checked. `--yes` is "accept TUI defaults non-interactively", not "install everything".
 - **D-13:** Already-installed components are **skipped** under `--yes` (status `skipped`). To re-run them, user passes `--yes --force`.
 - **D-14:** `--yes --force` re-runs every component regardless of detection. Component dispatchers respect `--force` per their own contracts (existing `init-claude.sh --force`, etc.).
-- **D-15:** No `--preset` flag in v4.5 — TUI-FUT-02 deferred. `--yes` is the single non-interactive entry; `--yes --force` is the only "install everything" surface.
+- **D-15:** No `--preset` flag in v4.6 — TUI-FUT-02 deferred. `--yes` is the single non-interactive entry; `--yes --force` is the only "install everything" surface.
 
 ### Selection visual + key bindings
 
 - **D-16:** Selection indicator: **arrow `▶` prefix on the focused row**, not reverse video. Rationale: reverse-video renders unpredictably under tmux/screen with non-default color schemes; the arrow is unambiguous on every terminal that handles the rest of the TUI.
 - **D-17:** Checkbox glyphs: `[ ]` (unchecked), `[x]` (checked), `[installed ✓]` (replaces checkbox for already-installed items per TUI-04).
-- **D-18:** Key bindings: `↑`/`↓` move, `space` toggle, `enter` confirm, `q` or `Ctrl-C` cancel. **No vim-style `j`/`k`** in v4.5 — keep the surface minimal; doc-friendly; one canonical scheme.
+- **D-18:** Key bindings: `↑`/`↓` move, `space` toggle, `enter` confirm, `q` or `Ctrl-C` cancel. **No vim-style `j`/`k`** in v4.6 — keep the surface minimal; doc-friendly; one canonical scheme.
 - **D-19:** Help line at the bottom of the TUI: `↑↓ move · space toggle · enter confirm · q quit`. Always shown — discoverability over screen real estate.
-- **D-20:** Description text (TUI-04 "optional description on focused row") renders on a **single dimmed line below the help line**, updated on focus change. No multi-line descriptions in v4.5.
+- **D-20:** Description text (TUI-04 "optional description on focused row") renders on a **single dimmed line below the help line**, updated on focus change. No multi-line descriptions in v4.6.
 
 ### Detection v2 (`scripts/lib/detect2.sh`)
 
@@ -77,7 +77,7 @@ User explicitly delegated all gray-area calls in `discuss-phase` ("сам при
   - `is_security_installed` — `command -v cc-safety-net` AND grep `cc-safety-net` in `~/.claude/hooks/pre-bash.sh` OR `~/.claude/settings.json` (DET-02 — fixes v4.4 brew-install miss)
   - `is_rtk_installed` — `command -v rtk` (DET-04)
   - `is_statusline_installed` — `[ -f "$HOME/.claude/statusline.sh" ]` AND grep `statusLine` in `~/.claude/settings.json` (DET-03)
-- **D-22:** Each `is_*_installed` returns 0 (installed) or 1 (not installed). No third "unknown" state for the v4.5 component set — that's introduced by Phase 25 for MCPs (`claude` CLI absence).
+- **D-22:** Each `is_*_installed` returns 0 (installed) or 1 (not installed). No third "unknown" state for the v4.6 component set — that's introduced by Phase 25 for MCPs (`claude` CLI absence).
 - **D-23:** Detection runs **once at startup**, results cached in shell vars (`IS_TOOLKIT=`, `IS_SECURITY=`, etc.). TUI reads cache; dispatch re-checks before invoking each dispatcher (cheap re-probe, catches mid-run drift).
 
 ### Dispatch (`scripts/lib/dispatch.sh`)
@@ -184,10 +184,10 @@ User delegated all decisions wholesale. Items above are locked. The planner has 
 ### Integration Points
 
 - **`scripts/install.sh` (new top-level)** — sources `lib/{tui,detect2,dispatch}.sh`; not a trampoline — owns the orchestration loop (DISPATCH-03).
-- **`manifest.json`** — new `tui.sh`/`detect2.sh`/`dispatch.sh` rows under `files.libs[]`; new `install.sh` row under `files.scripts[]`. Atomic version bump to 4.5.0 in this phase or deferred to Phase 27 distribution phase (planner decides).
+- **`manifest.json`** — new `tui.sh`/`detect2.sh`/`dispatch.sh` rows under `files.libs[]`; new `install.sh` row under `files.scripts[]`. Atomic version bump to 4.6.0 in this phase or deferred to Phase 27 distribution phase (planner decides).
 - **`Makefile`** — new `Test 31` target for `test-install-tui.sh`; CI step renamed `Tests 21-30` → `Tests 21-31`.
 - **`.github/workflows/quality.yml`** — same as Makefile; mirror the new test in CI.
-- **`docs/INSTALL.md`** — add `## install.sh (unified entry, v4.5+)` section alongside existing `init-claude.sh` docs.
+- **`docs/INSTALL.md`** — add `## install.sh (unified entry, v4.6+)` section alongside existing `init-claude.sh` docs.
 
 </code_context>
 
@@ -210,13 +210,13 @@ User's discretion-mode response set the tone: **prefer minimal, conventional, we
 Out of Phase 24 scope; tracked for later.
 
 - **Vim-style `j`/`k`** key bindings — TUI-FUT-04 (new). Add only if user demand surfaces.
-- **Multi-line item descriptions** — single-line in v4.5; multi-line is a TUI v2 feature.
+- **Multi-line item descriptions** — single-line in v4.6; multi-line is a TUI v2 feature.
 - **Live progress bars** — TUI-FUT-01 already in REQUIREMENTS.md "Future Requirements".
 - **`--preset minimal|full|dev`** bundles — TUI-FUT-02 already deferred.
 - **Grouped MCPs/Skills sections in TUI** — Phase 25/26 build on this group precedent; their groups land in those phases, not 24.
-- **Auto-bump `manifest.json` version to 4.5.0** in Phase 24 — defer to Phase 27 distribution phase (single atomic bump for the whole milestone, matches v4.4 precedent).
+- **Auto-bump `manifest.json` version to 4.6.0** in Phase 24 — defer to Phase 27 distribution phase (single atomic bump for the whole milestone, matches v4.4 precedent).
 - **TUI section search / filter** (`/` to filter long lists) — irrelevant for 6-item list; revisit when MCP catalog (9 items) + Skills catalog (22 items) ship in 25/26.
-- **Localize TUI text** — English-only in v4.5; localization deferred indefinitely (the toolkit's CI tooling is English-first, see `cheatsheets/` precedent).
+- **Localize TUI text** — English-only in v4.6; localization deferred indefinitely (the toolkit's CI tooling is English-first, see `cheatsheets/` precedent).
 
 </deferred>
 

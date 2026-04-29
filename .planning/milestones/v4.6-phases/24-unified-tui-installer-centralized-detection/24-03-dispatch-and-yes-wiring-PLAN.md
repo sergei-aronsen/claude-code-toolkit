@@ -169,7 +169,7 @@ Create `scripts/lib/dispatch.sh` with this exact structure (executor MUST keep f
 ```bash
 #!/bin/bash
 
-# Claude Code Toolkit — Per-Component Dispatcher Library (v4.5+)
+# Claude Code Toolkit — Per-Component Dispatcher Library (v4.6+)
 # Source this file. Do NOT execute it directly.
 # Exposes:
 #   TK_DISPATCH_ORDER  array — canonical install order (DISPATCH-01)

@@ -43,9 +43,9 @@ None identified.
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
 | `.claude-plugin/marketplace.json` | Marketplace manifest with 3-plugin entries | VERIFIED | 3 plugins, name `claude-code-toolkit`, owner `sergei-aronsen`, no `version` in plugin entries |
-| `plugins/tk-skills/.claude-plugin/plugin.json` | tk-skills sub-plugin manifest v4.5.0 | VERIFIED | version 4.5.0, category `skills`, tags `[mirror, marketplace, desktop-compatible]` |
-| `plugins/tk-commands/.claude-plugin/plugin.json` | tk-commands sub-plugin manifest v4.5.0 | VERIFIED | version 4.5.0, category `commands`, tags `[slash-commands, code-only]` |
-| `plugins/tk-framework-rules/.claude-plugin/plugin.json` | tk-framework-rules sub-plugin manifest v4.5.0 | VERIFIED | version 4.5.0, category `rules`, tags `[framework-templates, code-only]` |
+| `plugins/tk-skills/.claude-plugin/plugin.json` | tk-skills sub-plugin manifest v4.6.0 | VERIFIED | version 4.6.0, category `skills`, tags `[mirror, marketplace, desktop-compatible]` |
+| `plugins/tk-commands/.claude-plugin/plugin.json` | tk-commands sub-plugin manifest v4.6.0 | VERIFIED | version 4.6.0, category `commands`, tags `[slash-commands, code-only]` |
+| `plugins/tk-framework-rules/.claude-plugin/plugin.json` | tk-framework-rules sub-plugin manifest v4.6.0 | VERIFIED | version 4.6.0, category `rules`, tags `[framework-templates, code-only]` |
 | `plugins/tk-skills/skills` | Symlink to templates/skills-marketplace — 22 mirrored skills | VERIFIED | IS SYMLINK, target `../../templates/skills-marketplace`, resolves to 22 skills, git mode 120000 |
 | `plugins/tk-commands/commands` | Symlink to repo-root commands/ — 29 slash commands | VERIFIED | IS SYMLINK, target `../../commands`, resolves correctly, git mode 120000 |
 | `plugins/tk-framework-rules/templates` | Symlink to repo-root templates/ — 7 framework fragments | VERIFIED | IS SYMLINK, target `../../templates`, resolves to laravel/nextjs/etc., git mode 120000 |
@@ -57,8 +57,8 @@ None identified.
 | `docs/CLAUDE_DESKTOP.md` | 4-column capability matrix + Desktop install path | VERIFIED | 94 lines, 4-column matrix with 6 data rows, explains Chat tab and remote session limitations |
 | `README.md` | Marketplace install subsection | VERIFIED | "Install via marketplace" section with `claude plugin marketplace add` command + CLAUDE_DESKTOP.md link |
 | `docs/INSTALL.md` | Marketplace install section + Desktop users pointer | VERIFIED | 7 occurrences of "marketplace", "Claude Desktop users" subsection, links to CLAUDE_DESKTOP.md |
-| `manifest.json` | Version 4.5.0 + validators registered under files.scripts | VERIFIED | version 4.5.0, updated 2026-04-29, `scripts/validate-marketplace.sh` + `scripts/validate-skills-desktop.sh` both in files.scripts[] |
-| `CHANGELOG.md` | [4.5.0] entry consolidating Phase 24-27 | VERIFIED | Top entry `## [4.5.0] - 2026-04-29` with all 8 Phase 27 deliverables cited (MKT-01..04, DESK-01..04) |
+| `manifest.json` | Version 4.6.0 + validators registered under files.scripts | VERIFIED | version 4.6.0, updated 2026-04-29, `scripts/validate-marketplace.sh` + `scripts/validate-skills-desktop.sh` both in files.scripts[] |
+| `CHANGELOG.md` | [4.6.0] entry consolidating Phase 24-27 | VERIFIED | Top entry `## [4.6.0] - 2026-04-29` with all 8 Phase 27 deliverables cited (MKT-01..04, DESK-01..04) |
 
 ### Key Link Verification
 
@@ -75,7 +75,7 @@ None identified.
 | `README.md` | `docs/CLAUDE_DESKTOP.md` | Markdown link in marketplace section | WIRED | `[docs/CLAUDE_DESKTOP.md](docs/CLAUDE_DESKTOP.md)` present |
 | `docs/INSTALL.md` | `docs/CLAUDE_DESKTOP.md` | Markdown link in Desktop users section | WIRED | `[CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md)` present |
 | `manifest.json` | `scripts/validate-skills-desktop.sh` + `scripts/validate-marketplace.sh` | files.scripts[] array entries | WIRED | Both paths present in files.scripts[] |
-| `CHANGELOG.md` | `manifest.json` version | version-align Make target | WIRED | `make version-align` exits 0 with `Version aligned: 4.5.0` |
+| `CHANGELOG.md` | `manifest.json` version | version-align Make target | WIRED | `make version-align` exits 0 with `Version aligned: 4.6.0` |
 
 ### Data-Flow Trace (Level 4)
 
@@ -88,7 +88,7 @@ Not applicable — this phase produces shell scripts, JSON manifests, symlinks, 
 | `validate-skills-desktop` exits 0 with PASS>=4 | `bash scripts/validate-skills-desktop.sh` | PASS=20 FLAG=2, DESK-04 gate green | PASS |
 | `validate-marketplace` skips without CLI | `bash scripts/validate-marketplace.sh` | `[skipped] validate-marketplace: TK_HAS_CLAUDE_CLI not set` (exit 0) | PASS |
 | `manifest.json` validates | `python3 scripts/validate-manifest.py` | `manifest.json validation PASSED` | PASS |
-| version-align gate | `make version-align` | `Version aligned: 4.5.0` (exit 0) | PASS |
+| version-align gate | `make version-align` | `Version aligned: 4.6.0` (exit 0) | PASS |
 | `make check` runs both validators | `make check` (from SUMMARY: exit 0) | `All checks passed!` per 27-04-SUMMARY | PASS |
 | marketplace.json has no embedded versions | `python3 -c "...any('version' in p for p in d['plugins'])"` | `False` — no plugin entries have version | PASS |
 | symlinks resolve to correct targets | readlink + test -d | All 4 symlinks present with correct relative paths; 22 skills accessible | PASS |
@@ -99,7 +99,7 @@ Not applicable — this phase produces shell scripts, JSON manifests, symlinks, 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
 | MKT-01 | 27-01 | `.claude-plugin/marketplace.json` schema with 3 sub-plugins | SATISFIED | File exists; 3 plugins; no embedded versions; name/owner correct |
-| MKT-02 | 27-01 | `plugin.json` per sub-plugin (version, description, category, tags) | SATISFIED | All 3 plugin.json files have version 4.5.0, category, tags |
+| MKT-02 | 27-01 | `plugin.json` per sub-plugin (version, description, category, tags) | SATISFIED | All 3 plugin.json files have version 4.6.0, category, tags |
 | MKT-03 | 27-02 | `make validate-marketplace` smoke gated by TK_HAS_CLAUDE_CLI=1 | SATISFIED (structure) | Script exists, gated correctly, exits 0 with skip notice in CI; live smoke requires human |
 | MKT-04 | 27-04 | README + INSTALL.md "Install via marketplace" sections | SATISFIED | Both files have marketplace sections; CLI command string present; Desktop users pointed to CLAUDE_DESKTOP.md |
 | DESK-01 | 27-04 | `docs/CLAUDE_DESKTOP.md` capability matrix | SATISFIED | 94-line doc, 4-column matrix, 6 rows, explains Chat tab + remote session limitations |

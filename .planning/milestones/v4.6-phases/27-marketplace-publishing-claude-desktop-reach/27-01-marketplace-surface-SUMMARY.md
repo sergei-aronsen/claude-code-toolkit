@@ -29,7 +29,7 @@ symlinks_created:
   - path: plugins/tk-framework-rules/templates
     target: ../../templates
 decisions:
-  - "Version declared once in plugin.json (4.5.0) — not duplicated in marketplace.json (per MKT-02 single-source-of-truth)"
+  - "Version declared once in plugin.json (4.6.0) — not duplicated in marketplace.json (per MKT-02 single-source-of-truth)"
   - "Symlinks use relative paths (../../) for portability across clones and CI worktrees"
   - "plugins/ excluded from markdownlint to prevent double-scanning third-party content through symlinks"
 metrics:
@@ -49,9 +49,9 @@ enabling `claude plugin marketplace add sergei-aronsen/claude-code-toolkit` disc
 
 - `.claude-plugin/marketplace.json` — repo-root marketplace manifest declaring 3 sub-plugins
   (`tk-skills`, `tk-commands`, `tk-framework-rules`) with `name` + `source` only (no embedded versions)
-- `plugins/tk-skills/.claude-plugin/plugin.json` — v4.5.0, category `skills`, tags `[mirror, marketplace, desktop-compatible]`
-- `plugins/tk-commands/.claude-plugin/plugin.json` — v4.5.0, category `commands`, tags `[slash-commands, code-only]`
-- `plugins/tk-framework-rules/.claude-plugin/plugin.json` — v4.5.0, category `rules`, tags `[framework-templates, code-only]`
+- `plugins/tk-skills/.claude-plugin/plugin.json` — v4.6.0, category `skills`, tags `[mirror, marketplace, desktop-compatible]`
+- `plugins/tk-commands/.claude-plugin/plugin.json` — v4.6.0, category `commands`, tags `[slash-commands, code-only]`
+- `plugins/tk-framework-rules/.claude-plugin/plugin.json` — v4.6.0, category `rules`, tags `[framework-templates, code-only]`
 - 4 relative symlinks connecting sub-plugin trees to canonical repo content
 
 ## Commits
@@ -98,7 +98,7 @@ on PATH; CI runner does not have it). Plan 02 adds `make validate-marketplace` w
 ## Self-Check
 
 - [x] `.claude-plugin/marketplace.json` exists, `jq '.plugins | length'` = 3
-- [x] All 3 `plugin.json` files have `"version": "4.5.0"` and correct category/tags
+- [x] All 3 `plugin.json` files have `"version": "4.6.0"` and correct category/tags
 - [x] `jq -e '.plugins[] | has("version")' .claude-plugin/marketplace.json` exits non-zero (no embedded versions)
 - [x] 4 symlinks: `plugins/tk-skills/skills`, `plugins/tk-skills/LICENSE`, `plugins/tk-commands/commands`, `plugins/tk-framework-rules/templates`
 - [x] All symlinks use relative paths (verified with `readlink`)

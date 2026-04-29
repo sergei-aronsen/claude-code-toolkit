@@ -20,7 +20,7 @@ requirements:
 must_haves:
   truths:
     - ".claude-plugin/marketplace.json exists at repo root and lists exactly 3 sub-plugins (tk-skills, tk-commands, tk-framework-rules)"
-    - "Each sub-plugin has plugins/<name>/.claude-plugin/plugin.json with version 4.5.0 and a valid schema (name, description, version, category, tags)"
+    - "Each sub-plugin has plugins/<name>/.claude-plugin/plugin.json with version 4.6.0 and a valid schema (name, description, version, category, tags)"
     - "marketplace.json plugin entries declare source paths only — version is set in plugin.json, not duplicated in marketplace.json (per MKT-02 single-source-of-truth rule)"
     - "tk-skills sub-plugin contains a skills/ entry (symlink) pointing to templates/skills-marketplace/ so the 22 mirrored skills surface to Claude Desktop without content duplication"
     - "tk-commands sub-plugin contains a commands/ entry (symlink) pointing to repo-root commands/ so the 29 slash commands surface to Claude Code (Desktop Code tab) without duplication"
@@ -32,13 +32,13 @@ must_haves:
       contains: '"name": "claude-code-toolkit"'
     - path: "plugins/tk-skills/.claude-plugin/plugin.json"
       provides: "tk-skills sub-plugin manifest"
-      contains: '"version": "4.5.0"'
+      contains: '"version": "4.6.0"'
     - path: "plugins/tk-commands/.claude-plugin/plugin.json"
       provides: "tk-commands sub-plugin manifest"
-      contains: '"version": "4.5.0"'
+      contains: '"version": "4.6.0"'
     - path: "plugins/tk-framework-rules/.claude-plugin/plugin.json"
       provides: "tk-framework-rules sub-plugin manifest"
-      contains: '"version": "4.5.0"'
+      contains: '"version": "4.6.0"'
     - path: "plugins/tk-skills/skills"
       provides: "Symlink to templates/skills-marketplace/ — 22 mirrored skills"
     - path: "plugins/tk-commands/commands"
@@ -77,7 +77,7 @@ Per CONTEXT.md decisions:
 - **Symlinks**, not copies: each sub-plugin's content directory is a relative symlink
   to the canonical repo location (zero duplication, zero drift). Plan 02 adds a
   validator that asserts the symlinks resolve.
-- **Version is declared once** in each `plugin.json` (4.5.0 — the milestone version).
+- **Version is declared once** in each `plugin.json` (4.6.0 — the milestone version).
   `marketplace.json` plugin entries carry `name` + `source` only, NEVER `version`
   (per MKT-02 explicit guidance: `plugin.json` silently wins).
 
@@ -122,9 +122,9 @@ CONTEXT.md decision (verbatim):
 
 CONTEXT.md plugin.json fields per sub-plugin:
 
-- tk-skills:        version 4.5.0, category "skills",   tags ["mirror","marketplace"],         description "22 curated skills mirrored from skills.sh"
-- tk-commands:      version 4.5.0, category "commands", tags ["slash-commands","code-only"],   description "29 slash commands for Claude Code workflows"
-- tk-framework-rules: version 4.5.0, category "rules",  tags ["framework-templates","code-only"], description "7 framework CLAUDE.md template fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base)"
+- tk-skills:        version 4.6.0, category "skills",   tags ["mirror","marketplace"],         description "22 curated skills mirrored from skills.sh"
+- tk-commands:      version 4.6.0, category "commands", tags ["slash-commands","code-only"],   description "29 slash commands for Claude Code workflows"
+- tk-framework-rules: version 4.6.0, category "rules",  tags ["framework-templates","code-only"], description "7 framework CLAUDE.md template fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base)"
 
 Existing 22 skills directory (verified via `ls templates/skills-marketplace/`):
 ai-models, analytics-tracking, chrome-extension-development, copywriting, docx,
@@ -159,7 +159,7 @@ a different worktree.
   </files>
   <read_first>
     - .planning/phases/27-marketplace-publishing-claude-desktop-reach/27-CONTEXT.md (decision blocks)
-    - manifest.json (lines 1-10 — confirm current version is 4.4.0 — 4.5.0 bump happens in Plan 04, but plugin.json declares 4.5.0 NOW per MKT-02)
+    - manifest.json (lines 1-10 — confirm current version is 4.4.0 — 4.6.0 bump happens in Plan 04, but plugin.json declares 4.6.0 NOW per MKT-02)
   </read_first>
   <action>
 1. Create directory `.claude-plugin/` at repo root (sibling to `manifest.json`).
@@ -205,7 +205,7 @@ a different worktree.
    ```json
    {
      "name": "tk-skills",
-     "version": "4.5.0",
+     "version": "4.6.0",
      "description": "22 curated skills mirrored from skills.sh — Claude Desktop Code tab compatible",
      "category": "skills",
      "tags": ["mirror", "marketplace", "desktop-compatible"]
@@ -217,7 +217,7 @@ a different worktree.
    ```json
    {
      "name": "tk-commands",
-     "version": "4.5.0",
+     "version": "4.6.0",
      "description": "29 slash commands for Claude Code workflows — Code terminal only",
      "category": "commands",
      "tags": ["slash-commands", "code-only"]
@@ -229,7 +229,7 @@ a different worktree.
    ```json
    {
      "name": "tk-framework-rules",
-     "version": "4.5.0",
+     "version": "4.6.0",
      "description": "7 framework CLAUDE.md template fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base) — Code terminal only",
      "category": "rules",
      "tags": ["framework-templates", "code-only"]
@@ -250,24 +250,24 @@ test "$(jq -r '.name' .claude-plugin/marketplace.json)" = "claude-code-toolkit" 
   && test "$(jq -r '.plugins[1].name' .claude-plugin/marketplace.json)" = "tk-commands" \
   && test "$(jq -r '.plugins[2].name' .claude-plugin/marketplace.json)" = "tk-framework-rules" \
   && ! jq -e '.plugins[] | has("version")' .claude-plugin/marketplace.json >/dev/null \
-  && test "$(jq -r '.version' plugins/tk-skills/.claude-plugin/plugin.json)" = "4.5.0" \
+  && test "$(jq -r '.version' plugins/tk-skills/.claude-plugin/plugin.json)" = "4.6.0" \
   && test "$(jq -r '.category' plugins/tk-skills/.claude-plugin/plugin.json)" = "skills" \
-  && test "$(jq -r '.version' plugins/tk-commands/.claude-plugin/plugin.json)" = "4.5.0" \
+  && test "$(jq -r '.version' plugins/tk-commands/.claude-plugin/plugin.json)" = "4.6.0" \
   && test "$(jq -r '.category' plugins/tk-commands/.claude-plugin/plugin.json)" = "commands" \
-  && test "$(jq -r '.version' plugins/tk-framework-rules/.claude-plugin/plugin.json)" = "4.5.0" \
+  && test "$(jq -r '.version' plugins/tk-framework-rules/.claude-plugin/plugin.json)" = "4.6.0" \
   && test "$(jq -r '.category' plugins/tk-framework-rules/.claude-plugin/plugin.json)" = "rules" \
   && echo "PASS: all 4 JSON files schema-valid"
     </automated>
   </verify>
   <done>
     - `.claude-plugin/marketplace.json` exists with 3 plugin entries, no `version` keys inside `plugins[]`
-    - 3 `plugins/tk-*/.claude-plugin/plugin.json` files exist, each with `"version": "4.5.0"` and the documented `category` + `tags`
+    - 3 `plugins/tk-*/.claude-plugin/plugin.json` files exist, each with `"version": "4.6.0"` and the documented `category` + `tags`
     - All 4 JSON files parse via `python3 -c "import json"`
     - `jq -e '.plugins[] | has("version")' .claude-plugin/marketplace.json` exits non-zero (no embedded versions)
   </done>
   <acceptance_criteria>
     - File `.claude-plugin/marketplace.json` exists and `jq '.plugins | length'` returns `3`
-    - For each of `tk-skills` / `tk-commands` / `tk-framework-rules`: `plugins/<name>/.claude-plugin/plugin.json` exists with `.version == "4.5.0"`, non-empty `.category`, and `.tags` array of length ≥ 1
+    - For each of `tk-skills` / `tk-commands` / `tk-framework-rules`: `plugins/<name>/.claude-plugin/plugin.json` exists with `.version == "4.6.0"`, non-empty `.category`, and `.tags` array of length ≥ 1
     - `jq -e '.plugins[] | has("version")' .claude-plugin/marketplace.json` returns exit 1 (zero plugin entries embed a version field)
     - Tags assertions: tk-skills tags include `"mirror"` AND `"marketplace"`; tk-commands tags include `"code-only"`; tk-framework-rules tags include `"code-only"`
   </acceptance_criteria>
@@ -366,7 +366,7 @@ test -L plugins/tk-skills/skills \
 After both tasks:
 
 1. Repository tree under `plugins/` has 3 sub-plugins each containing:
-   - `.claude-plugin/plugin.json` (regular file, JSON-valid, version 4.5.0)
+   - `.claude-plugin/plugin.json` (regular file, JSON-valid, version 4.6.0)
    - One symlink to canonical content (skills/ or commands/ or templates/)
    - LICENSE symlink (tk-skills only)
 
@@ -383,7 +383,7 @@ Run: `find plugins -type l | wc -l` — must equal `4` (3 content + 1 LICENSE).
 
 <success_criteria>
 - `.claude-plugin/marketplace.json` declares 3 sub-plugins (`tk-skills`, `tk-commands`, `tk-framework-rules`) with `source` paths and no embedded `version` fields (MKT-01)
-- 3 sub-plugin `plugin.json` files declare version 4.5.0 + the documented `category`/`tags`/`description` (MKT-02)
+- 3 sub-plugin `plugin.json` files declare version 4.6.0 + the documented `category`/`tags`/`description` (MKT-02)
 - 3 content symlinks (`skills/`, `commands/`, `templates/`) resolve from each sub-plugin to the canonical repo content via RELATIVE paths
 - 1 LICENSE symlink under `plugins/tk-skills/` resolves to repo-root LICENSE
 - `make check` continues to pass (no regressions in existing markdown/shellcheck/validate gates)

@@ -202,7 +202,7 @@ Create `scripts/lib/tui.sh`. The file is ~280 lines. Use this structure exactly 
 ```bash
 #!/bin/bash
 
-# Claude Code Toolkit — TUI Checklist Library (v4.5+)
+# Claude Code Toolkit — TUI Checklist Library (v4.6+)
 # Source this file. Do NOT execute it directly.
 # Exposes: tui_checklist, tui_confirm_prompt
 # Globals (read):  TK_TUI_TTY_SRC, NO_COLOR, TERM, TUI_LABELS, TUI_GROUPS,

@@ -201,7 +201,7 @@ Create `scripts/lib/mcp.sh` as a sourced library (NOT executed standalone). Head
 ```bash
 #!/bin/bash
 
-# Claude Code Toolkit — MCP Catalog Loader + Detection (v4.5+)
+# Claude Code Toolkit — MCP Catalog Loader + Detection (v4.6+)
 # Source this file. Do NOT execute it directly.
 # Exposes:
 #   mcp_catalog_load           — parses scripts/lib/mcp-catalog.json into MCP_* arrays

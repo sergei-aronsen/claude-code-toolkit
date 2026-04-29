@@ -16,7 +16,7 @@ All 34 decisions D-01..D-34 are locked. Summary:
 - D-01..D-03: Grouped TUI sections (Bootstrap / Core / Optional), non-selectable headers, stable item order
 - D-04..D-07: SP/GSD in same TUI Bootstrap group; `bootstrap.sh` is no-TTY fallback for SP/GSD only; `--yes` bypasses TUI entirely; `bootstrap.sh` not deleted
 - D-08..D-11: Default continue-on-error; `--fail-fast` opt-in; states = `installed ✓` / `skipped` / `failed (exit N)` / `unknown`; fail-closed on TTY absence or EOF
-- D-12..D-15: `--yes` = all uninstalled in dispatch order; skip already-installed; `--force` re-runs; no `--preset` in v4.5
+- D-12..D-15: `--yes` = all uninstalled in dispatch order; skip already-installed; `--force` re-runs; no `--preset` in v4.6
 - D-16..D-20: Arrow `▶` focus indicator; `[ ]` / `[x]` / `[installed ✓]` checkboxes; keys: ↑↓ space enter q Ctrl-C; help line always shown; description on one dimmed line below help
 - D-21..D-23: `detect2.sh` sources `detect.sh`; each `is_*_installed` returns 0/1; detection cached in shell vars, re-probed before each dispatch
 - D-24..D-26: `dispatch_<name>` functions in single `dispatch.sh`; curl-pipe vs local detection; flags `[--force] [--dry-run] [--yes]` pass-through; `setup-security.sh` gets real `--yes`; `install-statusline.sh` gets no-op `--yes`
@@ -40,7 +40,7 @@ All 34 decisions D-01..D-34 are locked. Summary:
 - Live progress bars (TUI-FUT-01)
 - `--preset` bundles (TUI-FUT-02)
 - MCP/Skills TUI sections (Phases 25/26)
-- Auto-bump manifest.json to 4.5.0 (Phase 27)
+- Auto-bump manifest.json to 4.6.0 (Phase 27)
 - TUI section search/filter
 - Localization
 
@@ -388,7 +388,7 @@ fi
 
 ### Probe Code per Component
 
-All probes return 0 (installed) or 1 (not installed). No third state for v4.5 (D-22).
+All probes return 0 (installed) or 1 (not installed). No third state for v4.6 (D-22).
 
 #### `is_superpowers_installed`
 
@@ -753,7 +753,7 @@ printf 'q' > "$TTY_QUIT_FIXTURE"
 
 **Why it happens:** `read -rsn2` reads UP TO 2 bytes. In terminals that send escape sequences byte-by-byte (unusual), the `[` arrives first and `A` arrives 1ms later. Without `-t` timeout, the second read blocks until exactly 2 bytes arrive — normally fine, but may misbehave on latency-heavy SSH.
 
-**Mitigation:** For the v4.5 6-item list, blocking is acceptable. The arrow sequence always arrives as a single OS-level write() in all standard terminal emulators. Add a comment noting the known edge case. If future testing reveals issues, fall back to: after the first `\e` read, use `read -rsn1 -t 1` (integer 1 second timeout) for each subsequent byte individually.
+**Mitigation:** For the v4.6 6-item list, blocking is acceptable. The arrow sequence always arrives as a single OS-level write() in all standard terminal emulators. Add a comment noting the known edge case. If future testing reveals issues, fall back to: after the first `\e` read, use `read -rsn1 -t 1` (integer 1 second timeout) for each subsequent byte individually.
 
 **Confidence:** MEDIUM — known Bash 3.2 limitation; mitigated by terminal behavior
 

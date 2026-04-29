@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.5
+milestone: v4.6
 milestone_name: Install Flow UX & Desktop Reach
 status: shipped
-stopped_at: Milestone v4.5 archived; ready for v4.6 scoping via /gsd-new-milestone
+stopped_at: Milestone v4.6 archived; ready for v4.7 scoping via /gsd-new-milestone
 last_updated: "2026-04-29T16:00:00.000Z"
 last_activity: 2026-04-29
 progress:
@@ -98,7 +98,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 24]: S9 uses non-existent TTY path not /dev/null to trigger D-05 fork (/dev/null is readable)
 - [Phase 24]: Test seam overrides use real bash scripts (_NOOP_SCRIPT) not ':' builtin
 - [Phase 24]: D-31: install.sh flags documented alongside (not replacing) init-claude.sh flags in INSTALL.md
-- [Phase 24]: Manifest version NOT bumped to 4.5.0 in Phase 24 — deferred to Phase 27 distribution phase per CONTEXT.md Deferred Ideas
+- [Phase 24]: Manifest version NOT bumped to 4.6.0 in Phase 24 — deferred to Phase 27 distribution phase per CONTEXT.md Deferred Ideas
 - [Phase 24]: libs[] entries sorted alphabetically; scripts[] is order-preserving (install.sh appended after uninstall.sh)
 - [Phase 25]: mcp_catalog_load uses join('') for install_args (not unit-separator join); callers access raw JSON arrays directly
 - [Phase 25]: is_mcp_installed three-state return 0/1/2: 0=installed, 1=not-installed, 2=CLI-absent (MCP-02 fail-soft)
@@ -117,7 +117,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 26]: DRY_RUN shortcut placed before skills_install call to prevent any filesystem writes in preview mode
 - [Phase 26]: sync-skills-mirror.sh excluded from manifest — maintainer-only tool, not user-shipped via curl|bash
 - [Phase 26]: skills_marketplace upstream URLs set as https://skills.sh/<name> placeholders — maintainer fills on first re-sync
-- [Phase 27]: Version declared once in plugin.json (4.5.0) — not duplicated in marketplace.json per MKT-02 single-source-of-truth rule
+- [Phase 27]: Version declared once in plugin.json (4.6.0) — not duplicated in marketplace.json per MKT-02 single-source-of-truth rule
 - [Phase 27]: Symlinks use relative paths (../../) for portability across clones and CI worktrees
 - [Phase 27]: plugins/ excluded from markdownlint to prevent double-scanning third-party content through symlinks
 - [Phase 27]: validate-marketplace uses TK_HAS_CLAUDE_CLI=1 guard so it stays in make check without breaking CI
@@ -126,9 +126,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 27-03]: Auto-route does not fire when --yes is passed; CI/non-interactive paths keep components branch
 - [Phase 27-marketplace-publishing-claude-desktop-reach]: README marketplace section includes both /plugin slash-command and claude CLI forms to satisfy acceptance criteria
 - [Phase 27-marketplace-publishing-claude-desktop-reach]: manifest.json files.scripts[] NOT including .claude-plugin/ or plugins/ — they are repo-side marketplace metadata, not user-installable files
-- [Phase 27-marketplace-publishing-claude-desktop-reach]: CHANGELOG [4.5.0] consolidates Phase 24-27 in one entry, mirroring v4.4 consolidation pattern
+- [Phase 27-marketplace-publishing-claude-desktop-reach]: CHANGELOG [4.6.0] consolidates Phase 24-27 in one entry, mirroring v4.4 consolidation pattern
 
-### Key v4.5 Constraints (from research)
+### Key v4.6 Constraints (from research)
 
 - TUI must use `read -rsn1` (lowercase n) not `read -N` — `read -N` is Bash 4+ only; macOS ships Bash 3.2.57
 - No `declare -n` namerefs in TUI — Bash 4.3+ only; multi-component state passes via space-separated strings or eval-based indirect expansion
@@ -150,8 +150,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
 - 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
 - 2026-04-27: v4.4 shipped — 8/8 plans, 19 tasks, 9/9 REQ-IDs validated; archive at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`; awaiting `v4.4.0` tag on main HEAD
-- 2026-04-29: v4.5 milestone scoped — Install Flow UX & Desktop Reach; 4 phases (24–27), 36 REQ-IDs
-- 2026-04-29: v4.5 roadmap created — Phase 24 (Unified TUI Installer + Centralized Detection), Phase 25 (MCP Selector), Phase 26 (Skills Selector), Phase 27 (Marketplace Publishing + Claude Desktop Reach)
+- 2026-04-29: v4.6 milestone scoped — Install Flow UX & Desktop Reach; 4 phases (24–27), 36 REQ-IDs
+- 2026-04-29: v4.6 roadmap created — Phase 24 (Unified TUI Installer + Centralized Detection), Phase 25 (MCP Selector), Phase 26 (Skills Selector), Phase 27 (Marketplace Publishing + Claude Desktop Reach)
 
 ### Pending Todos
 
@@ -180,7 +180,7 @@ Carry-overs available for next milestone scoping:
 | Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
 | WONTFIX | Council `audit-review` → Sentry/Linear ticket creation | User direction 2026-04-27: Sentry reserved for error monitoring; project tracking lives in a separate system |
 | Deferred to v4.6 | `--no-council` flag for `/audit` | Mandatory pass in v4.2; revisit if friction emerges |
-| In v4.5 Phase 25 | MCP rotate-to-secret-manager recipe | `docs/MCP-SETUP.md` documents plaintext-on-disk + rotation recipe (TUI-FUT-01 deferred) |
+| In v4.6 Phase 25 | MCP rotate-to-secret-manager recipe | `docs/MCP-SETUP.md` documents plaintext-on-disk + rotation recipe (TUI-FUT-01 deferred) |
 | Future | `--preset minimal\|full\|dev` | TUI-FUT-02 — no demand surfaced; v4.6+ |
 | Future | Grouped sections in TUI (Essentials / Optional) | TUI-FUT-03 — should-have, may land in Phase 24 if plan capacity allows |
 | Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 — v4.6+ |
@@ -205,11 +205,11 @@ Carry-overs available for next milestone scoping:
 ## Session Continuity
 
 Last session: 2026-04-29T16:00:00.000Z
-Stopped at: v4.5 milestone shipped + archived (4 phases, 17 plans, 36/36 REQ-IDs)
+Stopped at: v4.6 milestone shipped + archived (4 phases, 17 plans, 36/36 REQ-IDs)
 Resume file: None
 
 **Next steps:**
 
-- `git tag -a v4.5.0` (LOCAL only — push manually per CLAUDE.md "never push main")
+- `git tag -a v4.6.0` (LOCAL only — push manually per CLAUDE.md "never push main")
 - `/gsd-new-milestone` — scope v4.6
 - Optional: `/gsd-code-review-fix 24` — address 4 advisory WR findings in Phase 24 review

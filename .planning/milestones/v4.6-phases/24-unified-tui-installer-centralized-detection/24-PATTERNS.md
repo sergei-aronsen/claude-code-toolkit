@@ -303,7 +303,7 @@ fi
 ```bash
 #!/bin/bash
 
-# Claude Code Toolkit — Unified Install Orchestrator (v4.5+)
+# Claude Code Toolkit — Unified Install Orchestrator (v4.6+)
 # Usage: bash <(curl -sSL https://.../scripts/install.sh)
 # Flags: --yes --no-color --dry-run --force --fail-fast --no-banner
 
@@ -677,10 +677,10 @@ New step follows the same pattern:
 New section follows the same heading style and flag table format:
 
 ```markdown
-## install.sh (unified entry, v4.5+)
+## install.sh (unified entry, v4.6+)
 
 `scripts/install.sh` is the single entry point for the full TUI installer flow
-introduced in v4.5.
+introduced in v4.6.
 
 | Flag | Effect |
 |------|--------|

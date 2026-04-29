@@ -69,7 +69,7 @@
 | Everything-listed | `--yes` installs every component including already-installed (forces re-install). | |
 
 **Claude's choice:** All uninstalled (D-12..D-15)
-**Rationale:** `--yes` = "accept TUI defaults non-interactively", not "install everything". Symmetric with TUI: a TUI user would see exactly these items pre-checked. Already-installed components stay skipped under `--yes`; `--yes --force` is the only "install everything" surface. No `--preset` flag in v4.5 (TUI-FUT-02 deferred).
+**Rationale:** `--yes` = "accept TUI defaults non-interactively", not "install everything". Symmetric with TUI: a TUI user would see exactly these items pre-checked. Already-installed components stay skipped under `--yes`; `--yes --force` is the only "install everything" surface. No `--preset` flag in v4.6 (TUI-FUT-02 deferred).
 
 ---
 
@@ -108,6 +108,6 @@ Captured in CONTEXT.md `<deferred>` section. Highlights:
 - Live progress bars → TUI-FUT-01.
 - `--preset minimal|full|dev` → TUI-FUT-02.
 - Phase 25/26 group sections (MCPs / Skills) → those phases.
-- `manifest.json` 4.5.0 version bump → Phase 27 distribution (single atomic bump per v4.4 precedent).
+- `manifest.json` 4.6.0 version bump → Phase 27 distribution (single atomic bump per v4.4 precedent).
 - TUI search / filter (`/`) → revisit at Phase 25 (9 MCPs) or Phase 26 (22 skills).
-- Localized TUI text → English-only in v4.5.
+- Localized TUI text → English-only in v4.6.

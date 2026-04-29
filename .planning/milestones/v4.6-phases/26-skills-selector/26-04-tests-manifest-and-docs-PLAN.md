@@ -125,7 +125,7 @@ Standard hermetic test layout used by Phase 25:
 <!-- Existing INSTALL.md structure (relevant excerpt) -->
 
 ```text
-## install.sh (unified entry, v4.5+)
+## install.sh (unified entry, v4.6+)
 ### Quick start
 ### Flags
 ### TUI controls

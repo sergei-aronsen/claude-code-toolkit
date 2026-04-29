@@ -60,7 +60,7 @@ Out of scope: skill installation (Phase 26), marketplace publishing (Phase 27), 
 - `manifest.json` — register `scripts/lib/mcp.sh` (new dispatcher), `scripts/lib/mcp-catalog.json` (new asset), `scripts/tests/test-mcp-selector.sh` (new test).
 - `Makefile` — add `Test 32` target invoking `test-mcp-selector.sh`.
 - `.github/workflows/quality.yml` — extend the `Tests 21-31` step to `Tests 21-32`.
-- `docs/INSTALL.md` — new `### --mcps flag` subsection under existing `## install.sh (unified entry, v4.5+)` section.
+- `docs/INSTALL.md` — new `### --mcps flag` subsection under existing `## install.sh (unified entry, v4.6+)` section.
 </code_context>
 
 <specifics>

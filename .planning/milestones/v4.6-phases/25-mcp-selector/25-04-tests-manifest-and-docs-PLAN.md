@@ -30,7 +30,7 @@ must_haves:
     - "Makefile gains Test 32 entry pointing to test-mcp-selector.sh, .PHONY updated, standalone target test-mcp-selector exists"
     - ".github/workflows/quality.yml extends the existing tests step from Tests 21-31 to Tests 21-32 by appending bash scripts/tests/test-mcp-selector.sh"
     - "docs/MCP-SETUP.md is a new file documenting mcp-config.env file location and 0600 mode rationale, plaintext-on-disk caveat, rotate-to-secret-manager recipe, and the 9 curated MCPs"
-    - "docs/INSTALL.md gains a new H3 subsection for the --mcps flag under the existing install.sh v4.5+ section"
+    - "docs/INSTALL.md gains a new H3 subsection for the --mcps flag under the existing install.sh v4.6+ section"
     - "make check passes after all edits land"
     - "test-bootstrap.sh and test-install-tui.sh remain green"
   artifacts:
@@ -87,9 +87,9 @@ Six surfaces touched:
 
 5. docs/MCP-SETUP.md new file. Content: install + browse instructions, the 9 curated MCPs with their env-var requirements, file location of ~/.claude/mcp-config.env, the 0600 mode rationale (MCP-SEC-01), the plaintext-on-disk caveat with rotate-to-secret-manager recipe (MCP-SEC-02 doc requirement). Markdown must pass markdownlint.
 
-6. docs/INSTALL.md append a new H3 subsection under existing install.sh v4.5+ section. Mirrors structure of existing TUI controls subsection.
+6. docs/INSTALL.md append a new H3 subsection under existing install.sh v4.6+ section. Mirrors structure of existing TUI controls subsection.
 
-CRITICAL — manifest version is NOT bumped to 4.5.0 here. Phase 24 D-31 (from 24-05 SUMMARY) defers version bump to Phase 27 distribution phase. make check passes because validate-manifest.py only checks schema, and version-align checks manifest.json equals CHANGELOG.md equals init-local.sh --version — if those three stay aligned at 4.4.0, alignment passes.
+CRITICAL — manifest version is NOT bumped to 4.6.0 here. Phase 24 D-31 (from 24-05 SUMMARY) defers version bump to Phase 27 distribution phase. make check passes because validate-manifest.py only checks schema, and version-align checks manifest.json equals CHANGELOG.md equals init-local.sh --version — if those three stay aligned at 4.4.0, alignment passes.
 
 CHANGELOG.md is NOT modified here either — also deferred to Phase 27 release-prep, matching Phase 24 pattern (zero CHANGELOG edits in 24-01..24-05).
 </objective>
@@ -129,7 +129,7 @@ From Makefile:1 — .PHONY line; line 153-154 — Test 31 echo + bash invocation
 
 From .github/workflows/quality.yml:109-121 — the existing Tests 21-31 step block.
 
-From docs/INSTALL.md:82-138 — the install.sh (unified entry, v4.5+) section structure with H3 subsections for Quick start, Flags, TUI controls, Backwards compatibility.
+From docs/INSTALL.md:82-138 — the install.sh (unified entry, v4.6+) section structure with H3 subsections for Quick start, Flags, TUI controls, Backwards compatibility.
 
 New file path locations: docs/MCP-SETUP.md (sibling of docs/INSTALL.md). The toolkit lints all .md via markdownlint with rules from .markdownlint.json (MD040 enforced, MD031/032 enforced, MD026 forbids trailing punctuation in headings, MD013 line length disabled).
 </interfaces>
@@ -331,7 +331,7 @@ After all three edits, run "make check" and "bash scripts/tests/test-update-libs
   <name>Task 3: Create docs/MCP-SETUP.md and update docs/INSTALL.md</name>
   <files>docs/MCP-SETUP.md, docs/INSTALL.md</files>
   <read_first>
-    - docs/INSTALL.md (existing structure — particularly the install.sh v4.5+ section starting around line 82)
+    - docs/INSTALL.md (existing structure — particularly the install.sh v4.6+ section starting around line 82)
     - .planning/phases/25-mcp-selector/25-CONTEXT.md (collision handling, OAuth handling, plaintext-on-disk caveat)
     - scripts/lib/mcp-catalog.json (the canonical 9-MCP list — derive the doc table from this)
     - .markdownlint.json (lint rules — MD040 enforced, MD031/032 enforced, MD026 forbids trailing punctuation in headings)
@@ -391,7 +391,7 @@ CRITICAL markdownlint rules to satisfy:
 - No trailing punctuation in headings — no question marks, colons, periods, exclamation marks (MD026).
 - Long lines are fine — MD013 is disabled per .markdownlint.json.
 
-Update the existing file docs/INSTALL.md. Locate the install.sh (unified entry, v4.5+) section starting around line 82. The current H3 subsections are: Quick start, Flags, TUI controls, Backwards compatibility. Insert a NEW H3 subsection BETWEEN "TUI controls" and "Backwards compatibility":
+Update the existing file docs/INSTALL.md. Locate the install.sh (unified entry, v4.6+) section starting around line 82. The current H3 subsections are: Quick start, Flags, TUI controls, Backwards compatibility. Insert a NEW H3 subsection BETWEEN "TUI controls" and "Backwards compatibility":
 
 H3 heading: "--mcps flag"
 

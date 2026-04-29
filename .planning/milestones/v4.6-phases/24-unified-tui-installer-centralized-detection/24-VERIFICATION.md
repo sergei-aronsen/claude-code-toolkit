@@ -62,7 +62,7 @@ All automated-verifiable must-haves are VERIFIED. Two items require human verifi
 | `Makefile` | Test 31 target; .PHONY updated | ✓ VERIFIED | `test-install-tui` present in Makefile |
 | `.github/workflows/quality.yml` | CI step running test-install-tui.sh | ✓ VERIFIED | `test-install-tui.sh` present in quality.yml |
 | `manifest.json` | 3 new lib entries + 1 script entry | ✓ VERIFIED | `detect2.sh`, `dispatch.sh`, `tui.sh` in `files.libs[]`; `install.sh` in `files.scripts[]`; JSON valid |
-| `docs/INSTALL.md` | User-facing flag documentation for install.sh | ✓ VERIFIED | `## install.sh (unified entry, v4.5+)` section with 8 flags, TUI controls table, BACKCOMPAT-01 note |
+| `docs/INSTALL.md` | User-facing flag documentation for install.sh | ✓ VERIFIED | `## install.sh (unified entry, v4.6+)` section with 8 flags, TUI controls table, BACKCOMPAT-01 note |
 
 ### Key Link Verification
 

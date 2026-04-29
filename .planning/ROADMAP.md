@@ -7,7 +7,7 @@
 - ✅ **v4.2 Audit System v2** — Phases 13–17 (shipped 2026-04-26). See `.planning/milestones/v4.2-ROADMAP.md`.
 - ✅ **v4.3 Uninstall** — Phases 18–20 (shipped 2026-04-26). See `.planning/milestones/v4.3-ROADMAP.md`.
 - ✅ **v4.4 Bootstrap & Polish** — Phases 21–23 (shipped 2026-04-27). See `.planning/milestones/v4.4-ROADMAP.md`.
-- ✅ **v4.5 Install Flow UX & Desktop Reach** — Phases 24–27 (shipped 2026-04-29). See `.planning/milestones/v4.5-ROADMAP.md`.
+- ✅ **v4.6 Install Flow UX & Desktop Reach** — Phases 24–27 (shipped 2026-04-29). See `.planning/milestones/v4.6-ROADMAP.md`.
 
 ## Phases
 
@@ -66,7 +66,7 @@
 </details>
 
 <details>
-<summary>✅ v4.5 Install Flow UX & Desktop Reach (Phases 24–27) — SHIPPED 2026-04-29</summary>
+<summary>✅ v4.6 Install Flow UX & Desktop Reach (Phases 24–27) — SHIPPED 2026-04-29</summary>
 
 - [x] Phase 24: Unified TUI Installer + Centralized Detection (5/5 plans) — completed 2026-04-29
 - [x] Phase 25: MCP Selector (4/4 plans) — completed 2026-04-29
@@ -86,4 +86,4 @@
 | v4.2 Audit System v2 | 13–17 | 22/22 | ✅ Shipped | 2026-04-26 |
 | v4.3 Uninstall | 18–20 | 10/10 | ✅ Shipped | 2026-04-26 |
 | v4.4 Bootstrap & Polish | 21–23 | 8/8 | ✅ Shipped | 2026-04-27 |
-| v4.5 Install Flow UX & Desktop Reach | 24–27 | 17/17 | ✅ Shipped | 2026-04-29 |
+| v4.6 Install Flow UX & Desktop Reach | 24–27 | 17/17 | ✅ Shipped | 2026-04-29 |

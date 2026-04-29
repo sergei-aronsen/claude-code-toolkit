@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.5.0] - 2026-04-29
+## [4.6.0] - 2026-04-29
 
 ### Added
 
@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tk-skills` is Desktop-Code-tab compatible; `tk-commands` and
   `tk-framework-rules` are Code-only. Sub-plugin content trees are relative
   symlinks into the canonical repo content (zero duplication, zero drift).
-  Version is the single source of truth in each `plugin.json` (4.5.0);
+  Version is the single source of truth in each `plugin.json` (4.6.0);
   `marketplace.json` plugin entries do not declare versions per spec.
 
 - **Marketplace + Desktop-skills validators** (`scripts/validate-marketplace.sh`,
@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Manifest version** bumped from 4.4.0 to 4.5.0 (final v4.5 milestone bump).
+- **Manifest version** bumped from 4.4.0 to 4.6.0 (final v4.5 milestone bump).
   `init-local.sh --version` derives from manifest at runtime, so no script
   changes needed.
 
