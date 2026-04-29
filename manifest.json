@@ -251,11 +251,38 @@
         "path": "scripts/lib/optional-plugins.sh"
       },
       {
+        "path": "scripts/lib/skills.sh"
+      },
+      {
         "path": "scripts/lib/state.sh"
       },
       {
         "path": "scripts/lib/tui.sh"
       }
+    ],
+    "skills_marketplace": [
+      { "path": "templates/skills-marketplace/ai-models" },
+      { "path": "templates/skills-marketplace/analytics-tracking" },
+      { "path": "templates/skills-marketplace/chrome-extension-development" },
+      { "path": "templates/skills-marketplace/copywriting" },
+      { "path": "templates/skills-marketplace/docx" },
+      { "path": "templates/skills-marketplace/find-skills" },
+      { "path": "templates/skills-marketplace/firecrawl" },
+      { "path": "templates/skills-marketplace/i18n-localization" },
+      { "path": "templates/skills-marketplace/memo-skill" },
+      { "path": "templates/skills-marketplace/next-best-practices" },
+      { "path": "templates/skills-marketplace/notebooklm" },
+      { "path": "templates/skills-marketplace/pdf" },
+      { "path": "templates/skills-marketplace/resend" },
+      { "path": "templates/skills-marketplace/seo-audit" },
+      { "path": "templates/skills-marketplace/shadcn" },
+      { "path": "templates/skills-marketplace/stripe-best-practices" },
+      { "path": "templates/skills-marketplace/tailwind-design-system" },
+      { "path": "templates/skills-marketplace/typescript-advanced-types" },
+      { "path": "templates/skills-marketplace/ui-ux-pro-max" },
+      { "path": "templates/skills-marketplace/vercel-composition-patterns" },
+      { "path": "templates/skills-marketplace/vercel-react-best-practices" },
+      { "path": "templates/skills-marketplace/webapp-testing" }
     ]
   },
   "inventory": {
