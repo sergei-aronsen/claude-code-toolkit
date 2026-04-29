@@ -108,7 +108,10 @@
   3. Calling `bridge_create_global codex` writes `~/.codex/AGENTS.md` (and creates `~/.codex/` if missing); never modifies `~/.claude/CLAUDE.md`.
   4. After bridge creation, `~/.claude/toolkit-install.json` contains a new `bridges[]` entry with `target`, `path`, `scope`, `source_sha256`, `bridge_sha256`, `user_owned: false` for every bridge.
   5. New detection probes coexist with the existing 6 v4.6 binary probes (toolkit, superpowers, gsd, security, rtk, statusline) without breaking `test-install-tui.sh` PASS=43.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 28-01-PLAN.md — Detection probes (`is_gemini_installed` / `is_codex_installed` in detect2.sh)
+- [ ] 28-02-PLAN.md — Bridges library (`scripts/lib/bridges.sh` with `bridge_create_project` / `bridge_create_global` + state mutation)
+- [ ] 28-03-PLAN.md — Hermetic smoke test (`scripts/tests/test-bridges-foundation.sh`, 5 assertions)
 
 ### Phase 29: Sync & Uninstall Integration
 
@@ -168,7 +171,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 28. Bridge Foundation | 0/TBD | Not started | - |
+| 28. Bridge Foundation | 0/3 | Planning complete | - |
 | 29. Sync & Uninstall Integration | 0/TBD | Not started | - |
 | 30. Install-time UX | 0/TBD | Not started | - |
 | 31. Distribution + Tests + Docs | 0/TBD | Not started | - |
