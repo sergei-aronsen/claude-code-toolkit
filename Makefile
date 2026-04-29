@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui
 
 # Default target
 help:
@@ -150,6 +150,9 @@ test:
 	@echo "Test 30: --keep-state partial-uninstall recovery (KEEP-01..02)"
 	@bash scripts/tests/test-uninstall-keep-state.sh
 	@echo ""
+	@echo "Test 31: TUI install orchestrator + dispatch scenarios (TUI-01..09)"
+	@bash scripts/tests/test-install-tui.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -159,6 +162,10 @@ test-update-libs:
 # Test 30 — --keep-state partial-uninstall recovery (KEEP-01..02), invokable standalone
 test-uninstall-keep-state:
 	@bash scripts/tests/test-uninstall-keep-state.sh
+
+# Test 31 — TUI install orchestrator + dispatch scenarios (TUI-01..09), invokable standalone
+test-install-tui:
+	@bash scripts/tests/test-install-tui.sh
 
 # Validate templates (check core audit prompts for self-check sections)
 validate:

@@ -106,7 +106,7 @@ jobs:
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh
 
-      - name: Tests 21-30 — uninstall + banner suite + bootstrap + lib coverage (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02)
+      - name: Tests 21-31 — uninstall + banner suite + bootstrap + lib coverage + TUI orchestrator (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, TUI-01..09)
         run: |
           bash scripts/tests/test-uninstall-dry-run.sh
           bash scripts/tests/test-uninstall-backup.sh
@@ -118,6 +118,7 @@ jobs:
           bash scripts/tests/test-bootstrap.sh
           bash scripts/tests/test-update-libs.sh
           bash scripts/tests/test-uninstall-keep-state.sh
+          bash scripts/tests/test-install-tui.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands
