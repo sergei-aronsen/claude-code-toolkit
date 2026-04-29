@@ -45,6 +45,7 @@ MAX_README = 10000          # 10K characters README.md limit (Phase 24 SP3)
 MAX_RECENT_LOG = 5000       # 5K characters git log -20 limit (SP3)
 MAX_TODOS = 5000            # 5K characters TODO/FIXME grep limit (SP3)
 MAX_PLANNING = 10000        # 10K characters .planning/PROJECT.md limit (SP3)
+MAX_TEST_FILE = 20000       # 20K characters per matching test file (SP3)
 
 
 def _debug(msg):
@@ -752,6 +753,71 @@ def get_planning_context():
     return out
 
 
+def get_tests_for(file_paths):
+    """Locate test files matching each source path.
+
+    For every input path, look for siblings under common test layouts:
+      tests/<basename>*       __tests__/<basename>*       test_<basename>*
+    Returns a concatenated string (file-marker headers) capped at
+    MAX_TOTAL_CONTEXT to stay inside the global budget.
+    """
+    if not file_paths:
+        return ""
+    root = find_project_root()
+    seen = set()
+    blocks = []
+    total = 0
+
+    for raw in file_paths:
+        try:
+            src = Path(raw)
+            if not src.is_absolute():
+                src = (root / src).resolve()
+            stem = src.stem
+            parents = [src.parent] + list(src.parent.parents)
+        except OSError:
+            continue
+
+        candidates = []
+        for parent in parents:
+            for sub in ("tests", "__tests__"):
+                test_dir = parent / sub
+                if test_dir.is_dir():
+                    candidates.extend(test_dir.glob(f"{stem}*"))
+                    candidates.extend(test_dir.glob(f"test_{stem}*"))
+            candidates.extend(parent.glob(f"test_{stem}*"))
+            candidates.extend(parent.glob(f"{stem}.test.*"))
+            candidates.extend(parent.glob(f"{stem}.spec.*"))
+
+        for cand in candidates:
+            if not cand.is_file():
+                continue
+            try:
+                rel = cand.resolve().relative_to(root)
+            except (OSError, ValueError):
+                continue
+            key = str(rel)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                text = cand.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            text = _truncate(text, MAX_TEST_FILE, marker="(test file truncated)")
+            block = f"\n--- TEST FILE: {key} ---\n{text}\n"
+            if total + len(block) > MAX_TOTAL_CONTEXT:
+                break
+            blocks.append(block)
+            total += len(block)
+
+    if not blocks:
+        _debug("tests-for: 0 matches")
+        return ""
+    _debug(f"tests-for: {len(blocks)} files, {total} chars")
+    return "".join(blocks)
+
+
 def apply_context_budget(blocks, hard_limit=MAX_TOTAL_CONTEXT):
     """Truncate a list of (label, body) blocks proportionally to fit hard_limit.
 
@@ -1174,6 +1240,12 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
             file_paths = get_validated_paths(file_list)
             files_content = read_files(file_list)
 
+    # SP3 — auto-include matching tests for whichever source files Gemini picked.
+    tests_for_files = get_tests_for(file_paths) if file_paths else ""
+    tests_block = (
+        f"\nMATCHING TESTS:\n{tests_for_files}\n" if tests_for_files else ""
+    )
+
     # ── Phase 2: The Skeptic (Gemini) ──
     print("\U0001f9d0 [The Skeptic]: Challenging plan justification...")
 
@@ -1182,7 +1254,7 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
 
     skeptic_prompt = f"""{load_prompt("skeptic-system")}
-{rules_block}{enrichment_block}
+{rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
 {files_in_prompt}
@@ -1225,7 +1297,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 
     pragmatist_prompt = f"""Review this implementation plan and The Skeptic's assessment.
 Do NOT repeat The Skeptic's points. Focus on what they missed or got wrong.
-{rules_block}{enrichment_block}
+{rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
 {files_content if files_content else "(no files read)"}
