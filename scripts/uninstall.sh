@@ -275,7 +275,18 @@ prompt_modified_for_uninstall() {
 
     # Defense-in-depth: never prompt on a protected path (use resolved abs path
     # to avoid double-.claude when rel already starts with .claude/).
-    if is_protected_path "$local_path"; then
+    # Bridges (GEMINI.md / AGENTS.md) live OUTSIDE $CLAUDE_DIR so is_protected_path
+    # would always return true and silently keep them. Bypass for tracked bridges.
+    local _is_bridge_path=1
+    if [[ ${#BRIDGE_PATHS[@]:-0} -gt 0 ]]; then
+        for _bp in "${BRIDGE_PATHS[@]}"; do
+            if [[ "$_bp" == "$rel" || "$_bp" == "$local_path" ]]; then
+                _is_bridge_path=0
+                break
+            fi
+        done
+    fi
+    if [[ $_is_bridge_path -ne 0 ]] && is_protected_path "$local_path"; then
         log_warning "Skipping prompt for protected path: $rel"
         KEEP_LIST+=("$rel")
         return 0

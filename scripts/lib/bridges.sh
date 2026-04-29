@@ -61,6 +61,28 @@ _bridge_home() {
     echo "${TK_BRIDGE_HOME:-$HOME}"
 }
 
+# _bridge_state_file — resolve toolkit-install.json path:
+#   1. TK_BRIDGE_HOME set → ${TK_BRIDGE_HOME}/.claude/toolkit-install.json (sandbox)
+#   2. STATE_FILE inherited from caller (init-claude.sh / update-claude.sh / install.sh
+#      override it to project-local "$CLAUDE_DIR/toolkit-install.json")
+#   3. Default: $HOME/.claude/toolkit-install.json (state.sh default for standalone use)
+_bridge_state_file() {
+    if [[ -n "${TK_BRIDGE_HOME:-}" ]]; then
+        echo "${TK_BRIDGE_HOME}/.claude/toolkit-install.json"
+    else
+        echo "${STATE_FILE:-$HOME/.claude/toolkit-install.json}"
+    fi
+}
+
+# _bridge_lock_dir — companion to _bridge_state_file for lock dir resolution.
+_bridge_lock_dir() {
+    if [[ -n "${TK_BRIDGE_HOME:-}" ]]; then
+        echo "${TK_BRIDGE_HOME}/.claude/.toolkit-install.lock"
+    else
+        echo "${LOCK_DIR:-$HOME/.claude/.toolkit-install.lock}"
+    fi
+}
+
 # _bridge_filename — map target name to its conventional bridge filename.
 # gemini → GEMINI.md, codex → AGENTS.md (OpenAI standard, NOT CODEX.md).
 _bridge_filename() {
@@ -118,14 +140,13 @@ BANNER
 # installed_files[]. Bridges need a surgical patch of one top-level key.
 _bridge_write_state_entry() {
     local target="$1" path="$2" scope="$3" source_sha="$4" bridge_sha="$5"
-    local home state_file
-    home="$(_bridge_home)"
-    state_file="${home}/.claude/toolkit-install.json"
+    local state_file
+    state_file="$(_bridge_state_file)"
 
-    # Honour TK_BRIDGE_HOME for the lock dir as well as the state file so
-    # hermetic tests do not collide with real ~/.claude/.toolkit-install.lock.
+    # Honour the resolved state file's parent for the lock dir so
+    # hermetic tests / project-local installs share the same scope.
     local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+    LOCK_DIR="$(_bridge_lock_dir)"
 
     # Self-deadlock guard: if the caller (e.g. update-claude.sh sync_bridges path)
     # already holds the lock under this PID, skip acquire/release to avoid a 3-retry
@@ -278,15 +299,14 @@ _bridge_set_user_owned() {
     case "$target" in gemini|codex) : ;; *) return 3 ;; esac
     case "$value"  in true|false)   : ;; *) return 3 ;; esac
 
-    local home state_file
-    home="$(_bridge_home)"
-    state_file="${home}/.claude/toolkit-install.json"
+    local state_file
+    state_file="$(_bridge_state_file)"
 
     # No state file means there is nothing to mutate — treat as success no-op.
     [[ -f "$state_file" ]] || return 0
 
     local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+    LOCK_DIR="$(_bridge_lock_dir)"
 
     local _caller_holds_lock=0
     local _existing_pid
@@ -344,14 +364,13 @@ PYEOF
 _bridge_remove_state_entry() {
     local target="$1" scope="$2" path="$3"
 
-    local home state_file
-    home="$(_bridge_home)"
-    state_file="${home}/.claude/toolkit-install.json"
+    local state_file
+    state_file="$(_bridge_state_file)"
 
     [[ -f "$state_file" ]] || return 0   # no state = nothing to remove
 
     local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+    LOCK_DIR="$(_bridge_lock_dir)"
 
     local _caller_holds_lock=0
     local _existing_pid
