@@ -5,6 +5,7 @@ Advanced patterns for using the NotebookLM skill effectively.
 ## Critical: Always Use run.py
 
 **Every command must use the run.py wrapper:**
+
 ```bash
 # ✅ CORRECT:
 python scripts/run.py auth_manager.py status
@@ -35,6 +36,7 @@ python scripts/run.py notebook_manager.py add \
 ```
 
 **Critical Notes:**
+
 - Virtual environment created automatically by run.py
 - Browser MUST be visible for authentication
 - ALWAYS discover content via query OR ask user for notebook metadata
@@ -44,6 +46,7 @@ python scripts/run.py notebook_manager.py add \
 **When user shares a NotebookLM URL:**
 
 **OPTION A: Smart Discovery (Recommended)**
+
 ```bash
 # 1. Query the notebook to discover its content
 python scripts/run.py ask_question.py \
@@ -59,6 +62,7 @@ python scripts/run.py notebook_manager.py add \
 ```
 
 **OPTION B: Ask User (Fallback)**
+
 ```bash
 # If discovery fails, ask user:
 "What does this notebook contain?"
@@ -73,6 +77,7 @@ python scripts/run.py notebook_manager.py add \
 ```
 
 **NEVER:**
+
 - Guess what's in a notebook
 - Use generic descriptions
 - Skip discovering content
@@ -228,30 +233,35 @@ def check_api_usage(api_endpoint):
 ## Best Practices
 
 ### 1. Question Formulation
+
 - Be specific and comprehensive
 - Include all context in each question
 - Request structured responses
 - Ask for examples when needed
 
 ### 2. Notebook Management
+
 - **ALWAYS ask user for metadata**
 - Use descriptive names
 - Add comprehensive topics
 - Keep URLs current
 
 ### 3. Performance
+
 - Batch related questions
 - Use parallel processing for different notebooks
 - Monitor rate limits (50/day)
 - Switch accounts if needed
 
 ### 4. Error Handling
+
 - Always use run.py to prevent venv issues
 - Check auth before operations
 - Implement retry logic
 - Have fallback notebooks ready
 
 ### 5. Security
+
 - Use dedicated Google account
 - Never commit data/ directory
 - Regularly refresh auth

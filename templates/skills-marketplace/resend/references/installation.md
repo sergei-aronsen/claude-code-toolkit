@@ -44,6 +44,7 @@ npm install resend
 ```
 
 Alternative package managers:
+
 ```bash
 yarn add resend
 pnpm add resend
@@ -69,6 +70,7 @@ gem install resend
 ```
 
 Or add to Gemfile:
+
 ```ruby
 gem 'resend'
 ```
@@ -89,11 +91,13 @@ cargo add tokio -F macros,rt-multi-thread
 ### Java
 
 Gradle:
+
 ```gradle
 implementation 'com.resend:resend-java:4.11.0'
 ```
 
 Maven:
+
 ```xml
 <dependency>
   <groupId>com.resend</groupId>
@@ -111,6 +115,7 @@ dotnet add package Resend
 ### Elixir
 
 Add to `mix.exs`:
+
 ```elixir
 def deps do
   [
@@ -121,7 +126,7 @@ end
 
 ## API Key Setup
 
-All SDKs require a Resend API key. Get one at https://resend.com/api-keys
+All SDKs require a Resend API key. Get one at <https://resend.com/api-keys>
 
 Recommended: Store API key in environment variable `RESEND_API_KEY` rather than hardcoding.
 

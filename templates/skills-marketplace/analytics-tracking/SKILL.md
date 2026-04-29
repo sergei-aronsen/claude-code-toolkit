@@ -25,21 +25,25 @@ Before implementing tracking, understand:
 ## Core Principles
 
 ### 1. Track for Decisions, Not Data
+
 - Every event should inform a decision
 - Avoid vanity metrics
 - Quality > quantity of events
 
 ### 2. Start with the Questions
+
 - What do you need to know?
 - What actions will you take based on this data?
 - Work backwards to what you need to track
 
 ### 3. Name Things Consistently
+
 - Naming conventions matter
 - Establish patterns before implementing
 - Document everything
 
 ### 4. Maintain Data Quality
+
 - Validate implementation
 - Monitor for issues
 - Clean data > more data
@@ -81,6 +85,7 @@ checkout_payment_completed
 ```
 
 ### Best Practices
+
 - Lowercase with underscores
 - Be specific: `cta_hero_clicked` vs. `button_clicked`
 - Include context in properties, not event name
@@ -125,6 +130,7 @@ checkout_payment_completed
 | Product | product_id, product_name, category, price |
 
 ### Best Practices
+
 - Use consistent property names
 - Include relevant context
 - Don't duplicate automatic properties
@@ -192,6 +198,7 @@ dataLayer.push({
 | utm_term | Paid search keywords | running+shoes |
 
 ### Naming Conventions
+
 - Lowercase everything
 - Use underscores or hyphens consistently
 - Be specific but concise: `blog_footer_cta`, not `cta1`
@@ -231,12 +238,14 @@ dataLayer.push({
 ## Privacy and Compliance
 
 ### Considerations
+
 - Cookie consent required in EU/UK/CA
 - No PII in analytics properties
 - Data retention settings
 - User deletion capabilities
 
 ### Implementation
+
 - Use consent mode (wait for consent)
 - IP anonymization
 - Only collect what you need

@@ -3,6 +3,7 @@
 Detailed implementation guide for Google Analytics 4.
 
 ## Contents
+
 - Configuration (data streams, enhanced measurement events, recommended events)
 - Custom Events (gtag.js implementation, Google Tag Manager)
 - Conversions Setup (creating conversions, conversion values)
@@ -37,11 +38,13 @@ Detailed implementation guide for Google Analytics 4.
 Use Google's predefined events when possible for enhanced reporting:
 
 **All properties:**
+
 - login, sign_up
 - share
 - search
 
 **E-commerce:**
+
 - view_item, view_item_list
 - add_to_cart, remove_from_cart
 - begin_checkout
@@ -49,10 +52,11 @@ Use Google's predefined events when possible for enhanced reporting:
 - purchase, refund
 
 **Games:**
+
 - level_up, unlock_achievement
 - post_score, spend_virtual_currency
 
-Reference: https://support.google.com/analytics/answer/9267735
+Reference: <https://support.google.com/analytics/answer/9267735>
 
 ---
 
@@ -165,11 +169,13 @@ Or set default value in GA4 Admin when marking conversion.
 ### When to Use
 
 **Custom dimensions:**
+
 - Properties you want to segment/filter by
 - User attributes (plan type, industry)
 - Content attributes (author, category)
 
 **Custom metrics:**
+
 - Numeric values to aggregate
 - Scores, counts, durations
 
@@ -200,6 +206,7 @@ Or set default value in GA4 Admin when marking conversion.
 Admin > Data display > Audiences
 
 **Use cases:**
+
 - Remarketing audiences (export to Ads)
 - Segment analysis
 - Trigger-based events
@@ -207,15 +214,18 @@ Admin > Data display > Audiences
 ### Audience Examples
 
 **High-intent visitors:**
+
 - Viewed pricing page
 - Did not convert
 - In last 7 days
 
 **Engaged users:**
+
 - 3+ sessions
 - Or 5+ minutes total engagement
 
 **Purchasers:**
+
 - Purchase event
 - For exclusion or lookalike
 
@@ -226,6 +236,7 @@ Admin > Data display > Audiences
 ### DebugView
 
 Enable with:
+
 - URL parameter: `?debug_mode=true`
 - Chrome extension: GA Debugger
 - gtag: `'debug_mode': true` in config
@@ -240,16 +251,19 @@ Reports > Real-time
 ### Common Issues
 
 **Events not appearing:**
+
 - Check DebugView first
 - Verify gtag/GTM firing
 - Check filter exclusions
 
 **Parameter values missing:**
+
 - Custom dimension not created
 - Parameter name mismatch
 - Data still processing (24-48 hrs)
 
 **Conversions not recording:**
+
 - Event not marked as conversion
 - Event name doesn't match
 - Counting method (once vs. every)
@@ -263,6 +277,7 @@ Reports > Real-time
 Admin > Data streams > [Stream] > Configure tag settings > Define internal traffic
 
 **Exclude:**
+
 - Internal IP addresses
 - Developer traffic
 - Testing environments
@@ -295,6 +310,7 @@ Admin > Data streams > [Stream] > Configure tag settings
 ### Audience Export
 
 Audiences created in GA4 can be used in Google Ads for:
+
 - Remarketing campaigns
 - Customer match
 - Similar audiences

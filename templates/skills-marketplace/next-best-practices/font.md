@@ -44,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```
 
 Use in CSS:
+
 ```css
 body {
   font-family: var(--font-inter);

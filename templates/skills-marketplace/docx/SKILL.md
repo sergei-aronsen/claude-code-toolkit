@@ -58,6 +58,7 @@ python scripts/accept_changes.py input.docx output.docx
 Generate .docx files with JavaScript, then validate. Install: `npm install -g docx`
 
 ### Setup
+
 ```javascript
 const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun,
         Header, Footer, AlignmentType, PageOrientation, LevelFormat, ExternalHyperlink,
@@ -72,7 +73,9 @@ Packer.toBuffer(doc).then(buffer => fs.writeFileSync("doc.docx", buffer));
 ```
 
 ### Validation
+
 After creating the file, validate it. If validation fails, unpack, fix the XML, and repack.
+
 ```bash
 python scripts/office/validate.py doc.docx
 ```
@@ -104,6 +107,7 @@ sections: [{
 | A4 (default) | 11,906 | 16,838 | 9,026 |
 
 **Landscape orientation:** docx-js swaps width/height internally, so pass portrait dimensions and let it handle the swap:
+
 ```javascript
 size: {
   width: 12240,   // Pass SHORT edge as width
@@ -214,6 +218,7 @@ columnWidths: [7000, 2360]  // Must sum to table width
 ```
 
 **Width rules:**
+
 - **Always use `WidthType.DXA`** — never `WidthType.PERCENTAGE` (incompatible with Google Docs)
 - Table width must equal the sum of `columnWidths`
 - Cell `width` must match corresponding `columnWidth`
@@ -400,9 +405,11 @@ sections: [{
 **Follow all 3 steps in order.**
 
 ### Step 1: Unpack
+
 ```bash
 python scripts/office/unpack.py document.docx unpacked/
 ```
+
 Extracts XML, pretty-prints, merges adjacent runs, and converts smart quotes to XML entities (`&#x201C;` etc.) so they survive editing. Use `--merge-runs false` to skip run merging.
 
 ### Step 2: Edit XML
@@ -414,10 +421,12 @@ Edit files in `unpacked/word/`. See XML Reference below for patterns.
 **Use the Edit tool directly for string replacement. Do not write Python scripts.** Scripts introduce unnecessary complexity. The Edit tool shows exactly what is being replaced.
 
 **CRITICAL: Use smart quotes for new content.** When adding text with apostrophes or quotes, use XML entities to produce smart quotes:
+
 ```xml
 <!-- Use these entities for professional typography -->
 <w:t>Here&#x2019;s a quote: &#x201C;Hello&#x201D;</w:t>
 ```
+
 | Entity | Character |
 |--------|-----------|
 | `&#x2018;` | ‘ (left single) |
@@ -426,24 +435,30 @@ Edit files in `unpacked/word/`. See XML Reference below for patterns.
 | `&#x201D;` | ” (right double) |
 
 **Adding comments:** Use `comment.py` to handle boilerplate across multiple XML files (text must be pre-escaped XML):
+
 ```bash
 python scripts/comment.py unpacked/ 0 "Comment text with &amp; and &#x2019;"
 python scripts/comment.py unpacked/ 1 "Reply text" --parent 0  # reply to comment 0
 python scripts/comment.py unpacked/ 0 "Text" --author "Custom Author"  # custom author name
 ```
+
 Then add markers to document.xml (see Comments in XML Reference).
 
 ### Step 3: Pack
+
 ```bash
 python scripts/office/pack.py unpacked/ output.docx --original document.docx
 ```
+
 Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate false` to skip.
 
 **Auto-repair will fix:**
+
 - `durableId` >= 0x7FFFFFFF (regenerates valid ID)
 - Missing `xml:space="preserve"` on `<w:t>` with whitespace
 
 **Auto-repair won't fix:**
+
 - Malformed XML, invalid element nesting, missing relationships, schema violations
 
 ### Common Pitfalls
@@ -464,6 +479,7 @@ Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate fal
 ### Tracked Changes
 
 **Insertion:**
+
 ```xml
 <w:ins w:id="1" w:author="Claude" w:date="2025-01-01T00:00:00Z">
   <w:r><w:t>inserted text</w:t></w:r>
@@ -471,6 +487,7 @@ Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate fal
 ```
 
 **Deletion:**
+
 ```xml
 <w:del w:id="2" w:author="Claude" w:date="2025-01-01T00:00:00Z">
   <w:r><w:delText>deleted text</w:delText></w:r>
@@ -480,6 +497,7 @@ Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate fal
 **Inside `<w:del>`**: Use `<w:delText>` instead of `<w:t>`, and `<w:delInstrText>` instead of `<w:instrText>`.
 
 **Minimal edits** - only mark what changes:
+
 ```xml
 <!-- Change "30 days" to "60 days" -->
 <w:r><w:t>The term is </w:t></w:r>
@@ -493,6 +511,7 @@ Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate fal
 ```
 
 **Deleting entire paragraphs/list items** - when removing ALL content from a paragraph, also mark the paragraph mark as deleted so it merges with the next paragraph. Add `<w:del/>` inside `<w:pPr><w:rPr>`:
+
 ```xml
 <w:p>
   <w:pPr>
@@ -506,9 +525,11 @@ Validates with auto-repair, condenses XML, and creates DOCX. Use `--validate fal
   </w:del>
 </w:p>
 ```
+
 Without the `<w:del/>` in `<w:pPr><w:rPr>`, accepting changes leaves an empty paragraph/list item.
 
 **Rejecting another author's insertion** - nest deletion inside their insertion:
+
 ```xml
 <w:ins w:author="Jane" w:id="5">
   <w:del w:author="Claude" w:id="10">
@@ -518,6 +539,7 @@ Without the `<w:del/>` in `<w:pPr><w:rPr>`, accepting changes leaves an empty pa
 ```
 
 **Restoring another author's deletion** - add insertion after (don't modify their deletion):
+
 ```xml
 <w:del w:author="Jane" w:id="5">
   <w:r><w:delText>deleted text</w:delText></w:r>
@@ -557,14 +579,17 @@ After running `comment.py` (see Step 2), add markers to document.xml. For replie
 
 1. Add image file to `word/media/`
 2. Add relationship to `word/_rels/document.xml.rels`:
+
 ```xml
 <Relationship Id="rId5" Type=".../image" Target="media/image1.png"/>
 ```
-3. Add content type to `[Content_Types].xml`:
+1. Add content type to `[Content_Types].xml`:
+
 ```xml
 <Default Extension="png" ContentType="image/png"/>
 ```
-4. Reference in document.xml:
+1. Reference in document.xml:
+
 ```xml
 <w:drawing>
   <wp:inline>

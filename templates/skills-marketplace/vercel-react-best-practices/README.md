@@ -16,21 +16,25 @@ A structured repository for creating and maintaining React Best Practices optimi
 ## Getting Started
 
 1. Install dependencies:
+
    ```bash
    pnpm install
    ```
 
 2. Build AGENTS.md from rules:
+
    ```bash
    pnpm build
    ```
 
 3. Validate rule files:
+
    ```bash
    pnpm validate
    ```
 
 4. Extract test cases:
+
    ```bash
    pnpm extract-tests
    ```
@@ -73,7 +77,7 @@ Brief explanation of the rule and why it matters.
 // Bad code example
 ```
 
-**Correct (description of what's right):**
+__Correct (description of what's right):__
 
 ```typescript
 // Good code example

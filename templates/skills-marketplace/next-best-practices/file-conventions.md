@@ -4,7 +4,7 @@ Next.js App Router uses file-based routing with special file conventions.
 
 ## Project Structure
 
-Reference: https://nextjs.org/docs/app/getting-started/project-structure
+Reference: <https://nextjs.org/docs/app/getting-started/project-structure>
 
 ```
 app/
@@ -74,6 +74,7 @@ app/
 ```
 
 Conventions:
+
 - `(.)` - same level
 - `(..)` - one level up
 - `(..)(..)` - two levels up
@@ -137,4 +138,4 @@ export const proxyConfig = {
 
 ## File Conventions Reference
 
-Reference: https://nextjs.org/docs/app/api-reference/file-conventions
+Reference: <https://nextjs.org/docs/app/api-reference/file-conventions>

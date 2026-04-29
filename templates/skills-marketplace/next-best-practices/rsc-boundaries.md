@@ -48,6 +48,7 @@ const Dashboard = async () => {
 Props passed from Server → Client must be JSON-serializable.
 
 **Detect:** Server component passes these to a client component:
+
 - Functions (except Server Actions with `'use server'`)
 - `Date` objects
 - `Map`, `Set`, `WeakMap`, `WeakSet`

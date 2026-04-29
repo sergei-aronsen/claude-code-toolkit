@@ -244,6 +244,7 @@ Next.js Image Optimization works out of the box but is CPU-intensive.
 ### Option 1: Built-in (Simple)
 
 Works automatically, but consider:
+
 - Set `deviceSizes` and `imageSizes` in config to limit variants
 - Use `minimumCacheTTL` to reduce regeneration
 
@@ -317,6 +318,7 @@ npx @opennextjs/aws build
 ```
 
 Supports:
+
 - AWS Lambda + CloudFront
 - Cloudflare Workers
 - Netlify Functions

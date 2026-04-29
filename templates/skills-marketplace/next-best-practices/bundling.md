@@ -51,6 +51,7 @@ module.exports = {
 ```
 
 Use this for:
+
 - Packages with native bindings (sharp, bcrypt)
 - Packages that don't bundle well (some ORMs)
 - Packages with circular dependencies
@@ -146,6 +147,7 @@ next experimental-analyze
 ```
 
 This opens an interactive UI to:
+
 - Filter by route, environment (client/server), and type
 - Inspect module sizes and import chains
 - View treemap visualization
@@ -157,7 +159,7 @@ next experimental-analyze --output
 # Output saved to .next/diagnostics/analyze
 ```
 
-Reference: https://nextjs.org/docs/app/guides/package-bundling
+Reference: <https://nextjs.org/docs/app/guides/package-bundling>
 
 ## Migrating from Webpack to Turbopack
 
@@ -177,4 +179,4 @@ module.exports = {
 }
 ```
 
-Reference: https://nextjs.org/docs/app/building-your-application/upgrading/from-webpack-to-turbopack
+Reference: <https://nextjs.org/docs/app/building-your-application/upgrading/from-webpack-to-turbopack>

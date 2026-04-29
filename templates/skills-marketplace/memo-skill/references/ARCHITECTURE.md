@@ -74,12 +74,14 @@
 ## Embedding Model
 
 **Model:** `intfloat/multilingual-e5-large`
+
 - Size: ~1.1GB download, ~1.5GB RAM when loaded
 - Dimensions: 1024
 - Languages: 50+ including Russian and English
 - Protocol: requires "query: " prefix for searches, "passage: " prefix for indexing
 
 **Why this model:**
+
 - `all-MiniLM-L6-v2` (previous): 80MB, 384 dims, English-focused.
   Russian semantic search quality is poor.
 - `multilingual-e5-large`: 1.1GB, 1024 dims, top-tier multilingual.

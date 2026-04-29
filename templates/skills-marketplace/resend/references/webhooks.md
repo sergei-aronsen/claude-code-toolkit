@@ -163,6 +163,7 @@ const { data: deleted, error: deleteError } = await resend.webhooks.remove('4dd3
 ```
 
 **Key gotchas:**
+
 - `signing_secret` is only in the create response — `get` does not return it
 - Update can change `endpoint` and `events` — partial updates supported
 - Use `.remove()` not `.delete()` in the Node.js SDK
@@ -191,6 +192,7 @@ Every webhook includes these headers for verification:
 ### Get Your Webhook Secret
 
 Find your signing secret in the Resend dashboard:
+
 1. Go to resend.com/webhooks
 2. Click on your webhook
 3. Copy the signing secret (starts with `whsec_`)

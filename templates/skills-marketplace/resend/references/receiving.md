@@ -54,6 +54,7 @@ If you set up Resend to receive email on a root domain, *all* traffic will be ro
 Dashboard → Webhooks → Add Webhook → Select `email.received`
 
 For local development, use tunneling (ngrok, Tailscale Funnel, VS Code Port Forwarding):
+
 ```bash
 ngrok http 3000
 # Use https://abc123.ngrok.io/api/webhook as endpoint
@@ -281,6 +282,7 @@ if (event.type === 'email.received') {
 ## Storage Note
 
 Resend stores received emails even if:
+
 - Webhook isn't configured yet
 - Webhook endpoint is down
 

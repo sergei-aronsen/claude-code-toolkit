@@ -10,11 +10,13 @@ Resend provides two endpoints for sending emails:
 | **Batch** | `POST /emails/batch` | Multiple distinct emails in one request (max 100), bulk notifications |
 
 **Choose batch when:**
+
 - Sending 2+ distinct emails at once
 - Reducing API calls is important (by default, rate limit is 2 requests per second)
 - No attachments or scheduling needed
 
 **Choose single when:**
+
 - Sending one email
 - Email needs attachments
 - Email needs to be scheduled
@@ -72,6 +74,7 @@ See [single-email-examples.md](single-email-examples.md) for full SDK implementa
 ### Pre-validation
 
 Since the entire batch fails on any validation error, validate all emails before sending:
+
 - Check required fields (from, to, subject, html/text)
 - Validate email formats
 - Ensure batch size <= 100

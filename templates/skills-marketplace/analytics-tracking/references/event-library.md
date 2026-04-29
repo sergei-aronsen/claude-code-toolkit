@@ -3,6 +3,7 @@
 Comprehensive list of events to track by business type and context.
 
 ## Contents
+
 - Marketing Site Events (navigation & engagement, CTA & form interactions, conversion events)
 - Product/App Events (onboarding, core usage, errors & support)
 - Monetization Events (pricing & checkout, subscription management)
@@ -192,6 +193,7 @@ Comprehensive list of events to track by business type and context.
 ### Standard Properties to Include
 
 **User Context:**
+
 ```
 user_id: "12345"
 user_type: "free" | "trial" | "paid"
@@ -200,6 +202,7 @@ plan_type: "starter" | "pro" | "enterprise"
 ```
 
 **Session Context:**
+
 ```
 session_id: "sess_abc"
 session_number: 5
@@ -208,6 +211,7 @@ referrer: "https://google.com"
 ```
 
 **Campaign Context:**
+
 ```
 source: "google"
 medium: "cpc"
@@ -216,6 +220,7 @@ content: "hero_cta"
 ```
 
 **Product Context (E-commerce):**
+
 ```
 product_id: "SKU123"
 product_name: "Product Name"
@@ -226,6 +231,7 @@ currency: "USD"
 ```
 
 **Timing:**
+
 ```
 timestamp: "2024-01-15T10:30:00Z"
 time_on_page: 45
@@ -237,6 +243,7 @@ session_duration: 300
 ## Funnel Event Sequences
 
 ### Signup Funnel
+
 1. signup_started
 2. signup_step_completed (email)
 3. signup_step_completed (password)
@@ -244,6 +251,7 @@ session_duration: 300
 5. onboarding_started
 
 ### Purchase Funnel
+
 1. pricing_viewed
 2. plan_selected
 3. checkout_started
@@ -251,6 +259,7 @@ session_duration: 300
 5. purchase_completed
 
 ### E-commerce Funnel
+
 1. product_viewed
 2. product_added_to_cart
 3. cart_viewed

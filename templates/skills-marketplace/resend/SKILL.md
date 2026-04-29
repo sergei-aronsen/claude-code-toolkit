@@ -197,6 +197,7 @@ See [installation.md](references/installation.md) for full installation commands
 ### API Key
 
 Store in environment variable — never hardcode:
+
 ```bash
 export RESEND_API_KEY=re_xxxxxxxxx
 ```
@@ -217,7 +218,7 @@ Check for these files: `package.json` (Node.js), `requirements.txt`/`pyproject.t
 | 4 | **Expecting email body in webhook payload** | Webhooks contain metadata only — call `resend.emails.receiving.get()` for body content |
 | 5 | **Using try/catch for Node.js SDK errors** | SDK returns `{ data, error }` — check `error` explicitly, don't wrap in try/catch |
 | 6 | **Using batch for emails with attachments** | Batch doesn't support attachments — use single sends instead |
-| 7 | **Testing with fake emails (test@gmail.com)** | Use `delivered@resend.dev` — fake addresses bounce and hurt reputation |
+| 7 | **Testing with fake emails (<test@gmail.com>)** | Use `delivered@resend.dev` — fake addresses bounce and hurt reputation |
 | 8 | **Sending with draft template** | Templates must be published before sending — call `.publish()` first |
 | 9 | **`html` + `template` in same send call** | Mutually exclusive — remove `html`/`text`/`react` when using template |
 | 10 | **MX record not lowest priority for inbound** | Ensure Resend's MX has the lowest number (highest priority) or emails won't route |
@@ -231,6 +232,7 @@ Check for these files: `package.json` (Node.js), `requirements.txt`/`pyproject.t
 ### Send + Receive Together
 
 Auto-replies, email forwarding, or any receive-then-send workflow requires both capabilities:
+
 1. Set up inbound domain first (see [receiving.md](references/receiving.md))
 2. Set up sending (see [sending/overview.md](references/sending/overview.md))
 3. Note: batch sending does NOT support attachments or scheduling — use single sends when forwarding with attachments
@@ -249,7 +251,7 @@ New domains must gradually increase sending volume. Day 1 limit: ~150 emails (ne
 
 ### Testing
 
-**Never test with fake addresses at real email providers** (test@gmail.com, fake@outlook.com) — they bounce and destroy sender reputation.
+**Never test with fake addresses at real email providers** (<test@gmail.com>, <fake@outlook.com>) — they bounce and destroy sender reputation.
 
 | Address | Result |
 |---------|--------|

@@ -118,6 +118,7 @@ Add to `~/.claude/settings.json` (or use `/hooks` command):
 ```
 
 What each hook does:
+
 - **SessionStart** → loads project note + recent decisions into context
 - **SessionEnd** → saves raw daily log (fast) + classifies transcript (background)
 - **PreCompact** → saves context before Claude compresses it mid-session
@@ -222,6 +223,7 @@ This adds the note to the SQLite index with its embedding.
 **Step 6: Update INDEX.md**
 
 Append:
+
 ```markdown
 - [{date}] [[{type_folder}/{slug}]] — {one-line summary}
 ```
@@ -241,6 +243,7 @@ python scripts/memo_engine.py search "{query}" --vault <vault_path> --limit 10
 ```
 
 This runs:
+
 1. **Semantic search** — embeddings cosine similarity (finds conceptually
    related notes even with different wording)
 2. **Keyword search** — SQLite FTS5 full-text search on title, content, tags,
@@ -248,6 +251,7 @@ This runs:
 3. **Merged ranking** — combines both scores, deduplicates, returns top results
 
 Read the top 3 results and present a summary to the user with:
+
 - Title and type
 - Relevance score
 - Key excerpt (first 2-3 lines of "## Decision / Solution / Pattern")
@@ -278,6 +282,7 @@ Add `[[wikilink]]` references between two existing notes. Update the
 ### `/memo project` — Project snapshot
 
 Create or update a project overview in `projects/`. Captures:
+
 - Project name and purpose
 - Current architecture (high level)
 - Key decisions made (with `[[links]]` to decision notes)
@@ -298,6 +303,7 @@ python scripts/memo_engine.py dedup --vault <vault_path> --threshold 0.7
 Finds notes with semantic similarity > threshold. Presents pairs to user:
 
 > "Potential duplicates:
+>
 > 1. **JWT refresh token strategy** ↔ **Token rotation pattern** (0.82)
 > 2. **Redis caching for sessions** ↔ **Session cache layer** (0.74)
 > Merge, link, or skip each?"
@@ -482,6 +488,7 @@ engineering-brain/
 ```
 
 Add to `.gitignore`:
+
 ```
 .memo/
 ```

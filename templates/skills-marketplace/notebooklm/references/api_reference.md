@@ -17,6 +17,7 @@ python scripts/[script_name].py [arguments]  # Will fail without venv!
 ## Core Scripts
 
 ### ask_question.py
+
 Query NotebookLM with automated browser interaction.
 
 ```bash
@@ -34,6 +35,7 @@ python scripts/run.py ask_question.py --question "..." --show-browser
 ```
 
 **Parameters:**
+
 - `--question` (required): Question to ask
 - `--notebook-id`: Use notebook from library
 - `--notebook-url`: Use URL directly
@@ -42,6 +44,7 @@ python scripts/run.py ask_question.py --question "..." --show-browser
 **Returns:** Answer text with follow-up prompt appended
 
 ### notebook_manager.py
+
 Manage notebook library with CRUD operations.
 
 ```bash
@@ -78,6 +81,7 @@ python scripts/run.py notebook_manager.py stats
 ```
 
 **Commands:**
+
 - `add`: Add notebook (requires --url, --name, --topics)
 - `list`: Show all notebooks
 - `search`: Find notebooks by keyword
@@ -86,6 +90,7 @@ python scripts/run.py notebook_manager.py stats
 - `stats`: Display library statistics
 
 ### auth_manager.py
+
 Handle Google authentication and browser state.
 
 ```bash
@@ -103,12 +108,14 @@ python scripts/run.py auth_manager.py clear
 ```
 
 **Commands:**
+
 - `setup`: Initial authentication (browser MUST be visible)
 - `status`: Check if authenticated
 - `reauth`: Clear and re-setup
 - `clear`: Remove all auth data
 
 ### cleanup_manager.py
+
 Clean skill data with preservation options.
 
 ```bash
@@ -126,11 +133,13 @@ python scripts/run.py cleanup_manager.py --confirm --force
 ```
 
 **Options:**
+
 - `--confirm`: Actually perform cleanup
 - `--preserve-library`: Keep notebook library
 - `--force`: Skip confirmation prompt
 
 ### run.py
+
 Script wrapper that handles environment setup.
 
 ```bash
@@ -143,6 +152,7 @@ python scripts/run.py ask_question.py --question "..."
 ```
 
 **Automatic actions:**
+
 1. Creates `.venv` if missing
 2. Installs dependencies
 3. Activates environment
@@ -233,6 +243,7 @@ if result.returncode != 0:
 Free Google accounts: 50 queries/day
 
 Solutions:
+
 1. Wait for reset (midnight PST)
 2. Switch accounts with `reauth`
 3. Use multiple Google accounts
@@ -281,6 +292,7 @@ def batch_research(questions, notebook_id):
 ## Module Classes
 
 ### NotebookLibrary
+
 - `add_notebook(url, name, topics)`
 - `list_notebooks()`
 - `search_notebooks(query)`
@@ -289,6 +301,7 @@ def batch_research(questions, notebook_id):
 - `remove_notebook(notebook_id)`
 
 ### AuthManager
+
 - `is_authenticated()`
 - `setup_auth(headless=False)`
 - `get_auth_info()`
@@ -296,6 +309,7 @@ def batch_research(questions, notebook_id):
 - `validate_auth()`
 
 ### BrowserSession (internal)
+
 - Handles browser automation
 - Manages stealth behavior
 - Not intended for direct use

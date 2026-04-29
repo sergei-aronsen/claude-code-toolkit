@@ -3,6 +3,7 @@
 Detailed guide for implementing tracking via Google Tag Manager.
 
 ## Contents
+
 - Container Structure (tags, triggers, variables)
 - Naming Conventions
 - Data Layer Patterns
@@ -19,6 +20,7 @@ Detailed guide for implementing tracking via Google Tag Manager.
 Tags are code snippets that execute when triggered.
 
 **Common tag types:**
+
 - GA4 Configuration (base setup)
 - GA4 Event (custom events)
 - Google Ads Conversion
@@ -31,6 +33,7 @@ Tags are code snippets that execute when triggered.
 Triggers define when tags fire.
 
 **Built-in triggers:**
+
 - Page View: All Pages, DOM Ready, Window Loaded
 - Click: All Elements, Just Links
 - Form Submission
@@ -39,6 +42,7 @@ Triggers define when tags fire.
 - Element Visibility
 
 **Custom triggers:**
+
 - Custom Event (from dataLayer)
 - Trigger Groups (multiple conditions)
 
@@ -47,12 +51,14 @@ Triggers define when tags fire.
 Variables capture dynamic values.
 
 **Built-in (enable as needed):**
+
 - Click Text, Click URL, Click ID, Click Classes
 - Page Path, Page URL, Page Hostname
 - Referrer
 - Form Element, Form ID
 
 **User-defined:**
+
 - Data Layer variables
 - JavaScript variables
 - Lookup tables
@@ -205,6 +211,7 @@ dataLayer.push({
 **Tag Type:** Google Analytics: GA4 Configuration
 
 **Settings:**
+
 - Measurement ID: G-XXXXXXXX
 - Send page view: Checked (for pageviews)
 - User Properties: Add any user-level dimensions
@@ -216,6 +223,7 @@ dataLayer.push({
 **Tag Type:** Google Analytics: GA4 Event
 
 **Settings:**
+
 - Configuration Tag: Select your config tag
 - Event Name: {{DL - event_name}} or hardcode
 - Event Parameters: Add parameters from dataLayer
@@ -268,6 +276,7 @@ dataLayer.push({
 3. GTM debug panel opens at bottom
 
 **What to check:**
+
 - Tags fired on this event
 - Tags not fired (and why)
 - Variables and their values
@@ -276,16 +285,19 @@ dataLayer.push({
 ### Debug Tips
 
 **Tag not firing:**
+
 - Check trigger conditions
 - Verify data layer push
 - Check tag sequencing
 
 **Wrong variable value:**
+
 - Check data layer structure
 - Verify variable path (nested objects)
 - Check timing (data may not exist yet)
 
 **Multiple firings:**
+
 - Check trigger uniqueness
 - Look for duplicate tags
 - Check tag firing options
@@ -297,6 +309,7 @@ dataLayer.push({
 ### Workspaces
 
 Use workspaces for team collaboration:
+
 - Default workspace for production
 - Separate workspaces for large changes
 - Merge when ready
@@ -304,12 +317,14 @@ Use workspaces for team collaboration:
 ### Version Management
 
 **Best practices:**
+
 - Name every version descriptively
 - Add notes explaining changes
 - Review changes before publish
 - Keep production version noted
 
 **Version notes example:**
+
 ```
 v15: Added purchase conversion tracking
 - New tag: GA4 - Event - Purchase
@@ -356,6 +371,7 @@ function grantConsent() {
 Tag Configuration > Advanced Settings > Tag Sequencing
 
 **Use cases:**
+
 - Config tag before event tags
 - Pixel initialization before tracking
 - Cleanup after conversion
@@ -363,6 +379,7 @@ Tag Configuration > Advanced Settings > Tag Sequencing
 ### Exception Handling
 
 **Trigger exceptions** - Prevent tag from firing:
+
 - Exclude certain pages
 - Exclude internal traffic
 - Exclude during testing

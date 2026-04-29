@@ -138,6 +138,7 @@ curl -X POST 'https://api.resend.com/emails' \
 ### Retryable vs Non-Retryable
 
 **Don't retry (fix the request):**
+
 - 400 - Bad request / validation errors
 - 401 - Invalid API key
 - 403 - Domain not verified
@@ -145,6 +146,7 @@ curl -X POST 'https://api.resend.com/emails' \
 - 422 - Unprocessable entity
 
 **Safe to retry with backoff:**
+
 - 429 - Rate limited
 - 500 - Server error
 
@@ -260,6 +262,7 @@ Implement exponential backoff for transient failures. Don't retry validation err
 | 5 | 16s | 31s |
 
 **Recommendations:**
+
 - Max 3-5 retries for most use cases
 - Only retry 429 (rate limit) and 500 (server error)
 - Always use idempotency keys when retrying
@@ -409,6 +412,7 @@ sent, err := sendEmailWithRetry(client, params, 3)
 The entire batch fails if any single email has invalid data. Always validate before sending.
 
 **Key validations:**
+
 - Batch size: 1-100 emails
 - Recipients per email: 1-50
 - Required fields: `from`, `to`, `subject`, `html` or `text`
@@ -448,6 +452,7 @@ See [batch-email-examples.md](batch-email-examples.md) for complete chunking imp
 ### Batch Limitations
 
 Remember that the batch endpoint does **NOT** support:
+
 - `attachments` - Use individual sends for emails with attachments
 - `scheduled_at` - Use individual sends for scheduled emails
 - Partial success - If one email fails validation, the entire batch fails

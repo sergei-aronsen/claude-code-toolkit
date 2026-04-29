@@ -158,6 +158,7 @@ Combined semantic + keyword search. Finds related notes even with different word
 ```
 
 Three layers:
+
 1. **Obsidian vault** — human-readable markdown, git-versioned, portable
 2. **SQLite + FTS5** — instant keyword search on titles, tags, aliases, content
 3. **Embeddings** — semantic search via `intfloat/multilingual-e5-large` (local, free)
@@ -352,6 +353,7 @@ One line, no hooks needed. Works as a complement to the SessionStart hook.
 Issues and PRs welcome. The codebase is intentionally simple — no frameworks, no abstractions beyond what's needed.
 
 If you're adding a feature, keep in mind:
+
 - Vault markdown is the source of truth, index is always derived
 - No external services required (except optional Haiku for auto-memo)
 - Everything must work for a single developer with 5 notes or 5000

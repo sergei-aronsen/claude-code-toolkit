@@ -316,16 +316,19 @@ python3 --version || python --version
 If Python is not installed, install it based on user's OS:
 
 **macOS:**
+
 ```bash
 brew install python3
 ```
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt update && sudo apt install python3
 ```
 
 **Windows:**
+
 ```powershell
 winget install Python.Python.3.12
 ```
@@ -353,6 +356,7 @@ Follow this workflow:
 ### Step 1: Analyze User Requirements
 
 Extract key information from user request:
+
 - **Product type**: Entertainment (social, video, music, gaming), Tool (scanner, editor, converter), Productivity (task manager, notes, calendar), or hybrid
 - **Target audience**: C-end consumer users; consider age group, usage context (commute, leisure, work)
 - **Style keywords**: playful, vibrant, minimal, dark mode, content-first, immersive, etc.
@@ -367,12 +371,14 @@ python3 skills/ui-ux-pro-max/scripts/search.py "<product_type> <industry> <keywo
 ```
 
 This command:
+
 1. Searches domains in parallel (product, style, color, landing, typography)
 2. Applies reasoning rules from `ui-reasoning.csv` to select best matches
 3. Returns complete design system: pattern, style, colors, typography, effects
 4. Includes anti-patterns to avoid
 
 **Example:**
+
 ```bash
 python3 skills/ui-ux-pro-max/scripts/search.py "beauty spa wellness service" --design-system -p "Serenity Spa"
 ```
@@ -386,23 +392,28 @@ python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persi
 ```
 
 This creates:
+
 - `design-system/MASTER.md` — Global Source of Truth with all design rules
 - `design-system/pages/` — Folder for page-specific overrides
 
 **With page-specific override:**
+
 ```bash
 python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system --persist -p "Project Name" --page "dashboard"
 ```
 
 This also creates:
+
 - `design-system/pages/dashboard.md` — Page-specific deviations from Master
 
 **How hierarchical retrieval works:**
+
 1. When building a specific page (e.g., "Checkout"), first check `design-system/pages/checkout.md`
 2. If the page file exists, its rules **override** the Master file
 3. If not, use `design-system/MASTER.md` exclusively
 
 **Context-aware retrieval prompt:**
+
 ```
 I am building the [Page Name] page. Please read design-system/MASTER.md.
 Also check if design-system/pages/[page-name].md exists.
@@ -477,6 +488,7 @@ python3 skills/ui-ux-pro-max/scripts/search.py "<keyword>" --stack react-native
 **User request:** "Make an AI search homepage."
 
 ### Step 1: Analyze Requirements
+
 - Product type: Tool (AI search engine)
 - Target audience: C-end users looking for fast, intelligent search
 - Style keywords: modern, minimal, content-first, dark mode
@@ -576,7 +588,6 @@ Scope notice: The rules below are for App UI (iOS/Android/React Native/Flutter),
 | **Icon Alignment** | Align icons to text baseline and maintain consistent padding. | Misaligned icons or inconsistent spacing around them. | Prevents subtle visual imbalance that reduces perceived quality. |
 | **Icon Contrast** | Follow WCAG contrast standards: 4.5:1 for small elements, 3:1 minimum for larger UI glyphs. | Low-contrast icons that blend into the background. | Ensures accessibility in both light and dark modes. |
 
-
 ### Interaction (App)
 
 | Rule | Do | Don't |
@@ -622,6 +633,7 @@ Before delivering UI code, verify these items:
 Scope notice: This checklist is for App UI (iOS/Android/React Native/Flutter).
 
 ### Visual Quality
+
 - [ ] No emojis used as icons (use SVG instead)
 - [ ] All icons come from a consistent icon family and style
 - [ ] Official brand assets are used with correct proportions and clear space
@@ -629,6 +641,7 @@ Scope notice: This checklist is for App UI (iOS/Android/React Native/Flutter).
 - [ ] Semantic theme tokens are used consistently (no ad-hoc per-screen hardcoded colors)
 
 ### Interaction
+
 - [ ] All tappable elements provide clear pressed feedback (ripple/opacity/elevation)
 - [ ] Touch targets meet minimum size (>=44x44pt iOS, >=48x48dp Android)
 - [ ] Micro-interaction timing stays in the 150-300ms range with native-feeling easing
@@ -637,6 +650,7 @@ Scope notice: This checklist is for App UI (iOS/Android/React Native/Flutter).
 - [ ] Gesture regions avoid nested/conflicting interactions (tap/drag/back-swipe conflicts)
 
 ### Light/Dark Mode
+
 - [ ] Primary text contrast >=4.5:1 in both light and dark mode
 - [ ] Secondary text contrast >=3:1 in both light and dark mode
 - [ ] Dividers/borders and interaction states are distinguishable in both modes
@@ -644,6 +658,7 @@ Scope notice: This checklist is for App UI (iOS/Android/React Native/Flutter).
 - [ ] Both themes are tested before delivery (not inferred from a single theme)
 
 ### Layout
+
 - [ ] Safe areas are respected for headers, tab bars, and bottom CTA bars
 - [ ] Scroll content is not hidden behind fixed/sticky bars
 - [ ] Verified on small phone, large phone, and tablet (portrait + landscape)
@@ -652,6 +667,7 @@ Scope notice: This checklist is for App UI (iOS/Android/React Native/Flutter).
 - [ ] Long-form text measure remains readable on larger devices (no edge-to-edge paragraphs)
 
 ### Accessibility
+
 - [ ] All meaningful images/icons have accessibility labels
 - [ ] Form fields have labels, hints, and clear error messages
 - [ ] Color is not the only indicator
