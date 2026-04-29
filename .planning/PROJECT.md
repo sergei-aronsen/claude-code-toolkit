@@ -151,9 +151,27 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Next Milestone Goals (v4.7 — TBD)
+## Current Milestone: v4.7 Multi-CLI Bridge
 
-v4.6 milestone archive: `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. Audit: `.planning/v4.6-MILESTONE-AUDIT.md` (passed, 36/36 REQ-IDs).
+**Goal:** Make the toolkit's CLAUDE.md (project-level and global) usable by other agentic CLIs (Gemini CLI, OpenAI Codex CLI) without forcing the user to maintain duplicate files manually.
+
+**Target features:**
+
+- **Bridge generation** — at install time, detect installed CLIs (`gemini`, `codex`) and offer to create per-CLI files (`GEMINI.md`, `AGENTS.md`) as plain copies of `CLAUDE.md` (project-level) or `~/.claude/CLAUDE.md` (global). Plain copy chosen over symlink so users can apply CLI-specific edits if they want.
+- **Drift detection on update** — `update-claude.sh` tracks bridge files in `~/.claude/toolkit-install.json` with SHA256. On update, if `CLAUDE.md` changed: re-copy to bridges; if a bridge was user-edited: prompt `[y/N/d]` (keep / overwrite / diff) mirroring v4.3 UN-03.
+- **Auto-generated header banner** — every bridge file carries a top-of-file HTML comment: `<!-- Auto-generated from CLAUDE.md by claude-code-toolkit. Edit CLAUDE.md (canonical source). Re-run update-claude.sh to refresh. -->`. Documents the contract.
+- **Opt-out per bridge** — `update-claude.sh --break-bridge gemini` (or `codex`) marks the file as user-owned in toolkit-install.json so subsequent runs don't sync it.
+- **Symmetric uninstall** — `uninstall.sh` removes bridge files like any other tracked TK artifact, with `[y/N/d]` prompt on drift, base-plugin invariant intact.
+- **Optional substitution layer** (deferred to v4.8 if friction): minimal whitelist replacement (e.g., "Claude Code" → "Gemini CLI") with a flag `--substitute-branding`. **Not in v4.7 scope** — plain copy first, substitution later if users ask for it.
+
+**Key context:**
+
+- Bridge file conventions confirmed: Gemini CLI reads `GEMINI.md`; OpenAI Codex CLI reads `AGENTS.md` (NOT `CODEX.md` — `AGENTS.md` is the OpenAI standard).
+- Plain copy over symlink: chosen because users may want CLI-specific edits, and symlink locks all CLIs to byte-identical content. Drift handled via SHA256 + prompt, not by abandoning copy semantics.
+- Bash 3.2 compatibility: no `declare -A` (associative arrays); use parallel arrays + index loop if substitution lands later.
+- Detection strategy: filesystem-primary (existing `~/.gemini/`, `~/.codex/` dirs) + `command -v` cross-check. Fail-soft when CLI absent (no error, just no bridge offered).
+- Reuses Phase 24 (v4.6) `lib/{tui,detect2,dispatch}.sh` foundation — bridges become new dispatchable components.
+- BACKCOMPAT-01 invariant from v4.6: `init-claude.sh` URL stays byte-identical with v4.6 flags + bridge prompts are skip-by-default in `--yes` / no-TTY paths.
 
 **Pending HUMAN-UAT from v4.6** (run when convenient — not blocking ship):
 
@@ -162,19 +180,14 @@ v4.6 milestone archive: `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. A
 - Phase 26: live PTY interactive 22-row Skills TUI render
 - Phase 27: live `claude plugin marketplace add ./` smoke + Claude Desktop end-to-end install
 
-**Optional follow-ups:**
-
-- `/gsd-code-review-fix 24` to address 4 advisory WR findings in `tui.sh` + 1 in `dispatch.sh` (low real-world risk).
-- Submit toolkit to upstream Anthropic marketplace registry (MKT-04 follow-up; manual).
-
 **Carry-overs from previous milestones (still deferred):**
 
 - `--no-council` flag for `/audit` — keep deferred (mandatory pass guarantees FP discipline; revisit if friction surfaces)
 - Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — reader side already shipped in v4.3)
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
+- Branding substitution layer for bridge files (deferred from v4.7 — plain copy first, substitute later if friction surfaces)
+- Council Rework Sub-Phases 2-11 (planned in `.planning/phases/24-council-globalize/PLAN.md`) — independent track, parallel milestone candidate
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
-
-v4.7 scope to be defined via `/gsd-new-milestone` when ready. Note: v4.5 on origin/main is "Council Globalize + Rework" (Sub-Phase 1 shipped, Sub-Phases 2-11 planned in `.planning/phases/24-council-globalize/PLAN.md`) — that work continues independently in a future milestone.
 
 ## Key Decisions
 
@@ -218,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-29 — **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6`. 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs, 28/28 cross-phase connections wired, 5 of 6 E2E flows verified (1 platform-boundary deferred). 8 HUMAN-UAT items + 5 advisory WRs deferred — not blocking ship. v4.6 archived at `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. Tagged `v4.6.0`.*
+*Last updated: 2026-04-29 — **v4.7 Multi-CLI Bridge** scoped via `/gsd-new-milestone`. Goal: copy CLAUDE.md → GEMINI.md / AGENTS.md (Codex) at install with SHA256 drift tracking + `[y/N/d]` prompt on update. Reuses v4.6 Phase 24 lib foundation (`tui.sh`, `detect2.sh`, `dispatch.sh`). v4.6 archived at `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. Tagged `v4.6.0`.*
