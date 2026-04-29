@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
-status: verifying
-stopped_at: Completed 25-04-tests-manifest-and-docs-PLAN.md
-last_updated: "2026-04-29T12:41:02.891Z"
+status: executing
+stopped_at: Completed 26-01-skills-lib-and-sync-script-PLAN.md
+last_updated: "2026-04-29T13:11:03.437Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_plans: 13
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 25 — MCP Selector
+**Current focus:** Phase 26 — Skills Selector
 
 ## Current Position
 
@@ -31,9 +31,9 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 |-------------------------------------------------------|
 ```
 
-Phase: 26
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 26 (Skills Selector) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-04-29
 
 ## Plan Count Estimate
@@ -111,6 +111,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 25]: S4/S5 collision tests use real fixture files not process substitution for portability
 - [Phase 25]: test files not added to manifest — they ship via repo, not curl-bash install
 - [Phase 25]: manifest.json version stays 4.4.0 — version bump deferred to Phase 27 per D-31 convention
+- [Phase 26]: Two-state is_skill_installed (not three-state): skills have no CLI dependency; directory probe sufficient
+- [Phase 26]: cp -R (not rsync) for skills_install per SKILL-03; sync-skills-mirror.sh not wired to CI — dev-side maintainer tool only
 
 ### Key v4.5 Constraints (from research)
 
@@ -178,11 +180,12 @@ Carry-overs available for next milestone scoping:
 | Phase 25 P02 | 304 | 2 tasks | 3 files |
 | Phase 25 P03 | 780 | 2 tasks | 2 files |
 | Phase 25 P04 | 5 | 3 tasks | 6 files |
+| Phase 26 P01 | 3 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T12:34:21.564Z
-Stopped at: Completed 25-04-tests-manifest-and-docs-PLAN.md
+Last session: 2026-04-29T13:11:03.433Z
+Stopped at: Completed 26-01-skills-lib-and-sync-script-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
