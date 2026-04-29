@@ -40,6 +40,7 @@ DRY_RUN=0
 FORCE=0
 FAIL_FAST=0
 MCPS=0
+SKILLS=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -51,6 +52,7 @@ while [[ $# -gt 0 ]]; do
         --fail-fast) FAIL_FAST=1; shift ;;
         --no-banner) NO_BANNER=1; shift ;;
         --mcps)      MCPS=1;      shift ;;
+        --skills)    SKILLS=1;    shift ;;
         -h|--help)
             cat <<USAGE
 Usage: bash scripts/install.sh [flags]
@@ -64,6 +66,7 @@ Flags:
   --no-color    Disable ANSI output (also honored via NO_COLOR env)
   --no-banner   Suppress closing removal banner
   --mcps        Install curated MCP servers via TUI catalog (Phase 25)
+  --skills      Install curated skills via TUI catalog (Phase 26)
 
 Backwards compatible: scripts/init-claude.sh URL still works unchanged.
 USAGE
@@ -136,6 +139,11 @@ if [[ "$MCPS" -eq 1 ]]; then
     _source_lib mcp
 fi
 
+# SKILLS=1 path needs the skills catalog + cp-R installer.
+if [[ "$SKILLS" -eq 1 ]]; then
+    _source_lib skills
+fi
+
 # Initialize colors for the dro_* family (used by summary).
 dro_init_colors
 
@@ -161,10 +169,16 @@ print_install_status() {
 }
 
 # ─────────────────────────────────────────────────
-# Routing gate: --mcps takes the MCP page; default is the Phase 24 components page.
-# Mutex — never both in the same invocation. Future Phase 26 will add --skills as a
-# third sibling branch. Keeping each branch self-contained simplifies the test surface.
+# Routing gate: --mcps takes the MCP page; --skills takes the Skills page; default is
+# the Phase 24 components page. Mutex — exactly one of three branches per invocation.
 # ─────────────────────────────────────────────────
+
+# --mcps and --skills are mutually exclusive: exactly one of three branches runs per invocation.
+if [[ "$MCPS" -eq 1 && "$SKILLS" -eq 1 ]]; then
+    echo -e "${RED}✗${NC} --mcps and --skills are mutually exclusive" >&2
+    exit 1
+fi
+
 if [[ "$MCPS" -eq 1 ]]; then
     # MCP catalog page — populate TUI_* arrays from the 9-MCP catalog.
     mcp_catalog_load || {
