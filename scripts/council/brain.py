@@ -1084,11 +1084,109 @@ def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
     )
 
 
+def log_cache_hit(plan_hash, verdict):
+    """Phase 24 SP6 — append a zero-token cache_hit record to usage.jsonl.
+
+    A cache hit makes no provider call, so _LAST_USAGE is empty. We still
+    want one row per /council invocation so `brain stats` shows cache
+    activity and confirms the user wasn't billed for the replay.
+    """
+    if os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
+        return
+    record = {
+        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "mode": "validate-plan-cache-hit",
+        "provider": "cache",
+        "model": "cache",
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "cost_usd": 0.0,
+        "estimated": False,
+        "verdict": verdict,
+        "fallback_used": False,
+        "plan_hash": plan_hash,
+        "cache_hit": True,
+    }
+    try:
+        USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
+    _debug(f"usage: cache_hit verdict={verdict}")
+
+
 def _hash_plan(plan):
     """Stable 16-hex-char digest of the plan / report content. None on empty input."""
     if not plan:
         return None
     return hashlib.sha256(plan.encode("utf-8", errors="replace")).hexdigest()[:16]
+
+
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 6 — Content-hash cache
+# ─────────────────────────────────────────────────
+# Two `/council "<same plan>"` calls within TTL share a cached report and skip
+# all provider calls. Cache key combines plan text + git HEAD + cwd so that
+# (a) different projects never collide, and (b) any new commit busts the
+# cache even when the plan string is unchanged. CLI flag `--no-cache`
+# forces a fresh call. TTL comes from config.cache.ttl_days (default 7).
+
+CACHE_DIR = Path.home() / ".claude" / "council" / "cache"
+
+
+def _git_head():
+    """Current commit SHA for cache scoping. Empty string outside a repo."""
+    try:
+        out = run_command(["git", "rev-parse", "HEAD"], timeout=5)
+        return (out or "").strip()
+    except Exception:
+        return ""
+
+
+def _cache_key(plan, git_head, cwd):
+    """sha256 of `plan|git_head|cwd` — the unit of cache identity."""
+    blob = "|".join([plan or "", git_head or "", str(cwd or "")])
+    return hashlib.sha256(blob.encode("utf-8", errors="replace")).hexdigest()
+
+
+def _cache_path(key):
+    return CACHE_DIR / f"{key}.json"
+
+
+def _cache_ttl_days(config):
+    cache_cfg = (config or {}).get("cache") or {}
+    try:
+        return float(cache_cfg.get("ttl_days", 7))
+    except (TypeError, ValueError):
+        return 7.0
+
+
+def _get_cached(key, ttl_days):
+    """Return cached payload dict if present and within TTL, else None."""
+    if not key:
+        return None
+    p = _cache_path(key)
+    if not p.is_file():
+        return None
+    try:
+        age_seconds = datetime.datetime.now().timestamp() - p.stat().st_mtime
+        if age_seconds > ttl_days * 86400:
+            return None
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        _debug(f"cache read failed: {e}")
+        return None
+
+
+def _set_cached(key, payload):
+    if not key:
+        return
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(_cache_path(key), json.dumps(payload, ensure_ascii=False, indent=2))
+    except OSError as e:
+        _debug(f"cache write failed: {e}")
 
 
 def cost_confirm_gate(prompt_text, model, label="<call>"):
@@ -1700,11 +1798,32 @@ def run_audit_review(report_path_str, config):
 # ─────────────────────────────────────────────────
 
 def _run_validate_plan(plan, config):
-    """Existing Phase 1-4 validate-plan flow. Behavior is byte-identical
-    to the v3.0.0 brain.py main() body — no logic changes here.
+    """Existing Phase 1-4 validate-plan flow plus SP6 cache short-circuit.
+
+    Cache key = sha256(plan|git_head|cwd). On hit within TTL we replay the
+    cached display + report file and skip every provider call (Skeptic,
+    Pragmatist, Discovery). `--no-cache` flag forces a fresh run.
     """
     validate_plan(plan)
     plan_hash = _hash_plan(plan)
+
+    # ── Phase 24 SP6 — pre-call cache lookup ──
+    no_cache = bool(config.get("_no_cache"))
+    git_head = _git_head()
+    cache_key = _cache_key(plan, git_head, Path.cwd()) if not no_cache else None
+    cached = _get_cached(cache_key, _cache_ttl_days(config)) if cache_key else None
+    if cached:
+        ts = cached.get("ts", "?")
+        print(f"\n♻️  [cached {ts}] Returning previous Council report — no API calls.")
+        print("   (use --no-cache to force a fresh run)")
+        print(cached.get("display_text", ""))
+        scratchpad = Path.cwd() / ".claude" / "scratchpad"
+        scratchpad.mkdir(parents=True, exist_ok=True)
+        vp_report_path = scratchpad / "council-report.md"
+        vp_report_path.write_text(cached.get("report_md", ""), encoding="utf-8")
+        print(f"Report saved: {vp_report_path}")
+        log_cache_hit(plan_hash, cached.get("final_verdict"))
+        return
 
     project_map = get_project_structure()
     git_diff = get_git_diff()
@@ -1948,18 +2067,24 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         pragmatist_rank = VERDICT_PRIORITY.index(pragmatist_decision)
         final_verdict = VERDICT_PRIORITY[min(skeptic_rank, pragmatist_rank)]
 
-    print("\n" + "=" * 60)
-    print("\U0001f4cb SUPREME COUNCIL REPORT")
-    print("=" * 60)
-    print(f"\n\U0001f9d0 THE SKEPTIC (Gemini {config['gemini']['model']}):")
-    print(gemini_verdict)
-    print(f"\n\U0001f528 THE PRAGMATIST (ChatGPT {config['openai']['model']}):")
-    print(gpt_verdict)
-    print("\n" + "-" * 60)
-    print(f"  Skeptic:    {skeptic_decision}")
-    print(f"  Pragmatist: {pragmatist_decision}")
-    print(f"  Final:      {final_verdict} — {VERDICTS[final_verdict]}")
-    print("-" * 60)
+    # SP6 — render display block as one string so cache replay reproduces
+    # identical output on a hit.
+    display_text = (
+        "\n" + "=" * 60 + "\n"
+        + "\U0001f4cb SUPREME COUNCIL REPORT\n"
+        + "=" * 60 + "\n"
+        + f"\n\U0001f9d0 THE SKEPTIC (Gemini {config['gemini']['model']}):\n"
+        + gemini_verdict + "\n"
+        + f"\n\U0001f528 THE PRAGMATIST (ChatGPT {config['openai']['model']}):\n"
+        + gpt_verdict + "\n"
+    )
+    display_text += (
+        "\n" + "-" * 60 + "\n"
+        + f"  Skeptic:    {skeptic_decision}\n"
+        + f"  Pragmatist: {pragmatist_decision}\n"
+        + f"  Final:      {final_verdict} — {VERDICTS[final_verdict]}\n"
+        + "-" * 60 + "\n"
+    )
 
     verdict_icons = {
         "PROCEED": "\u2705",
@@ -1967,8 +2092,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         "RETHINK": "\U0001f504",
         "SKIP": "\u26d4",
     }
-    print(f"\n{verdict_icons[final_verdict]} VERDICT: {final_verdict}")
-    print("=" * 60 + "\n")
+    display_text += (
+        f"\n{verdict_icons[final_verdict]} VERDICT: {final_verdict}\n"
+        + "=" * 60 + "\n"
+    )
+    print(display_text)
 
     # Save report to scratchpad
     scratchpad = Path.cwd() / ".claude" / "scratchpad"
@@ -2011,6 +2139,21 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 
     vp_report_path.write_text(report, encoding="utf-8")
     print(f"Report saved: {vp_report_path}")
+
+    # ── Phase 24 SP6 — store cache snapshot for future identical calls ──
+    if cache_key and not (skeptic_failed and pragmatist_failed):
+        _set_cached(cache_key, {
+            "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "plan_hash": plan_hash,
+            "git_head": git_head,
+            "skeptic_verdict": gemini_verdict,
+            "pragmatist_verdict": gpt_verdict,
+            "skeptic_decision": skeptic_decision,
+            "pragmatist_decision": pragmatist_decision,
+            "final_verdict": final_verdict,
+            "display_text": display_text,
+            "report_md": report,
+        })
 
 
 def cmd_stats(argv):
