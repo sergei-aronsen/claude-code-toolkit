@@ -40,6 +40,8 @@ must_haves:
     - "Makefile gains Test 31 (test-install-tui), .PHONY updated, target invokable standalone"
     - ".github/workflows/quality.yml adds test-install-tui.sh to the Tests 21-30 step (renamed Tests 21-31)"
     - "init-claude.sh URL stays byte-identical; bash scripts/tests/test-bootstrap.sh stays green (BACKCOMPAT-01)"
+    - "D-05 SP/GSD bootstrap fallback: when /dev/tty unreadable AND --yes not passed, install.sh sources lib/bootstrap.sh and invokes bootstrap_base_plugins for SP/GSD; TK components fail-closed per D-11"
+    - "bootstrap.sh is sourced (curl-fetched or local) — never reimplemented or copied; D-07 'bootstrap.sh not deleted or rewritten' invariant holds in install.sh"
   artifacts:
     - path: "scripts/install.sh"
       provides: "Unified TUI install orchestrator (top-level, not lib)"
@@ -224,16 +226,18 @@ Detection cache var mapping (per Plan 01):
     - scripts/lib/detect2.sh (just created in Plan 01) — public API: is_*_installed, detect2_cache, IS_* cache vars
     - scripts/lib/dispatch.sh (just created in Plan 03) — public API: TK_DISPATCH_ORDER, dispatch_*
     - scripts/lib/dry-run-output.sh — dro_init_colors helpers
+    - **scripts/lib/bootstrap.sh (D-05 dependency)** — public API: `bootstrap_base_plugins` (line 68), `_bootstrap_prompt_and_run` (line 40); reads `TK_BOOTSTRAP_TTY_SRC`, `TK_BOOTSTRAP_SP_CMD`, `TK_BOOTSTRAP_GSD_CMD`, `TK_NO_BOOTSTRAP`. install.sh sources-and-calls this — NEVER reimplements (D-07 invariant)
+    - **scripts/lib/optional-plugins.sh** — defines `TK_SP_INSTALL_CMD` / `TK_GSD_INSTALL_CMD` constants (lines 18-19) which `bootstrap_base_plugins` reads. install.sh sources this BEFORE bootstrap.sh in the D-05 fork branch
     - .planning/phases/24-unified-tui-installer-centralized-detection/24-PATTERNS.md §"scripts/install.sh" (lines 297-381) — full pattern set
-    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §6 (orchestrator flow)
-    - 24-CONTEXT.md D-04..D-15 (TUI flow + --yes semantics), D-27..D-29 (summary), D-30..D-32 (BACKCOMPAT)
+    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §6 (orchestrator flow), §12 (open question 6 — D-05 fork)
+    - 24-CONTEXT.md D-04..D-15 (TUI flow + --yes semantics + D-05 no-TTY fork), D-27..D-29 (summary), D-30..D-32 (BACKCOMPAT)
   </read_first>
 
   <behavior>
     - `bash scripts/install.sh --dry-run` (with TK_DISPATCH_OVERRIDE_* mocks set) prints one [+ INSTALL] line per uninstalled component, prints summary, exits 0
     - `bash scripts/install.sh --yes` with mock dispatchers: invokes each dispatcher in TK_DISPATCH_ORDER, prints `installed ✓` for each successful one, exits 0
     - `bash scripts/install.sh --yes --fail-fast` with first dispatcher failing: stops after first failure; remaining show 'skipped'; exits 1
-    - `bash scripts/install.sh` without TTY (TK_TUI_TTY_SRC=/dev/null) and no `--yes`: prints fail-closed message and exits 0 (D-11)
+    - `bash scripts/install.sh` without TTY (TK_TUI_TTY_SRC=/dev/null) and no `--yes`: D-05 fork — sources `lib/bootstrap.sh`, calls `bootstrap_base_plugins` for SP/GSD prompts (identical to v4.4), then prints D-11 fail-closed message for TK components and exits 0
     - `bash scripts/install.sh --yes --force`: re-runs all components regardless of detection
     - `bash scripts/install.sh --yes` (no --force) skips installed components (sets status 'skipped')
     - Final summary line: `Installed: N · Skipped: M · Failed: K`
@@ -398,6 +402,18 @@ TUI_DESCS=(
 TUI_RESULTS=()
 SELECTION_RC=0
 
+# ─────────────────────────────────────────────────
+# TTY-availability gate (D-04 / D-05 / D-11).
+# Three branches:
+#   1. --yes  → bypass TUI; synthesize default-set (D-06 / D-12)
+#   2. TTY ok → render TUI + confirmation (D-04)
+#   3. no TTY + no --yes → D-05 fork: source lib/bootstrap.sh and invoke
+#      bootstrap_base_plugins for SP/GSD; TK components fail-closed (D-11)
+# ─────────────────────────────────────────────────
+
+# Resolve the TTY source once so the gate matches what tui_checklist will read.
+_install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
+
 if [[ "$YES" -eq 1 ]]; then
     # --yes default-set per D-12: all uninstalled in canonical order.
     # Already-installed: skip (D-13) — unless --force.
@@ -408,7 +424,7 @@ if [[ "$YES" -eq 1 ]]; then
             TUI_RESULTS[$i]=1
         fi
     done
-else
+elif [[ -r "$_install_tty_src" ]]; then
     # TUI mode — render checklist + confirmation.
     if ! tui_checklist; then
         # User cancelled (q/Ctrl-C/EOF). Fail-closed exit 0 per D-11.
@@ -426,6 +442,69 @@ else
         echo "Install cancelled."
         exit 0
     fi
+else
+    # ─────────────────────────────────────────────
+    # D-05 + D-11: no /dev/tty AND no --yes.
+    # Fork to lib/bootstrap.sh for SP/GSD ONLY (identical to v4.4 behavior);
+    # TK components fail-closed per D-09 + D-11 (no auto-install without
+    # explicit confirmation).
+    # ─────────────────────────────────────────────
+    if [[ "$IS_SP" -ne 1 || "$IS_GSD" -ne 1 ]]; then
+        # bootstrap.sh contract (Phase 21 BOOTSTRAP-01..04):
+        #   - exposes bootstrap_base_plugins (verified: scripts/lib/bootstrap.sh:68)
+        #   - reads via TK_BOOTSTRAP_TTY_SRC override (test seam mirrors D-33)
+        #   - already idempotent (skips installed SP/GSD via dir probes)
+        #   - fail-closed N on EOF
+        # Source it (curl-fetched if running curl|bash, local otherwise) and call.
+        if _is_curl_pipe; then
+            _bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-boot-XXXXXX") || _bootstrap_tmp=""
+            if [[ -n "$_bootstrap_tmp" ]]; then
+                CLEANUP_PATHS+=("$_bootstrap_tmp")
+                if curl -sSLf "$TK_REPO_URL/scripts/lib/bootstrap.sh" -o "$_bootstrap_tmp" 2>/dev/null; then
+                    # Source SP/GSD canonical install commands first so
+                    # bootstrap_base_plugins picks them up (TK_SP_INSTALL_CMD /
+                    # TK_GSD_INSTALL_CMD from optional-plugins.sh).
+                    _opt_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-opt-XXXXXX") || _opt_tmp=""
+                    if [[ -n "$_opt_tmp" ]]; then
+                        CLEANUP_PATHS+=("$_opt_tmp")
+                        curl -sSLf "$TK_REPO_URL/scripts/lib/optional-plugins.sh" -o "$_opt_tmp" 2>/dev/null &&                             # shellcheck source=/dev/null
+                            source "$_opt_tmp"
+                    fi
+                    # shellcheck source=/dev/null
+                    source "$_bootstrap_tmp"
+                    bootstrap_base_plugins || true
+                else
+                    echo "Error: failed to fetch lib/bootstrap.sh — pass --yes for non-interactive install" >&2
+                fi
+            fi
+        else
+            # Local clone path.
+            _local_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)/lib"
+            if [[ -f "$_local_lib_dir/bootstrap.sh" ]]; then
+                # Source optional-plugins.sh first to populate TK_SP_INSTALL_CMD /
+                # TK_GSD_INSTALL_CMD (read by bootstrap_base_plugins).
+                if [[ -f "$_local_lib_dir/optional-plugins.sh" ]]; then
+                    # shellcheck source=lib/optional-plugins.sh
+                    source "$_local_lib_dir/optional-plugins.sh"
+                fi
+                # shellcheck source=lib/bootstrap.sh
+                source "$_local_lib_dir/bootstrap.sh"
+                bootstrap_base_plugins || true
+            else
+                echo "Error: lib/bootstrap.sh not found and no curl available — pass --yes for non-interactive install" >&2
+            fi
+        fi
+    fi
+    # D-11 fail-closed: TK components NEVER auto-install without explicit confirmation.
+    echo "" >&2
+    echo "No TTY available for TUI; toolkit/security/rtk/statusline components skipped (D-11 fail-closed)." >&2
+    echo "  To install non-interactively, re-run with --yes." >&2
+    # Print a minimal summary so the user sees the SP/GSD outcome reflected.
+    # Build empty TUI_RESULTS so the dispatch loop treats every TK component
+    # as 'skipped' (unselected) rather than crashing on undefined indices.
+    for i in 0 1 2 3 4 5; do
+        TUI_RESULTS[$i]=0
+    done
 fi
 
 # ─────────────────────────────────────────────────
@@ -618,6 +697,8 @@ Critical rules:
 13. **--fail-fast loop range fix**: use C-style `for (( j=i+1; j<=5; j++ ))` (Bash 3.2 supports this form). Do NOT use `for j in $((i + 1)) 2 3 4 5` — that expands to e.g. `for j in 2 2 3 4 5` when i=1, double-counting index 2 in `SKIPPED_COUNT`.
 14. **--dry-run state mapping (D-10 extension)**: when `DRY_RUN=1` and `local_rc=0`, set `COMPONENT_STATUS+=("would-install")` instead of `"installed ✓"`. The dispatcher printed `[+ INSTALL] ... (would run: ...)` and exited 0 without executing — calling that "installed" would falsely claim work was done. Do NOT increment `INSTALLED_COUNT` under --dry-run. The `print_install_status` helper has a `would-install` case arm that uses cyan (`${_DRO_C:-}`) to visually distinguish the state.
 15. **Parallel array invariant**: `COMPONENT_STDERR_TAIL` MUST stay aligned with `COMPONENT_STATUS` and `COMPONENT_NAMES`. Every code path that does `COMPONENT_STATUS+=(...)` must also `COMPONENT_STDERR_TAIL+=(...)` — empty string for non-failure paths. Three paths to update: (a) unselected/installed branch, (b) re-probe skip branch, (c) --fail-fast remaining-as-skipped loop.
+16. **D-05 + D-11 no-TTY fork (CRITICAL)**: the gate is a 3-branch `if/elif/else` — `--yes` (D-06 default-set), `[[ -r "$_install_tty_src" ]]` (TUI), `else` (D-05 fork). The else-branch MUST source `lib/bootstrap.sh` (NEVER reimplement) and invoke `bootstrap_base_plugins` — the verified function name at `scripts/lib/bootstrap.sh:68`. Source `lib/optional-plugins.sh` first so `TK_SP_INSTALL_CMD` / `TK_GSD_INSTALL_CMD` are populated before `bootstrap_base_plugins` reads them. `_is_curl_pipe` selects between curl-fetch-to-mktemp and local-clone source path. After the bootstrap call, populate `TUI_RESULTS=(0 0 0 0 0 0)` so the dispatch loop sees every TK component as "unselected" and the summary correctly reports them as `skipped` (D-11 fail-closed). The bootstrap fork is gated by `[[ "$IS_SP" -ne 1 || "$IS_GSD" -ne 1 ]]` so we don't prompt when both are already installed (matches v4.4 idempotency).
+17. **D-07 bootstrap.sh invariant**: install.sh MUST NOT modify `scripts/lib/bootstrap.sh`, MUST NOT copy/inline its prompt logic, MUST NOT define a function shadowing `bootstrap_base_plugins`. Sourcing-and-calling is the only legal interaction. The 26-assertion `test-bootstrap.sh` stays green throughout this phase (BACKCOMPAT-01).
 
 Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32 except those covered by libs (D-21..D-26 for dispatch.sh, D-33..D-34 for tests).
   </action>
@@ -648,11 +729,16 @@ Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32
     - File contains the `--fail-fast` C-style loop `for (( j=i+1; j<=5; j++ ))` (NOT `for j in $((i + 1)) 2 3 4 5`)
     - File contains `would-install` state assignment under `[[ "$DRY_RUN" -eq 1 ]]` branch (NOT `installed ✓`)
     - File contains `would-install)` case arm in `print_install_status` helper
+    - File contains `[[ -r "$_install_tty_src" ]]` (D-05 TTY-readability gate before TUI render)
+    - File contains `source` of `lib/bootstrap.sh` (curl-fetched or local) inside the no-TTY+no-`--yes` branch
+    - File invokes `bootstrap_base_plugins` (verified function name from `scripts/lib/bootstrap.sh:68`) — NEVER reimplements the SP/GSD prompt loop
+    - File does NOT contain a hand-rolled `read -r -p "Install superpowers"` line — bootstrap.sh owns that contract (D-07 invariant)
     - `shellcheck -S warning scripts/install.sh` exits 0
     - `bash -n scripts/install.sh` exits 0 (syntax)
     - `bash scripts/install.sh --help` exits 0 with usage text
     - File does NOT modify scripts/init-claude.sh (BACKCOMPAT-01)
-    - `git diff --name-only` after this task includes `scripts/install.sh` but NOT `scripts/init-claude.sh`
+    - File does NOT modify scripts/lib/bootstrap.sh (D-07 invariant — bootstrap.sh stays as-is)
+    - `git diff --name-only` after this task includes `scripts/install.sh` but NOT `scripts/init-claude.sh` AND NOT `scripts/lib/bootstrap.sh`
   </acceptance_criteria>
 
   <done>
@@ -666,17 +752,18 @@ Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32
 
   <read_first>
     - scripts/tests/test-install-tui.sh (current state — has S1_detect + S2_detect from Plan 01, ~10 assertions)
-    - scripts/tests/test-bootstrap.sh — analog: mock script invocation via TK_BOOTSTRAP_SP_CMD
+    - scripts/tests/test-bootstrap.sh — analog: mock script invocation via TK_BOOTSTRAP_SP_CMD; **MUST grep for the verbatim prompt strings used by S9 (lines 83-86 / 92-95)**
+    - scripts/lib/bootstrap.sh — verify exact prompt strings + function name `bootstrap_base_plugins` (line 68); S9 grep assertions depend on these strings being verbatim-stable
     - scripts/install.sh (just created in Task 1)
     - .planning/phases/24-unified-tui-installer-centralized-detection/24-PATTERNS.md §"scripts/tests/test-install-tui.sh" — fixture format, mock dispatcher injection
-    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §8 (test fixture format), §9 (Nyquist signals)
+    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §8 (test fixture format), §9 (Nyquist signals), §12 (open question 6 — D-05 fork)
     - .planning/phases/24-unified-tui-installer-centralized-detection/24-VALIDATION.md "Per-Task Verification Map"
   </read_first>
 
   <behavior>
     - Total assertion count is ≥15 (`grep -c "assert_eq\|assert_contains\|assert_not_contains" scripts/tests/test-install-tui.sh` ≥ 15)
     - Test exits 0 with `PASS=N FAIL=0` for some N ≥ 15
-    - Scenarios cover: keystroke matrix S1_detect/S2_detect (already there), --yes non-interactive (S3_yes), --dry-run zero-mutation (S4_dry_run), --force re-runs detected (S5_force), --fail-fast stops on first failure (S6_fail_fast), no-TTY fallback (S7_no_tty)
+    - Scenarios cover: keystroke matrix S1_detect/S2_detect (already there), --yes non-interactive (S3_yes), --dry-run zero-mutation (S4_dry_run), --force re-runs detected (S5_force), --fail-fast stops on first failure (S6_fail_fast), no-TTY fallback to fail-closed exit (S7_no_tty), per-failure stderr tail (S8_stderr_tail), D-05 SP/GSD bootstrap fork under no-TTY+no-`--yes` (S9_no_tty_bootstrap_fork)
     - Each scenario uses a fresh sandbox HOME + override env vars; no real ~/.claude touched
   </behavior>
 
@@ -958,6 +1045,82 @@ MOCK_EOF
     # First line MUST be truncated (only last 5 lines surface).
     assert_not_contains "line1-should-be-truncated" "$OUTPUT" "S8_stderr_tail: line1 truncated (D-28: only last 5 lines)"
 }
+
+# ─────────────────────────────────────────────────
+# S9_no_tty_bootstrap_fork — D-05: when /dev/tty unreadable AND no --yes,
+# install.sh sources lib/bootstrap.sh and invokes bootstrap_base_plugins
+# for SP/GSD. TK components fail-closed (D-11). Identical to v4.4 behavior.
+# ─────────────────────────────────────────────────
+run_s9_no_tty_bootstrap_fork() {
+    local SANDBOX RC OUTPUT
+    SANDBOX="$(mktemp -d /tmp/test-install-tui.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S9_no_tty_bootstrap_fork: D-05 fork to bootstrap.sh when no TTY + no --yes --"
+
+    local FAKE_BIN="$SANDBOX/bin"
+    mkdir -p "$FAKE_BIN"
+
+    # Mock SP/GSD install commands as sentinel writers so we can prove
+    # the bootstrap.sh fork was actually invoked (and that the user
+    # chose 'N' on both prompts — so the install commands MUST NOT run).
+    local SP_SENTINEL="$SANDBOX/sp-install-ran"
+    local GSD_SENTINEL="$SANDBOX/gsd-install-ran"
+    local MOCK_SP_CMD="touch '$SP_SENTINEL'"
+    local MOCK_GSD_CMD="touch '$GSD_SENTINEL'"
+
+    # bootstrap.sh BOOTSTRAP-01: TK_BOOTSTRAP_TTY_SRC fixture must contain
+    # the user's keystrokes for the TWO prompts (SP first, GSD second).
+    # We inject 'N\nN\n' so both prompts are declined — that proves the
+    # prompts ran (the read consumed those bytes) without actually
+    # executing the install commands.
+    local ANSWER_FILE="$SANDBOX/bootstrap-answers"
+    printf 'N\nN\n' > "$ANSWER_FILE"
+
+    # TK component dispatchers MUST NOT run under D-11 fail-closed.
+    # Use a sentinel-write mock so we can prove they were skipped.
+    local TK_SENTINEL="$SANDBOX/tk-install-ran"
+    local MOCK_TK="$SANDBOX/mock-tk-no-tty.sh"
+    printf '#!/bin/bash\ntouch %q\nexit 0\n' "$TK_SENTINEL" > "$MOCK_TK"
+    chmod +x "$MOCK_TK"
+
+    RC=0
+    OUTPUT=$(
+        HOME="$SANDBOX" \
+        PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TUI_TTY_SRC=/dev/null \
+        TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
+        TK_BOOTSTRAP_SP_CMD="$MOCK_SP_CMD" \
+        TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD_CMD" \
+        TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
+        TK_DISPATCH_OVERRIDE_SECURITY=":" \
+        TK_DISPATCH_OVERRIDE_RTK=":" \
+        TK_DISPATCH_OVERRIDE_STATUSLINE=":" \
+        NO_COLOR=1 \
+        bash "$REPO_ROOT/scripts/install.sh" 2>&1
+    ) || RC=$?
+
+    # D-05 contract assertions (≥5 distinct asserts):
+    assert_eq       "0" "$RC"                          "S9_no_tty_bootstrap_fork: install.sh exits 0 (fail-closed for TK, success for fork-attempt)"
+    assert_contains "Install superpowers"  "$OUTPUT"   "S9_no_tty_bootstrap_fork: bootstrap.sh SP prompt was rendered (proves fork ran; verbatim string from scripts/lib/bootstrap.sh:85)"
+    assert_contains "Install get-shit-done" "$OUTPUT"  "S9_no_tty_bootstrap_fork: bootstrap.sh GSD prompt was rendered (proves fork ran; verbatim string from scripts/lib/bootstrap.sh:94)"
+    # TK components MUST NOT have run (D-11 fail-closed).
+    if [[ -e "$TK_SENTINEL" ]]; then
+        assert_fail "S9_no_tty_bootstrap_fork: TK toolkit dispatcher MUST NOT run when no TTY and no --yes (D-11)" \
+            "sentinel created at $TK_SENTINEL"
+    else
+        assert_pass "S9_no_tty_bootstrap_fork: TK toolkit dispatcher did NOT run (D-11 fail-closed for TK components)"
+    fi
+    # SP/GSD install commands MUST NOT have run (user said 'N' to both prompts).
+    if [[ -e "$SP_SENTINEL" || -e "$GSD_SENTINEL" ]]; then
+        assert_fail "S9_no_tty_bootstrap_fork: SP/GSD install commands MUST NOT run after 'N' answer" \
+            "sentinels: SP=$([[ -e $SP_SENTINEL ]] && echo yes || echo no), GSD=$([[ -e $GSD_SENTINEL ]] && echo yes || echo no)"
+    else
+        assert_pass "S9_no_tty_bootstrap_fork: SP/GSD install commands did NOT run (declined via 'N\\nN\\n' fixture)"
+    fi
+    # Summary message proving D-11 fail-closed message surfaced.
+    assert_contains "fail-closed" "$OUTPUT" "S9_no_tty_bootstrap_fork: D-11 'fail-closed' message in stderr/stdout"
+}
 ```
 
 Then update the invocation block at the bottom from:
@@ -978,6 +1141,7 @@ run_s5_force
 run_s6_fail_fast
 run_s7_no_tty
 run_s8_stderr_tail
+run_s9_no_tty_bootstrap_fork
 ```
 
 Critical rules:
@@ -987,9 +1151,10 @@ Critical rules:
 3. **NO_COLOR=1** on every install.sh invocation so OUTPUT capture is plain-text grep-friendly.
 4. Use `HOME="$SANDBOX"` to prevent any real `~/.claude` interference (detection probes hit the sandbox).
 5. The sentinel-file approach (touch a file IFF dispatcher runs) is the canonical zero-mutation proof — verified against test-bootstrap.sh:265-271 for similar pattern.
-6. Total new assertions added: 4 (S3_yes) + 5 (S4_dry_run) + 2 (S5_force) + 3 (S6_fail_fast) + 2 (S7_no_tty) + 6 (S8_stderr_tail) = **22 new assertions**.
-7. Combined with Plan 01's 10 (S1+S2): total = **32 assertions** ≥ 15 (TUI-07 contract).
+6. Total new assertions added: 4 (S3_yes) + 5 (S4_dry_run) + 2 (S5_force) + 3 (S6_fail_fast) + 2 (S7_no_tty) + 6 (S8_stderr_tail) + 6 (S9_no_tty_bootstrap_fork) = **28 new assertions**.
+7. Combined with Plan 01's 10 (S1+S2): total = **38 assertions** ≥ 15 (TUI-07 contract).
 8. **S8_stderr_tail (D-28)** uses a mock dispatcher that writes 6 distinct stderr lines then exits 1; assertions verify the last 5 lines (line2..line6) appear in the summary while line1 is truncated. Mirrors the per-failure tail contract from CONTEXT.md D-28.
+9. **S9_no_tty_bootstrap_fork (D-05)** sets `TK_TUI_TTY_SRC=/dev/null` (simulates no TTY) AND injects `TK_BOOTSTRAP_TTY_SRC` fixture with `'N\nN\n'` so both bootstrap prompts run-and-decline. Asserts: install.sh exits 0; bootstrap prompts rendered (verbatim strings from `scripts/lib/bootstrap.sh:85,94` — change-detection if those strings drift); TK component dispatchers did NOT run (sentinel files absent — D-11 fail-closed); SP/GSD install commands did NOT run (user declined via fixture); 'fail-closed' message surfaced. The `TK_BOOTSTRAP_*` env vars reuse the existing v4.4 test seam (no new seam needed — D-33 mirrors).
   </action>
 
   <verify>
@@ -997,10 +1162,10 @@ Critical rules:
   </verify>
 
   <acceptance_criteria>
-    - `scripts/tests/test-install-tui.sh` contains all eight scenario functions: `run_s1_detect`, `run_s2_detect`, `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty`, `run_s8_stderr_tail`
-    - All eight scenarios are invoked at the bottom of the file
+    - `scripts/tests/test-install-tui.sh` contains all NINE scenario functions: `run_s1_detect`, `run_s2_detect`, `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty`, `run_s8_stderr_tail`, `run_s9_no_tty_bootstrap_fork`
+    - All nine scenarios are invoked at the bottom of the file
     - `bash scripts/tests/test-install-tui.sh` exits 0
-    - Final output line shows `PASS=N FAIL=0` with N ≥ 15 (likely 30+)
+    - Final output line shows `PASS=N FAIL=0` with N ≥ 15 (likely 35+)
     - `grep -c "assert_eq\|assert_contains\|assert_not_contains\|assert_pass\|assert_fail" scripts/tests/test-install-tui.sh` returns ≥ 15
     - File contains `TK_DISPATCH_OVERRIDE_TOOLKIT` (mock dispatcher injection — D-33)
     - File contains `TK_TUI_TTY_SRC=/dev/null` (no-TTY fallback test — D-11)
@@ -1009,6 +1174,9 @@ Critical rules:
     - File contains `assert_not_contains "installed ✓"` under S4_dry_run (false-positive guard)
     - File contains `line1-should-be-truncated` mock stderr line AND `assert_not_contains "line1-should-be-truncated"` under S8_stderr_tail (D-28 truncation contract)
     - File contains `line2-tail` and `line6-tail` mock stderr lines AND assert_contains for both (D-28 last-5-lines surface)
+    - File contains `S9_no_tty_bootstrap_fork` scenario function with the four required env vars: `TK_TUI_TTY_SRC=/dev/null`, `TK_BOOTSTRAP_TTY_SRC=`, `TK_BOOTSTRAP_SP_CMD=`, `TK_BOOTSTRAP_GSD_CMD=` (D-05 fork test)
+    - File contains `assert_contains "Install superpowers"` AND `assert_contains "Install get-shit-done"` under S9 (proves bootstrap.sh prompts rendered — verbatim strings from `scripts/lib/bootstrap.sh:85,94`)
+    - File contains a TK-sentinel-absence assertion under S9 (D-11: TK dispatchers did NOT run)
     - `shellcheck -S warning scripts/tests/test-install-tui.sh` exits 0
     - `bash scripts/tests/test-bootstrap.sh` exits 0 (BACKCOMPAT-01 invariant)
   </acceptance_criteria>
@@ -1279,6 +1447,7 @@ EOF
 | T-24-02 | Information disclosure | --dry-run output reveals TK_REPO_URL | accept | URL is public (raw.githubusercontent.com on a public repo); no secret exposure. Same as v4.4 init-claude.sh |
 | T-24-03 | Tampering | bash <(curl -sSL .../install.sh) supply-chain risk | accept | Out of scope for Phase 24 (BACKCOMPAT-01 invariant — same risk as v4.4 init-claude.sh). HTTPS-only and curl -f fail-fast on bad fetch documented for completeness |
 | T-24-04 | Denial of service | Stuck TUI raw mode after Ctrl-C mid-render | mitigate | tui.sh handles via _tui_restore EXIT trap (covered in Plan 02). install.sh inherits this through trap chain |
+| T-24-05 | Tampering / Supply chain | D-05 no-TTY fork curl-fetches lib/bootstrap.sh + lib/optional-plugins.sh from raw.githubusercontent.com (could be tampered if the URL is hijacked) | accept | Same trust boundary as T-24-03 (BACKCOMPAT-01 — install.sh inherits init-claude.sh's HTTPS supply-chain assumption). Mitigation parity with v4.4: HTTPS-only, GitHub raw content URL, `curl -sSLf` fail-fast on bad fetch (-f exits non-zero on HTTP errors). User can override `TK_REPO_URL` for air-gapped or private mirror installs |
 | T-24-11 | Tampering | TK_DISPATCH_OVERRIDE_* env vars allow arbitrary script execution | accept | Test-only seam. User already controls their env. Same risk class as v4.4 TK_BOOTSTRAP_SP_CMD |
 | T-24-12 | Denial of service | Mock dispatcher writes outside per-test SANDBOX | mitigate | Hermetic test: every scenario creates its own mktemp sandbox + sets HOME=$SANDBOX. Mock scripts only touch files inside that sandbox. The sentinel-file pattern uses `$SANDBOX/sentinel-*` paths exclusively |
 </threat_model>
@@ -1292,9 +1461,18 @@ shellcheck -S warning scripts/install.sh scripts/tests/test-install-tui.sh
 bash -n scripts/install.sh
 bash scripts/install.sh --help
 
-# Hermetic test ≥15 assertions
+# Hermetic test ≥15 assertions (now ≥35 with S9 added)
 bash scripts/tests/test-install-tui.sh
 grep -c "assert_eq\|assert_contains\|assert_pass\|assert_fail" scripts/tests/test-install-tui.sh
+
+# D-05 invariants (post-revision)
+grep -q 'source.*lib/bootstrap.sh' scripts/install.sh        # bootstrap.sh sourced
+grep -q 'bootstrap_base_plugins' scripts/install.sh          # function invoked (verified name)
+grep -q 'TK_TUI_TTY_SRC' scripts/install.sh                  # TTY-readability gate
+grep -q 'S9_no_tty_bootstrap_fork' scripts/tests/test-install-tui.sh  # D-05 test scenario
+
+# D-07 invariant — bootstrap.sh untouched
+git diff main HEAD scripts/lib/bootstrap.sh | wc -l          # should be 0
 
 # Standalone Make target
 make test-install-tui
@@ -1306,7 +1484,7 @@ make test
 bash scripts/tests/test-bootstrap.sh
 
 # init-claude.sh untouched
-git diff main HEAD scripts/init-claude.sh | wc -l   # should be 0
+git diff main HEAD scripts/init-claude.sh | wc -l            # should be 0
 
 # make check (full quality gate)
 make check
@@ -1317,16 +1495,18 @@ make check
 - `scripts/install.sh` exists at TOP-LEVEL `scripts/` (NOT `scripts/lib/`); sources tui.sh, detect2.sh, dispatch.sh; orchestrates the full install flow
 - All six flags supported: `--yes`, `--no-color`, `--dry-run`, `--force`, `--fail-fast`, `--no-banner`, plus `--help`
 - TUI mode renders checklist + confirmation; `--yes` mode synthesizes default-set
+- **D-05 fork**: when `[[ ! -r "$_install_tty_src" ]]` AND `--yes` not passed, install.sh sources `lib/bootstrap.sh` (curl-fetched or local) and invokes `bootstrap_base_plugins` for SP/GSD; TK components fail-closed per D-11. bootstrap.sh is NEVER reimplemented or copied (D-07 invariant).
 - Continue-on-error by default (D-08); `--fail-fast` opt-in (D-09)
 - Per-component status states: installed ✓ / skipped / failed (exit N) — D-10
 - Final summary line: `Installed: N · Skipped: M · Failed: K`
 - Exit code 0 on no failures, 1 on any failure (D-29)
-- `scripts/tests/test-install-tui.sh` has ≥15 assertions across 7 scenarios
+- `scripts/tests/test-install-tui.sh` has ≥15 assertions across 9 scenarios (S1..S9 incl. S9_no_tty_bootstrap_fork for D-05)
 - Makefile Test 31 wired + standalone target invokable
 - `.github/workflows/quality.yml` runs test-install-tui.sh in CI
 - BACKCOMPAT-01 invariant: test-bootstrap.sh 26 assertions stay green; init-claude.sh URL byte-identical
+- D-07 invariant: `scripts/lib/bootstrap.sh` byte-identical (`git diff main HEAD scripts/lib/bootstrap.sh` empty)
 - `make check` exits 0
-- Single conventional commit `feat(24): add scripts/install.sh unified orchestrator + Test 31 (TUI-07, DISPATCH-03)`
+- Single conventional commit `feat(24): add scripts/install.sh unified orchestrator + Test 31 (TUI-07, DISPATCH-03)` — note commit message stays the same since the D-05 fork is part of the originally-planned orchestrator scope
 </success_criteria>
 
 <output>
