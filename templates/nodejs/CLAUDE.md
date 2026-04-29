@@ -301,15 +301,9 @@ On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.cl
 
 ---
 
-## Supreme Council (Optional)
+## Supreme Council
 
-For high-stakes changes, use multi-AI review:
-`/council "feature description"` or `brain "feature description"`
-
-**When to use:** New features, security, refactoring, payments, breaking API changes.
-**Output:** `.claude/scratchpad/council-report.md` (APPROVED / REJECTED)
-
-Full guide: `components/supreme-council.md`
+> Supreme Council is global — see `~/.claude/CLAUDE.md` "Supreme Council" section.
 
 ---
 
