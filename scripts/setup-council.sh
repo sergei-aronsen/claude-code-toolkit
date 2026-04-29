@@ -245,6 +245,11 @@ fi
 # when files are missing.
 install_council_system_prompts
 
+# Install redaction-patterns.txt (Phase 24 Sub-Phase 3) so brain.py can
+# augment its built-in DEFAULT_REDACTION_PATTERNS with project-specific
+# secret shapes. User edits preserved via .upstream-new.txt sidecar.
+install_council_redaction_patterns
+
 # Install /council slash command globally (Phase 24 Sub-Phase 1).
 # Same idempotent + mtime-aware pattern as audit-review.md above. Council is
 # a global feature — its slash command lives in ~/.claude/commands/, not in

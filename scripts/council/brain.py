@@ -842,6 +842,88 @@ def apply_context_budget(blocks, hard_limit=MAX_TOTAL_CONTEXT):
 
 
 # ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 3 — privacy redaction
+# ─────────────────────────────────────────────────
+#
+# Default patterns cover the most common secret shapes; users can append more
+# via ~/.claude/council/redaction-patterns.txt (one Python regex per line, #
+# comments allowed).
+
+REDACTION_PATTERNS_PATH = Path.home() / ".claude" / "council" / "redaction-patterns.txt"
+
+DEFAULT_REDACTION_PATTERNS = [
+    # OpenAI-style API keys
+    r"sk-[A-Za-z0-9_\-]{20,}",
+    r"sk-proj-[A-Za-z0-9_\-]{20,}",
+    # Generic provider keys: KEY=value or KEY: value with high-entropy tail
+    r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}['\"]?",
+    # Bearer tokens
+    r"(?i)bearer\s+[A-Za-z0-9_\-\.=]{20,}",
+    # JWT (three base64url segments)
+    r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+",
+    # AWS access key / secret access key
+    r"AKIA[0-9A-Z]{16}",
+    r"(?i)aws[_-]?secret[_-]?access[_-]?key\s*[:=]\s*['\"]?[A-Za-z0-9/+=]{30,}['\"]?",
+    # GitHub PATs (classic + fine-grained)
+    r"ghp_[A-Za-z0-9]{30,}",
+    r"github_pat_[A-Za-z0-9_]{40,}",
+    # Google API keys
+    r"AIza[0-9A-Za-z_\-]{30,}",
+    # Slack tokens
+    r"xox[baprs]-[A-Za-z0-9-]{10,}",
+]
+
+_REDACTION_CACHE = None
+
+
+def _load_redaction_patterns():
+    """Compile default + user patterns once per process. Bad regexes warn but don't crash."""
+    global _REDACTION_CACHE
+    if _REDACTION_CACHE is not None:
+        return _REDACTION_CACHE
+    raw = list(DEFAULT_REDACTION_PATTERNS)
+    if REDACTION_PATTERNS_PATH.is_file():
+        try:
+            for line in REDACTION_PATTERNS_PATH.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    raw.append(line)
+        except OSError:
+            pass
+    compiled = []
+    for pat in raw:
+        try:
+            compiled.append(re.compile(pat))
+        except re.error as exc:
+            print(f"⚠️  invalid redaction pattern {pat!r}: {exc}", file=sys.stderr)
+    _REDACTION_CACHE = compiled
+    _debug(f"redaction: loaded {len(compiled)} patterns")
+    return compiled
+
+
+def redact_context(text, label="<unlabeled>"):
+    """Replace matches of every redaction pattern with ***REDACTED***.
+
+    Logs the per-block redaction count to stderr (without revealing content).
+    """
+    if not text:
+        return text
+    patterns = _load_redaction_patterns()
+    redacted = text
+    count = 0
+    for pat in patterns:
+        new, n = pat.subn("***REDACTED***", redacted)
+        count += n
+        redacted = new
+    if count:
+        print(
+            f"ℹ️  Redacted {count} secret(s) in {label} before sending to providers",
+            file=sys.stderr,
+        )
+    return redacted
+
+
+# ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
 
@@ -1209,7 +1291,7 @@ def _run_validate_plan(plan, config):
     enrichment_budget = (MAX_TOTAL_CONTEXT * 4) // 5
     enrichment_pairs = apply_context_budget(enrichment_pairs, hard_limit=enrichment_budget)
     enrichment_block = "".join(
-        f"\n{label}:\n{body}\n"
+        f"\n{label}:\n{redact_context(body, label=label)}\n"
         for label, body in enrichment_pairs
         if body
     )
@@ -1243,7 +1325,14 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     # SP3 — auto-include matching tests for whichever source files Gemini picked.
     tests_for_files = get_tests_for(file_paths) if file_paths else ""
     tests_block = (
-        f"\nMATCHING TESTS:\n{tests_for_files}\n" if tests_for_files else ""
+        f"\nMATCHING TESTS:\n{redact_context(tests_for_files, label='MATCHING TESTS')}\n"
+        if tests_for_files else ""
+    )
+
+    # SP3 — redact files_content + git diff before sending to providers.
+    files_content_redacted = redact_context(files_content, label="FILES CONTEXT") if files_content else ""
+    diff_block_redacted = (
+        f"\nGIT CHANGES:\n{redact_context(git_diff, label='GIT CHANGES')}" if git_diff else ""
     )
 
     # ── Phase 2: The Skeptic (Gemini) ──
@@ -1251,14 +1340,14 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
 
     # In CLI mode, Gemini reads files natively via @file (no content in prompt)
     use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
-    files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
+    files_in_prompt = "" if use_native_files else (files_content_redacted if files_content_redacted else "(no files read)")
 
     skeptic_prompt = f"""{load_prompt("skeptic-system")}
 {rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
 {files_in_prompt}
-{diff_block}
+{diff_block_redacted}
 
 IMPLEMENTATION PLAN:
 {plan}
@@ -1300,8 +1389,8 @@ Do NOT repeat The Skeptic's points. Focus on what they missed or got wrong.
 {rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
-{files_content if files_content else "(no files read)"}
-{diff_block}
+{files_content_redacted if files_content_redacted else "(no files read)"}
+{diff_block_redacted}
 
 PLAN:
 {plan}

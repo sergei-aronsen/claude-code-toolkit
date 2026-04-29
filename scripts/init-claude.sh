@@ -772,6 +772,11 @@ setup_council() {
     # them via load_prompt() and falls back to embedded constants when missing.
     install_council_system_prompts
 
+    # Install redaction-patterns.txt (Phase 24 Sub-Phase 3) — augments
+    # brain.py's built-in DEFAULT_REDACTION_PATTERNS with project-specific
+    # secret shapes. User edits preserved via .upstream-new.txt sidecar.
+    install_council_redaction_patterns
+
     # Install /council slash command globally (Phase 24 Sub-Phase 1).
     # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
     # ~/.claude/commands/, not in per-project ./.claude/commands/.
