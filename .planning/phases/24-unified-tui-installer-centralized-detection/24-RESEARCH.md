@@ -838,32 +838,37 @@ printf 'q' > "$TTY_QUIT_FIXTURE"
 
 ---
 
-## 12. Open Questions
+## 12. Open Questions (RESOLVED)
 
 1. **`rtk init -g` interactivity**
    - What we know: `brew install rtk` is non-interactive; `rtk init -g` initializes global config
    - What's unclear: Does `rtk init -g` prompt on first run?
    - Recommendation: Test `rtk init -g </dev/null 2>&1` in Wave 1. If prompts appear, add `--yes` pass-through to dispatch_rtk or use `yes |`.
+   - **RESOLVED:** Plan 03 `dispatch_rtk` invokes `rtk init -g </dev/null` to force non-interactive (per RESEARCH §10 Risk 8); manual verify on real RTK install captured in 24-VALIDATION.md "Manual-Only" section.
 
 2. **`▶` character rendering on older macOS Terminal.app**
    - What we know: UTF-8 is standard; `▶` (U+25B6) renders in most terminals
    - What's unclear: Does macOS Terminal.app on older macOS versions (pre-10.15) render `▶` correctly?
    - Recommendation: Use `▶` as default; add `TK_TUI_ARROW` env override (e.g., `export TK_TUI_ARROW='>'`) as a no-configure escape hatch.
+   - **RESOLVED:** Plan 02 introduces `TK_TUI_ARROW` env-var override (default `▶`; set to `>` for legacy terminals) inside `scripts/lib/tui.sh`.
 
 3. **`dispatch_toolkit` target path**
    - What we know: `install.sh` is a new entry point that dispatches toolkit install via `init-claude.sh`
    - What's unclear: When running `install.sh` as the orchestrator, should `dispatch_toolkit` invoke `init-claude.sh` or `init-local.sh`? For global `~/.claude/` install: `init-claude.sh`. For per-project: `init-local.sh`.
    - Recommendation: `install.sh` targets global `~/.claude/` install (same as `init-claude.sh`). Planner decision.
+   - **RESOLVED:** Plan 03 `dispatch_toolkit` invokes the existing `init-claude.sh` URL (toolkit's own canonical install path); preserves BACKCOMPAT-01 byte-identicality of the v4.4 entry point.
 
 4. **`tui_checklist` function signature with Bash 3.2 no-namerefs**
    - What we know: `declare -n` namerefs require Bash 4.3+; `tui_checklist <items_var> <results_var>` is in TUI-01
    - What's unclear: How does `tui.sh` pass the 6-item list to `tui_checklist` without namerefs?
    - Recommendation: Use `eval`-based indirect expansion for reading the input array, and write results to a fixed global (e.g., `TUI_RESULTS=("0" "1" ...)`) rather than a nameref. The caller reads `TUI_RESULTS[]` after the function returns.
+   - **RESOLVED:** Plan 02 uses fixed global `TUI_RESULTS=()` array as the return channel (consistent with bootstrap.sh test-seam patterns); caller reads `TUI_RESULTS[]` after `tui_checklist` returns.
 
 5. **Confirmation prompt inside `tui_checklist` vs `install.sh`**
    - What we know: TUI-05 says confirmation step is before any installer
    - What's unclear: Is confirmation rendered inside `tui_checklist` (making it a complete UI flow), or after `tui_checklist` returns (making `install.sh` do the confirm)?
    - Recommendation: `tui_checklist` returns the selected items array; `install.sh` does the confirmation prompt. This keeps `tui.sh` a pure menu library, reusable by Phase 25/26 without embedding confirm semantics.
+   - **RESOLVED:** Plan 02 keeps `tui_checklist` rendering-only; Plan 04 (`scripts/install.sh`) owns the post-selection `Install N component(s)? [y/N]` confirmation prompt via `tui_confirm_prompt`.
 
 ---
 
