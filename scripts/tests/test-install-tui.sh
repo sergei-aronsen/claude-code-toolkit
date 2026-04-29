@@ -518,6 +518,64 @@ run_s9_no_tty_bootstrap_fork() {
         "S9_no_tty_bootstrap_fork: toolkit shows 'skipped' in summary (D-11 fail-closed)"
 }
 
+# ─────────────────────────────────────────────────
+# S10_desktop_auto_skills_only_routing — DESK-03: when claude CLI is absent
+# on PATH and no explicit page flag is passed (and no --yes), install.sh must:
+#   A1: print auto-route banner "Claude CLI not detected"
+#   A2: print capability matrix link "docs/CLAUDE_DESKTOP.md"
+#   A3: enter the skills branch (proven by "No TTY available for skills TUI")
+#   A4: export TK_SKILLS_HOME to plugins/tk-skills tree (proven via explicit-mode
+#       banner printed by --skills-only --yes --dry-run)
+#   A5: explicit --skills-only mode info banner mentions plugins/tk-skills path
+# ─────────────────────────────────────────────────
+run_s10_desktop_auto_skills_only_routing() {
+    local SANDBOX FAKE_PATH TTY_FIXTURE
+    SANDBOX="$(mktemp -d /tmp/test-install-tui-s10.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+
+    # FAKE_PATH has no 'claude' binary — triggers DESK-03 auto-route.
+    FAKE_PATH="$(mktemp -d /tmp/test-install-tui-s10-path.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}' '${FAKE_PATH:?}'" RETURN
+
+    # Non-existent TTY path: skills branch sees ! -r → prints "No TTY available"
+    # and exits 0. This proves the DESK-03 banner fires BEFORE the TUI TTY check.
+    # (A readable empty file would pass -r and try tui_checklist → /dev/tty errors.)
+    TTY_FIXTURE="$SANDBOX/no-such-tty"
+
+    echo "  -- S10_desktop_auto_skills_only_routing: CLI absent + no flags → auto-route to skills-only (DESK-03) --"
+
+    # A1 + A2 + A3: auto-route path (no --yes; no explicit flags; no claude on PATH).
+    # Keep /usr/bin:/bin so bash/dirname/mktemp remain available; FAKE_PATH first
+    # ensures no real 'claude' binary is visible (mirrors S1-S9 PATH pattern).
+    local OUT1
+    OUT1=$(PATH="$FAKE_PATH:/usr/bin:/bin" \
+           HOME="$SANDBOX" \
+           TK_TUI_TTY_SRC="$TTY_FIXTURE" \
+           TK_SKILLS_MIRROR_PATH="$REPO_ROOT/templates/skills-marketplace" \
+           bash "$REPO_ROOT/scripts/install.sh" 2>&1 || true)
+
+    assert_contains "Claude CLI not detected" "$OUT1" \
+        "S10/A1: auto-route banner printed when claude CLI absent"
+    assert_contains "docs/CLAUDE_DESKTOP.md" "$OUT1" \
+        "S10/A2: capability matrix link in auto-route banner"
+    assert_contains "No TTY available for skills TUI" "$OUT1" \
+        "S10/A3: skills branch entered (auto-route proof)"
+
+    # A4 + A5: explicit --skills-only --yes --dry-run → info banner + plugins path.
+    local OUT2
+    OUT2=$(PATH="$FAKE_PATH:/usr/bin:/bin" \
+           HOME="$SANDBOX" \
+           TK_SKILLS_MIRROR_PATH="$REPO_ROOT/templates/skills-marketplace" \
+           bash "$REPO_ROOT/scripts/install.sh" --skills-only --yes --dry-run 2>&1 || true)
+
+    assert_contains "plugins/tk-skills" "$OUT2" \
+        "S10/A4: explicit --skills-only info banner references plugins/tk-skills path"
+    assert_contains "skills-only mode" "$OUT2" \
+        "S10/A5: --skills-only mode banner present in explicit invocation"
+}
+
 run_s1_detect
 run_s2_detect
 run_s3_yes
@@ -527,6 +585,7 @@ run_s6_fail_fast
 run_s7_no_tty
 run_s8_stderr_tail
 run_s9_no_tty_bootstrap_fork
+run_s10_desktop_auto_skills_only_routing
 
 echo ""
 echo "test-install-tui complete: PASS=$PASS FAIL=$FAIL"
