@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector
 
 # Default target
 help:
@@ -153,6 +153,9 @@ test:
 	@echo "Test 31: TUI install orchestrator + dispatch scenarios (TUI-01..09)"
 	@bash scripts/tests/test-install-tui.sh
 	@echo ""
+	@echo "Test 32: MCP catalog + wizard + secrets handling (MCP-01..05, MCP-SEC-01..02)"
+	@bash scripts/tests/test-mcp-selector.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -166,6 +169,10 @@ test-uninstall-keep-state:
 # Test 31 — TUI install orchestrator + dispatch scenarios (TUI-01..09), invokable standalone
 test-install-tui:
 	@bash scripts/tests/test-install-tui.sh
+
+# Test 32 — MCP catalog + wizard + secrets (MCP-01..05, MCP-SEC-01..02), invokable standalone
+test-mcp-selector:
+	@bash scripts/tests/test-mcp-selector.sh
 
 # Validate templates (check core audit prompts for self-check sections)
 validate:

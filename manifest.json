@@ -242,6 +242,12 @@
         "path": "scripts/lib/install.sh"
       },
       {
+        "path": "scripts/lib/mcp-catalog.json"
+      },
+      {
+        "path": "scripts/lib/mcp.sh"
+      },
+      {
         "path": "scripts/lib/optional-plugins.sh"
       },
       {
