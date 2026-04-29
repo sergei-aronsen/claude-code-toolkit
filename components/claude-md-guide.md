@@ -97,7 +97,7 @@ Every 100 lines in CLAUDE.md costs ~1,500 tokens per message. At 500 combined li
 
 ## Communication
 - Respond in Russian unless project requires otherwise
-- All code, commits, and documentation in English
+- All code, commits, documentation, and public GitHub content (PR titles/bodies, issue comments, code reviews, release notes) in English — chat replies can stay in your language; once content lands on github.com, switch to English
 
 ## Architecture
 - KISS: simplest working solution
