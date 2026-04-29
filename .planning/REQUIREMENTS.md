@@ -76,7 +76,7 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 - [ ] **DESK-01**: `docs/CLAUDE_DESKTOP.md` documents the capability matrix: Claude Desktop Code tab has full plugin runtime parity with terminal Claude Code; Desktop Chat tab has no plugin system; remote (cloud-hosted) Code sessions block plugins per Anthropic docs. Marketplace is the only Desktop install channel (`/plugin marketplace add ./local-dir` is blocked).
 - [x] **DESK-02**: `scripts/validate-skills-desktop.sh` scans `templates/skills-marketplace/*/SKILL.md` for Code-only assumptions (Bash code blocks that *require* execution by the agent, references to `Read`/`Bash`/`Write` tools as required dependencies). Output: per-skill PASS/FLAG verdict. Wired into `make check`.
-- [ ] **DESK-03**: `scripts/install.sh` detects Desktop-only users (no `claude` CLI on PATH) and routes to `--skills-only` branch that places skills under `~/.claude/plugins/tk-skills/` (instead of project `.claude/`). Surfaces a one-liner explaining the limitation.
+- [x] **DESK-03**: `scripts/install.sh` detects Desktop-only users (no `claude` CLI on PATH) and routes to `--skills-only` branch that places skills under `~/.claude/plugins/tk-skills/` (instead of project `.claude/`). Surfaces a one-liner explaining the limitation.
 - [x] **DESK-04**: Skill audit gate fails Phase 27 if fewer than 4 skills pass `validate-skills-desktop.sh`. Below that threshold, `tk-skills` sub-plugin scope rebalances toward instruction-only (zero-tool) skills.
 
 ## Future Requirements
