@@ -101,50 +101,45 @@ else
         } >> "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Security rules appended to existing CLAUDE.md"
     else
-        # File exists with security rules — merge missing sections
-        echo -e "  Checking for new sections..."
-        ADDED=0
+        # File exists with security rules — write the latest template alongside
+        # as CLAUDE.md.security.new and let the user reconcile manually.
+        #
+        # Why not auto-merge? The previous "smart-merge" anchored on `^## N.`
+        # section headers and only appended sections whose number was missing
+        # from the current file. Failure modes:
+        #   - Upstream renames "## 5. CRYPTO" → "## 5. CRYPTOGRAPHY":
+        #     local has neither updated; old text persists, new text never
+        #     applied (number 5 still matches local).
+        #   - Upstream renumbers (5→6): local gets duplicate section.
+        #   - Upstream removes a section: orphaned in local forever.
+        #   - Section without leading number: silently ignored.
+        # The audit C-09 fix (anchor `^## N. ` to stop `## 1.` matching `## 12.`)
+        # patched one symptom but the whole pattern is brittle. update-claude.sh
+        # already chose the .new approach for project CLAUDE.md (Council pass:
+        # Skeptic + Pragmatist) — apply the same here.
+        SECURITY_NEW="${CLAUDE_MD}.security.new"
+        SECURITY_TMP=$(mktemp "${TMPDIR:-/tmp}/security.XXXXXX")
+        printf '%s\n' "$SECURITY_CONTENT" > "$SECURITY_TMP"
 
-        # Extract section headers from the latest template (## N. TITLE).
-        # ERE for portability: BSD grep doesn't reliably support \+ in BRE.
-        SECTIONS=$(echo "$SECURITY_CONTENT" | grep -nE '^## [0-9]+\.' || true)
-
-        while IFS= read -r line; do
-            [[ -z "$line" ]] && continue
-            LINE_NUM=$(echo "$line" | cut -d: -f1)
-            HEADER=$(echo "$line" | cut -d: -f2-)
-            # Extract section number for matching (e.g., "## 12." from "## 12. API SECURITY")
-            SECTION_NUM=$(echo "$HEADER" | grep -oE '## [0-9]+\.' || true)
-
-            # Audit C-09: anchor with `^... ` — without anchoring, `## 1.`
-            # matches inside `## 12.`, `## 13.`, etc., so sections 10-19
-            # are wrongly reported "already present" and skipped.
-            if [[ -n "$SECTION_NUM" ]] && ! grep -qE "^${SECTION_NUM} " "$CLAUDE_MD" 2>/dev/null; then
-                # This section is missing — extract it from the template
-                # Find the next section header or end of file
-                NEXT_LINE=$(echo "$SECURITY_CONTENT" | tail -n +"$((LINE_NUM + 1))" | grep -nE '^## [0-9]+\.' | head -1 | cut -d: -f1)
-
-                if [[ -n "$NEXT_LINE" ]]; then
-                    SECTION_BODY=$(echo "$SECURITY_CONTENT" | sed -n "${LINE_NUM},$((LINE_NUM + NEXT_LINE - 2))p")
-                else
-                    SECTION_BODY=$(echo "$SECURITY_CONTENT" | tail -n +"$LINE_NUM")
-                fi
-
-                {
-                    echo ""
-                    echo "$SECTION_BODY"
-                } >> "$CLAUDE_MD"
-                SECTION_TITLE="${HEADER//## /}"
-                echo -e "  ${GREEN}+${NC} Added: $SECTION_TITLE"
-                ADDED=$((ADDED + 1))
-            fi
-        done <<< "$SECTIONS"
-
-        if [[ $ADDED -eq 0 ]]; then
-            echo -e "  ${GREEN}✓${NC} All sections up to date"
+        if cmp -s "$SECURITY_TMP" "$CLAUDE_MD" 2>/dev/null; then
+            # User has already merged the upstream template — silent.
+            rm -f "$SECURITY_TMP" "$SECURITY_NEW"
+            echo -e "  ${GREEN}✓${NC} Security rules already match upstream"
         else
-            echo -e "  ${GREEN}✓${NC} Added $ADDED new section(s), existing sections preserved"
+            # Don't clobber an in-progress .new from a previous run; version it.
+            if [[ -f "$SECURITY_NEW" ]] && ! cmp -s "$SECURITY_NEW" "$SECURITY_TMP" 2>/dev/null; then
+                NEW_STAMP=$(date -u +%s)
+                mv "$SECURITY_NEW" "${SECURITY_NEW}.${NEW_STAMP}"
+                echo -e "  ${YELLOW}⚠${NC} Preserved prior reconciliation as ${SECURITY_NEW}.${NEW_STAMP}"
+            fi
+            mv "$SECURITY_TMP" "$SECURITY_NEW"
+            echo -e "  ${YELLOW}⚠${NC} CLAUDE.md differs from upstream security template"
+            echo -e "       Wrote $SECURITY_NEW alongside your file."
+            echo -e "       Diff:  diff -u \"$CLAUDE_MD\" \"$SECURITY_NEW\""
+            echo -e "       Apply: mv \"$SECURITY_NEW\" \"$CLAUDE_MD\""
+            echo -e "       (or merge selectively — global CLAUDE.md is yours, not TK-managed)"
         fi
+        rm -f "$SECURITY_TMP"
     fi
 fi
 

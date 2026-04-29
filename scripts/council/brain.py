@@ -547,9 +547,24 @@ def get_git_diff():
     return result
 
 
+def find_project_root():
+    """Resolve the project root: nearest ancestor containing .git/, falling back to cwd.
+
+    Council was previously fixed at Path.cwd() so running `brain "..."` from
+    a subdirectory (e.g. ./src/components/) silently missed the project's
+    CLAUDE.md. Walking up to .git/ finds the same root that git tools use,
+    which is what users expect when they think "project rules".
+    """
+    cwd = Path.cwd().resolve()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return cwd
+
+
 def get_project_rules():
     """Read CLAUDE.md from project root if it exists."""
-    claude_md = Path.cwd() / "CLAUDE.md"
+    claude_md = find_project_root() / "CLAUDE.md"
     if not claude_md.exists():
         return ""
     try:
@@ -582,10 +597,15 @@ def ask_gemini_api(prompt, model, api_key, config=None):
     if not api_key:
         return "Error: Gemini API key not set (check config or GEMINI_API_KEY env)"
 
-    # Note: Gemini API requires key in URL query parameter (Google API design).
-    # The key may appear in server/proxy logs. Use env vars and rotate keys regularly.
+    # Audit BRAIN-H4 (Gemini parity, 2026-04-28): write the API key to a 0600
+    # tempfile and pass via `-H @file` so it never appears in `ps aux` /
+    # /proc/<pid>/cmdline. Previously the key was inlined into the URL query
+    # (?key=...) per Google's older docs — that exposed it in the curl argv to
+    # any other user on a multi-user box or shared CI runner. The v1beta API
+    # also accepts the `x-goog-api-key` header, which keeps the key off the
+    # process command line. The ChatGPT path already uses this pattern.
     url = (f"https://generativelanguage.googleapis.com/v1beta/"
-           f"models/{model}:generateContent?key={api_key}")
+           f"models/{model}:generateContent")
 
     payload = {
         "contents": [{
@@ -601,20 +621,35 @@ def ask_gemini_api(prompt, model, api_key, config=None):
     # disk between processes — `finally` doesn't run on SIGKILL, so a hard
     # interrupt would leak tempfiles in /tmp.
     body = json.dumps(payload, ensure_ascii=False)
-    result = run_command([
-        "curl", "-s",
-        "-H", "Content-Type: application/json",
-        "-H", f"User-Agent: {USER_AGENT}",
-        "--data-binary", "@-",
-        url
-    ], input_text=body, timeout=120)
 
+    hdr = tempfile.NamedTemporaryFile(
+        mode="w", delete=False, prefix="council_gemini_hdr_", suffix=".txt"
+    )
     try:
-        data = json.loads(result)
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except (json.JSONDecodeError, KeyError, IndexError):
-        error = f"Gemini API error: {result[:500]}"
-        return sanitize_error(error, config) if config else error
+        os.chmod(hdr.name, 0o600)
+        hdr.write(
+            f"Content-Type: application/json\n"
+            f"User-Agent: {USER_AGENT}\n"
+            f"x-goog-api-key: {api_key}\n"
+        )
+        hdr.close()
+
+        result = run_command([
+            "curl", "-s",
+            "-H", f"@{hdr.name}",
+            "--data-binary", "@-",
+            url
+        ], input_text=body, timeout=120)
+
+        try:
+            data = json.loads(result)
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (json.JSONDecodeError, KeyError, IndexError):
+            error = f"Gemini API error: {result[:500]}"
+            return sanitize_error(error, config) if config else error
+    finally:
+        if os.path.exists(hdr.name):
+            os.unlink(hdr.name)
 
 
 def ask_gemini(prompt, config, file_paths=None):

@@ -110,8 +110,13 @@ if [[ "$MANIFEST_VER" != "2" ]]; then
     exit 1
 fi
 
-# ───────── CLAUDE_DIR / STATE_FILE / LOCK_DIR override for test seams ─────────
-CLAUDE_DIR="$HOME/.claude"
+# ───────── CLAUDE_DIR / STATE_FILE / LOCK_DIR (per-project, with test seam) ─────────
+# TK installs to ./.claude/ per project (init-claude.sh / update-claude.sh /
+# uninstall.sh all use the per-project path). Migration runs from the project
+# root, so duplicates and state must be looked up there too.
+# Previous default $HOME/.claude was wrong: TK never installs to the user
+# home, so migrate enumerated zero duplicates regardless of project state.
+CLAUDE_DIR="$(pwd)/.claude"
 if [[ -n "${TK_MIGRATE_HOME:-}" ]]; then
     CLAUDE_DIR="$TK_MIGRATE_HOME/.claude"
 fi

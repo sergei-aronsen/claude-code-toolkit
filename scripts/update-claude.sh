@@ -254,10 +254,23 @@ detect_framework() {
 # synthesize_v3_state <manifest_path>
 # D-50: scan $CLAUDE_DIR for manifest-declared files, build installed_csv of absolute paths,
 # call lib/state.sh::write_state. Prints ONE info line explaining the synthesis.
+#
+# Mode policy: v3.x had no install modes — every file in the manifest was
+# installed unconditionally, which is functionally equivalent to mode=standalone.
+# Earlier revisions called recommend_mode() and silently picked complement-sp/
+# complement-gsd/complement-full based on currently-detected base plugins. That
+# meant a v3.x user who had since installed SP would have their mode switched
+# from standalone -> complement-sp without any prompt, and the downstream
+# mode-switch detection (which only fires when STATE_MODE != RECOMMENDED) would
+# pass clean because the synthesized mode already equals the recommendation.
+# Synthesizing with the actual historical mode (standalone) lets that detection
+# block surface the drift and ask the user before removing files.
 synthesize_v3_state() {
     local manifest_file="$1"
-    local mode installed_csv=""
-    mode=$(recommend_mode)
+    local installed_csv=""
+    local mode="standalone"
+    local recommended
+    recommended=$(recommend_mode)
     while IFS= read -r path; do
         if [[ -f "$CLAUDE_DIR/$path" ]]; then
             if [[ -n "$installed_csv" ]]; then installed_csv+=","; fi
@@ -265,6 +278,9 @@ synthesize_v3_state() {
         fi
     done < <(jq -r '.files | to_entries[] | .value[] | .path' "$manifest_file")
     log_info "First update after v3.x — synthesized install state from filesystem (mode=$mode)."
+    if [[ "$recommended" != "$mode" ]]; then
+        log_info "Detected $recommended would be recommended; the mode-switch prompt below will offer a migration."
+    fi
     write_state "$mode" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$installed_csv" "" "true"
 }
 
@@ -890,6 +906,23 @@ with open(dst, "wb") as f:
 PYEOF
 }
 
+# prune_claude_md_new_versions — bound the .new.<ts> reconciliation history.
+# A user who never reconciles otherwise accumulates one .new.<epoch> file per
+# update (versioned by Council pass B above to avoid clobbering an in-progress
+# reconcile). Keep the 3 newest by mtime, drop the rest.
+# Glob ${CLAUDE_MD_NEW_FILE}.[0-9]* anchors on the digit-first suffix so we
+# never touch a hand-named foo.new.bak or similar. ls -1t works on BSD + GNU.
+prune_claude_md_new_versions() {
+    local kept=0 f
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        kept=$((kept + 1))
+        if [[ $kept -gt 3 ]]; then
+            rm -f "$f" && log_info "Pruned stale reconciliation: $f"
+        fi
+    done < <(ls -1t "${CLAUDE_MD_NEW_FILE}".[0-9]* 2>/dev/null)
+}
+
 if [[ -n "$CLAUDE_MD_TMP" ]]; then
     if [[ ! -f "$CLAUDE_MD" ]]; then
         # First install — no existing file to preserve.
@@ -903,8 +936,12 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
         if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
            && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
            && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
-            # Unchanged — clear any stale .new from a previous run and stay quiet.
+            # Unchanged — clear any stale .new and any timestamped versions.
+            # User accepted upstream; old reconciliation drafts are now noise.
             rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
+            for f in "${CLAUDE_MD_NEW_FILE}".[0-9]*; do
+                [[ -f "$f" ]] && rm -f "$f"
+            done
             log_info "CLAUDE.md already matches latest template"
         else
             # Council pass B: don't clobber an existing .new that the user may
@@ -914,6 +951,7 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
                 NEW_STAMP=$(date -u +%s)
                 mv "$CLAUDE_MD_NEW_FILE" "${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
                 log_warning "Preserved prior reconciliation as ${CLAUDE_MD_NEW_FILE}.${NEW_STAMP}"
+                prune_claude_md_new_versions
             fi
             mv "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
             log_warning "CLAUDE.md differs from upstream — wrote $CLAUDE_MD_NEW_FILE"

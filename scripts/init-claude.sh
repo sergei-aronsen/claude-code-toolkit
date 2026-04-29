@@ -63,17 +63,43 @@ FORCE="${FORCE:-false}"
 FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
 NO_BOOTSTRAP="${NO_BOOTSTRAP:-false}"
 
+# Per-project state file (matches init-local.sh:68 / update-claude.sh:126 pattern).
+# state.sh defaults STATE_FILE/LOCK_DIR to $HOME — re-assert here so D-41/D-42
+# checks below and the eventual write_state target the project, not the user
+# home. Re-asserted again after source state.sh inside download_files() because
+# `source` overwrites these defaults.
+# shellcheck disable=SC2034  # consumed by D-41/D-42 checks below + write_state in lib/state.sh
+STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+# shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
+LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
+
 # ─────────────────────────────────────────────────
 # Phase 3 — DETECT-05 wiring (D-30, D-31)
 # Source detect.sh and lib/install.sh from the remote repo into temp files.
 # trap registered BEFORE curl so a failed download still cleans up the empty tmp file.
+#
+# Cleanup is centralized: tmp paths accrete into CLEANUP_PATHS and the EXIT
+# trap calls run_cleanup. Earlier revisions re-registered the trap inline with
+# the full path list every time a new mktemp was added — easy to forget a path
+# (audit history: LIB_BOOTSTRAP_TMP was missed in two later trap rewrites and
+# leaked into /tmp on every install). NEED_LOCK_RELEASE flips to true once
+# acquire_lock has succeeded so SIGINT mid-install always releases cleanly.
 # ─────────────────────────────────────────────────
-DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX")
-LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
-LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX")
-LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX")
-LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP"' EXIT
+CLEANUP_PATHS=()
+NEED_LOCK_RELEASE=false
+run_cleanup() {
+    if [[ "$NEED_LOCK_RELEASE" == "true" ]]; then
+        release_lock 2>/dev/null || true
+    fi
+    [[ ${#CLEANUP_PATHS[@]} -gt 0 ]] && rm -f "${CLEANUP_PATHS[@]}"
+}
+trap 'run_cleanup' EXIT
+
+DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX");                 CLEANUP_PATHS+=("$DETECT_TMP")
+LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX");       CLEANUP_PATHS+=("$LIB_INSTALL_TMP")
+LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX");    CLEANUP_PATHS+=("$LIB_DRO_TMP")
+LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX"); CLEANUP_PATHS+=("$LIB_OPTIONAL_PLUGINS_TMP")
+LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
 
 if ! curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
@@ -121,8 +147,7 @@ fi
 # Manifest version guard (Phase 2 D-01 — hard-fail on schema mismatch). Uses manifest_version
 # field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
 # manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
-MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BOOTSTRAP_TMP" "$MANIFEST_TMP"' EXIT
+MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX");             CLEANUP_PATHS+=("$MANIFEST_TMP")
 if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
     echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
     exit 1
@@ -146,22 +171,24 @@ if [[ -n "$MODE" ]]; then
     fi
 fi
 
-# D-41: re-run delegation. If toolkit-install.json exists and --force absent,
-# print delegation message and exit 0. --force bypasses for intentional re-installs.
-if [[ -f "$HOME/.claude/toolkit-install.json" ]] && [[ "$FORCE" != "true" ]]; then
-    echo "Install already present at ~/.claude/. Use 'update-claude.sh' to refresh or 'init-claude.sh --force' to reinstall."
+# D-41: re-run delegation. If per-project state file exists and --force absent,
+# redirect user to update-claude.sh. --force bypasses for intentional re-installs.
+# Per-project semantics (matches init-local.sh): a fresh install in a different
+# project is NOT blocked by an install in another project.
+if [[ -f "$STATE_FILE" ]] && [[ "$FORCE" != "true" ]]; then
+    echo "Install already present (state: $STATE_FILE). Use 'update-claude.sh' to refresh or 'init-claude.sh --force' to reinstall."
     exit 0
 fi
 
 # D-42: mode-change prompt. Fires only when re-installing (--force) with explicit --mode
 # that differs from the recorded mode. --force-mode-change skips the prompt entirely.
 # Under curl|bash without /dev/tty, fails closed (exits 0 without changes).
-if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$HOME/.claude/toolkit-install.json" ]]; then
-    RECORDED_MODE=$(jq -r '.mode // ""' "$HOME/.claude/toolkit-install.json" 2>/dev/null || echo "")
+if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$STATE_FILE" ]]; then
+    RECORDED_MODE=$(jq -r '.mode // ""' "$STATE_FILE" 2>/dev/null || echo "")
     if [[ -n "$RECORDED_MODE" ]] && [[ "$RECORDED_MODE" != "$MODE" ]]; then
         if [[ "$FORCE_MODE_CHANGE" == "true" ]]; then
             echo "Switching mode: $RECORDED_MODE -> $MODE (--force-mode-change)"
-            cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+            cp "$STATE_FILE" "${STATE_FILE}.bak.$(date +%s)"
         else
             mc_choice=""
             if ! read -r -p "Switching $RECORDED_MODE -> $MODE will rewrite the install. Backup current state and proceed? [y/N]: " mc_choice < /dev/tty 2>/dev/null; then
@@ -169,7 +196,7 @@ if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f "$HOME/.claude/toolkit-
             fi
             case "${mc_choice:-N}" in
                 y|Y)
-                    cp "$HOME/.claude/toolkit-install.json" "$HOME/.claude/toolkit-install.json.bak.$(date +%s)"
+                    cp "$STATE_FILE" "${STATE_FILE}.bak.$(date +%s)"
                     ;;
                 *)
                     echo "Aborted. Pass --force-mode-change to bypass the prompt under curl|bash."
@@ -436,17 +463,27 @@ download_files() {
         exit 0
     fi
 
-    # Source lib/state.sh into a temp file (needed for write_state / acquire_lock)
-    LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX")
-    trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    # Source lib/state.sh into a temp file (needed for write_state / acquire_lock).
+    # CLEANUP_PATHS extension is enough — run_cleanup picks up the new path on
+    # next EXIT trap fire.
+    LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_STATE_TMP")
     if ! curl -sSLf "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
         echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
         exit 1
     fi
     # shellcheck source=/dev/null
     source "$LIB_STATE_TMP"
-    trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_DRO_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$MANIFEST_TMP" "$LIB_STATE_TMP"' EXIT
+    # Re-assert per-project STATE_FILE/LOCK_DIR — state.sh defaults to $HOME and
+    # `source` overwrites the top-of-file assignment. Without this, write_state
+    # below targets ~/.claude/toolkit-install.json while update-claude.sh reads
+    # ./.claude/toolkit-install.json — first update would never see the install
+    # state and would synthesize from filesystem on every run.
+    # shellcheck disable=SC2034  # STATE_FILE consumed by write_state in lib/state.sh
+    STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+    # shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
+    LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
     acquire_lock || exit 1
+    NEED_LOCK_RELEASE=true
 
     # Iterate manifest.files.* — download all entries NOT in skip-list
     local path bucket skip reason full_dest full_url
@@ -489,6 +526,10 @@ download_files() {
     SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
     write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
     release_lock
+    # Explicit release succeeded — flip flag off so run_cleanup does not call
+    # release_lock again on EXIT (release_lock itself is idempotent, but the
+    # flag also gates `release_lock 2>/dev/null || true` semantics).
+    NEED_LOCK_RELEASE=false
 }
 
 # Create .gitignore

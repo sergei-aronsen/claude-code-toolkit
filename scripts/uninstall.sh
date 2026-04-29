@@ -127,16 +127,21 @@ else
     NC=''
 fi
 
-# ───────── CLAUDE_DIR / STATE_FILE / LOCK_DIR override for test seam ─────────
+# ───────── CLAUDE_DIR / STATE_FILE / LOCK_DIR (per-project, with test seam) ─────────
+# Mirror update-claude.sh:126 / init-local.sh:68 pattern: STATE_FILE always points
+# at the per-project location so a fresh `init-claude.sh` install (which now also
+# writes per-project state) and a subsequent `uninstall.sh` agree on the path.
+# Previously this block only overrode STATE_FILE/LOCK_DIR under TK_UNINSTALL_HOME
+# (test seam) and otherwise inherited state.sh's $HOME defaults — leaving uninstall
+# reading a global record that update-claude.sh never touches.
 CLAUDE_DIR="$(pwd)/.claude"
 if [[ -n "${TK_UNINSTALL_HOME:-}" ]]; then
     CLAUDE_DIR="$TK_UNINSTALL_HOME/.claude"
-    STATE_FILE="$TK_UNINSTALL_HOME/.claude/toolkit-install.json"
-    # LOCK_DIR is defined as a global by lib/state.sh at source time; override
-    # it here so acquire_lock uses the sandbox path during tests.
-    # shellcheck disable=SC2034  # consumed by acquire_lock in lib/state.sh
-    LOCK_DIR="$TK_UNINSTALL_HOME/.claude/.toolkit-install.lock"
 fi
+# shellcheck disable=SC2034  # STATE_FILE consumed by read_state in lib/state.sh
+STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+# shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
+LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
 # shellcheck disable=SC2034  # PROJECT_DIR referenced by helpers in 18-03/04
 PROJECT_DIR="$(dirname "$CLAUDE_DIR")"
 
