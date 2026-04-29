@@ -5,6 +5,115 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.0] - 2026-04-29
+
+### Added — Multi-CLI Bridge
+
+- **CLI detection** (`scripts/lib/detect2.sh`) — BRIDGE-DET-01, BRIDGE-DET-02,
+  BRIDGE-DET-03: Phase 28. `is_gemini_installed` and `is_codex_installed` probes
+  added alongside the existing 6 binary probes from v4.6 Phase 24. Both return
+  0/1 binary, fail-soft via `command -v <cli>` with `[ -d ~/.gemini/ ]` /
+  `[ -d ~/.codex/ ]` as soft cross-check. `detect2_cache` exports `IS_GEM` and
+  `IS_COD`.
+
+- **Bridge generation library** (`scripts/lib/bridges.sh`, 467 lines) —
+  BRIDGE-GEN-01, BRIDGE-GEN-02, BRIDGE-GEN-03, BRIDGE-GEN-04: Phase 28.
+  `bridge_create_project <target>` writes
+  `<project>/GEMINI.md` (gemini) or `<project>/AGENTS.md` (codex) — note this
+  is the OpenAI standard, NOT `CODEX.md`. `bridge_create_global <target>` writes
+  `~/.gemini/GEMINI.md` / `~/.codex/AGENTS.md` and never touches the canonical
+  `CLAUDE.md`. Auto-generated header banner is byte-identical across all
+  bridges. Each bridge registers in `~/.claude/toolkit-install.json::bridges[]`
+  with `target`, `path`, `scope`, `source_sha256`, `bridge_sha256`,
+  `user_owned: false`. Atomic state writes via `tempfile.mkstemp + os.replace`.
+
+- **Sync on update** (`scripts/update-claude.sh`) — BRIDGE-SYNC-01, BRIDGE-SYNC-02,
+  BRIDGE-SYNC-03: Phase 29.
+  `sync_bridges()` iterates `bridges[]` from state file. Source-drift detection
+  (recorded `source_sha256` differs from current) triggers re-copy and SHA
+  refresh, logging `[~ UPDATE] GEMINI.md`. Bridge-drift detection (user edited
+  the bridge file) triggers `[y/N/d]` prompt with default `N`; `d` shows diff
+  and re-prompts (mirrors v4.3 UN-03 contract). Orphaned source (CLAUDE.md
+  deleted) logs `[? ORPHANED]` and auto-flips `user_owned: true`.
+
+- **Break/restore bridges** (`scripts/update-claude.sh`) — BRIDGE-SYNC-02:
+  Phase 29. `--break-bridge <target>` flips `user_owned: true` for the named
+  bridge; subsequent updates skip it with `[- SKIP]`. `--restore-bridge <target>`
+  reverses the flag and resumes sync on next update.
+
+- **Uninstall integration** (`scripts/uninstall.sh`) — BRIDGE-UN-01, BRIDGE-UN-02:
+  Phase 29. Bridges from `bridges[]` are classified via `classify_bridge_file`
+  helper: clean → REMOVE_LIST; user-modified → MODIFIED_LIST with v4.3 `[y/N/d]`
+  prompt. `is_protected_path` correctly bypassed for bridges. `--keep-state`
+  (v4.4 KEEP-01) preserves `bridges[]` entries alongside the rest of
+  toolkit-install.json — no special-case handling needed.
+
+- **Install-time UX** (`scripts/install.sh`, `scripts/init-claude.sh`,
+  `scripts/init-local.sh`) — BRIDGE-UX-01, BRIDGE-UX-02, BRIDGE-UX-03,
+  BRIDGE-UX-04: Phase 30. The unified TUI
+  (`install.sh`) shows conditional `gemini-bridge` / `codex-bridge` rows in
+  the Components page when the corresponding CLI is detected; rows hidden
+  otherwise. `init-claude.sh` and `init-local.sh` post-install per-CLI prompt
+  defaulting `Y`, fail-closed `N` on no-TTY (CI / piped install). All 3 entry
+  points support `--no-bridges` / `TK_NO_BRIDGES=1` (skip) and `--bridges
+  gemini,codex` (force-create non-interactively). With `--fail-fast`, absent
+  CLI exits 1; without, warns and continues.
+
+- **Multi-CLI bridge documentation** (`docs/BRIDGES.md`, `docs/INSTALL.md`,
+  `README.md`) — BRIDGE-DOCS-01, BRIDGE-DOCS-02: Phase 31. New `docs/BRIDGES.md` documents
+  supported CLIs (Gemini → `GEMINI.md`, OpenAI Codex → `AGENTS.md`),
+  plain-copy semantics, drift handling, opt-out (`--no-bridges`,
+  `--break-bridge`, `--restore-bridge`), force-create (`--bridges <list>`),
+  symlink-vs-copy rationale, uninstall behaviour, future scope. `INSTALL.md`
+  Installer Flags table extended with 4 new flag rows. `README.md` Killer
+  Features grid mentions multi-CLI bridges.
+
+- **Manifest registration** (`manifest.json`) — BRIDGE-DIST-01: Phase 31.
+  `scripts/lib/bridges.sh` added to `files.libs[]` (alphabetized between
+  `bootstrap.sh` and `cli-recommendations.sh`). Auto-discovered by
+  `update-claude.sh` via the v4.4 LIB-01 D-07 jq path with zero code changes.
+
+### Changed
+
+- **`write_state` arity extended** (`scripts/lib/state.sh`) — Phase 29 D-29-01
+  backward-compatible 10-arg variant accepts `bridges_json` as the 10th
+  positional. Existing 9-arg callers (`init-claude.sh`, `update-claude.sh`,
+  `install.sh`) work unchanged via Bash positional-default semantics.
+  `init-local.sh` and `migrate-to-complement.sh` updated to pass the 10th arg.
+
+- **Manifest version** bumped from 4.6.0 to 4.7.0. All 3 plugin manifests
+  (`tk-skills`, `tk-commands`, `tk-framework-rules`) bumped in lock-step.
+
+### Fixed
+
+- **Phase 29 WR-01** — uninstall `[y/N/d]` bypass for user-modified bridges
+  fixed by routing through existing v4.3 prompt path instead of skipping.
+
+- **Phase 29 WR-02** — state file path mismatch in test fixtures (was using
+  `STATE_FILE_HOME` instead of `TK_BRIDGE_HOME`) corrected; all hermetic tests
+  now run in fully isolated sandboxes.
+
+- **Phase 30 WR-01** — silent `--bridges <list>` failure when named CLI absent
+  without `--fail-fast` now prints a warning to stderr and continues.
+
+### Tests
+
+- 3 new hermetic suites totalling 50 assertions:
+  - `scripts/tests/test-bridges-foundation.sh` (5 assertions, Phase 28)
+  - `scripts/tests/test-bridges-sync.sh` (25 assertions, Phase 29)
+  - `scripts/tests/test-bridges-install-ux.sh` (20 assertions, Phase 30)
+- `scripts/tests/test-bridges.sh` (NEW) — aggregator wrapping the 3 suites
+  with a single PASS/FAIL summary; wired into CI (`quality.yml`
+  test-init-script job).
+
+### Compatibility
+
+- BACKCOMPAT-01 preserved across all v4.6 baselines:
+  - `test-bootstrap.sh` PASS=26 unchanged
+  - `test-install-tui.sh` PASS=43 unchanged
+  - All 7 v4.3 uninstall-suite tests unchanged
+  - All v4.6 MCP / Skills / Marketplace tests unchanged
+
 ## [4.6.0] - 2026-04-29
 
 ### Added
