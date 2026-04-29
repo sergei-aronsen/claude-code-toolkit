@@ -660,7 +660,8 @@ _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
 if [[ "$YES" -eq 1 ]]; then
     # --yes default-set per D-12: all uninstalled in canonical order.
     # Already-installed: skip (D-13) — unless --force.
-    for i in 0 1 2 3 4 5; do
+    _tui_count=${#TUI_LABELS[@]}
+    for ((i=0; i<_tui_count; i++)); do
         if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
             TUI_RESULTS[$i]=0
         else
@@ -678,7 +679,8 @@ elif [[ -r "$_install_tty_src" ]]; then
     SELECTION_RC=$?
     # Count selected.
     local_selected=0
-    for i in 0 1 2 3 4 5; do
+    _tui_count=${#TUI_LABELS[@]}
+    for ((i=0; i<_tui_count; i++)); do
         [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]] && local_selected=$((local_selected + 1))
     done
     # Confirmation prompt (TUI-05). Default N.
@@ -748,9 +750,52 @@ else
     # Print a minimal summary so the user sees the SP/GSD outcome reflected.
     # Build empty TUI_RESULTS so the dispatch loop treats every TK component
     # as 'skipped' (unselected) rather than crashing on undefined indices.
-    for i in 0 1 2 3 4 5; do
+    _tui_count=${#TUI_LABELS[@]}
+    for ((i=0; i<_tui_count; i++)); do
         TUI_RESULTS[$i]=0
     done
+fi
+
+# BRIDGE-UX-04: --bridges <list> force-selects bridge rows after default-set/TUI.
+# Runs unconditionally because mutex with --no-bridges is checked at argv parse time
+# (BRIDGES_FORCE is empty when --no-bridges is set).
+if [[ -n "$BRIDGES_FORCE" ]]; then
+    _force_count=${#TUI_LABELS[@]}
+    for ((_fi=0; _fi<_force_count; _fi++)); do
+        case "${TUI_LABELS[$_fi]}" in
+            gemini-bridge)
+                if _bridge_match gemini "$BRIDGES_FORCE"; then
+                    TUI_RESULTS[$_fi]=1
+                fi
+                ;;
+            codex-bridge)
+                if _bridge_match codex "$BRIDGES_FORCE"; then
+                    TUI_RESULTS[$_fi]=1
+                fi
+                ;;
+        esac
+    done
+    unset _force_count _fi
+fi
+
+# BRIDGE-UX-04 fail-fast: warn (or exit 1 under --fail-fast) on absent CLIs in BRIDGES_FORCE.
+if [[ -n "$BRIDGES_FORCE" ]]; then
+    _missing=""
+    if _bridge_match gemini "$BRIDGES_FORCE" && [[ "${IS_GEM:-0}" -ne 1 ]]; then
+        _missing="${_missing}${_missing:+, }gemini"
+    fi
+    if _bridge_match codex "$BRIDGES_FORCE" && [[ "${IS_COD:-0}" -ne 1 ]]; then
+        _missing="${_missing}${_missing:+, }codex"
+    fi
+    if [[ -n "$_missing" ]]; then
+        if [[ "$FAIL_FAST" -eq 1 ]]; then
+            echo -e "${RED}Error:${NC} --bridges named CLIs not detected: ${_missing} (--fail-fast)" >&2
+            exit 1
+        else
+            echo -e "${YELLOW}Warning:${NC} --bridges named CLIs not detected, skipping: ${_missing}" >&2
+        fi
+    fi
+    unset _missing
 fi
 
 # ─────────────────────────────────────────────────
@@ -770,7 +815,8 @@ COMPONENT_NAMES=()
 # Tmpfile paths are added to CLEANUP_PATHS so the EXIT trap removes them.
 COMPONENT_STDERR_TAIL=()
 
-for i in 0 1 2 3 4 5; do
+_disp_count=${#TUI_LABELS[@]}
+for ((i=0; i<_disp_count; i++)); do
     local_name="${TK_DISPATCH_ORDER[$i]}"
     local_label="${TUI_LABELS[$i]}"
     COMPONENT_NAMES+=("$local_label")
@@ -798,6 +844,8 @@ for i in 0 1 2 3 4 5; do
         security)    is_security_installed    && local_re_installed=1 || true ;;
         rtk)         is_rtk_installed         && local_re_installed=1 || true ;;
         statusline)  is_statusline_installed  && local_re_installed=1 || true ;;
+        gemini-bridge) : ;;  # Bridges have no idempotency probe — always re-write (state SHA tracks drift).
+        codex-bridge)  : ;;
     esac
 
     if [[ $local_re_installed -eq 1 && "$FORCE" -ne 1 ]]; then
@@ -820,16 +868,32 @@ for i in 0 1 2 3 4 5; do
     stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install-${local_name}-XXXXXX") || stderr_tmp=""
     [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
-    # Dispatch with continue-on-error (D-08). Capture exit code AND stderr.
-    # Use a subshell + 2>"$stderr_tmp" redirection (Bash 3.2 compatible —
-    # avoids process substitution which is not portable across all callers).
-    local_rc=0
-    if [[ -n "$stderr_tmp" ]]; then
-        ( "dispatch_${local_name}" "${local_flags[@]}" ) 2>"$stderr_tmp" || local_rc=$?
-    else
-        # mktemp failed (rare); fall back to no-capture path.
-        "dispatch_${local_name}" "${local_flags[@]}" || local_rc=$?
-    fi
+    # BRIDGE-UX-01 dispatch shim: bridge labels do not have a dispatch_<name> function;
+    # we call bridge_create_global directly. Other components flow through dispatch_*.
+    case "$local_name" in
+        gemini-bridge|codex-bridge)
+            _bridge_target="${local_name%-bridge}"
+            local_rc=0
+            if [[ -n "$stderr_tmp" ]]; then
+                ( bridge_create_global "$_bridge_target" ) 2>"$stderr_tmp" || local_rc=$?
+            else
+                bridge_create_global "$_bridge_target" || local_rc=$?
+            fi
+            unset _bridge_target
+            ;;
+        *)
+            # Dispatch with continue-on-error (D-08). Capture exit code AND stderr.
+            # Use a subshell + 2>"$stderr_tmp" redirection (Bash 3.2 compatible —
+            # avoids process substitution which is not portable across all callers).
+            local_rc=0
+            if [[ -n "$stderr_tmp" ]]; then
+                ( "dispatch_${local_name}" "${local_flags[@]}" ) 2>"$stderr_tmp" || local_rc=$?
+            else
+                # mktemp failed (rare); fall back to no-capture path.
+                "dispatch_${local_name}" "${local_flags[@]}" || local_rc=$?
+            fi
+            ;;
+    esac
 
     if [[ $local_rc -eq 0 ]]; then
         # Under --dry-run, dispatchers return rc=0 after printing the
@@ -856,7 +920,8 @@ for i in 0 1 2 3 4 5; do
             # C-style for-loop avoids the duplicate-index bug from the prior
             # `for j in $((i + 1)) 2 3 4 5` form (which expanded to e.g.
             # `for j in 2 2 3 4 5` when i=1 — counting index 2 twice).
-            for (( j=i+1; j<=5; j++ )); do
+            _ff_count=${#TUI_LABELS[@]}
+            for (( j=i+1; j<_ff_count; j++ )); do
                 COMPONENT_NAMES+=("${TUI_LABELS[$j]}")
                 COMPONENT_STATUS+=("skipped")
                 COMPONENT_STDERR_TAIL+=("")
@@ -873,7 +938,8 @@ done
 echo ""
 echo -e "${BLUE}Install summary:${NC}"
 echo ""
-for i in 0 1 2 3 4 5; do
+_sum_count=${#TUI_LABELS[@]}
+for ((i=0; i<_sum_count; i++)); do
     local_name="${COMPONENT_NAMES[$i]:-${TUI_LABELS[$i]}}"
     local_state="${COMPONENT_STATUS[$i]:-unknown}"
     print_install_status "$local_name" "$local_state"
