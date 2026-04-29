@@ -533,3 +533,99 @@ BANNER
         esac
     done
 }
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 30 BRIDGE-UX-02: install-time per-CLI prompt orchestrator
+# ──────────────────────────────────────────────────────────────────────────
+
+# bridge_install_prompts — iterate detected CLIs (gemini, codex) and either
+# prompt the user [Y/n] or honour --bridges <list> / --no-bridges contract.
+# Args: $1=project_root (defaults to $PWD if empty/unset).
+# Globals (read):
+#   TK_NO_BRIDGES (env, "1" = skip all)
+#   NO_BRIDGES    (caller flag, "true" = skip all)
+#   BRIDGES_FORCE (caller flag, comma-list = non-interactive force)
+#   FAIL_FAST     (caller flag, "true" = exit 1 on absent CLI under --bridges)
+#   TK_BRIDGE_TTY_SRC (test seam, defaults to /dev/tty)
+# Returns:
+#   0 unconditionally on the success path (additive UX — never blocks toolkit install)
+#   1 only when FAIL_FAST=true AND a target named in BRIDGES_FORCE is not detected
+#
+# Default-Y rationale: install-time prompt biases toward "yes" because the user has the CLI.
+# Drift prompt (bridge_prompt_drift) defaults N because that path is destructive.
+# Fail-closed N on no-TTY: if read fails (EOF / unreachable TTY), choice falls through to N
+# so curl|bash piped installs never silently create bridges.
+bridge_install_prompts() {
+    local project_root="${1:-$PWD}"
+
+    # Env-var / flag opt-out is byte-quiet (no log line).
+    [[ "${TK_NO_BRIDGES:-}" == "1" ]] && return 0
+    [[ "${NO_BRIDGES:-false}" == "true" ]] && return 0
+
+    local tty_target="/dev/tty"
+    [[ -n "${TK_BRIDGE_TTY_SRC:-}" ]] && tty_target="$TK_BRIDGE_TTY_SRC"
+
+    local target
+    for target in gemini codex; do
+        # Skip silently if CLI absent — no warning, no prompt (BRIDGE-UX-01 hidden-row contract).
+        case "$target" in
+            gemini) is_gemini_installed || continue ;;
+            codex)  is_codex_installed  || continue ;;
+        esac
+
+        # --bridges <list> path: force-create without prompt, but only for named targets.
+        if [[ -n "${BRIDGES_FORCE:-}" ]]; then
+            if _bridge_match "$target" "$BRIDGES_FORCE"; then
+                bridge_create_project "$target" "$project_root" || true
+            fi
+            continue
+        fi
+
+        # Interactive prompt path. Default Y (additive UX).
+        local label filename prompt_text choice rc
+        label="$(_bridge_cli_label "$target")"
+        filename="$(_bridge_filename "$target")"
+        prompt_text="${label} detected. Create ${filename} → CLAUDE.md bridge? [Y/n]: "
+
+        choice=""
+        if ! read -r -p "$prompt_text" choice < "$tty_target" 2>/dev/null; then
+            # Fail-closed N on no-TTY (BACKCOMPAT-01: curl|bash never auto-creates).
+            choice="N"
+        fi
+
+        case "${choice:-Y}" in
+            n|N) : ;;  # explicit decline — no-op
+            *)
+                rc=0
+                bridge_create_project "$target" "$project_root" || rc=$?
+                # Non-fatal: a missing CLAUDE.md or write-blocked target should NOT abort the
+                # remaining install flow. Caller's set -e is preserved by the `|| rc=$?` guard.
+                : "$rc"
+                ;;
+        esac
+    done
+
+    # --bridges <list> + --fail-fast: any named target not detected is a hard error.
+    # This second pass runs after the success loop so a partially-completed bridge set
+    # still creates whatever it could before the exit-1 fires.
+    if [[ -n "${BRIDGES_FORCE:-}" && "${FAIL_FAST:-false}" == "true" ]]; then
+        local req_target
+        local saved_ifs="$IFS"
+        IFS=','
+        # shellcheck disable=SC2206
+        local req_tokens=(${BRIDGES_FORCE})
+        IFS="$saved_ifs"
+        for req_target in "${req_tokens[@]+"${req_tokens[@]}"}"; do
+            req_target="${req_target#"${req_target%%[![:space:]]*}"}"
+            req_target="${req_target%"${req_target##*[![:space:]]}"}"
+            case "$req_target" in
+                gemini) is_gemini_installed || { echo -e "${RED}Error:${NC} --bridges gemini specified but gemini CLI not detected (--fail-fast)" >&2; return 1; } ;;
+                codex)  is_codex_installed  || { echo -e "${RED}Error:${NC} --bridges codex specified but codex CLI not detected (--fail-fast)" >&2; return 1; } ;;
+                "")     : ;;
+                *)      echo -e "${YELLOW}Warning:${NC} --bridges unknown target: ${req_target}" >&2 ;;
+            esac
+        done
+    fi
+
+    return 0
+}
