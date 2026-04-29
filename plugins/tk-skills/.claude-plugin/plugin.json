@@ -1,7 +1,11 @@
 {
-    "name": "tk-skills",
-    "version": "4.7.0",
-    "description": "22 curated skills mirrored from skills.sh — Claude Desktop Code tab compatible",
-    "category": "skills",
-    "tags": ["mirror", "marketplace", "desktop-compatible"]
+  "name": "tk-skills",
+  "version": "4.8.0",
+  "description": "22 curated skills mirrored from skills.sh — Claude Desktop Code tab compatible",
+  "category": "skills",
+  "tags": [
+    "mirror",
+    "marketplace",
+    "desktop-compatible"
+  ]
 }

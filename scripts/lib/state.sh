@@ -66,13 +66,21 @@ write_state() {
     # returned — if the script was interrupted between the two, the state
     # was left without manifest_hash and is_update_noop never fired again.
     local manifest_hash="${9:-}"
+    # Phase 29 BRIDGE-SYNC-02: optional 10th arg carries the .bridges[] array
+    # forward across rebuilds. Default '[]' is treated as "preserve existing"
+    # so a 9-arg caller (init-local.sh / migrate-to-complement.sh / Phase 28
+    # tests) does NOT clobber bridges that were created by previous runs.
+    # When the caller wants to overwrite, pass a non-default JSON string
+    # (e.g. '[]' from an explicit `jq -c '.bridges // []'` capture).
+    local bridges_json="${10:-[]}"
     mkdir -p "$(dirname "$STATE_FILE")"
     python3 - "$mode" "$has_sp" "$sp_ver" "$has_gsd" "$gsd_ver" \
-             "$installed_csv" "$skipped_csv" "$synth_flag" "$manifest_hash" "$STATE_FILE" <<'PYEOF'
+             "$installed_csv" "$skipped_csv" "$synth_flag" "$manifest_hash" \
+             "$bridges_json" "$STATE_FILE" <<'PYEOF'
 import json, os, sys, tempfile, hashlib
 from datetime import datetime, timezone
 
-mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, synth_flag, manifest_hash, state_path = sys.argv[1:11]
+mode, has_sp, sp_ver, has_gsd, gsd_ver, installed_csv, skipped_csv, synth_flag, manifest_hash, bridges_json, state_path = sys.argv[1:12]
 
 def sha256(p):
     with open(p, "rb") as f:
@@ -119,6 +127,23 @@ state = {
     "manifest_hash": manifest_hash,
     "installed_at": now,
 }
+
+# Phase 29 BRIDGE-SYNC-02: bridges[] preservation.
+# bridges_json default '[]' means "preserve whatever is already on disk".
+# A non-default JSON string overrides whatever is on disk (used by Phase 29
+# update-claude.sh which captures bridges_json with jq before calling).
+if bridges_json == "[]" and os.path.exists(state_path):
+    try:
+        with open(state_path) as _f:
+            _existing = json.load(_f)
+        state["bridges"] = _existing.get("bridges", [])
+    except Exception:
+        state["bridges"] = []
+else:
+    try:
+        state["bridges"] = json.loads(bridges_json) if bridges_json else []
+    except Exception:
+        state["bridges"] = []
 
 out_dir = os.path.dirname(os.path.abspath(state_path))
 os.makedirs(out_dir, exist_ok=True)

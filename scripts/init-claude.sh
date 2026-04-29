@@ -43,6 +43,19 @@ while [[ $# -gt 0 ]]; do
             NO_BOOTSTRAP=true
             shift
             ;;
+        --no-bridges)
+            NO_BRIDGES=true
+            shift
+            ;;
+        --bridges)
+            if [[ -z "${2:-}" ]]; then
+                echo -e "${RED}--bridges requires a comma-separated target list (e.g. --bridges gemini,codex)${NC}"; exit 1
+            fi
+            BRIDGES_FORCE="$2"; shift 2 ;;
+        --fail-fast)
+            FAIL_FAST=true
+            shift
+            ;;
         --no-banner) NO_BANNER=1; shift ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
@@ -51,7 +64,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --mode <name>, --force, --force-mode-change, --no-banner"
+            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner"
             exit 1
             ;;
     esac
@@ -62,6 +75,23 @@ MODE="${MODE:-}"
 FORCE="${FORCE:-false}"
 FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
 NO_BOOTSTRAP="${NO_BOOTSTRAP:-false}"
+NO_BRIDGES="${NO_BRIDGES:-false}"
+BRIDGES_FORCE="${BRIDGES_FORCE:-}"
+FAIL_FAST="${FAIL_FAST:-false}"
+
+# BRIDGE-UX-03 + BRIDGE-UX-04: --no-bridges and --bridges are mutually exclusive.
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo -e "${RED}Error:${NC} --no-bridges and --bridges are mutually exclusive" >&2
+    exit 2
+fi
+# TK_NO_BRIDGES=1 env-var equivalent of --no-bridges (BRIDGE-UX-03 symmetry).
+if [[ "${TK_NO_BRIDGES:-}" == "1" ]]; then
+    NO_BRIDGES=true
+fi
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo -e "${RED}Error:${NC} --no-bridges (or TK_NO_BRIDGES=1) and --bridges are mutually exclusive" >&2
+    exit 2
+fi
 
 # Per-project state file (matches init-local.sh:68 / update-claude.sh:126 pattern).
 # state.sh defaults STATE_FILE/LOCK_DIR to $HOME — re-assert here so D-41/D-42
@@ -131,6 +161,17 @@ if ! curl -sSLf "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; th
 fi
 # shellcheck source=/dev/null
 source "$LIB_BOOTSTRAP_TMP"
+
+# Phase 30 BRIDGE-UX-02: download lib/bridges.sh so the post-install bridge prompts
+# fire after .claude/ is populated. Sourced eagerly here (alongside other libs) so
+# the bridge_install_prompts call inside main() does not need a second download.
+LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_BRIDGES_TMP")
+if ! curl -sSLf "$REPO_URL/scripts/lib/bridges.sh" -o "$LIB_BRIDGES_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/bridges.sh — aborting"
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$LIB_BRIDGES_TMP"
 
 # ─────────────────────────────────────────────────
 # Phase 21 — BOOTSTRAP-01..04: SP/GSD pre-install bootstrap.
@@ -1074,6 +1115,16 @@ main() {
     create_scratchpad
     create_lessons_learned
     create_audit_exceptions
+
+    # Phase 30 BRIDGE-UX-02: per-CLI bridge prompts (post-.claude/-populated, pre-summary).
+    # Honours --no-bridges / TK_NO_BRIDGES=1 (silent skip), --bridges <list> (force-create),
+    # --fail-fast (exit 1 on absent named CLI). Default-Y interactive prompt, fail-closed N
+    # on no-TTY (curl|bash without /dev/tty creates zero bridges — BACKCOMPAT-01 invariant).
+    bridge_install_prompts "$PWD" || {
+        # Only --fail-fast + missing-named-CLI returns non-zero. Propagate the exit.
+        echo -e "${RED}✗${NC} Bridge install failed under --fail-fast" >&2
+        exit 1
+    }
 
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"

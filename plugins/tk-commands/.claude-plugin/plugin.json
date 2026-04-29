@@ -1,7 +1,10 @@
 {
-    "name": "tk-commands",
-    "version": "4.7.0",
-    "description": "29 slash commands for Claude Code workflows — Code terminal only",
-    "category": "commands",
-    "tags": ["slash-commands", "code-only"]
+  "name": "tk-commands",
+  "version": "4.8.0",
+  "description": "29 slash commands for Claude Code workflows — Code terminal only",
+  "category": "commands",
+  "tags": [
+    "slash-commands",
+    "code-only"
+  ]
 }

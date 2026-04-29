@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.6
-milestone_name: Install Flow UX & Desktop Reach
-status: shipped
-stopped_at: v4.6 archived; v4.7 Council Rework SP2-11 shipped via PR #13 (informal); ready for v4.8 scoping
-last_updated: "2026-04-29T20:30:00.000Z"
+milestone: none
+milestone_name: ""
+status: ready_for_new_milestone
+stopped_at: v4.7 Council Rework + v4.8 Multi-CLI Bridge both shipped + tagged + archived
+last_updated: "2026-04-29T22:30:00.000Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 12
+  completed_plans: 12
   percent: 100
 ---
 
@@ -21,33 +21,42 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 27 — Marketplace Publishing + Claude Desktop Reach
+**Current focus:** none — v4.8 Multi-CLI Bridge shipped, awaiting next milestone via `/gsd-new-milestone`
 
 ## Current Position
 
-```
-Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
-  0%                                                100%
-|-------------------------------------------------------|
+```text
+Phase 28 [x] Phase 29 [x] Phase 30 [x] Phase 31 [ ]
+  75%                                               100%
+|---------------------------------------|-----------|---|
 ```
 
-Phase: 27
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 30
+Plan: 03 complete (Phase 30 fully complete; Phase 31 Distribution+Tests+Docs next)
+Status: In progress — Phase 30 all plans complete
 Last activity: 2026-04-29
 
 ## Plan Count Estimate
 
 | Phase | Estimated Plans | Rationale |
 |-------|-----------------|-----------|
-| 24 — Unified TUI Installer + Centralized Detection | 5 | `detect2.sh` (1) + `tui.sh` core (1) + `dispatch.sh` + `--yes` flag rollout (1) + `install.sh` orchestrator (1) + hermetic test + manifest wiring (1) |
-| 25 — MCP Selector | 4 | MCP catalog + `templates/mcps/` structure (1) + `is_mcp_installed` + TUI page (1) + per-MCP wizard + secrets handling (1) + hermetic test + `docs/MCP-SETUP.md` (1) |
-| 26 — Skills Selector | 3 | Skills mirror + license audit + `docs/SKILLS-MIRROR.md` (1) + `is_skill_installed` + TUI page + copy dispatch (1) + hermetic test + manifest wiring (1) |
-| 27 — Marketplace Publishing + Desktop Reach | 4 | `marketplace.json` + `plugin.json` trio (1) + `validate-marketplace` + `make check` wiring (1) + `docs/CLAUDE_DESKTOP.md` + `validate-skills-desktop.sh` (1) + `--skills-only` Desktop routing + README/INSTALL.md (1) |
+| 28 — Bridge Foundation | 3 | `detect2.sh` extension + `bridge_create_*` API (1) + header banner + state schema (`bridges[]`) (1) + hermetic sanity test for plain-copy + idempotency (1) |
+| 29 — Sync & Uninstall Integration | 3 | `update-claude.sh` bridge sync loop with `[y/N/d]` (1) + `--break-bridge` / `--restore-bridge` + ORPHANED handling (1) + `uninstall.sh` REMOVE_LIST + `--keep-state` parity (1) |
+| 30 — Install-time UX | 3 | `install.sh` Components page rows + per-CLI version probe (1) + `init-claude.sh` + `init-local.sh` post-install prompt + `TK_BRIDGE_TTY_SRC` (1) + `--no-bridges` / `TK_NO_BRIDGES` / `--bridges <list>` flag rollout (1) |
+| 31 — Distribution + Tests + Docs | 3 | `manifest.json` 4.7.0 + `files.libs[]` registration (1) + `test-bridges.sh` ≥15 assertions + Makefile + CI wiring (1) + `docs/BRIDGES.md` + `docs/INSTALL.md` flag rows + README + `CHANGELOG.md [4.7.0]` (1) |
 
-**Total estimated plans: 16**
+**Total estimated plans: 12**
 
 ## Performance Metrics
+
+**v4.6 totals (2026-04-29, 1 day):**
+
+- Phases: 4 (24–27)
+- Plans: 17
+- Tasks: 42
+- REQ-IDs: 36 (TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01, MCP-01..05, MCP-SEC-01/02, SKILL-01..05, MKT-01..04, DESK-01..04)
+- New tests: 5 hermetic suites (PASS=104+: test-install-tui 43, test-mcp-selector 21, test-install-skills 15, test-update-libs 15, test-bootstrap 26 unchanged)
+- CI: Tests 21-33 + DESK-02/04 + MKT-03 jobs
 
 **v4.4 totals (2026-04-27, 1 day):**
 
@@ -68,98 +77,82 @@ Last activity: 2026-04-29
 - New tests: 7 uninstall-suite files, 67 assertions
 - New CI gate: quality.yml mirrors full uninstall suite
 
-**v4.2 totals (2026-04-25 → 2026-04-26):**
-
-- Phases: 5 (13–17)
-- Plans: 22
-- Tasks: 23
-- Commits: 82 (`v4.1.1 → v4.2.0`)
-- Diff: 207 files changed (+39997 / −18884)
-
 ## Accumulated Context
 
 ### Decisions
 
-Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
+Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevant for v4.7:
 
-- `NO_BANNER=${NO_BANNER:-0}` env-form (not `NO_BANNER=0`) — allows caller-exported env to be honoured; `NO_BANNER=0` assignment would clobber caller env silently
-- `files.libs[]` in manifest.json auto-discovered by existing `update-claude.sh` jq path with zero code changes (D-07 zero-special-casing invariant)
-- Phase 21 + Phase 22 consolidated into single `[4.4.0]` CHANGELOG entry — Phase 21 was never separately released before Phase 22 landed
-- `--keep-state` gate at D-06 LAST-step position — preserves all UN-01..UN-08 invariants (backup → strip → file-delete → state-delete ordering unchanged)
-- [Phase 24]: D-21: detect2.sh sources detect.sh — SP/GSD logic not duplicated
-- [Phase 24]: D-22: binary 0/1 return from every is_*_installed probe
-- [Phase 24]: D-23: detect2_cache helper for D-23 mid-run drift recheck pattern
-- [Phase 24]: Comment text in tui.sh header paraphrases forbidden Bash 3.2 patterns to avoid grep false-positives in acceptance criteria
-- [Phase 24]: TK_TUI_TTY_SRC seam mirrors TK_BOOTSTRAP_TTY_SRC exactly — per-read redirection inside each function, not global exec redirect
-- [Phase 24]: D-24: curl-pipe detection via BASH_SOURCE[0]==/dev/fd/* or $0==bash
-- [Phase 24]: D-25: dispatcher contract: each accepts --force/--dry-run/--yes, returns exit code unchanged
-- [Phase 24]: D-26: setup-security.sh --yes active (future read guards); install-statusline.sh --yes no-op
-- [Phase 24]: run_cleanup uses if/then not && to prevent empty-array condition from setting EXIT trap exit code
-- [Phase 24]: S9 uses non-existent TTY path not /dev/null to trigger D-05 fork (/dev/null is readable)
-- [Phase 24]: Test seam overrides use real bash scripts (_NOOP_SCRIPT) not ':' builtin
-- [Phase 24]: D-31: install.sh flags documented alongside (not replacing) init-claude.sh flags in INSTALL.md
-- [Phase 24]: Manifest version NOT bumped to 4.6.0 in Phase 24 — deferred to Phase 27 distribution phase per CONTEXT.md Deferred Ideas
-- [Phase 24]: libs[] entries sorted alphabetically; scripts[] is order-preserving (install.sh appended after uninstall.sh)
-- [Phase 25]: mcp_catalog_load uses join('') for install_args (not unit-separator join); callers access raw JSON arrays directly
-- [Phase 25]: is_mcp_installed three-state return 0/1/2: 0=installed, 1=not-installed, 2=CLI-absent (MCP-02 fail-soft)
-- [Phase 25]: mcp_catalog_load join separator was already $'\037' (SUMMARY note was a display artifact — no bug)
-- [Phase 25]: dry-run skips only claude mcp add invocation — secrets collection runs even in dry-run mode
-- [Phase 25]: TK_MCP_TTY_SRC + TK_MCP_CONFIG_HOME seams mirror Phase 24 TK_TUI_TTY_SRC / TK_BOOTSTRAP_TTY_SRC pattern exactly
-- [Phase 25]: dry-run early-out in mcp_wizard_run moved before secrets collection — makes --dry-run fully non-interactive (no TTY required)
-- [Phase 25]: print_install_status moved before MCP routing gate so both MCP branch and components branch share the same function definition
-- [Phase 25]: mcps mutex routing: components page skipped when mcps set; exit at end of MCP branch prevents components code executing
-- [Phase 25]: S4/S5 collision tests use real fixture files not process substitution for portability
-- [Phase 25]: test files not added to manifest — they ship via repo, not curl-bash install
-- [Phase 25]: manifest.json version stays 4.4.0 — version bump deferred to Phase 27 per D-31 convention
-- [Phase 26]: Two-state is_skill_installed (not three-state): skills have no CLI dependency; directory probe sufficient
-- [Phase 26]: cp -R (not rsync) for skills_install per SKILL-03; sync-skills-mirror.sh not wired to CI — dev-side maintainer tool only
-- [Phase 26]: Exclude templates/skills-marketplace/ from markdownlint: upstream mirror content carries lint violations; exclusion correct since users install content, not read it as toolkit docs
-- [Phase 26]: DRY_RUN shortcut placed before skills_install call to prevent any filesystem writes in preview mode
-- [Phase 26]: sync-skills-mirror.sh excluded from manifest — maintainer-only tool, not user-shipped via curl|bash
-- [Phase 26]: skills_marketplace upstream URLs set as https://skills.sh/<name> placeholders — maintainer fills on first re-sync
-- [Phase 27]: Version declared once in plugin.json (4.6.0) — not duplicated in marketplace.json per MKT-02 single-source-of-truth rule
-- [Phase 27]: Symlinks use relative paths (../../) for portability across clones and CI worktrees
-- [Phase 27]: plugins/ excluded from markdownlint to prevent double-scanning third-party content through symlinks
-- [Phase 27]: validate-marketplace uses TK_HAS_CLAUDE_CLI=1 guard so it stays in make check without breaking CI
-- [Phase 27]: DESK-04 threshold=4 PASS (conservative gate); current state PASS=20 FLAG=2 at plan completion
-- [Phase 27-03]: Defer _source_lib skills to after DESK-03 auto-route block so late SKILLS=1 assignment also sources the library
-- [Phase 27-03]: Auto-route does not fire when --yes is passed; CI/non-interactive paths keep components branch
-- [Phase 27-marketplace-publishing-claude-desktop-reach]: README marketplace section includes both /plugin slash-command and claude CLI forms to satisfy acceptance criteria
-- [Phase 27-marketplace-publishing-claude-desktop-reach]: manifest.json files.scripts[] NOT including .claude-plugin/ or plugins/ — they are repo-side marketplace metadata, not user-installable files
-- [Phase 27-marketplace-publishing-claude-desktop-reach]: CHANGELOG [4.6.0] consolidates Phase 24-27 in one entry, mirroring v4.4 consolidation pattern
+- Phase 24 lib foundation (`scripts/lib/{tui.sh, detect2.sh, dispatch.sh}`) is the integration point for v4.7 — bridges become new dispatchable components, not duplicate machinery.
+- BACKCOMPAT-01 invariant from v4.6: `init-claude.sh` URL stays byte-identical with all v4.4 flags + bridge prompts must skip-by-default in `--yes` / no-TTY paths.
+- v4.4 LIB-01 D-07 jq path (`.files | to_entries[] | .value[] | .path`) auto-discovers any new `files.libs[]` entry — `bridges.sh` adds zero new code to `update-claude.sh`.
+- v4.3 UN-03 `[y/N/d]` prompt contract: read from `< /dev/tty`, fail-closed `N` on no-TTY, `d` shows diff and re-prompts. Reuse verbatim for bridge drift detection.
+- v4.4 BOOTSTRAP-01 `TK_BOOTSTRAP_TTY_SRC` test seam pattern → mirror as `TK_BRIDGE_TTY_SRC` for hermetic testing of bridge prompts.
+- v4.4 KEEP-01/02 `--keep-state` semantics already cover bridges via the same toolkit-install.json lifecycle — no special case for `bridges[]`.
+- Plain-copy over symlink decision: chosen because users may want CLI-specific edits; drift handled via SHA256 + `[y/N/d]`, not by abandoning copy semantics. (PROJECT.md "Key context".)
+- Bash 3.2 compatibility: no `declare -A`, no `read -N` (Bash 4+), no float `-t`, no `declare -n` namerefs. Already-shipped Phase 24 invariants; bridges.sh inherits them.
+- [Phase 28]: Both new probes inserted before is_gsd_installed (codex < gemini < gsd lex order)
+- [Phase 28]: detect2_cache IS_COD/IS_GEM appended after IS_SL; export line extended
+- [Phase 28-bridge-foundation]: write_state NOT reused for bridges[] patch — full-document overwrite would clobber installed_files[]; custom python3 tempfile+os.replace block used instead
+- [Phase 28-bridge-foundation]: Codex bridge filename locked as AGENTS.md (not CODEX.md) per OpenAI standard
+- [Phase 28]: Source libs at top level in test scripts, not inside scenario functions, to avoid Bash RETURN-trap pitfall where source fires RETURN trap on completion
+- [Phase 28]: Use EXIT trap with _SANDBOXES array for hermetic test cleanup instead of per-scenario RETURN traps
+- [Phase 29-01]: write_state bridges_json default '[]' means preserve-on-disk (not wipe-to-empty); non-default JSON overrides disk (used by update-claude.sh)
+- [Phase 29-01]: bridge_prompt_drift fails closed — EOF / empty / unknown input returns 1 (keep); only explicit y/Y returns 0 (overwrite)
+- [Phase 29-01]: TK_BRIDGE_TTY_SRC test seam mirrors TK_UNINSTALL_TTY_FROM_STDIN; /dev/tty is production default
+- [Phase 29]: sync_bridges called in both is_update_noop branch and after print_update_summary to handle CLAUDE.md edits that bypass manifest hash diff
+- [Phase 29]: bridges.sh sibling-source guarded by write_state presence check to survive tmpfile sourcing in update-claude.sh
+- [Phase 29-sync-uninstall-integration]: classify_bridge_file bypasses is_protected_path; REMOVE_LIST loop has bridge bypass; self-deadlock guard in all bridge state helpers
+- [Phase 30-install-time-ux]: bridge_install_prompts defaults Y at install-time (additive UX); dispatch cases deferred to install.sh (Plan 30-02); _bridge_match uses IFS-split for Bash 3.2 portability
+- [Phase 30-install-time-ux]: Bridge dispatch shim inlined in install.sh (not separate lib) — fewer files
+- [Phase 30-install-time-ux]: All TUI/dispatch loops use array-length-driven C-style for-loops (BACKCOMPAT-01)
+- [Phase 31]: Aggregator wraps 3 child suites via for-loop rather than rewriting into monolith — mirrors v4.4 test-update-libs.sh pattern
 
-### Key v4.6 Constraints (from research)
+### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
-- TUI must use `read -rsn1` (lowercase n) not `read -N` — `read -N` is Bash 4+ only; macOS ships Bash 3.2.57
-- No `declare -n` namerefs in TUI — Bash 4.3+ only; multi-component state passes via space-separated strings or eval-based indirect expansion
-- Arrow key detection: two-pass `read -rsn1 k; if [[ "$k" == $'\e' ]]; then IFS= read -rsn2 extra; fi`
-- `stty -g` save + `trap restore EXIT INT TERM` MUST be set BEFORE entering raw mode — prevents blind-typing terminal after Ctrl-C
-- `TK_TUI_TTY_SRC` test seam mirrors `TK_BOOTSTRAP_TTY_SRC` pattern from v4.4
-- `command -v cc-safety-net` for security detection (NOT npm-path scan) — covers both brew and npm install paths
-- `is_mcp_installed` must fail-soft when `claude` CLI absent (warn, not error)
-- `~/.claude/mcp-config.env` mode 0600 mandatory — never print keys to stdout; `read -rs` for sensitive input
-- Marketplace schema: validate with `claude plugin validate .` before publishing; CI smoke gated behind `TK_HAS_CLAUDE_CLI=1`
-- BOOTSTRAP-01..04 invariant: 26-assertion `test-bootstrap.sh` must stay green throughout Phase 24
+- Bridge file conventions: Gemini CLI → `GEMINI.md`, OpenAI Codex CLI → `AGENTS.md` (NOT `CODEX.md` — `AGENTS.md` is the OpenAI standard, called out explicitly in BRIDGE-DOCS-01 to prevent re-discussion).
+- Detection strategy: `command -v gemini` / `command -v codex` (binary on PATH, primary) + `[ -d ~/.gemini/ ]` / `[ -d ~/.codex/ ]` (filesystem soft-confirm). CLI-PATH wins on conflict.
+- Fail-soft on CLI absence: no error, no warning — just skip the bridge offer. Users without these CLIs see nothing in TUI / no prompts.
+- Header banner is byte-identical across all bridges (BRIDGE-GEN-03 quoted block) — plain `<!-- ... -->` HTML comment, separated from copied content by exactly one blank line.
+- `bridges[]` JSON schema: `{ target, path, scope: "project"|"global", source_sha256, bridge_sha256, user_owned: false }`. `user_owned` is the `--break-bridge` / `--restore-bridge` toggle.
+- Council Rework Sub-Phases 2-11 run on a parallel session under `phases/24-council-globalize/PLAN.md` (its own internal numbering). Do NOT allocate v4.7 phase numbers to it; v4.7 numbering is 28-31 strictly.
+- Phase numbering: v4.7 starts at Phase 28 (continues from v4.6 final Phase 27); Phase 24 is reserved historically for v4.6 + the parallel Council Rework track and is NOT reused here.
+- Manifest version bump 4.6.0 → 4.7.0 deferred to Phase 31 distribution per Phase 24 D-31 pattern (don't bump until docs/changelog phase).
+- CHANGELOG `[4.7.0]` consolidated single block per v4.4/v4.6 convention (one entry covers all 18 BRIDGE-* REQ-IDs).
+
+### Carry-overs from v4.6 (still deferred, not v4.7 scope)
+
+- 8 HUMAN-UAT items from v4.6 (live PTY + external CLI) — run when convenient; do not block v4.7 ship.
+- 5 advisory code-review WR findings in Phase 24 (`tui.sh` seam-bypass + EXIT-trap clobber + `dispatch.sh` `eval` env-var injection — low real-world risk).
+- `--no-council` flag for `/audit` — keep deferred.
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — reader side already shipped in v4.3).
+- Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand.
+- Branding substitution layer (BRIDGE-FUT-01) — deferred to v4.8 if friction surfaces.
+- Council Rework Sub-Phases 2-11 — independent track on parallel session.
+- Permanently locked out: Docker-per-cell isolation, agent-cut release tags.
 
 ### Roadmap Evolution
 
 - 2026-04-21: v4.0 shipped (Phases 1–7 + 6.1)
-- 2026-04-25: v4.1 shipped (Phases 8–12); v4.2 roadmap created (Phases 13–17, 22 REQ-IDs)
-- 2026-04-26: v4.2 shipped — tagged `v4.2.0` + GitHub Release published
-- 2026-04-26: Phase 19 (state-cleanup-idempotency) verified PASSED — UN-05 + UN-06 complete
-- 2026-04-26: Phase 20 (distribution-tests) verified PASSED — UN-07 + UN-08 complete; v4.3 milestone ready for tag
-- 2026-04-27: v4.4 roadmap created — 3 phases (21–23), 9 REQ-IDs, 100% coverage
-- 2026-04-27: v4.4 shipped — 8/8 plans, 19 tasks, 9/9 REQ-IDs validated; archive at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`; awaiting `v4.4.0` tag on main HEAD
-- 2026-04-29: v4.6 milestone scoped — Install Flow UX & Desktop Reach; 4 phases (24–27), 36 REQ-IDs
-- 2026-04-29: v4.6 roadmap created — Phase 24 (Unified TUI Installer + Centralized Detection), Phase 25 (MCP Selector), Phase 26 (Skills Selector), Phase 27 (Marketplace Publishing + Claude Desktop Reach)
+- 2026-04-25: v4.1 shipped (Phases 8–12); v4.2 roadmap created
+- 2026-04-26: v4.2 shipped — tagged `v4.2.0`
+- 2026-04-26: v4.3 shipped — tagged `v4.3.0`
+- 2026-04-27: v4.4 shipped — tagged `v4.4.0`
+- 2026-04-29: v4.6 shipped — tagged `v4.6.0`; archive at `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`
+- 2026-04-29: v4.7 milestone scoped — Multi-CLI Bridge; 18 REQ-IDs across 6 categories
+- 2026-04-29: v4.7 roadmap created — 4 phases (28-31), 100% coverage:
+  - Phase 28: Bridge Foundation (BRIDGE-DET-01..03 + BRIDGE-GEN-01..04, 7 REQ-IDs)
+  - Phase 29: Sync & Uninstall Integration (BRIDGE-SYNC-01..03 + BRIDGE-UN-01..02, 5 REQ-IDs)
+  - Phase 30: Install-time UX (BRIDGE-UX-01..04, 4 REQ-IDs)
+  - Phase 31: Distribution + Tests + Docs (BRIDGE-DIST-01..02 + BRIDGE-TEST-01 + BRIDGE-DOCS-01..02, 5 REQ-IDs)
 
 ### Pending Todos
 
-None.
+None at roadmap-ready stage. Phase planning kicks off via `/gsd-plan-phase 28`.
 
 ### Blockers/Concerns
 
-None.
+None. Phase 28 is unblocked — Phase 24 lib foundation already shipped in v4.6.
 
 ## Deferred Items
 
@@ -179,37 +172,35 @@ Carry-overs available for next milestone scoping:
 | WONTFIX | AUDIT-06 template version pinning | Already covered — `manifest.json` `version` + `~/.claude/.toolkit-version` + smart-update diff (closed 2026-04-26) |
 | Closed | DETECT-FUT-01 CLI detection | Done by DETECT-06 in v4.1 Phase 9 (`claude plugin list --json` cross-check) |
 | WONTFIX | Council `audit-review` → Sentry/Linear ticket creation | User direction 2026-04-27: Sentry reserved for error monitoring; project tracking lives in a separate system |
-| Deferred to v4.6 | `--no-council` flag for `/audit` | Mandatory pass in v4.2; revisit if friction emerges |
-| In v4.6 Phase 25 | MCP rotate-to-secret-manager recipe | `docs/MCP-SETUP.md` documents plaintext-on-disk + rotation recipe (TUI-FUT-01 deferred) |
-| Future | `--preset minimal\|full\|dev` | TUI-FUT-02 — no demand surfaced; v4.6+ |
-| Future | Grouped sections in TUI (Essentials / Optional) | TUI-FUT-03 — should-have, may land in Phase 24 if plan capacity allows |
-| Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 — v4.6+ |
-| Future | Marketplace signing/integrity | MKT-FUT-01 — no Anthropic spec for it yet |
-| Phase 24 P01 | 15m | 3 tasks | 2 files |
-| Phase 24 P02 | 6 | 3 tasks | 1 files |
-| Phase 24 P03 | 4min | 4 tasks | 3 files |
-| Phase 24 P04 | 180 | 3 tasks | 5 files |
-| Phase 24 P05 | 10 | 3 tasks | 2 files |
-| Phase 25 P01 | 108 | 2 tasks | 2 files |
-| Phase 25 P02 | 304 | 2 tasks | 3 files |
-| Phase 25 P03 | 780 | 2 tasks | 2 files |
-| Phase 25 P04 | 5 | 3 tasks | 6 files |
-| Phase 26 P01 | 3 | 2 tasks | 2 files |
-| Phase 26 P03 | 6 | 2 tasks | 2 files |
-| Phase 26 P04 | 20 | 3 tasks | 6 files |
-| Phase 27 P01 | 3 | 2 tasks | 5 files |
-| Phase 27 P02 | 4 | 2 tasks | 5 files |
-| Phase 27 P03 | 8 | 2 tasks | 2 files |
-| Phase 27-marketplace-publishing-claude-desktop-reach P04 | 12 | 2 tasks | 5 files |
+| Deferred | `--no-council` flag for `/audit` | Mandatory pass in v4.2; revisit if friction emerges |
+| Closed | MCP rotate-to-secret-manager recipe | `docs/MCP-SETUP.md` documents plaintext-on-disk + rotation recipe (TUI-FUT-01 deferred) |
+| Future | `--preset minimal\|full\|dev` | TUI-FUT-02 — no demand surfaced |
+| Future | Grouped sections in TUI (Essentials / Optional) | TUI-FUT-03 |
+| Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 |
+| Future | Marketplace signing/integrity | MKT-FUT-01 — no Anthropic spec yet |
+| Deferred to v4.8 | Branding substitution layer for bridge files | BRIDGE-FUT-01 — plain copy first; revisit if friction |
+| Deferred to v4.8 | Per-CLI tone overlay snippets | BRIDGE-FUT-02 — `templates/bridges/<name>-overlay.md` |
+| Deferred | Cursor `.cursorrules` support | BRIDGE-FUT-03 — different file format |
+| Deferred | Aider `CONVENTIONS.md` support | BRIDGE-FUT-04 |
+| Deferred | `update-claude.sh --bridges-only` mode | BRIDGE-FUT-05 — edge utility |
+| Parallel track | Council Rework Sub-Phases 2-11 | `phases/24-council-globalize/PLAN.md`; concurrent session |
+| Phase 28 P01 | 10m | 2 tasks | 1 files |
+| Phase 28-bridge-foundation P02 | 20 | 4 tasks | 1 files |
+| Phase 28 P03 | 26m | 2 tasks | 1 files |
+| Phase 29-01 | ~25m | 3 tasks | 4 files |
+| Phase 29 P02 | 35 | 2 tasks | 2 files |
+| Phase 29-sync-uninstall-integration P03 | 50 | 2 tasks | 4 files |
+| Phase 30-install-time-ux P01 | 12 | 4 tasks | 2 files |
+| Phase 30-install-time-ux P02 | 30 | 4 tasks | 1 files |
+| Phase 30-install-time-ux P03 | 45 | 4 tasks | 4 files |
+| Phase 31 P02 | 5 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T16:00:00.000Z
-Stopped at: v4.6 milestone shipped + archived (4 phases, 17 plans, 36/36 REQ-IDs)
+Last session: 2026-04-29T21:22:54.671Z
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
 
 **Next steps:**
 
-- `git tag -a v4.6.0` (LOCAL only — push manually per CLAUDE.md "never push main")
-- `/gsd-new-milestone` — scope v4.6
-- Optional: `/gsd-code-review-fix 24` — address 4 advisory WR findings in Phase 24 review
+- Phase 31 (Distribution + Tests + Docs) — closes v4.7 milestone with manifest 4.7.0 bump, test wiring to CI, docs/BRIDGES.md, CHANGELOG entry

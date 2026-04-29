@@ -19,7 +19,17 @@ DRY_RUN_CLEAN=0
 # which only governs --clean-backups). The --dry-run arg sets BOTH so existing
 # `--clean-backups --dry-run` workflow continues unchanged (RESEARCH Pitfall 3).
 DRY_RUN=0
-for arg in "$@"; do
+# Phase 29 BRIDGE-SYNC-02 flag state. Empty string = flag not present.
+# When set, the script enters a state-only short-circuit mode (mutate
+# user_owned in bridges[], exit 0; do NOT run the regular update flow).
+BREAK_BRIDGE=""
+RESTORE_BRIDGE=""
+# 1-token form (--break-bridge=gemini) handled inside the loop.
+# 2-token form (--break-bridge gemini) handled via the i+1 peek below.
+i=1
+while [[ $i -le $# ]]; do
+    arg="${!i}"
+    next_idx=$((i + 1))
     case "$arg" in
         --no-banner) NO_BANNER=1 ;;
         --offer-mode-switch=yes)                       OFFER_MODE_SWITCH="yes" ;;
@@ -31,8 +41,29 @@ for arg in "$@"; do
         --clean-backups)  CLEAN_BACKUPS=1 ;;
         --keep=*)         KEEP_N="${arg#--keep=}" ;;
         --dry-run)        DRY_RUN=1; DRY_RUN_CLEAN=1 ;;
+        --break-bridge=*)   BREAK_BRIDGE="${arg#--break-bridge=}" ;;
+        --restore-bridge=*) RESTORE_BRIDGE="${arg#--restore-bridge=}" ;;
+        --break-bridge)
+            if [[ $next_idx -le $# ]]; then
+                BREAK_BRIDGE="${!next_idx}"
+                i=$next_idx
+            else
+                echo "Usage: --break-bridge <target>  (target: gemini | codex)" >&2
+                exit 2
+            fi
+            ;;
+        --restore-bridge)
+            if [[ $next_idx -le $# ]]; then
+                RESTORE_BRIDGE="${!next_idx}"
+                i=$next_idx
+            else
+                echo "Usage: --restore-bridge <target>  (target: gemini | codex)" >&2
+                exit 2
+            fi
+            ;;
         *) ;;
     esac
+    i=$((i + 1))
 done
 
 RED='\033[0;31m'
@@ -57,8 +88,9 @@ LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
+LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
 
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
@@ -81,7 +113,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -135,6 +167,60 @@ log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
+
+# ─────────────────────────────────────────────────
+# Phase 29 BRIDGE-SYNC-02 — --break-bridge / --restore-bridge state-only dispatch
+# Runs AFTER lib sourcing (needs _bridge_set_user_owned) and AFTER STATE_FILE/LOCK_DIR
+# test-seam overrides. Mutates user_owned in bridges[], exits 0 — never enters
+# the regular update flow.
+# ─────────────────────────────────────────────────
+if [[ -n "$BREAK_BRIDGE" || -n "$RESTORE_BRIDGE" ]]; then
+    # Mutually exclusive: refuse both at once.
+    if [[ -n "$BREAK_BRIDGE" && -n "$RESTORE_BRIDGE" ]]; then
+        echo -e "${RED}✗${NC} --break-bridge and --restore-bridge are mutually exclusive" >&2
+        exit 2
+    fi
+
+    if [[ -n "$BREAK_BRIDGE" ]]; then
+        # Case-insensitive normalization without ${var,,} (Bash 3.2 invariant).
+        _bb_target=$(echo "$BREAK_BRIDGE" | tr '[:upper:]' '[:lower:]')
+        case "$_bb_target" in
+            gemini|codex) : ;;
+            *)
+                echo -e "${RED}✗${NC} --break-bridge target must be 'gemini' or 'codex' (got: $BREAK_BRIDGE)" >&2
+                exit 2
+                ;;
+        esac
+        # Honor TK_UPDATE_HOME for state file path so tests share the same seam.
+        export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+        if _bridge_set_user_owned "$_bb_target" true; then
+            log_success "Bridge sync disabled for target=$_bb_target (user_owned=true). Run --restore-bridge $_bb_target to re-enable."
+            exit 0
+        else
+            log_error "Failed to flip user_owned for target=$_bb_target. Inspect $STATE_FILE manually."
+            exit 1
+        fi
+    fi
+
+    if [[ -n "$RESTORE_BRIDGE" ]]; then
+        _rb_target=$(echo "$RESTORE_BRIDGE" | tr '[:upper:]' '[:lower:]')
+        case "$_rb_target" in
+            gemini|codex) : ;;
+            *)
+                echo -e "${RED}✗${NC} --restore-bridge target must be 'gemini' or 'codex' (got: $RESTORE_BRIDGE)" >&2
+                exit 2
+                ;;
+        esac
+        export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+        if _bridge_set_user_owned "$_rb_target" false; then
+            log_success "Bridge sync re-enabled for target=$_rb_target (user_owned=false). Next update-claude.sh will re-sync."
+            exit 0
+        else
+            log_error "Failed to flip user_owned for target=$_rb_target. Inspect $STATE_FILE manually."
+            exit 1
+        fi
+    fi
+fi
 
 # _fmt_age — internal helper; prints e.g. "14d 3h", "5h 12m", "47m", "<1m"
 _fmt_age() {
@@ -442,6 +528,125 @@ print_update_dry_run() {
     dro_print_total "$total"
 }
 
+# sync_bridges — Phase 29 BRIDGE-SYNC-01/02/03 sync loop.
+# Iterates .bridges[] from STATE_FILE and applies the per-entry decision tree:
+#   user_owned=true                          → SKIP, log [- SKIP]
+#   source missing                           → ORPHAN, log [? ORPHANED] + auto-flip user_owned=true
+#   bridge SHA differs from recorded         → drift prompt [y/N/d]
+#       y → rewrite via bridge_create_*  + log [~ UPDATE]
+#       N → keep file, log [~ MODIFIED]
+#       d → diff and re-prompt (handled inside bridge_prompt_drift)
+#   source SHA differs and bridge clean      → REWRITE via bridge_create_*, log [~ UPDATE]
+#   in-sync                                  → silent no-op
+#
+# Reads bridges[] via jq from STATE_FILE. Empty array → silent no-op.
+# Logs via dro_print_* helpers (chezmoi-grade output).
+#
+# Returns: 0 always (sync errors are per-entry; never abort the main flow).
+sync_bridges() {
+    [[ -f "$STATE_FILE" ]] || return 0
+    local entries
+    entries=$(jq -c '.bridges // [] | .[]' "$STATE_FILE" 2>/dev/null || echo "")
+    [[ -z "$entries" ]] && return 0
+
+    # Honor TK_UPDATE_HOME → TK_BRIDGE_HOME so bridge_create_* and
+    # _bridge_set_user_owned use the same sandbox as the rest of update.
+    export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+
+    # Initialize dro colors once before any dro_print_* call.
+    dro_init_colors 2>/dev/null || true
+
+    local b_target b_path b_scope b_src_sha b_bridge_sha b_user_owned
+    local cur_src_sha cur_bridge_sha source_path scope_root
+
+    while IFS= read -r entry; do
+        [[ -z "$entry" ]] && continue
+        b_target=$(jq -r '.target'             <<<"$entry")
+        b_path=$(  jq -r '.path'               <<<"$entry")
+        b_scope=$( jq -r '.scope'              <<<"$entry")
+        b_src_sha=$(    jq -r '.source_sha256' <<<"$entry")
+        b_bridge_sha=$( jq -r '.bridge_sha256' <<<"$entry")
+        b_user_owned=$( jq -r '.user_owned'    <<<"$entry")
+
+        # 1. user_owned=true → SKIP silently except for the log line.
+        if [[ "$b_user_owned" == "true" ]]; then
+            dro_print_header "-" "SKIP" 1 _DRO_Y 2>/dev/null || \
+                echo "[- SKIP] $b_path (--break-bridge)"
+            dro_print_file "$b_path  (user_owned=true)" 2>/dev/null || true
+            continue
+        fi
+
+        # Resolve canonical source path by scope.
+        if [[ "$b_scope" == "global" ]]; then
+            source_path="${TK_BRIDGE_HOME}/.claude/CLAUDE.md"
+        else
+            # project scope: bridge sits next to CLAUDE.md → derive source
+            # from the bridge's parent directory.
+            scope_root=$(dirname "$b_path")
+            source_path="${scope_root}/CLAUDE.md"
+        fi
+
+        # 2. Source missing → ORPHAN.
+        if [[ ! -f "$source_path" ]]; then
+            dro_print_header "?" "ORPHANED" 1 _DRO_Y 2>/dev/null || \
+                echo "[? ORPHANED] $b_path (CLAUDE.md missing)"
+            dro_print_file "$b_path  (source: $source_path)" 2>/dev/null || true
+            # Auto-flip user_owned=true so future runs skip silently.
+            _bridge_set_user_owned "$b_target" true >/dev/null 2>&1 || \
+                log_warning "Could not auto-flip user_owned=true for $b_target"
+            continue
+        fi
+
+        # Compute current SHAs (bridge file may also be missing on disk
+        # despite being in state — treat missing bridge as "needs rewrite").
+        cur_src_sha=$(sha256_file "$source_path" 2>/dev/null || echo "")
+        if [[ -f "$b_path" ]]; then
+            cur_bridge_sha=$(sha256_file "$b_path" 2>/dev/null || echo "")
+        else
+            cur_bridge_sha=""
+        fi
+
+        # 3. Bridge SHA differs from recorded → drift prompt (or auto-rewrite
+        # if bridge is missing entirely).
+        if [[ -n "$cur_bridge_sha" && "$cur_bridge_sha" != "$b_bridge_sha" ]]; then
+            if bridge_prompt_drift "$b_path" "$source_path"; then
+                # y → rewrite
+                if [[ "$b_scope" == "global" ]]; then
+                    bridge_create_global "$b_target" >/dev/null 2>&1
+                else
+                    bridge_create_project "$b_target" "$scope_root" >/dev/null 2>&1
+                fi
+                dro_print_header "~" "UPDATE" 1 _DRO_C 2>/dev/null || \
+                    echo "[~ UPDATE] $b_path"
+                dro_print_file "$b_path" 2>/dev/null || true
+            else
+                # N → keep
+                dro_print_header "~" "MODIFIED" 1 _DRO_Y 2>/dev/null || \
+                    echo "[~ MODIFIED] $b_path (kept)"
+                dro_print_file "$b_path  (kept; user edits preserved)" 2>/dev/null || true
+            fi
+            continue
+        fi
+
+        # 4. Source SHA changed and bridge clean (or bridge missing) → REWRITE.
+        if [[ "$cur_src_sha" != "$b_src_sha" || -z "$cur_bridge_sha" ]]; then
+            if [[ "$b_scope" == "global" ]]; then
+                bridge_create_global "$b_target" >/dev/null 2>&1
+            else
+                bridge_create_project "$b_target" "$scope_root" >/dev/null 2>&1
+            fi
+            dro_print_header "~" "UPDATE" 1 _DRO_C 2>/dev/null || \
+                echo "[~ UPDATE] $b_path"
+            dro_print_file "$b_path" 2>/dev/null || true
+            continue
+        fi
+
+        # 5. In-sync → silent no-op.
+    done <<<"$entries"
+
+    return 0
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -659,6 +864,9 @@ SKIPPED_BY_MODE_JSON=$(jq -nc \
     '($manifest - $installed) - (($manifest - $installed) - $skipset)')
 
 if is_update_noop; then
+    # Phase 29 BRIDGE-SYNC-01: even on a manifest-clean no-op, bridges may
+    # still need re-sync (CLAUDE.md edits don't change the manifest hash).
+    sync_bridges
     echo "Already up-to-date. Nothing to do."
     exit 0
 fi
@@ -680,7 +888,7 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$MANIFEST_TMP"' EXIT
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
@@ -995,10 +1203,26 @@ done
 # in the same os.replace call as installed_files. Previously a separate jq
 # splice happened after write_state; SIGKILL between the two left the state
 # without manifest_hash and is_update_noop never fired again.
+#
+# Phase 29 BRIDGE-SYNC-02: capture pre-existing bridges[] from the on-disk
+# state file and pass it as the 10th arg so the rebuild does not clobber
+# bridges. Plan 29-01 made write_state preserve-on-default, so the explicit
+# capture is defensive (survives any future refactor).
+BRIDGES_JSON='[]'
+if [[ -f "$STATE_FILE" ]]; then
+    BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
+fi
 write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
-            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "$MANIFEST_HASH"
+            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "$MANIFEST_HASH" \
+            "$BRIDGES_JSON"
 
 print_update_summary "$BACKUP_DIR"
+
+# Phase 29 BRIDGE-SYNC-01: run sync_bridges UNCONDITIONALLY (regardless of
+# is_update_noop). User edits to CLAUDE.md don't change the manifest hash,
+# so the no-op early-exit above short-circuits before we get here when
+# nothing changed at all — but if we DID get here, we always sync bridges.
+sync_bridges
 
 # Phase 13 (Plan 13-04 — EXC-05): seed audit-exceptions.md if missing.
 # Idempotent: never overwrites a populated file. Runs on every update.

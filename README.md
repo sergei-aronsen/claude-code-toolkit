@@ -141,6 +141,7 @@ remove duplicate files with per-file confirmation and a full pre-migration backu
 | **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
 | **Supreme Council** | `/council` (global) sends plans to Gemini + ChatGPT for independent review with persona overlays, content-hash cache, cost gate, OpenRouter fallback, ru locale, and `--format json` output. Deep reference: [`docs/COUNCIL.md`](docs/COUNCIL.md) |
 | **Structured Workflow** | 3 mandatory phases: RESEARCH (read-only) → PLAN (scratchpad) → EXECUTE (after confirmation) |
+| **Multi-CLI Bridges** | Auto-sync `CLAUDE.md` to Gemini CLI's `GEMINI.md` and OpenAI Codex's `AGENTS.md`. Drift-detected, opt-out via `--no-bridges`. See [docs/BRIDGES.md](docs/BRIDGES.md) |
 
 See [detailed descriptions and examples](docs/features.md).
 

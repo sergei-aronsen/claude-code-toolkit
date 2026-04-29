@@ -69,6 +69,10 @@ Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
 | `--no-bootstrap` | `init-claude.sh`, `init-local.sh` | Skip the SP / GSD pre-install prompts. Equivalent env var: `TK_NO_BOOTSTRAP=1`. Use this in CI or scripted installs to keep behaviour identical to v4.3. |
 | `--no-banner` | `init-claude.sh`, `init-local.sh` | Suppress the closing `To remove: bash <(curl …)` banner line. Equivalent env: `NO_BANNER=1`. Symmetric with `update-claude.sh` which already honoured this flag. |
 | `--keep-state` | `scripts/uninstall.sh` | Preserve `toolkit-install.json` after uninstall, enabling re-run recovery after a partial-N session. Equivalent env: `TK_UNINSTALL_KEEP_STATE=1`. |
+| `--no-bridges` | `init-claude.sh`, `init-local.sh`, `install.sh` | Skip all bridge prompts. Equivalent env: `TK_NO_BRIDGES=1`. Mirrors `--no-bootstrap` symmetry. |
+| `--bridges <list>` | `init-claude.sh`, `init-local.sh`, `install.sh` | Force-create bridges for named CLIs (comma-separated, e.g. `gemini,codex`). Skips per-CLI prompt. With `--fail-fast`: absent CLI exits 1; otherwise warns and continues. |
+| `--break-bridge <target>` | `update-claude.sh` | Flip `user_owned: true` for the named bridge target. Subsequent `update-claude.sh` runs skip that bridge silently. |
+| `--restore-bridge <target>` | `update-claude.sh` | Reverse `--break-bridge`. Next `update-claude.sh` re-syncs the named bridge. |
 | `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
 
 ### `--no-bootstrap` (v4.4+)
@@ -105,6 +109,25 @@ All other UN-01..UN-08 invariants stand: backup is still written to
 `~/.claude/CLAUDE.md`, and the base-plugin `diff -q` invariant still fires. The ONLY
 behavioural delta is the LAST step (`rm -f $STATE_FILE`) — replaced with a `log_info`
 message when `--keep-state` is set.
+
+### Multi-CLI Bridges (v4.7+)
+
+`init-claude.sh` and `init-local.sh` post-install (and `install.sh` via the unified
+TUI) detect installed Gemini CLI and OpenAI Codex CLI binaries. For each detected CLI,
+the installer offers to create a bridge file: `GEMINI.md` for Gemini, `AGENTS.md` for
+OpenAI Codex (the OpenAI agent-context standard). Bridges are plain copies of
+`CLAUDE.md` with an auto-generated header banner; `update-claude.sh` keeps them in
+sync via SHA256 drift detection.
+
+Pass `--no-bridges` (or set `TK_NO_BRIDGES=1`) to skip every bridge prompt; pass
+`--bridges gemini,codex` (or any comma-separated subset) to force-create
+non-interactively for CI / scripted installs. Use `update-claude.sh --break-bridge
+<target>` to mark a bridge `user_owned: true` (skipped on subsequent updates) and
+`--restore-bridge <target>` to undo.
+
+See [docs/BRIDGES.md](BRIDGES.md) for the full multi-CLI bridge specification including
+drift handling, the `[y/N/d]` prompt contract for user-edited bridges, and the
+symlink-vs-copy rationale.
 
 ---
 
