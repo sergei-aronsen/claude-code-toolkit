@@ -1068,6 +1068,70 @@ def _hash_plan(plan):
     return hashlib.sha256(plan.encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
+def cost_confirm_gate(prompt_text, model, label="<call>"):
+    """Phase 24 Sub-Phase 4 — optional pre-call cost prompt.
+
+    When env COUNCIL_COST_CONFIRM_THRESHOLD is set to a positive float, estimate
+    the prompt's input cost (tokens × input rate from pricing.json) and prompt
+    the user to confirm before send when the estimate exceeds the threshold.
+
+    Returns True when the call should proceed, False when the user declines.
+    Always returns True when:
+      - the env var is unset or zero (default disabled)
+      - stdin is not a TTY (CI / piped-in runs — never block silently)
+      - estimated cost is below the threshold
+    """
+    raw = os.environ.get("COUNCIL_COST_CONFIRM_THRESHOLD", "").strip()
+    if not raw:
+        return True
+    try:
+        threshold = float(raw)
+    except ValueError:
+        print(
+            f"⚠️  COUNCIL_COST_CONFIRM_THRESHOLD={raw!r} is not a number — ignoring",
+            file=sys.stderr,
+        )
+        return True
+    if threshold <= 0:
+        return True
+
+    pricing = _load_pricing()
+    rates = pricing.get(model) or {}
+    in_rate = float(rates.get("input_per_1m", 0.0))
+    if in_rate <= 0:
+        return True  # CLI / free-tier models never trigger the gate.
+
+    estimated_in = _estimate_tokens(prompt_text)
+    estimated_cost = (estimated_in / 1_000_000.0) * in_rate
+    if estimated_cost < threshold:
+        return True
+
+    if not sys.stdin.isatty():
+        print(
+            f"⚠️  Estimated input cost ${estimated_cost:.4f} for {label} ({model}, "
+            f"~{estimated_in} tokens) exceeds COUNCIL_COST_CONFIRM_THRESHOLD=${threshold:.4f}, "
+            "but stdin is not a TTY — proceeding anyway.",
+            file=sys.stderr,
+        )
+        return True
+
+    msg = (
+        f"\n💰 Cost-confirm gate ({label}):\n"
+        f"   model:           {model}\n"
+        f"   estimated tokens (input): {estimated_in}\n"
+        f"   estimated cost:  ${estimated_cost:.4f} input only\n"
+        f"   threshold:       ${threshold:.4f} (COUNCIL_COST_CONFIRM_THRESHOLD)\n"
+        f"\n   Proceed? [y/N]: "
+    )
+    print(msg, end="", file=sys.stderr, flush=True)
+    try:
+        with open("/dev/tty", "r") as tty:
+            answer = tty.readline().strip().lower()
+    except OSError:
+        answer = ""
+    return answer in ("y", "yes")
+
+
 # ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
@@ -1490,6 +1554,13 @@ PLAN: {plan}
 List the file paths (comma-separated) that are critical to review for this plan.
 Reply ONLY with the comma-separated list of file paths. No explanations."""
 
+        gemini_model_eff = (
+            "gemini-cli" if config["gemini"].get("mode", "cli") == "cli"
+            else config["gemini"].get("model", "gemini-3-pro-preview")
+        )
+        if not cost_confirm_gate(context_prompt, gemini_model_eff, label="discovery"):
+            print("\n⏹  Council discovery aborted by cost-confirm gate.", file=sys.stderr)
+            sys.exit(2)
         files_to_read = ask_gemini(context_prompt, config)
         record_usage("validate-plan-discovery", plan_hash=plan_hash)
 
@@ -1551,15 +1622,22 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - SKIP — this doesn't need to be done"""
 
     if config.get("_gemini_available", True):
-        gemini_verdict = ask_gemini(
-            skeptic_prompt, config,
-            file_paths=file_paths if use_native_files else None
+        gemini_model_eff = (
+            "gemini-cli" if config["gemini"].get("mode", "cli") == "cli"
+            else config["gemini"].get("model", "gemini-3-pro-preview")
         )
-        record_usage(
-            "validate-plan-skeptic",
-            verdict=(extract_verdict(gemini_verdict) if not is_error_response(gemini_verdict) else None),
-            plan_hash=plan_hash,
-        )
+        if not cost_confirm_gate(skeptic_prompt, gemini_model_eff, label="Skeptic"):
+            gemini_verdict = "Error: Skeptic call declined by cost-confirm gate"
+        else:
+            gemini_verdict = ask_gemini(
+                skeptic_prompt, config,
+                file_paths=file_paths if use_native_files else None
+            )
+            record_usage(
+                "validate-plan-skeptic",
+                verdict=(extract_verdict(gemini_verdict) if not is_error_response(gemini_verdict) else None),
+                plan_hash=plan_hash,
+            )
     else:
         gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
 
@@ -1602,12 +1680,16 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - SKIP — this doesn't need to be done"""
 
     if config.get("_openai_available", True):
-        gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
-        record_usage(
-            "validate-plan-pragmatist",
-            verdict=(extract_verdict(gpt_verdict) if not is_error_response(gpt_verdict) else None),
-            plan_hash=plan_hash,
-        )
+        openai_model_eff = config["openai"].get("model", "gpt-5.2")
+        if not cost_confirm_gate(pragmatist_prompt, openai_model_eff, label="Pragmatist"):
+            gpt_verdict = "Error: Pragmatist call declined by cost-confirm gate"
+        else:
+            gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+            record_usage(
+                "validate-plan-pragmatist",
+                verdict=(extract_verdict(gpt_verdict) if not is_error_response(gpt_verdict) else None),
+                plan_hash=plan_hash,
+            )
     else:
         gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
 

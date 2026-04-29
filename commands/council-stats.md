@@ -7,6 +7,22 @@ description: Show Supreme Council usage and cost summary from ~/.claude/council/
 Render Council token usage and cost from the local log
 (`~/.claude/council/usage.jsonl`). No API calls — works offline.
 
+## Purpose
+
+Show how many Council calls have been made, broken down by provider, model,
+and mode, with token counts and dollar cost. Use it to spot runaway spend,
+verify CLI mode is actually saving money, or pull a CSV for billing
+reconciliation.
+
+## When to Use
+
+| Situation | Use /council-stats |
+|-----------|--------------------|
+| Wonder where today's tokens went | `--day` |
+| Monthly cost report | `--month --csv` |
+| Audit a specific date range | `--since 2026-04-01 --until 2026-04-30` |
+| Validate that CLI mode is free | `--total` (CLI rows show $0.0000) |
+
 ## Usage
 
 When the user types `/council-stats` (or any of the period variants below),
