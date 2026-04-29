@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
 status: Roadmap created — ready for `/gsd-plan-phase 28`
-stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-04-29T17:50:22.409Z"
+stopped_at: Completed 28-bridge-foundation-02-PLAN.md
+last_updated: "2026-04-29T17:54:30.889Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -93,6 +93,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - Bash 3.2 compatibility: no `declare -A`, no `read -N` (Bash 4+), no float `-t`, no `declare -n` namerefs. Already-shipped Phase 24 invariants; bridges.sh inherits them.
 - [Phase 28]: Both new probes inserted before is_gsd_installed (codex < gemini < gsd lex order)
 - [Phase 28]: detect2_cache IS_COD/IS_GEM appended after IS_SL; export line extended
+- [Phase 28-bridge-foundation]: write_state NOT reused for bridges[] patch — full-document overwrite would clobber installed_files[]; custom python3 tempfile+os.replace block used instead
+- [Phase 28-bridge-foundation]: Codex bridge filename locked as AGENTS.md (not CODEX.md) per OpenAI standard
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -171,11 +173,12 @@ Carry-overs available for next milestone scoping:
 | Deferred | `update-claude.sh --bridges-only` mode | BRIDGE-FUT-05 — edge utility |
 | Parallel track | Council Rework Sub-Phases 2-11 | `phases/24-council-globalize/PLAN.md`; concurrent session |
 | Phase 28 P01 | 10m | 2 tasks | 1 files |
+| Phase 28-bridge-foundation P02 | 20 | 4 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T17:50:22.406Z
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-04-29T17:54:30.886Z
+Stopped at: Completed 28-bridge-foundation-02-PLAN.md
 Resume file: None
 
 **Next steps:**

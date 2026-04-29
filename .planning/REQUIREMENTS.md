@@ -16,9 +16,9 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Bridge generation (`scripts/lib/bridges.sh` new lib)
 
-- [ ] **BRIDGE-GEN-01**: `bridge_create_project <target>` (target = `gemini` | `codex`) reads canonical `<project>/CLAUDE.md` (existing v4.0 contract), prepends auto-generated header banner, writes plain copy to `<project>/GEMINI.md` (gemini) or `<project>/AGENTS.md` (codex). Idempotent: re-run with same source overwrites bridge with same content.
-- [ ] **BRIDGE-GEN-02**: `bridge_create_global <target>` reads `~/.claude/CLAUDE.md`, writes `~/.gemini/GEMINI.md` (gemini) or `~/.codex/AGENTS.md` (codex). `mkdir -p ~/.gemini/` (or `~/.codex/`) before write — fail-soft if mkdir blocked (permissions). NEVER touches `~/.claude/CLAUDE.md` itself.
-- [ ] **BRIDGE-GEN-03**: Auto-generated header banner is byte-identical across all bridges:
+- [x] **BRIDGE-GEN-01**: `bridge_create_project <target>` (target = `gemini` | `codex`) reads canonical `<project>/CLAUDE.md` (existing v4.0 contract), prepends auto-generated header banner, writes plain copy to `<project>/GEMINI.md` (gemini) or `<project>/AGENTS.md` (codex). Idempotent: re-run with same source overwrites bridge with same content.
+- [x] **BRIDGE-GEN-02**: `bridge_create_global <target>` reads `~/.claude/CLAUDE.md`, writes `~/.gemini/GEMINI.md` (gemini) or `~/.codex/AGENTS.md` (codex). `mkdir -p ~/.gemini/` (or `~/.codex/`) before write — fail-soft if mkdir blocked (permissions). NEVER touches `~/.claude/CLAUDE.md` itself.
+- [x] **BRIDGE-GEN-03**: Auto-generated header banner is byte-identical across all bridges:
 
   ```text
   <!--
@@ -29,7 +29,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   ```
 
   Banner is at the very top of the bridge file, separated from copied content by one blank line.
-- [ ] **BRIDGE-GEN-04**: Bridge files registered in `~/.claude/toolkit-install.json` under new `bridges[]` array entry: `{ "target": "gemini", "path": "<abs-path>", "scope": "project|global", "source_sha256": "<sha256-of-CLAUDE.md-at-write>", "bridge_sha256": "<sha256-of-bridge-file-at-write>", "user_owned": false }`. Tracking enables drift detection in BRIDGE-SYNC-01.
+- [x] **BRIDGE-GEN-04**: Bridge files registered in `~/.claude/toolkit-install.json` under new `bridges[]` array entry: `{ "target": "gemini", "path": "<abs-path>", "scope": "project|global", "source_sha256": "<sha256-of-CLAUDE.md-at-write>", "bridge_sha256": "<sha256-of-bridge-file-at-write>", "user_owned": false }`. Tracking enables drift detection in BRIDGE-SYNC-01.
 
 ### Sync on update (`update-claude.sh` extension)
 

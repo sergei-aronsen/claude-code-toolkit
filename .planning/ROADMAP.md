@@ -110,7 +110,7 @@
   5. New detection probes coexist with the existing 6 v4.6 binary probes (toolkit, superpowers, gsd, security, rtk, statusline) without breaking `test-install-tui.sh` PASS=43.
 **Plans**: 3 plans
 - [x] 28-01-PLAN.md — Detection probes (`is_gemini_installed` / `is_codex_installed` in detect2.sh)
-- [ ] 28-02-PLAN.md — Bridges library (`scripts/lib/bridges.sh` with `bridge_create_project` / `bridge_create_global` + state mutation)
+- [x] 28-02-PLAN.md — Bridges library (`scripts/lib/bridges.sh` with `bridge_create_project` / `bridge_create_global` + state mutation)
 - [ ] 28-03-PLAN.md — Hermetic smoke test (`scripts/tests/test-bridges-foundation.sh`, 5 assertions)
 
 ### Phase 29: Sync & Uninstall Integration
@@ -171,7 +171,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 28. Bridge Foundation | 1/3 | In Progress|  |
+| 28. Bridge Foundation | 2/3 | In Progress|  |
 | 29. Sync & Uninstall Integration | 0/TBD | Not started | - |
 | 30. Install-time UX | 0/TBD | Not started | - |
 | 31. Distribution + Tests + Docs | 0/TBD | Not started | - |
