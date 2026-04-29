@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.6
 milestone_name: Install Flow UX & Desktop Reach
 status: shipped
-stopped_at: Milestone v4.6 archived; ready for v4.7 scoping via /gsd-new-milestone
-last_updated: "2026-04-29T16:00:00.000Z"
+stopped_at: v4.6 archived; v4.7 Council Rework SP2-11 shipped via PR #13 (informal); ready for v4.8 scoping
+last_updated: "2026-04-29T20:30:00.000Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4

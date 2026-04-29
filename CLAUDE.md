@@ -1,4 +1,4 @@
-# Claude Guides — Claude Code Instructions
+# Claude Code Toolkit — Claude Code Instructions
 
 ## Project Overview
 

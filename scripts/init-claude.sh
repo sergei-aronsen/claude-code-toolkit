@@ -715,6 +715,26 @@ setup_council() {
     recommend_clis
     echo ""
 
+    # Source council-prompts helper (Phase 24 Sub-Phase 2) — installs editable
+    # system prompts under ~/.claude/council/prompts/. Test seam mirrors
+    # cli-recommendations above.
+    local lib_prompts_tmp
+    lib_prompts_tmp=$(mktemp "${TMPDIR:-/tmp}/council-prompts.XXXXXX")
+    if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/council-prompts.sh" ]]; then
+        cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$lib_prompts_tmp"
+        # shellcheck source=/dev/null
+        source "$lib_prompts_tmp"
+    elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$lib_prompts_tmp" 2>/dev/null; then
+        # shellcheck source=/dev/null
+        source "$lib_prompts_tmp"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
+        install_council_system_prompts() { :; }
+        install_council_personas() { :; }
+        install_council_ru_prompts() { :; }
+    fi
+    rm -f "$lib_prompts_tmp"
+
     # Download brain.py
     mkdir -p "$council_dir"
     if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
@@ -750,6 +770,29 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
     fi
 
+    # Install editable system prompts (Phase 24 Sub-Phase 2). brain.py reads
+    # them via load_prompt() and falls back to embedded constants when missing.
+    install_council_system_prompts
+
+    # Install Russian translations (Phase 24 SP9). brain.py picks them up
+    # via load_prompt() when --lang ru is set or CLAUDE.md auto-detects
+    # cyrillic > 0.2.
+    install_council_ru_prompts
+
+    # Install domain persona overlays (Phase 24 SP8). detect_domain() in
+    # brain.py classifies the plan into security / performance / ux /
+    # migration; the matching overlay is prepended to the base prompt.
+    install_council_personas
+
+    # Install redaction-patterns.txt (Phase 24 Sub-Phase 3) — augments
+    # brain.py's built-in DEFAULT_REDACTION_PATTERNS with project-specific
+    # secret shapes. User edits preserved via .upstream-new.txt sidecar.
+    install_council_redaction_patterns
+
+    # Install pricing.json (Phase 24 Sub-Phase 4) so brain.py can compute
+    # accurate $ cost per call for /council stats.
+    install_council_pricing
+
     # Install /council slash command globally (Phase 24 Sub-Phase 1).
     # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
     # ~/.claude/commands/, not in per-project ./.claude/commands/.
@@ -771,6 +814,42 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
     fi
 
+    # Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
+    if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+            -o "$commands_dir/council-stats.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/council-stats.md" ]; then
+            mv "$commands_dir/council-stats.md.tmp" "$commands_dir/council-stats.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md installed (global)"
+        elif [ "$commands_dir/council-stats.md.tmp" -nt "$commands_dir/council-stats.md" ]; then
+            mv "$commands_dir/council-stats.md.tmp" "$commands_dir/council-stats.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md (refreshed)"
+        else
+            rm -f "$commands_dir/council-stats.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/council-stats.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/council-stats.md (not critical)"
+    fi
+
+    # Install /council clear-cache slash command globally (Phase 24 Sub-Phase 6).
+    if curl -sSLf "$REPO_URL/commands/council-clear-cache.md" \
+            -o "$commands_dir/council-clear-cache.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/council-clear-cache.md" ]; then
+            mv "$commands_dir/council-clear-cache.md.tmp" "$commands_dir/council-clear-cache.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md installed (global)"
+        elif [ "$commands_dir/council-clear-cache.md.tmp" -nt "$commands_dir/council-clear-cache.md" ]; then
+            mv "$commands_dir/council-clear-cache.md.tmp" "$commands_dir/council-clear-cache.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (refreshed)"
+        else
+            rm -f "$commands_dir/council-clear-cache.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/council-clear-cache.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/council-clear-cache.md (not critical)"
+    fi
+
     # Ask to configure now (skip in non-interactive environments)
     echo ""
     local configure
@@ -789,11 +868,26 @@ setup_council() {
   "gemini": {
     "mode": "cli",
     "api_key": "",
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": "api",
     "api_key": "",
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": "",
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF
@@ -839,12 +933,37 @@ CONFIGEOF
         fi
     fi
 
-    # OpenAI setup
+    # OpenAI setup (Phase 24 SP5 — adds Codex CLI option)
     echo ""
     echo -e "  ${BLUE}OpenAI (ChatGPT) configuration:${NC}"
+    echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
+    echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
+    echo ""
 
+    local openai_mode="api"
     local openai_key=""
-    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    local openai_choice
+    if ! read -r -p "    Enter choice [1/2] (default: 1 if codex on PATH, else 2): " openai_choice < /dev/tty 2>/dev/null; then
+        openai_choice=""
+    fi
+    if [[ -z "$openai_choice" ]]; then
+        if command -v codex &>/dev/null; then
+            openai_choice="1"
+        else
+            openai_choice="2"
+        fi
+    fi
+
+    if [[ "$openai_choice" == "1" ]]; then
+        openai_mode="cli"
+        if ! command -v codex &>/dev/null; then
+            echo -e "    ${YELLOW}⚠${NC} Codex CLI not found. Install:"
+            echo -e "      npm install -g @openai/codex   # or: brew install --cask codex"
+            echo -e "      codex login"
+        else
+            echo -e "    ${GREEN}✓${NC} Codex CLI found"
+        fi
+    elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
         openai_key="$OPENAI_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
     else
@@ -855,27 +974,62 @@ CONFIGEOF
         fi
     fi
 
+    # OpenRouter fallback (optional)
+    echo ""
+    echo -e "  ${BLUE}OpenRouter free-tier fallback (optional):${NC}"
+    local openrouter_key=""
+    if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+        openrouter_key="$OPENROUTER_API_KEY"
+        echo -e "    ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
+    else
+        read -r -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        if [[ -z "$openrouter_key" ]]; then
+            echo -e "    ${YELLOW}⚠${NC} OpenRouter fallback disabled"
+        else
+            echo -e "    ${GREEN}✓${NC} OpenRouter fallback configured"
+        fi
+    fi
+
     # Create config
     if [[ ! -f "$council_dir/config.json" ]]; then
         # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
-        local gemini_mode_json gemini_key_json openai_key_json
+        local gemini_mode_json gemini_key_json openai_mode_json openai_key_json openrouter_key_json
         # shellcheck disable=SC2016
         gemini_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_mode")
         # shellcheck disable=SC2016
         gemini_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_key")
         # shellcheck disable=SC2016
+        openai_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_mode")
+        # shellcheck disable=SC2016
         openai_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_key")
+        # shellcheck disable=SC2016
+        openrouter_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openrouter_key")
 
         cat > "$council_dir/config.json" << CONFIGEOF
 {
   "gemini": {
     "mode": $gemini_mode_json,
     "api_key": $gemini_key_json,
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": $openai_mode_json,
     "api_key": $openai_key_json,
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": $openrouter_key_json,
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF
