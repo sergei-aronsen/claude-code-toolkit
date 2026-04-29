@@ -1,0 +1,249 @@
+#!/bin/bash
+
+# Claude Code Toolkit — Multi-CLI Bridge Library (v4.7+)
+# Source this file. Do NOT execute it directly.
+# Exposes:
+#   bridge_create_project <target> [project_root]  — write GEMINI.md/AGENTS.md
+#                                                    next to <project_root>/CLAUDE.md
+#   bridge_create_global  <target>                 — write under ~/.gemini/ or ~/.codex/
+#                                                    using ~/.claude/CLAUDE.md as source
+# Where <target> is one of: gemini | codex
+# Returns: 0 = success, 1 = missing source, 2 = mkdir/write blocked, 3 = bad target
+#
+# Side effect: registers each created bridge in
+#   ${TK_BRIDGE_HOME:-$HOME}/.claude/toolkit-install.json under the .bridges[] array
+#   via an atomic python3 tempfile.mkstemp+os.replace patch. Dedup by (target,scope,path).
+#
+# Test seams:
+#   TK_BRIDGE_HOME — override $HOME for global write target and state file path
+#                    (default: $HOME). Mirrors TK_MCP_CONFIG_HOME from v4.6 Phase 25.
+#
+# IMPORTANT: No errexit/nounset/pipefail here — sourced libraries must not alter caller error mode.
+#            _bridge_write_state_entry calls acquire_lock then release_lock inline so callers do
+#            NOT need to register a trap themselves (the function uses inline release rather than
+#            EXIT trap to avoid clobbering caller-registered traps).
+#
+# Codex reads AGENTS.md (NOT CODEX.md) — this is the OpenAI standard.
+# Gemini reads GEMINI.md.
+
+# Color constants with guards: do NOT redefine if caller already set them.
+# shellcheck disable=SC2034
+[[ -z "${RED:-}"    ]] && RED='\033[0;31m'
+# shellcheck disable=SC2034
+[[ -z "${GREEN:-}"  ]] && GREEN='\033[0;32m'
+# shellcheck disable=SC2034
+[[ -z "${YELLOW:-}" ]] && YELLOW='\033[1;33m'
+# shellcheck disable=SC2034
+[[ -z "${BLUE:-}"   ]] && BLUE='\033[0;34m'
+# shellcheck disable=SC2034
+[[ -z "${NC:-}"     ]] && NC='\033[0m'
+
+# Source sibling libs. BASH_SOURCE[0]:- guards against unset under set -u when
+# sourced via process substitution (Bash 3.2 portability).
+_BRIDGES_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)"
+# shellcheck source=/dev/null
+source "${_BRIDGES_LIB_DIR}/state.sh"
+# shellcheck source=/dev/null
+source "${_BRIDGES_LIB_DIR}/dry-run-output.sh"
+
+# ──────────────────────────────────────────────────────────────────────────
+# Internal helpers (prefixed with _bridge_, not part of public API)
+# ──────────────────────────────────────────────────────────────────────────
+
+# _bridge_home — return $HOME or the TK_BRIDGE_HOME override (test seam).
+_bridge_home() {
+    echo "${TK_BRIDGE_HOME:-$HOME}"
+}
+
+# _bridge_filename — map target name to its conventional bridge filename.
+# gemini → GEMINI.md, codex → AGENTS.md (OpenAI standard, NOT CODEX.md).
+_bridge_filename() {
+    local target="$1"
+    case "$target" in
+        gemini) echo "GEMINI.md" ;;
+        codex)  echo "AGENTS.md" ;;
+        *)      return 1 ;;
+    esac
+}
+
+# _bridge_global_dir — directory under TK_BRIDGE_HOME for global bridge writes.
+# gemini → $home/.gemini, codex → $home/.codex.
+_bridge_global_dir() {
+    local target="$1"
+    local home
+    home="$(_bridge_home)"
+    case "$target" in
+        gemini) echo "${home}/.gemini" ;;
+        codex)  echo "${home}/.codex"  ;;
+        *)      return 1 ;;
+    esac
+}
+
+# _bridge_write_file — atomic-ish file write with banner heredoc + verbatim source.
+# Args: $1=source-path (must exist), $2=target-abs-path
+# Returns: 0=success, 1=missing source, 2=mkdir/write blocked.
+# Banner is byte-identical across all bridges (BRIDGE-GEN-03 contract).
+_bridge_write_file() {
+    local source="$1" target_path="$2"
+    [[ -f "$source" ]] || return 1
+    mkdir -p "$(dirname "$target_path")" 2>/dev/null || return 2
+    {
+        cat <<'BANNER'
+<!--
+  Auto-generated from CLAUDE.md by claude-code-toolkit (v4.7+).
+  Edit CLAUDE.md (canonical source). This file regenerates on update-claude.sh.
+  To stop sync: run `update-claude.sh --break-bridge <name>`.
+-->
+BANNER
+        echo ""
+        cat "$source"
+    } > "$target_path" 2>/dev/null || return 2
+    return 0
+}
+
+# _bridge_write_state_entry — register / replace one entry under .bridges[] in
+# toolkit-install.json. Atomic via python3 tempfile.mkstemp + os.replace.
+# Args: $1=target (gemini|codex), $2=path (abs), $3=scope (project|global),
+#       $4=source_sha256, $5=bridge_sha256
+# Returns: 0=success, 1=python failure / lock failure
+#
+# Why not write_state? state.sh::write_state rebuilds the entire JSON document
+# from positional args (mode, has_sp, sp_ver, ...) and would clobber
+# installed_files[]. Bridges need a surgical patch of one top-level key.
+_bridge_write_state_entry() {
+    local target="$1" path="$2" scope="$3" source_sha="$4" bridge_sha="$5"
+    local home state_file
+    home="$(_bridge_home)"
+    state_file="${home}/.claude/toolkit-install.json"
+
+    # Honour TK_BRIDGE_HOME for the lock dir as well as the state file so
+    # hermetic tests do not collide with real ~/.claude/.toolkit-install.lock.
+    local saved_lock_dir="${LOCK_DIR:-}"
+    LOCK_DIR="${home}/.claude/.toolkit-install.lock"
+
+    if ! acquire_lock; then
+        LOCK_DIR="$saved_lock_dir"
+        return 1
+    fi
+
+    local rc=0
+    python3 - "$target" "$path" "$scope" "$source_sha" "$bridge_sha" \
+              "$state_file" <<'PYEOF' || rc=1
+import json, os, sys, tempfile
+
+target, path, scope, src_sha, br_sha, state_path = sys.argv[1:7]
+
+if os.path.exists(state_path):
+    with open(state_path) as f:
+        state = json.load(f)
+else:
+    state = {}
+
+bridges = state.get("bridges", [])
+
+entry = {
+    "target": target,
+    "path": path,
+    "scope": scope,
+    "source_sha256": src_sha,
+    "bridge_sha256": br_sha,
+    "user_owned": False,
+}
+
+idx = next(
+    (i for i, e in enumerate(bridges)
+     if e.get("target") == target
+        and e.get("scope") == scope
+        and e.get("path") == path),
+    None,
+)
+if idx is not None:
+    bridges[idx] = entry
+else:
+    bridges.append(entry)
+
+state["bridges"] = bridges
+
+out_dir = os.path.dirname(os.path.abspath(state_path))
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix="toolkit-install.", suffix=".tmp")
+try:
+    with os.fdopen(tmp_fd, "w") as f:
+        json.dump(state, f, indent=2)
+        f.write("\n")
+    os.replace(tmp_path, state_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
+
+    release_lock
+    LOCK_DIR="$saved_lock_dir"
+    return $rc
+}
+
+# bridge_create_project — write GEMINI.md/AGENTS.md next to <project_root>/CLAUDE.md.
+# Args: $1=target (gemini|codex), $2=project_root (optional, defaults to $PWD)
+# Returns: 0=success, 1=missing source, 2=mkdir/write blocked, 3=bad target.
+bridge_create_project() {
+    local target="$1"
+    local project_root="${2:-$PWD}"
+
+    local filename
+    filename="$(_bridge_filename "$target")" || return 3
+
+    local source target_path
+    source="${project_root}/CLAUDE.md"
+    target_path="${project_root}/${filename}"
+
+    [[ -f "$source" ]] || return 1
+
+    _bridge_write_file "$source" "$target_path"
+    local rc=$?
+    [[ $rc -eq 0 ]] || return $rc
+
+    # Hash AFTER the write completes (Pitfall 4: redirect must be closed).
+    local source_sha bridge_sha
+    source_sha="$(sha256_file "$source" 2>/dev/null || echo '')"
+    bridge_sha="$(sha256_file "$target_path" 2>/dev/null || echo '')"
+
+    _bridge_write_state_entry "$target" "$target_path" "project" \
+        "$source_sha" "$bridge_sha" || return 1
+
+    return 0
+}
+
+# bridge_create_global — write under ~/.gemini/ or ~/.codex/ using ~/.claude/CLAUDE.md.
+# NEVER modifies ~/.claude/CLAUDE.md (the canonical source).
+# Args: $1=target (gemini|codex)
+# Returns: 0=success, 1=missing source, 2=mkdir/write blocked, 3=bad target.
+bridge_create_global() {
+    local target="$1"
+
+    local filename global_dir
+    filename="$(_bridge_filename "$target")" || return 3
+    global_dir="$(_bridge_global_dir "$target")" || return 3
+
+    local home source target_path
+    home="$(_bridge_home)"
+    source="${home}/.claude/CLAUDE.md"
+    target_path="${global_dir}/${filename}"
+
+    [[ -f "$source" ]] || return 1
+
+    _bridge_write_file "$source" "$target_path"
+    local rc=$?
+    [[ $rc -eq 0 ]] || return $rc
+
+    local source_sha bridge_sha
+    source_sha="$(sha256_file "$source" 2>/dev/null || echo '')"
+    bridge_sha="$(sha256_file "$target_path" 2>/dev/null || echo '')"
+
+    _bridge_write_state_entry "$target" "$target_path" "global" \
+        "$source_sha" "$bridge_sha" || return 1
+
+    return 0
+}
