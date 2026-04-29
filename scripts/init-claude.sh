@@ -730,6 +730,7 @@ setup_council() {
     else
         echo -e "  ${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
         install_council_system_prompts() { :; }
+        install_council_personas() { :; }
     fi
     rm -f "$lib_prompts_tmp"
 
@@ -771,6 +772,11 @@ setup_council() {
     # Install editable system prompts (Phase 24 Sub-Phase 2). brain.py reads
     # them via load_prompt() and falls back to embedded constants when missing.
     install_council_system_prompts
+
+    # Install domain persona overlays (Phase 24 SP8). detect_domain() in
+    # brain.py classifies the plan into security / performance / ux /
+    # migration; the matching overlay is prepended to the base prompt.
+    install_council_personas
 
     # Install redaction-patterns.txt (Phase 24 Sub-Phase 3) — augments
     # brain.py's built-in DEFAULT_REDACTION_PATTERNS with project-specific

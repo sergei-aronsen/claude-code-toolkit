@@ -142,6 +142,76 @@ def load_prompt(name):
     return text
 
 
+# ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 8 — domain detection + persona overlays
+# ─────────────────────────────────────────────────
+# detect_domain() classifies the plan into one of {security, performance,
+# ux, migration, general}. When non-general, the matching persona overlay
+# under prompts/personas/<domain>-<role>.md is prepended to the base
+# Skeptic / Pragmatist system prompt. Overlays are optional — missing
+# files degrade gracefully to the base prompt.
+
+DOMAIN_PATTERNS = (
+    ("security", re.compile(r"\b(auth|password|crypto|JWT|token|session)\b", re.IGNORECASE)),
+    ("performance", re.compile(r"\b(perf|latency|cache|N\+1|slow|optimi[sz]e)\b", re.IGNORECASE)),
+    ("ux", re.compile(r"\b(UI|UX|accessibility|a11y|WCAG|screen reader)\b", re.IGNORECASE)),
+    ("migration", re.compile(r"\b(?:migration|backwards|deprecat\w*)\b", re.IGNORECASE)),
+)
+
+
+def detect_domain(plan_text):
+    """Classify a plan into a domain bucket. Returns 'general' on no match."""
+    if not plan_text:
+        return "general"
+    for label, pat in DOMAIN_PATTERNS:
+        if pat.search(plan_text):
+            return label
+    return "general"
+
+
+def load_persona(domain, role):
+    """Return the persona overlay text for (domain, role) or '' when none.
+
+    role must be 'skeptic' or 'pragmatist'. domain 'general' always returns
+    empty string. Cached per process via _PROMPT_CACHE.
+    """
+    if not domain or domain == "general":
+        return ""
+    if role not in ("skeptic", "pragmatist"):
+        return ""
+    cache_key = f"persona::{domain}-{role}"
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
+    path = PROMPTS_DIR / "personas" / f"{domain}-{role}.md"
+    text = ""
+    try:
+        if path.is_file():
+            text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        text = ""
+    _PROMPT_CACHE[cache_key] = text
+    return text
+
+
+def compose_system_prompt(role, plan, domain=None):
+    """Build the full system prompt for `role`.
+
+    Loads the base system prompt for the role and, when the plan classifies
+    into a non-general domain, prepends the matching persona overlay
+    separated by a `---` divider. Falls through to the base prompt when no
+    overlay exists.
+    """
+    base = load_prompt(f"{role}-system")
+    if domain is None:
+        domain = detect_domain(plan)
+    overlay = load_persona(domain, role)
+    if not overlay:
+        _debug(f"persona: role={role} domain={domain} overlay=none")
+        return base
+    _debug(f"persona: role={role} domain={domain} overlay=loaded ({len(overlay)} chars)")
+    return f"{overlay}\n\n---\n\n{base}"
+
+
 # Council audit-review constants
 COUNCIL_SLOT_PLACEHOLDER = "_pending — run /council audit-review_"  # U+2014 em-dash
 COUNCIL_VERDICT_HEADER = "| ID | verdict | confidence | justification |"
@@ -1807,6 +1877,10 @@ def _run_validate_plan(plan, config):
     validate_plan(plan)
     plan_hash = _hash_plan(plan)
 
+    # ── Phase 24 SP8 — domain detection (used by persona overlays + JSON output) ──
+    domain = detect_domain(plan)
+    _debug(f"domain detected: {domain}")
+
     # ── Phase 24 SP6 — pre-call cache lookup ──
     no_cache = bool(config.get("_no_cache"))
     git_head = _git_head()
@@ -1863,7 +1937,7 @@ def _run_validate_plan(plan, config):
     if config.get("_gemini_available", True):
         print("\n\U0001f9e0 [Gemini]: Analyzing project structure...")
 
-        context_prompt = f"""{load_prompt("skeptic-system")}
+        context_prompt = f"""{compose_system_prompt("skeptic", plan, domain=domain)}
 
 Review the project structure and the implementation plan.
 
@@ -1911,7 +1985,7 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     use_native_files = config["gemini"].get("mode", "cli") == "cli" and file_paths
     files_in_prompt = "" if use_native_files else (files_content_redacted if files_content_redacted else "(no files read)")
 
-    skeptic_prompt = f"""{load_prompt("skeptic-system")}
+    skeptic_prompt = f"""{compose_system_prompt("skeptic", plan, domain=domain)}
 {rules_block}{enrichment_block}{tests_block}
 
 FILES CONTEXT:
@@ -1957,7 +2031,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
                     file_paths=file_paths if use_native_files else None,
                 ),
                 fallback_prompt=skeptic_prompt,
-                fallback_system=load_prompt("skeptic-system"),
+                fallback_system=compose_system_prompt("skeptic", plan, domain=domain),
                 config=config,
                 label="Skeptic",
             )
@@ -2017,10 +2091,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
             gpt_verdict = "Error: Pragmatist call declined by cost-confirm gate"
             fallback_used_pragmatist = False
         else:
+            pragmatist_system = compose_system_prompt("pragmatist", plan, domain=domain)
             gpt_verdict, fallback_used_pragmatist = call_with_fallback(
-                lambda: ask_chatgpt(pragmatist_prompt, config),
+                lambda: ask_chatgpt(pragmatist_prompt, config, system_prompt=pragmatist_system),
                 fallback_prompt=pragmatist_prompt,
-                fallback_system=load_prompt("pragmatist-system"),
+                fallback_system=pragmatist_system,
                 config=config,
                 label="Pragmatist",
             )

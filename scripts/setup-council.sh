@@ -57,6 +57,7 @@ elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$LIB_PROMPTS_TMP"
 else
     echo -e "${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
     install_council_system_prompts() { :; }
+    install_council_personas() { :; }
 fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -292,6 +293,11 @@ fi
 # brain.py reads them via load_prompt() and falls back to embedded constants
 # when files are missing.
 install_council_system_prompts
+
+# Install domain persona overlays (Phase 24 SP8). detect_domain() in brain.py
+# classifies the plan into security / performance / ux / migration and the
+# corresponding overlay is prepended to the base Skeptic / Pragmatist prompt.
+install_council_personas
 
 # Install redaction-patterns.txt (Phase 24 Sub-Phase 3) so brain.py can
 # augment its built-in DEFAULT_REDACTION_PATTERNS with project-specific

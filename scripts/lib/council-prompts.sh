@@ -160,6 +160,83 @@ install_council_redaction_patterns() {
 }
 
 
+# Phase 24 SP8 — domain personas. Each domain ships two overlays
+# (skeptic + pragmatist) that prepend to the base system prompt when
+# detect_domain() classifies the plan into one of these buckets.
+COUNCIL_PERSONAS=(
+    "security-skeptic"
+    "security-pragmatist"
+    "performance-skeptic"
+    "performance-pragmatist"
+    "ux-skeptic"
+    "ux-pragmatist"
+    "migration-skeptic"
+    "migration-pragmatist"
+)
+
+# _fetch_council_persona <name> <dest>
+# Returns 0 if a fresh upstream copy is now at <dest>, 1 on fetch failure.
+_fetch_council_persona() {
+    local name="$1"
+    local dest="$2"
+
+    if [[ -n "${TK_COUNCIL_PROMPTS_DIR:-}" && -f "$TK_COUNCIL_PROMPTS_DIR/personas/${name}.md" ]]; then
+        cp "$TK_COUNCIL_PROMPTS_DIR/personas/${name}.md" "$dest"
+        return 0
+    fi
+    if curl -sSLf "$REPO_URL/templates/council-prompts/personas/${name}.md" -o "$dest" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$dest"
+    return 1
+}
+
+# install_council_personas
+# Installs all eight persona overlays into <target>/prompts/personas/,
+# preserving local edits via the same .upstream-new.md sidecar pattern.
+# Phase 24 SP8.
+install_council_personas() {
+    local target="${COUNCIL_DIR:-${council_dir:-$HOME/.claude/council}}"
+    local personas_dir="$target/prompts/personas"
+    mkdir -p "$personas_dir"
+
+    local name installed_path tmp_path new_path stamp
+    for name in "${COUNCIL_PERSONAS[@]}"; do
+        installed_path="$personas_dir/${name}.md"
+        tmp_path="$(mktemp "${TMPDIR:-/tmp}/council-persona-${name}.XXXXXX")"
+
+        if ! _fetch_council_persona "$name" "$tmp_path"; then
+            echo -e "  ${YELLOW}⚠${NC} prompts/personas/${name}.md (download failed — skipping)"
+            rm -f "$tmp_path"
+            continue
+        fi
+
+        if [[ ! -f "$installed_path" ]]; then
+            mv "$tmp_path" "$installed_path"
+            echo -e "  ${GREEN}✓${NC} prompts/personas/${name}.md installed"
+            continue
+        fi
+
+        if cmp -s "$tmp_path" "$installed_path" 2>/dev/null; then
+            rm -f "$tmp_path"
+            echo -e "  ${GREEN}✓${NC} prompts/personas/${name}.md (already current)"
+            continue
+        fi
+
+        new_path="${installed_path}.upstream-new.md"
+        if [[ -f "$new_path" ]] && ! cmp -s "$new_path" "$tmp_path" 2>/dev/null; then
+            stamp=$(date -u +%s)
+            mv "$new_path" "${new_path}.${stamp}"
+            echo -e "  ${YELLOW}⚠${NC} prompts/personas/${name}.md: preserved prior reconciliation as .upstream-new.md.${stamp}"
+        fi
+        mv "$tmp_path" "$new_path"
+        echo -e "  ${YELLOW}⚠${NC} prompts/personas/${name}.md differs from upstream — wrote ${new_path}"
+        echo -e "       Diff:  diff -u \"$installed_path\" \"$new_path\""
+        echo -e "       Apply: mv \"$new_path\" \"$installed_path\""
+    done
+}
+
+
 # install_council_system_prompts
 # Installs all four system prompts into <target>/prompts/, preserving any
 # local customizations.
