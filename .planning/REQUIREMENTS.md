@@ -12,12 +12,12 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 #### TUI library (foundation reused by Phases 25–26)
 
-- [ ] **TUI-01**: `scripts/lib/tui.sh` exposes `tui_checklist <items_var> <results_var>` that renders a Bash 3.2 compatible checkbox menu (`read -rsn1` + `read -rsn2` for arrow tail; no `read -N`, no float `-t`, no `declare -n` namerefs). Live tested on macOS Bash 3.2.57.
-- [ ] **TUI-02**: TUI reads exclusively from `< /dev/tty` with `TK_TUI_TTY_SRC` test seam (mirrors `TK_BOOTSTRAP_TTY_SRC` from v4.4 BOOTSTRAP-01). Fail-closed default-set when `/dev/tty` unavailable (CI, piped install).
-- [ ] **TUI-03**: TUI registers `trap '<restore-stty>' EXIT INT TERM` BEFORE entering raw mode. Ctrl-C mid-render restores terminal cleanly. Restore uses `|| true` so trap failure doesn't compound.
-- [ ] **TUI-04**: Each item displays label + status (`[ ]`, `[x]`, `[installed ✓]`) + optional description on focused row. Selection visually distinguished (reverse video or arrow indicator).
-- [ ] **TUI-05**: Confirmation step before any installer runs (`Install N component(s)? [y/N]`). Default N. Cancel returns to menu without changes.
-- [ ] **TUI-06**: `--no-color` and `${NO_COLOR+x}` honored ([no-color.org](https://no-color.org)). `[ -t 1 ]` gates color output.
+- [x] **TUI-01**: `scripts/lib/tui.sh` exposes `tui_checklist <items_var> <results_var>` that renders a Bash 3.2 compatible checkbox menu (`read -rsn1` + `read -rsn2` for arrow tail; no `read -N`, no float `-t`, no `declare -n` namerefs). Live tested on macOS Bash 3.2.57.
+- [x] **TUI-02**: TUI reads exclusively from `< /dev/tty` with `TK_TUI_TTY_SRC` test seam (mirrors `TK_BOOTSTRAP_TTY_SRC` from v4.4 BOOTSTRAP-01). Fail-closed default-set when `/dev/tty` unavailable (CI, piped install).
+- [x] **TUI-03**: TUI registers `trap '<restore-stty>' EXIT INT TERM` BEFORE entering raw mode. Ctrl-C mid-render restores terminal cleanly. Restore uses `|| true` so trap failure doesn't compound.
+- [x] **TUI-04**: Each item displays label + status (`[ ]`, `[x]`, `[installed ✓]`) + optional description on focused row. Selection visually distinguished (reverse video or arrow indicator).
+- [x] **TUI-05**: Confirmation step before any installer runs (`Install N component(s)? [y/N]`). Default N. Cancel returns to menu without changes.
+- [x] **TUI-06**: `--no-color` and `${NO_COLOR+x}` honored ([no-color.org](https://no-color.org)). `[ -t 1 ]` gates color output.
 - [ ] **TUI-07**: `scripts/tests/test-install-tui.sh` hermetic test (≥15 assertions): keystroke injection via fixture file, no-TTY fallback path, `--yes` non-interactive default-set, `--dry-run` zero-mutation, `--force` re-runs detected components.
 
 #### Centralized detection v2

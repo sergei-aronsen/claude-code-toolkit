@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 24-01-detect2-centralized-detection-PLAN.md
-last_updated: "2026-04-29T10:44:32.056Z"
+stopped_at: Completed 24-02-tui-rendering-bash3-PLAN.md
+last_updated: "2026-04-29T10:51:26.921Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
-  percent: 20
+  completed_plans: 2
+  percent: 40
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 24 (unified-tui-installer-centralized-detection) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -89,6 +89,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 24]: D-21: detect2.sh sources detect.sh — SP/GSD logic not duplicated
 - [Phase 24]: D-22: binary 0/1 return from every is_*_installed probe
 - [Phase 24]: D-23: detect2_cache helper for D-23 mid-run drift recheck pattern
+- [Phase 24]: Comment text in tui.sh header paraphrases forbidden Bash 3.2 patterns to avoid grep false-positives in acceptance criteria
+- [Phase 24]: TK_TUI_TTY_SRC seam mirrors TK_BOOTSTRAP_TTY_SRC exactly — per-read redirection inside each function, not global exec redirect
 
 ### Key v4.5 Constraints (from research)
 
@@ -148,11 +150,12 @@ Carry-overs available for next milestone scoping:
 | Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 — v4.6+ |
 | Future | Marketplace signing/integrity | MKT-FUT-01 — no Anthropic spec for it yet |
 | Phase 24 P01 | 15m | 3 tasks | 2 files |
+| Phase 24 P02 | 6 | 3 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T10:44:32.053Z
-Stopped at: Completed 24-01-detect2-centralized-detection-PLAN.md
+Last session: 2026-04-29T10:51:26.918Z
+Stopped at: Completed 24-02-tui-rendering-bash3-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
