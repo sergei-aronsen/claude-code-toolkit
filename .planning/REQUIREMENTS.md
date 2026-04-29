@@ -30,8 +30,8 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 #### Dispatch + install.sh entry
 
-- [ ] **DISPATCH-01**: `scripts/lib/dispatch.sh` exposes per-component dispatchers (`dispatch_toolkit`, `dispatch_security`, `dispatch_rtk`, `dispatch_statusline`) that invoke existing per-component scripts as `bash -c` subprocesses with appropriate flags. Order-of-operations contract: SP/GSD → toolkit → security → RTK → statusline.
-- [ ] **DISPATCH-02**: `setup-security.sh` learns `--yes` flag that gates every interactive `read -r -p` block (use safe defaults). `install-statusline.sh` learns `--yes` as accepted-but-no-op (semantic symmetry). `init-claude.sh` already non-interactive — no flag added.
+- [x] **DISPATCH-01**: `scripts/lib/dispatch.sh` exposes per-component dispatchers (`dispatch_toolkit`, `dispatch_security`, `dispatch_rtk`, `dispatch_statusline`) that invoke existing per-component scripts as `bash -c` subprocesses with appropriate flags. Order-of-operations contract: SP/GSD → toolkit → security → RTK → statusline.
+- [x] **DISPATCH-02**: `setup-security.sh` learns `--yes` flag that gates every interactive `read -r -p` block (use safe defaults). `install-statusline.sh` learns `--yes` as accepted-but-no-op (semantic symmetry). `init-claude.sh` already non-interactive — no flag added.
 - [ ] **DISPATCH-03**: `scripts/install.sh` is a new top-level orchestrator (NOT a trampoline). Sources `lib/{tui,detect2,dispatch}.sh`, runs detection → TUI → confirmation → dispatch → post-install summary. Failure of step N reports per-component status; remaining components continue (configurable via `--fail-fast`).
 
 #### Backwards compatibility
