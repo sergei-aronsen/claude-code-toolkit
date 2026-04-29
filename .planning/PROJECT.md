@@ -144,38 +144,37 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 **Shipped:**
 
+- **v4.6 Install Flow UX & Desktop Reach** (2026-04-29) — 4 phases (24–27), 17 plans, 42 tasks, 36 REQ-IDs (TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01, MCP-01..05, MCP-SEC-01/02, SKILL-01..05, MKT-01..04, DESK-01..04). Single guided TUI installer (`scripts/install.sh`) replaces 5 separate curl-bash invocations: `scripts/lib/{tui,detect2,dispatch}.sh` foundation + 6-component selector. Phase 25 ships 9-MCP curated TUI (`scripts/lib/mcp-catalog.json` + `mcp.sh`) with hidden-input wizard and `~/.claude/mcp-config.env` (mode 0600). Phase 26 mirrors 22 curated skills under `templates/skills-marketplace/<name>/` installable via `cp -R` to `~/.claude/skills/`. Phase 27 publishes plugin marketplace (`.claude-plugin/marketplace.json` + 3 sub-plugins `tk-skills`/`tk-commands`/`tk-framework-rules` via relative symlinks) + `docs/CLAUDE_DESKTOP.md` capability matrix + auto-routing to `--skills-only` when `claude` CLI absent. 5 hermetic test suites (PASS=104+: test-install-tui 43, test-mcp-selector 21, test-install-skills 15, test-update-libs 15, test-bootstrap 26 unchanged). Manifest 4.4.0 → 4.6.0 with new `files.skills_marketplace[]` (22 entries). 8 HUMAN-UAT items deferred (live PTY + external CLI) and 5 advisory code-review WRs. Tagged `v4.6.0`.
+- **v4.4 Bootstrap & Polish** (2026-04-27) — 3 phases (21–23), 8 plans, 19 tasks, 9 REQ-IDs (BOOTSTRAP-01..04, LIB-01/02, BANNER-01, KEEP-01/02). `scripts/lib/bootstrap.sh` invokes canonical SP/GSD installers (`claude plugin install superpowers@claude-plugins-official`, `bash <(curl -sSL .../get-shit-done/.../install.sh)`) before `detect.sh` and re-runs detection after; `< /dev/tty` with fail-closed `N`; `--no-bootstrap` + `TK_NO_BOOTSTRAP=1` opt-out. `manifest.json` gained `files.libs[]` covering `scripts/lib/{backup,bootstrap,dry-run-output,install,optional-plugins,state}.sh` so `update-claude.sh` refreshes them via existing jq path. `init-claude.sh` + `init-local.sh` learned `--no-banner` (env-form `NO_BANNER=${NO_BANNER:-0}` for byte-symmetry). `scripts/uninstall.sh --keep-state` (and `TK_UNINSTALL_KEEP_STATE=1`) preserves `~/.claude/toolkit-install.json` for partial-uninstall recovery. 30 Makefile tests + CI Tests 21-30. Tagged `v4.4.0`.
 - **v4.3 Uninstall** (2026-04-26) — 3 phases (18–20), 10 plans, 12 tasks, 8 REQ-IDs (UN-01..UN-08). `scripts/uninstall.sh` reads `~/.claude/toolkit-install.json`, classifies via SHA256, prompts `[y/N/d]` for modified files, backs up to `~/.claude-backup-pre-uninstall-<ts>/`, strips toolkit sentinel block from `~/.claude/CLAUDE.md`, verifies base-plugin invariant via `diff -q`, deletes state file LAST, idempotent on second invocation. 7 hermetic test files (67 assertions: dry-run + backup + prompt + idempotency + state-cleanup + round-trip + banner-gate). Manifest 4.3.0 registers `files.scripts[]`; identical `To remove` banner in all 3 installers; CI mirror in `quality.yml`. Tagged `v4.3.0`.
 - **v4.2 Audit System v2** (2026-04-26) — 5 phases (13–17), 22 plans, 22 REQ-IDs. Persistent FP allowlist (`.claude/rules/audit-exceptions.md` + `/audit-skip` + `/audit-restore`), `/audit` rewritten to a 6-phase pipeline with 6-step FP recheck and structured reports at `.claude/audits/<type>-<HHMM>.md` (±10 lines verbatim code per finding), mandatory `/council audit-review` pass with per-finding REAL/FALSE_POSITIVE verdicts (severity reclassification forbidden), and 49 prompt files spliced across 7 frameworks. Tagged `v4.2.0`.
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Current Milestone: v4.4 Bootstrap & Polish
+## Next Milestone Goals (v4.7 — TBD)
 
-**Goal:** Streamline first-run UX (toolkit can offer to install SP/GSD via their canonical installers) and close residual smart-update / installer-symmetry gaps surfaced during v4.3.
+v4.6 milestone archive: `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. Audit: `.planning/v4.6-MILESTONE-AUDIT.md` (passed, 36/36 REQ-IDs).
 
-**Target features:**
+**Pending HUMAN-UAT from v4.6** (run when convenient — not blocking ship):
 
-- **Bootstrap installer** — `init-claude.sh` (and `init-local.sh`) ask `[y/N]` whether to install `superpowers` and/or `get-shit-done` before running detection. Toolkit invokes the canonical commands directly (`claude plugin install superpowers@claude-plugins-official` for SP, `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` for GSD). No forks, no vendoring. Re-runs `detect.sh` after bootstrap so the install proceeds in the correct mode.
-- **Register `scripts/lib/*.sh` in manifest** — close the smart-update gap where `lib/backup.sh`, `lib/dry-run-output.sh`, `lib/install.sh`, `lib/state.sh` are silently skipped on `update-claude.sh` because they are not in `manifest.json`. Add `files.libs[]` (or extend `files.scripts[]`) and teach `update-claude.sh` to iterate it.
-- **`--no-banner` symmetry** — `init-claude.sh` and `init-local.sh` learn the same `--no-banner` flag that `update-claude.sh` already honors. Suppresses the closing "To remove: bash <(curl …)" banner. CI / scripted users get clean output across all installers.
-- **`--keep-state` partial-uninstall recovery** — `scripts/uninstall.sh --keep-state` preserves `~/.claude/toolkit-install.json` after a session where the user answered N on every modified file. Lets a follow-up `uninstall.sh` see what is still on disk instead of a no-op.
+- Phase 24: live PTY interactive TUI render + Ctrl-C terminal restore
+- Phase 25: live PTY MCP wizard with real `claude` CLI detection + hidden-input visual confirmation
+- Phase 26: live PTY interactive 22-row Skills TUI render
+- Phase 27: live `claude plugin marketplace add ./` smoke + Claude Desktop end-to-end install
 
-**Key context:**
+**Optional follow-ups:**
 
-- All four items are scoped to known gaps in shipped behaviour; no new architecture, no new install modes, no breaking changes.
-- Bootstrap installer must respect `< /dev/tty` semantics (default N when no TTY, e.g. piped install) and offer a `--no-bootstrap` opt-out for CI.
-- Manifest registration must keep `make check` `version-align` + `validate` green; consider whether `lib/*.sh` warrants a separate manifest section or extends `files.scripts[]`.
+- `/gsd-code-review-fix 24` to address 4 advisory WR findings in `tui.sh` + 1 in `dispatch.sh` (low real-world risk).
+- Submit toolkit to upstream Anthropic marketplace registry (MKT-04 follow-up; manual).
 
-### Carry-overs not in this milestone
+**Carry-overs from previous milestones (still deferred):**
 
+- `--no-council` flag for `/audit` — keep deferred (mandatory pass guarantees FP discipline; revisit if friction surfaces)
+- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — reader side already shipped in v4.3)
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
-- Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers — Phase 19 D-01 deferred indefinitely; Phase 19 already shipped strip-only reader side)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
-- Closed earlier in this cleanup:
-  - AUDIT-10/12/14/15 — already covered by shipped behaviour (manifest + idempotent install + uninstall). Closed 2026-04-26.
-  - AUDIT-02/04/06 — WONTFIX (KISS/YAGNI; no overlay scenario, no lockfile needed). Closed 2026-04-26.
-  - DETECT-FUT-01 — closed by DETECT-06 in v4.1 Phase 9.
-  - Council `audit-review` → Sentry/Linear ticket creation — WONTFIX per user direction (2026-04-27): Sentry reserved for error monitoring (not tracking); project tracking lives outside the toolkit. Audit pipeline terminates at the report artefact.
+
+v4.7 scope to be defined via `/gsd-new-milestone` when ready. Note: v4.5 on origin/main is "Council Globalize + Rework" (Sub-Phase 1 shipped, Sub-Phases 2-11 planned in `.planning/phases/24-council-globalize/PLAN.md`) — that work continues independently in a future milestone.
 
 ## Key Decisions
 
@@ -219,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-27 — **v4.4.0 shipped**: tag `v4.4.0` → `41d794d` pushed; [GitHub Release published](https://github.com/sergei-aronsen/claude-code-toolkit/releases/tag/v4.4.0). v4.4 milestone closed via PRs [#5](https://github.com/sergei-aronsen/claude-code-toolkit/pull/5) (Phase 23 work) + [#7](https://github.com/sergei-aronsen/claude-code-toolkit/pull/7) (milestone archive). 9/9 REQ-IDs validated (BOOTSTRAP-01..04, LIB-01/02, BANNER-01, KEEP-01/02), 8/8 plans, 19 tasks, 62 commits, 59 files changed (+12935 / −71). Archive at `.planning/milestones/v4.4-{ROADMAP,REQUIREMENTS}.md`. Awaiting `/gsd-new-milestone` to scope v4.5 — deferred candidates: `--no-council` for `/audit` (v4.2 Phase 14/15 invariant), selective-uninstall `--only`/`--except` (combinatorial test surface), Phase 19 D-01 sentinel writer instrumentation.*
+*Last updated: 2026-04-29 — **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6`. 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs, 28/28 cross-phase connections wired, 5 of 6 E2E flows verified (1 platform-boundary deferred). 8 HUMAN-UAT items + 5 advisory WRs deferred — not blocking ship. v4.6 archived at `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. Tagged `v4.6.0`.*

@@ -12,6 +12,19 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# DISPATCH-02 — accept --yes as no-op for symmetry with TUI dispatch contract.
+# install-statusline.sh has zero interactive `read -r -p` blocks (it reads only
+# from the macOS Keychain, which has no interactive prompt component). YES=1 is
+# parse-and-store today; future-proof against any interactive prompt added later.
+YES=0
+for _arg in "$@"; do
+    case "$_arg" in
+        --yes) YES=1 ;;
+        *) echo -e "${YELLOW}⚠${NC} unknown flag: $_arg (ignoring)" ;;
+    esac
+done
+: "${YES}"  # silence shellcheck SC2034 — no-op stub today
+
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 

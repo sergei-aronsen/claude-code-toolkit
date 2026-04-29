@@ -13,3 +13,15 @@ CLAUDE.md
 # AUDIT-REPORT.md is a transient deep-audit artifact (subagent output) kept
 # in the repo as a fix-tracking reference. Not part of the published toolkit.
 AUDIT-REPORT.md
+
+# templates/skills-marketplace/ contains upstream skill content mirrored verbatim
+# from external authors. The upstream files may carry MD031/MD032/MD036/MD040
+# violations. Lint is excluded to avoid noise from third-party content; the
+# toolkit's own authored markdown (templates/base/, commands/, components/, etc.)
+# remains fully linted. Exclusion approved as part of Phase 26 Plan 03.
+templates/skills-marketplace/
+
+# plugins/ sub-plugin trees use symlinks to canonical repo content. Exclude
+# the symlinked paths from lint to avoid double-processing content already
+# covered above (plugins/ are distribution artifacts, not authored markdown).
+plugins/

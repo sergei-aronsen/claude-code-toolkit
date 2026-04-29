@@ -1,0 +1,74 @@
+{
+  "context7": {
+    "name": "context7",
+    "display_name": "Context7",
+    "env_var_keys": ["CONTEXT7_API_KEY"],
+    "install_args": ["context7", "--", "npx", "-y", "@upstash/context7-mcp"],
+    "description": "Up-to-date library docs (React, Next.js, Tailwind, etc.)",
+    "requires_oauth": false
+  },
+  "firecrawl": {
+    "name": "firecrawl",
+    "display_name": "Firecrawl",
+    "env_var_keys": ["FIRECRAWL_API_KEY"],
+    "install_args": ["firecrawl", "--", "npx", "-y", "firecrawl-mcp"],
+    "description": "Website scraping + crawling",
+    "requires_oauth": false
+  },
+  "magic": {
+    "name": "magic",
+    "display_name": "Magic",
+    "env_var_keys": ["MAGIC_API_KEY"],
+    "install_args": ["magic", "--", "npx", "-y", "@21st-dev/magic"],
+    "description": "UI component generation (21st.dev)",
+    "requires_oauth": false
+  },
+  "notion": {
+    "name": "notion",
+    "display_name": "Notion",
+    "env_var_keys": [],
+    "install_args": ["notion", "--", "npx", "-y", "@notionhq/notion-mcp-server"],
+    "description": "Workspace pages + databases (OAuth)",
+    "requires_oauth": true
+  },
+  "openrouter": {
+    "name": "openrouter",
+    "display_name": "OpenRouter",
+    "env_var_keys": ["OPENROUTER_API_KEY"],
+    "install_args": ["openrouter", "--", "npx", "-y", "openrouter-mcp"],
+    "description": "Multi-model LLM routing",
+    "requires_oauth": false
+  },
+  "playwright": {
+    "name": "playwright",
+    "display_name": "Playwright",
+    "env_var_keys": [],
+    "install_args": ["playwright", "--", "npx", "-y", "@playwright/mcp"],
+    "description": "Browser automation + screenshot",
+    "requires_oauth": false
+  },
+  "resend": {
+    "name": "resend",
+    "display_name": "Resend",
+    "env_var_keys": ["RESEND_API_KEY"],
+    "install_args": ["resend", "--", "npx", "-y", "@resend/mcp-send-email"],
+    "description": "Transactional email send",
+    "requires_oauth": false
+  },
+  "sentry": {
+    "name": "sentry",
+    "display_name": "Sentry",
+    "env_var_keys": ["SENTRY_AUTH_TOKEN"],
+    "install_args": ["sentry", "--", "npx", "-y", "@sentry/mcp-server"],
+    "description": "Error monitoring + issue triage",
+    "requires_oauth": false
+  },
+  "sequential-thinking": {
+    "name": "sequential-thinking",
+    "display_name": "Sequential Thinking",
+    "env_var_keys": [],
+    "install_args": ["sequential-thinking", "--", "npx", "-y", "@modelcontextprotocol/server-sequential-thinking"],
+    "description": "Structured step-by-step reasoning (zero-config)",
+    "requires_oauth": false
+  }
+}

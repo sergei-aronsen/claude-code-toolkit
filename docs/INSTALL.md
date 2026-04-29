@@ -26,6 +26,35 @@ and selects the appropriate mode; pass `--mode <name>` to override.
 
 ---
 
+## Install via marketplace
+
+The toolkit ships a Claude Code plugin marketplace listing at the repository's
+`.claude-plugin/marketplace.json`. Three sub-plugins are exposed:
+
+| Sub-plugin | Reach | Content |
+|------------|-------|---------|
+| `tk-skills` | Desktop Code tab + terminal Code | 22 curated skills mirrored from skills.sh |
+| `tk-commands` | Terminal Code only | 29 slash commands for Claude Code workflows |
+| `tk-framework-rules` | Terminal Code only | 7 framework CLAUDE.md fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base) |
+
+Install all three via:
+
+```text
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
+```
+
+This works in both Claude Desktop's Code tab and terminal Claude Code with plugin
+support enabled. The marketplace channel is **equivalent** to curl-bash for terminal
+Code users; for Desktop users it is the **only** install path.
+
+### Claude Desktop users
+
+Claude Desktop's Chat tab does not run the plugin runtime. The Code tab does and
+has feature parity with terminal Code for skills, slash commands, MCPs, and rules.
+See [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) for the full capability matrix.
+
+---
+
 ## Installer Flags
 
 Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
@@ -76,6 +105,164 @@ All other UN-01..UN-08 invariants stand: backup is still written to
 `~/.claude/CLAUDE.md`, and the base-plugin `diff -q` invariant still fires. The ONLY
 behavioural delta is the LAST step (`rm -f $STATE_FILE`) — replaced with a `log_info`
 message when `--keep-state` is set.
+
+---
+
+## install.sh (unified entry, v4.5+)
+
+`scripts/install.sh` is the single entry point for the unified TUI installer flow
+introduced in v4.5. It complements the per-component `init-claude.sh` /
+`setup-security.sh` / `install-statusline.sh` URLs (which all continue to work
+unchanged — BACKCOMPAT-01).
+
+### Quick start
+
+```bash
+# Interactive — TUI checklist with arrow/space/enter navigation
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
+
+# Non-interactive — install all uninstalled components in canonical order
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes
+
+# Re-run everything regardless of detection
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes --force
+```
+
+### Flags
+
+| Flag | Effect |
+|------|--------|
+| `--yes` | Skip TUI; install all uninstalled components in canonical order (superpowers, get-shit-done, toolkit, security, rtk, statusline) |
+| `--yes --force` | Skip TUI; re-run all components regardless of detection |
+| `--dry-run` | Show what would run without invoking any installer |
+| `--force` | Re-run already-installed components |
+| `--fail-fast` | Stop on first component failure (default behaviour: continue-on-error) |
+| `--no-color` | Disable ANSI output. Also honoured via `NO_COLOR` env per [no-color.org](https://no-color.org) |
+| `--no-banner` | Suppress the closing `To remove: ...` banner line. Also honoured via `NO_BANNER=1` env |
+| `--help` | Print usage and exit 0 |
+
+### TUI controls
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move focus up/down |
+| `space` | Toggle current item (already-installed items are immutable) |
+| `enter` | Confirm selection |
+| `q` or `Ctrl-C` | Cancel without installing |
+
+After `enter`, a confirmation prompt asks `Install N component(s)? [y/N]` (default
+`N` cancels). Already-installed components render as `[installed ✓]` and are
+pre-unchecked; uninstalled components are pre-checked.
+
+### --mcps flag
+
+`scripts/install.sh --mcps` opens a separate TUI page listing nine curated MCP servers
+(see [docs/MCP-SETUP.md](MCP-SETUP.md) for the full guide). Selecting an MCP triggers a
+per-MCP wizard that prompts for required API keys with hidden input via `read -rs`, persists
+them to `~/.claude/mcp-config.env` (mode 0600), and invokes `claude mcp add`.
+
+Interactive TUI catalog — browse and select MCPs with arrow keys and space:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps
+```
+
+Non-interactive — install all non-OAuth MCPs without prompts:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps --yes
+```
+
+Dry-run preview — show what would be installed without writing anything:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps --dry-run
+```
+
+When the `claude` CLI is not on `PATH`, `--mcps` prints a banner explaining that MCPs
+cannot be installed and renders the catalog read-only — selecting MCPs has no effect.
+Install the CLI first, then re-run.
+
+The components page and the MCPs page are mutually exclusive within a single invocation.
+To install components AND MCPs, run `install.sh` twice: once without `--mcps` for the
+components checklist, and once with `--mcps` for the MCP catalog.
+
+### --skills flag
+
+Install curated skills from the toolkit's marketplace mirror.
+
+```bash
+# TUI mode — interactive 22-skill catalog with detect status
+bash scripts/install.sh --skills
+
+# Non-interactive — install all uninstalled skills (default-set)
+bash scripts/install.sh --skills --yes
+
+# Re-install (overwrite existing skills)
+bash scripts/install.sh --skills --yes --force
+
+# Dry-run preview (no filesystem writes)
+bash scripts/install.sh --skills --yes --dry-run
+```
+
+Skills install to `~/.claude/skills/<name>/`. Skills are detected via directory
+presence (`[ -d ~/.claude/skills/<name>/ ]`).
+
+**Idempotent semantics:**
+
+- Without `--force`: already-installed skills are skipped (status `skipped: already installed`).
+- With `--force`: existing target directory is removed before re-copy.
+
+**Failure handling:** A failed skill copy does not block the rest. Per-skill status
+appears in the post-install summary as `installed ✓`, `skipped`, `would-install`,
+or `failed (exit N)`.
+
+**Removing a skill:** `rm -rf ~/.claude/skills/<name>` (no dedicated
+`--skills-remove` flag — manual deletion is sufficient).
+
+**Mirror provenance:** All 22 skills are sourced from upstream and committed to
+`templates/skills-marketplace/` as a static snapshot. Re-sync via
+`scripts/sync-skills-mirror.sh` (maintainer tool). See `docs/SKILLS-MIRROR.md`
+for license + upstream URL per skill.
+
+**Mutex with `--mcps`:** `--mcps` and `--skills` cannot be combined in the same
+invocation. Run two separate commands.
+
+### --skills-only flag
+
+`--skills-only` redirects the install target so skills land at
+`~/.claude/plugins/tk-skills/<name>/` (the Desktop plugin tree) instead of
+`~/.claude/skills/<name>/`. Use this when you want the toolkit's skills
+available in Claude Desktop's Code tab.
+
+```bash
+# Explicit Desktop install (works regardless of CLI presence)
+bash scripts/install.sh --skills-only --yes
+```
+
+Auto-routing: when `claude` is not on PATH and no other page flag is passed,
+`scripts/install.sh` automatically promotes to `--skills-only` mode and prints:
+
+```text
+! Claude CLI not detected — installing skills only.
+  Skills available in Claude Desktop Code tab.
+  See docs/CLAUDE_DESKTOP.md for full capability matrix.
+```
+
+This makes the installer Desktop-friendly out of the box. Pass any explicit
+flag (`--mcps`, `--skills`, `--components`, `--yes`) to opt out of auto-routing.
+
+### Backwards compatibility
+
+All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
+`TK_NO_BOOTSTRAP`, `NO_BANNER`) are preserved unchanged. The 26-assertion
+`test-bootstrap.sh` regression test stays green throughout v4.5. Both entry
+points coexist indefinitely; there is no deprecation schedule for
+`init-claude.sh`.
+
+When `/dev/tty` is unavailable (CI, piped install) and `--yes` is not passed,
+`install.sh` exits 0 with a "no-TTY, run with `--yes` for non-interactive
+install" message. This is the same fail-closed behaviour as v4.4 `bootstrap.sh`.
 
 ---
 

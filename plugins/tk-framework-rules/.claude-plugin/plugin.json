@@ -1,0 +1,7 @@
+{
+    "name": "tk-framework-rules",
+    "version": "4.6.0",
+    "description": "7 framework CLAUDE.md template fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base) — Code terminal only",
+    "category": "rules",
+    "tags": ["framework-templates", "code-only"]
+}

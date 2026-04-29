@@ -106,7 +106,7 @@ jobs:
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh
 
-      - name: Tests 21-30 — uninstall + banner suite + bootstrap + lib coverage (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02)
+      - name: Tests 21-33 — uninstall + banner suite + bootstrap + lib coverage + TUI orchestrator + MCP selector + Skills selector (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, TUI-01..09, MCP-01..05, MCP-SEC-01..02, SKILL-03..05)
         run: |
           bash scripts/tests/test-uninstall-dry-run.sh
           bash scripts/tests/test-uninstall-backup.sh
@@ -118,9 +118,18 @@ jobs:
           bash scripts/tests/test-bootstrap.sh
           bash scripts/tests/test-update-libs.sh
           bash scripts/tests/test-uninstall-keep-state.sh
+          bash scripts/tests/test-install-tui.sh
+          bash scripts/tests/test-mcp-selector.sh
+          bash scripts/tests/test-install-skills.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands
+
+      - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
+        run: make validate-skills-desktop
+
+      - name: MKT-03 — marketplace structural smoke (skipped without TK_HAS_CLAUDE_CLI)
+        run: make validate-marketplace
 
       - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
         run: make cell-parity

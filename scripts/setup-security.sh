@@ -23,6 +23,22 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# DISPATCH-02 — accept --yes for symmetry with TUI dispatch contract.
+# Today the script has zero interactive `read -r -p` blocks, so YES=1 is a
+# parse-and-store no-op. Future interactive prompts can guard with:
+#   [[ "$YES" -eq 1 ]] || read -r -p "..." choice
+# Unknown flags are warned (not fatal) so the dispatcher can pass new flags
+# through without breaking older versions of the script.
+YES=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --yes) YES=1 ;;
+        *) echo -e "${YELLOW}⚠${NC} unknown flag: $1 (ignoring)" ;;
+    esac
+    shift
+done
+: "${YES}"  # silence shellcheck SC2034 — YES consumed by future read blocks
+
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"

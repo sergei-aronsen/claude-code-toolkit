@@ -1,0 +1,7 @@
+# Core dependencies
+sentence-transformers>=2.2.0    # multilingual-e5-large embeddings
+numpy>=1.24.0                   # embedding storage and similarity search
+PyYAML>=6.0                     # frontmatter parsing (safe fallback without it)
+
+# MCP Server (optional — only needed if using memo_mcp_server.py)
+mcp[cli]>=1.2.0                 # Model Context Protocol SDK

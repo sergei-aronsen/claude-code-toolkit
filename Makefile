@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
 
 # Default target
 help:
@@ -16,7 +16,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands cell-parity
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-skills-desktop validate-marketplace cell-parity
 	@echo "All checks passed!"
 
 # Full local validation — `check` + bats install matrix. Run before push to catch
@@ -150,6 +150,15 @@ test:
 	@echo "Test 30: --keep-state partial-uninstall recovery (KEEP-01..02)"
 	@bash scripts/tests/test-uninstall-keep-state.sh
 	@echo ""
+	@echo "Test 31: TUI install orchestrator + dispatch scenarios (TUI-01..09)"
+	@bash scripts/tests/test-install-tui.sh
+	@echo ""
+	@echo "Test 32: MCP catalog + wizard + secrets handling (MCP-01..05, MCP-SEC-01..02)"
+	@bash scripts/tests/test-mcp-selector.sh
+	@echo ""
+	@echo "Test 33: Skills selector + cp-R install + idempotency + --force (SKILL-03..05)"
+	@bash scripts/tests/test-install-skills.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -159,6 +168,23 @@ test-update-libs:
 # Test 30 — --keep-state partial-uninstall recovery (KEEP-01..02), invokable standalone
 test-uninstall-keep-state:
 	@bash scripts/tests/test-uninstall-keep-state.sh
+
+# Test 31 — TUI install orchestrator + dispatch scenarios (TUI-01..09), invokable standalone
+test-install-tui:
+	@bash scripts/tests/test-install-tui.sh
+
+# Test 32 — MCP catalog + wizard + secrets (MCP-01..05, MCP-SEC-01..02), invokable standalone
+test-mcp-selector:
+	@bash scripts/tests/test-mcp-selector.sh
+
+# Test 33 — Skills selector + cp-R install + idempotency + --force (SKILL-03..05), invokable standalone
+test-install-skills:
+	@bash scripts/tests/test-install-skills.sh
+
+# Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
+# from local $HOME/.claude/skills/. Not run by CI.
+sync-skills-mirror:
+	@bash scripts/sync-skills-mirror.sh
 
 # Validate templates (check core audit prompts for self-check sections)
 validate:
@@ -305,6 +331,16 @@ agent-collision-static:
 validate-commands:
 	@echo "Validating commands/*.md for required headings (HARDEN-A-01)..."
 	@python3 scripts/validate-commands.py
+
+# DESK-02 + DESK-04: skills Desktop-safety heuristic gate (>= 4 PASS required).
+validate-skills-desktop:
+	@echo "Running skills Desktop-safety audit (DESK-02, DESK-04)..."
+	@bash scripts/validate-skills-desktop.sh
+
+# MKT-03: live marketplace smoke (gated by TK_HAS_CLAUDE_CLI=1; CI default = skip).
+validate-marketplace:
+	@echo "Running marketplace smoke (MKT-03; gated by TK_HAS_CLAUDE_CLI)..."
+	@bash scripts/validate-marketplace.sh
 
 # REL-01: run bats matrix suite (requires: brew install bats-core locally; CI uses bats-core/bats-action)
 test-matrix-bats:

@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0] - 2026-04-29
+
+### Added
+
+- **Unified TUI installer** (`scripts/install.sh`) — TUI-01..07, DET-01..05,
+  DISPATCH-01..03, BACKCOMPAT-01: Phase 24. Single curl-bash entry point
+  rendering an arrow-navigable Bash 3.2 checklist (no Bash 4-only constructs)
+  with auto-detect of toolkit / superpowers / GSD / security pack / RTK /
+  statusline. `--yes` for CI, `--force` re-runs detected, `--no-color`
+  honored, `Ctrl-C` restores terminal cleanly. Foundation libs
+  (`scripts/lib/{tui,detect2,dispatch}.sh`) reused by Phases 25-26. Hermetic
+  test: `scripts/tests/test-install-tui.sh` (38+ assertions, Test 31).
+
+- **MCP catalog + per-MCP wizard** (`scripts/lib/mcp.sh`,
+  `scripts/lib/mcp-catalog.json`) — MCP-01..05,
+  MCP-SEC-01..02: Phase 25. Nine curated MCP servers (`context7`, `firecrawl`,
+  `magic`, `notion`, `openrouter`, `playwright`, `resend`, `sentry`,
+  `sequential-thinking`) browsable via `scripts/install.sh --mcps`. Per-MCP
+  wizard collects API keys with hidden input (`read -rs`), persists to
+  `~/.claude/mcp-config.env` (mode 0600), invokes `claude mcp add`. Fail-soft
+  when CLI absent. Hermetic test: `scripts/tests/test-mcp-selector.sh`
+  (Test 32).
+
+- **Skills marketplace mirror** (`templates/skills-marketplace/`,
+  `scripts/lib/skills.sh`, `scripts/sync-skills-mirror.sh`) — SKILL-01..05:
+  Phase 26. 22 curated skills mirrored from upstream skills.sh (license-audited,
+  documented in `docs/SKILLS-MIRROR.md`). `scripts/install.sh --skills`
+  copies selected skills to `~/.claude/skills/<name>/` via `cp -R`.
+  `manifest.json` registers all 22 under `files.skills_marketplace[]` so
+  `update-claude.sh` ships skill updates. Hermetic test:
+  `scripts/tests/test-install-skills.sh` (15 assertions, Test 33).
+
+- **Plugin marketplace surface** (`.claude-plugin/marketplace.json`,
+  `plugins/tk-{skills,commands,framework-rules}/.claude-plugin/plugin.json`,
+  symlink trees) — MKT-01, MKT-02: Phase 27. Three sub-plugins discoverable
+  via `claude plugin marketplace add sergei-aronsen/claude-code-toolkit`.
+  `tk-skills` is Desktop-Code-tab compatible; `tk-commands` and
+  `tk-framework-rules` are Code-only. Sub-plugin content trees are relative
+  symlinks into the canonical repo content (zero duplication, zero drift).
+  Version is the single source of truth in each `plugin.json` (4.6.0);
+  `marketplace.json` plugin entries do not declare versions per spec.
+
+- **Marketplace + Desktop-skills validators** (`scripts/validate-marketplace.sh`,
+  `scripts/validate-skills-desktop.sh`) — MKT-03, DESK-02, DESK-04: Phase 27.
+  `validate-marketplace` runs `claude plugin marketplace add ./` smoke when
+  `TK_HAS_CLAUDE_CLI=1` (CI default skips with no-op notice).
+  `validate-skills-desktop` scans every `templates/skills-marketplace/*/SKILL.md`
+  for tool-execution patterns; PASS = Desktop-safe instruction-only,
+  FLAG = Code-terminal-only. Threshold: >= 4 PASS or `make check` fails. Both
+  targets wired into `make check`; `validate-skills-desktop` runs as a
+  dedicated CI step.
+
+- **Desktop-only auto-routing** (`scripts/install.sh --skills-only`) — DESK-03:
+  Phase 27. Users without `claude` on PATH running the installer (no flags) are
+  auto-routed to `--skills-only` mode; skills land at
+  `~/.claude/plugins/tk-skills/<name>/` (Desktop install location) instead of
+  `~/.claude/skills/<name>/`. One-line banner explains the routing. Explicit
+  `--skills-only` flag also available for users with the CLI who only want
+  skills. Hermetic test: `scripts/tests/test-install-tui.sh` S10 scenario.
+
+- **Claude Desktop capability matrix** (`docs/CLAUDE_DESKTOP.md`) — DESK-01:
+  Phase 27. Four-column matrix (Capability x Desktop Code Tab x Desktop Chat
+  Tab x Code Terminal) covering skills, slash commands, MCPs, statusline,
+  security pack, and framework rules. Plain-English explanation of why Chat
+  tab and remote Code sessions block plugins. Read-time target: under one
+  minute.
+
+- **Marketplace install documentation** (`README.md`, `docs/INSTALL.md`) —
+  MKT-04: Phase 27. README and INSTALL.md gain "Install via marketplace"
+  sections alongside the existing curl-bash install. Both channels documented
+  as equivalent for terminal Code users; marketplace is the only path for
+  Desktop users.
+
+### Changed
+
+- **Manifest version** bumped from 4.4.0 to 4.6.0 (final v4.5 milestone bump).
+  `init-local.sh --version` derives from manifest at runtime, so no script
+  changes needed.
+
+- **`make check` chain** extended with `validate-skills-desktop` (always
+  runs) and `validate-marketplace` (runs `claude plugin marketplace add ./`
+  when `TK_HAS_CLAUDE_CLI=1`, no-op skip otherwise).
+
+- **CI workflow** (`quality.yml`) gains a dedicated
+  `DESK-02/DESK-04 — Skills Desktop-safety audit` step.
+
 ## [4.5.0] - 2026-04-29
 
 ### Phase 24 Sub-Phase 1 — Globalize Council artifacts

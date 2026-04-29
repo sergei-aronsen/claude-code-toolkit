@@ -92,6 +92,31 @@ bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-to
 > conflicts are catalogued. The 4-mode UX is preserved so the manifest can mark GSD
 > overlaps incrementally without an installer rewrite.
 
+### Install via marketplace
+
+For Claude Desktop users, the toolkit is available as a Claude Code plugin
+marketplace listing. From the Desktop Code tab, use the slash command:
+
+```text
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
+```
+
+Or from a terminal with the `claude` CLI:
+
+```bash
+claude plugin marketplace add sergei-aronsen/claude-code-toolkit
+```
+
+You will get three sub-plugins:
+
+- `tk-skills` — 22 curated skills (Desktop-compatible)
+- `tk-commands` — 29 slash commands (terminal Code only)
+- `tk-framework-rules` — 7 framework CLAUDE.md fragments (terminal Code only)
+
+The marketplace install is **equivalent** to the curl-bash install for terminal
+Code users. For Desktop users, marketplace is the **only** install path — see
+[docs/CLAUDE_DESKTOP.md](docs/CLAUDE_DESKTOP.md) for the full capability matrix.
+
 ### Upgrading from v3.x
 
 v3.x users who installed SP or GSD after TK should run `scripts/migrate-to-complement.sh` to
