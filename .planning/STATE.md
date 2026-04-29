@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
 status: executing
-stopped_at: Completed 29-02-PLAN.md
-last_updated: "2026-04-29T18:50:51.774Z"
+stopped_at: Completed 29-03-PLAN.md
+last_updated: "2026-04-29T19:04:48.565Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -102,6 +102,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - [Phase 29-01]: TK_BRIDGE_TTY_SRC test seam mirrors TK_UNINSTALL_TTY_FROM_STDIN; /dev/tty is production default
 - [Phase 29]: sync_bridges called in both is_update_noop branch and after print_update_summary to handle CLAUDE.md edits that bypass manifest hash diff
 - [Phase 29]: bridges.sh sibling-source guarded by write_state presence check to survive tmpfile sourcing in update-claude.sh
+- [Phase 29-sync-uninstall-integration]: classify_bridge_file bypasses is_protected_path; REMOVE_LIST loop has bridge bypass; self-deadlock guard in all bridge state helpers
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -184,11 +185,12 @@ Carry-overs available for next milestone scoping:
 | Phase 28 P03 | 26m | 2 tasks | 1 files |
 | Phase 29-01 | ~25m | 3 tasks | 4 files |
 | Phase 29 P02 | 35 | 2 tasks | 2 files |
+| Phase 29-sync-uninstall-integration P03 | 50 | 2 tasks | 4 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T18:50:51.771Z
-Stopped at: Completed 29-02-PLAN.md
+Last session: 2026-04-29T19:04:48.562Z
+Stopped at: Completed 29-03-PLAN.md
 Resume file: None
 
 **Next steps:**

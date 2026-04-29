@@ -127,7 +127,7 @@
 **Plans**: 3 plans
 - [x] 29-01-PLAN.md — Foundation primitives (extend `write_state` to 10-arg `bridges_json`, add `_bridge_set_user_owned`/`_bridge_remove_state_entry`/`bridge_prompt_drift` helpers, update `init-local.sh` + `migrate-to-complement.sh` callers)
 - [x] 29-02-PLAN.md — Sync loop in `update-claude.sh` (`--break-bridge`/`--restore-bridge` flags + `sync_bridges()` decision tree with `[~ UPDATE]`/`[~ MODIFIED]`/`[- SKIP]`/`[? ORPHANED]` logging)
-- [ ] 29-03-PLAN.md — Uninstall integration in `uninstall.sh` + new hermetic `scripts/tests/test-bridges-sync.sh` (≥10 assertions; BACKCOMPAT-01 PASS=26/43/5)
+- [x] 29-03-PLAN.md — Uninstall integration in `uninstall.sh` + new hermetic `scripts/tests/test-bridges-sync.sh` (≥10 assertions; BACKCOMPAT-01 PASS=26/43/5)
 
 ### Phase 30: Install-time UX
 
@@ -175,6 +175,6 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 28. Bridge Foundation | 3/3 | Complete   | 2026-04-29 |
-| 29. Sync & Uninstall Integration | 2/3 | In Progress|  |
+| 29. Sync & Uninstall Integration | 3/3 | Complete   | 2026-04-29 |
 | 30. Install-time UX | 0/TBD | Not started | - |
 | 31. Distribution + Tests + Docs | 0/TBD | Not started | - |

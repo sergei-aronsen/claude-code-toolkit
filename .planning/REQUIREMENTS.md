@@ -53,8 +53,8 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Uninstall integration (`scripts/uninstall.sh` extension)
 
-- [ ] **BRIDGE-UN-01**: `uninstall.sh` includes bridges from `toolkit-install.json::bridges[]` in its REMOVE_LIST. Each bridge classified via existing SHA256 helper (`classify_file`): clean → REMOVE; user-modified → MODIFIED list with `[y/N/d]` prompt (v4.3 UN-03 reuse). Base-plugin invariant (UN-05 `diff -q`) unchanged.
-- [ ] **BRIDGE-UN-02**: `uninstall.sh --keep-state` (v4.4 KEEP-01 flag) preserves `bridges[]` entries alongside the rest of toolkit-install.json. No special-case handling needed — bridges follow same state-file lifecycle as other tracked files.
+- [x] **BRIDGE-UN-01**: `uninstall.sh` includes bridges from `toolkit-install.json::bridges[]` in its REMOVE_LIST. Each bridge classified via existing SHA256 helper (`classify_file`): clean → REMOVE; user-modified → MODIFIED list with `[y/N/d]` prompt (v4.3 UN-03 reuse). Base-plugin invariant (UN-05 `diff -q`) unchanged.
+- [x] **BRIDGE-UN-02**: `uninstall.sh --keep-state` (v4.4 KEEP-01 flag) preserves `bridges[]` entries alongside the rest of toolkit-install.json. No special-case handling needed — bridges follow same state-file lifecycle as other tracked files.
 
 ### Distribution + tests + docs
 
