@@ -613,7 +613,20 @@ if [[ ${#REMOVE_LIST[@]} -gt 0 ]]; then
         # Use the resolved absolute path to avoid double-.claude when rel already
         # starts with .claude/ (e.g. .claude/get-shit-done/plugin.md would resolve
         # to $CLAUDE_DIR/.claude/... inside is_protected_path if passed as-is).
-        if is_protected_path "$abs_path"; then
+        # Phase 29 BRIDGE-UN-01: bridges live OUTSIDE $CLAUDE_DIR/ by design
+        # (e.g. <project>/GEMINI.md). is_protected_path would flag them as protected.
+        # Skip the is_protected_path check for paths found in BRIDGE_PATHS — they were
+        # already cleared by classify_bridge_file which has its own SP/GSD guard.
+        _is_bridge_path=0
+        if [[ ${#BRIDGE_PATHS[@]} -gt 0 ]]; then
+            for _bp in "${BRIDGE_PATHS[@]}"; do
+                if [[ "$_bp" == "$abs_path" ]]; then
+                    _is_bridge_path=1
+                    break
+                fi
+            done
+        fi
+        if [[ $_is_bridge_path -eq 0 ]] && is_protected_path "$abs_path"; then
             log_warning "Refusing to delete protected path: $rel"
             continue
         fi

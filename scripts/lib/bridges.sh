@@ -127,7 +127,17 @@ _bridge_write_state_entry() {
     local saved_lock_dir="${LOCK_DIR:-}"
     LOCK_DIR="${home}/.claude/.toolkit-install.lock"
 
-    if ! acquire_lock; then
+    # Self-deadlock guard: if the caller (e.g. update-claude.sh sync_bridges path)
+    # already holds the lock under this PID, skip acquire/release to avoid a 3-retry
+    # spin that would silently drop the state write.
+    local _caller_holds_lock=0
+    local _existing_pid
+    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    if [[ "$_existing_pid" == "$$" ]]; then
+        _caller_holds_lock=1
+    fi
+
+    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
         LOCK_DIR="$saved_lock_dir"
         return 1
     fi
@@ -186,7 +196,7 @@ except Exception:
     raise
 PYEOF
 
-    release_lock
+    [[ $_caller_holds_lock -eq 0 ]] && release_lock
     LOCK_DIR="$saved_lock_dir"
     return $rc
 }
@@ -278,7 +288,14 @@ _bridge_set_user_owned() {
     local saved_lock_dir="${LOCK_DIR:-}"
     LOCK_DIR="${home}/.claude/.toolkit-install.lock"
 
-    if ! acquire_lock; then
+    local _caller_holds_lock=0
+    local _existing_pid
+    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    if [[ "$_existing_pid" == "$$" ]]; then
+        _caller_holds_lock=1
+    fi
+
+    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
         LOCK_DIR="$saved_lock_dir"
         return 1
     fi
@@ -315,7 +332,7 @@ except Exception:
     raise
 PYEOF
 
-    release_lock
+    [[ $_caller_holds_lock -eq 0 ]] && release_lock
     LOCK_DIR="$saved_lock_dir"
     return $rc
 }
@@ -336,7 +353,14 @@ _bridge_remove_state_entry() {
     local saved_lock_dir="${LOCK_DIR:-}"
     LOCK_DIR="${home}/.claude/.toolkit-install.lock"
 
-    if ! acquire_lock; then
+    local _caller_holds_lock=0
+    local _existing_pid
+    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    if [[ "$_existing_pid" == "$$" ]]; then
+        _caller_holds_lock=1
+    fi
+
+    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
         LOCK_DIR="$saved_lock_dir"
         return 1
     fi
@@ -377,7 +401,7 @@ except Exception:
     raise
 PYEOF
 
-    release_lock
+    [[ $_caller_holds_lock -eq 0 ]] && release_lock
     LOCK_DIR="$saved_lock_dir"
     return $rc
 }
