@@ -26,7 +26,7 @@
 
 - [ ] **Phase 28: Bridge Foundation** — Detect Gemini/Codex CLIs and ship `bridges.sh` lib that generates plain-copy bridge files with SHA256 tracking.
 - [ ] **Phase 29: Sync & Uninstall Integration** — `update-claude.sh` syncs bridges with `[y/N/d]` drift prompt + `--break-bridge` opt-out; `uninstall.sh` removes bridges symmetrically.
-- [ ] **Phase 30: Install-time UX** — `install.sh` TUI rows + per-CLI prompts in `init-claude.sh` / `init-local.sh` + `--no-bridges` / `--bridges <list>` flags.
+- [x] **Phase 30: Install-time UX** — `install.sh` TUI rows + per-CLI prompts in `init-claude.sh` / `init-local.sh` + `--no-bridges` / `--bridges <list>` flags.
 - [ ] **Phase 31: Distribution + Tests + Docs** — manifest 4.7.0 bump, `test-bridges.sh` (≥15 assertions), `docs/BRIDGES.md` + `INSTALL.md`/README updates, CHANGELOG `[4.7.0]`.
 
 <details>
@@ -143,7 +143,7 @@
 **Plans**: 3 plans
 - [x] 30-01-PLAN.md — Wave 1 helpers (bridges.sh: bridge_install_prompts + _bridge_cli_version/_bridge_cli_label/_bridge_match; dispatch.sh: TK_DISPATCH_ORDER append)
 - [x] 30-02-PLAN.md — Wave 2 install.sh (conditional TUI rows + dispatch case + --no-bridges / --bridges flags + mutex)
-- [ ] 30-03-PLAN.md — Wave 2 init-claude.sh + init-local.sh post-install bridge_install_prompts call + new test-bridges-install-ux.sh hermetic suite (>=12 assertions)
+- [x] 30-03-PLAN.md — Wave 2 init-claude.sh + init-local.sh post-install bridge_install_prompts call + new test-bridges-install-ux.sh hermetic suite (>=12 assertions)
 **UI hint**: yes
 
 ### Phase 31: Distribution + Tests + Docs
