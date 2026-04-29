@@ -98,13 +98,17 @@ _tui_read_key() {
     return 0
 }
 
-# Render one frame of the TUI. Writes to /dev/tty (NOT stdout) so callers can
+# Render one frame of the TUI. Writes to $tty_target (NOT stdout) so callers can
 # capture stdout without polluting the menu. Section headers are derived from
 # TUI_GROUPS[] transitions — adjacent items in the same group share a header.
+# WR-03: all printf calls go to "$tty_target" (TK_TUI_TTY_SRC seam) — same pattern
+# as _tui_read_key — so tests can redirect rendered output for inspection.
 _tui_render() {
+    local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
+
     # Move cursor to top-left and erase to end-of-screen (RESEARCH.md §3 — no
     # alternate screen; simpler clear+redraw approach).
-    printf '\e[H\e[J' > /dev/tty 2>/dev/null || true
+    printf '\e[H\e[J' > "$tty_target" 2>/dev/null || true
 
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
@@ -119,9 +123,9 @@ _tui_render() {
         # Section header on group change.
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '\n  \e[2m%s\e[0m\n' "$grp" > /dev/tty 2>/dev/null || true
+                printf '\n  \e[2m%s\e[0m\n' "$grp" > "$tty_target" 2>/dev/null || true
             else
-                printf '\n  %s\n' "$grp" > /dev/tty 2>/dev/null || true
+                printf '\n  %s\n' "$grp" > "$tty_target" 2>/dev/null || true
             fi
             prev_group="$grp"
         fi
@@ -140,25 +144,25 @@ _tui_render() {
             box="[x]"
         fi
 
-        printf '%s%s %s\n' "$arrow" "$box" "$label" > /dev/tty 2>/dev/null || true
+        printf '%s%s %s\n' "$arrow" "$box" "$label" > "$tty_target" 2>/dev/null || true
     done
 
     # Help line (D-19: always shown for discoverability).
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
         printf '\n  \e[2m↑↓ move · space toggle · enter confirm · q quit\e[0m\n' \
-            > /dev/tty 2>/dev/null || true
+            > "$tty_target" 2>/dev/null || true
     else
         printf '\n  ↑↓ move · space toggle · enter confirm · q quit\n' \
-            > /dev/tty 2>/dev/null || true
+            > "$tty_target" 2>/dev/null || true
     fi
 
     # Description line for focused item (D-20: single dimmed line).
     local desc="${TUI_DESCS[${FOCUS_IDX:-0}]:-}"
     if [[ -n "$desc" ]]; then
         if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-            printf '  \e[2m%s\e[0m\n' "$desc" > /dev/tty 2>/dev/null || true
+            printf '  \e[2m%s\e[0m\n' "$desc" > "$tty_target" 2>/dev/null || true
         else
-            printf '  %s\n' "$desc" > /dev/tty 2>/dev/null || true
+            printf '  %s\n' "$desc" > "$tty_target" 2>/dev/null || true
         fi
     fi
 }
