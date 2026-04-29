@@ -50,10 +50,10 @@
 # Default repo URL (overridable for testing or fork installs).
 [[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL='https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main'
 
-# Canonical install order — DISPATCH-01 contract.
+# Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
 if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline)
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline gemini-bridge codex-bridge)
 fi
 
 # Internal log helpers — underscore prefix.
