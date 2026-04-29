@@ -446,7 +446,16 @@ fi
 # ============================================================================
 INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
 SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
-write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
+# Phase 29 BRIDGE-SYNC-02: capture pre-existing bridges[] so re-running
+# init-local.sh against an already-installed project does not wipe bridges
+# created by previous bridge_create_* calls. The 10-arg form is
+# backward-compatible: when no state file exists yet (fresh install),
+# BRIDGES_JSON='[]' which is the same as the default.
+BRIDGES_JSON='[]'
+if [[ -f "$STATE_FILE" ]]; then
+    BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
+fi
+write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "" "$BRIDGES_JSON"
 release_lock
 
 # ============================================================================

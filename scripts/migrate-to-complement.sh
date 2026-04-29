@@ -482,7 +482,13 @@ POST_MODE=$(recommend_mode)
 
 # 8th positional arg is synth_flag="false" — this is a production migration write,
 # NOT a synthesis. Plan 05-01's schema v2 extension is consumed here.
-write_state "$POST_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false"
+# Phase 29 BRIDGE-SYNC-02: preserve bridges[] across migrate. See init-local.sh
+# for rationale; same 10-arg pattern.
+BRIDGES_JSON='[]'
+if [[ -f "$STATE_FILE" ]]; then
+    BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
+fi
+write_state "$POST_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "" "$BRIDGES_JSON"
 
 # ───────── four-group summary ─────────
 echo ""
