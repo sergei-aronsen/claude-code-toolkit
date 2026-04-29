@@ -10,9 +10,9 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Detection (`scripts/lib/detect2.sh` extension)
 
-- [ ] **BRIDGE-DET-01**: `is_gemini_installed` — `command -v gemini` (binary present on PATH) returns 0/1. Filesystem cross-check: `[ -d ~/.gemini/ ]` (presence of config dir) treated as soft-confirm; CLI-PATH wins.
-- [ ] **BRIDGE-DET-02**: `is_codex_installed` — `command -v codex` (OpenAI Codex CLI). Same fail-soft semantics as BRIDGE-DET-01. Filesystem cross-check: `[ -d ~/.codex/ ]`.
-- [ ] **BRIDGE-DET-03**: Detection registered in `detect2.sh` alongside existing 6 binary probes from v4.6 Phase 24 (toolkit, superpowers, gsd, security, rtk, statusline). Maintains 0/1 return contract; no 3-state.
+- [x] **BRIDGE-DET-01**: `is_gemini_installed` — `command -v gemini` (binary present on PATH) returns 0/1. Filesystem cross-check: `[ -d ~/.gemini/ ]` (presence of config dir) treated as soft-confirm; CLI-PATH wins.
+- [x] **BRIDGE-DET-02**: `is_codex_installed` — `command -v codex` (OpenAI Codex CLI). Same fail-soft semantics as BRIDGE-DET-01. Filesystem cross-check: `[ -d ~/.codex/ ]`.
+- [x] **BRIDGE-DET-03**: Detection registered in `detect2.sh` alongside existing 6 binary probes from v4.6 Phase 24 (toolkit, superpowers, gsd, security, rtk, statusline). Maintains 0/1 return contract; no 3-state.
 
 ### Bridge generation (`scripts/lib/bridges.sh` new lib)
 

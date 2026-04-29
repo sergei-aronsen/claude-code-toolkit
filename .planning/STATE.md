@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
-status: roadmap_ready
-stopped_at: Roadmap created (4 phases, 18 REQ-IDs, 100% coverage); ready for /gsd-plan-phase 28
-last_updated: "2026-04-29T19:30:00.000Z"
+status: Roadmap created — ready for `/gsd-plan-phase 28`
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-04-29T17:50:22.409Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 3
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -91,6 +91,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - v4.4 KEEP-01/02 `--keep-state` semantics already cover bridges via the same toolkit-install.json lifecycle — no special case for `bridges[]`.
 - Plain-copy over symlink decision: chosen because users may want CLI-specific edits; drift handled via SHA256 + `[y/N/d]`, not by abandoning copy semantics. (PROJECT.md "Key context".)
 - Bash 3.2 compatibility: no `declare -A`, no `read -N` (Bash 4+), no float `-t`, no `declare -n` namerefs. Already-shipped Phase 24 invariants; bridges.sh inherits them.
+- [Phase 28]: Both new probes inserted before is_gsd_installed (codex < gemini < gsd lex order)
+- [Phase 28]: detect2_cache IS_COD/IS_GEM appended after IS_SL; export line extended
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -168,11 +170,12 @@ Carry-overs available for next milestone scoping:
 | Deferred | Aider `CONVENTIONS.md` support | BRIDGE-FUT-04 |
 | Deferred | `update-claude.sh --bridges-only` mode | BRIDGE-FUT-05 — edge utility |
 | Parallel track | Council Rework Sub-Phases 2-11 | `phases/24-council-globalize/PLAN.md`; concurrent session |
+| Phase 28 P01 | 10m | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T19:30:00.000Z
-Stopped at: v4.7 roadmap created — 4 phases (28-31), 18/18 REQ-IDs mapped, 100% coverage
+Last session: 2026-04-29T17:50:22.406Z
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
 
 **Next steps:**
