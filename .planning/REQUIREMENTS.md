@@ -47,9 +47,9 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - `[ ] Gemini CLI bridge   (CLAUDE.md → GEMINI.md)   [detected: gemini@<version>]`
   - `[ ] Codex CLI bridge    (CLAUDE.md → AGENTS.md)   [detected: codex@<version>]`
   Items NOT shown when CLI absent (no clutter for users who don't have these CLIs).
-- [ ] **BRIDGE-UX-02**: `init-claude.sh` and `init-local.sh` post-install (after `~/.claude/` and `<project>/.claude/` are populated) detect installed CLIs and prompt per CLI: `Gemini CLI detected. Create GEMINI.md → CLAUDE.md bridge? [Y/n]`. Default `Y`. Reads from `< /dev/tty` with `TK_BRIDGE_TTY_SRC` test seam (mirrors v4.4 BOOTSTRAP-01 pattern). Fail-closed `N` on no-TTY (CI / piped install).
-- [ ] **BRIDGE-UX-03**: `--no-bridges` flag on `init-claude.sh`, `init-local.sh`, and `install.sh` skips all bridge prompts unconditionally. `TK_NO_BRIDGES=1` env-var equivalent. Mirrors v4.4 `--no-bootstrap` / `TK_NO_BOOTSTRAP` symmetry pattern.
-- [ ] **BRIDGE-UX-04**: `--bridges <comma-list>` (e.g., `--bridges gemini,codex`) flag forces bridge creation non-interactively for CI/scripted installs. Skips per-CLI prompt, requires the named CLI to be installed (errors with exit 1 if absent and `--fail-fast` is set; skips with warning otherwise).
+- [x] **BRIDGE-UX-02**: `init-claude.sh` and `init-local.sh` post-install (after `~/.claude/` and `<project>/.claude/` are populated) detect installed CLIs and prompt per CLI: `Gemini CLI detected. Create GEMINI.md → CLAUDE.md bridge? [Y/n]`. Default `Y`. Reads from `< /dev/tty` with `TK_BRIDGE_TTY_SRC` test seam (mirrors v4.4 BOOTSTRAP-01 pattern). Fail-closed `N` on no-TTY (CI / piped install).
+- [x] **BRIDGE-UX-03**: `--no-bridges` flag on `init-claude.sh`, `init-local.sh`, and `install.sh` skips all bridge prompts unconditionally. `TK_NO_BRIDGES=1` env-var equivalent. Mirrors v4.4 `--no-bootstrap` / `TK_NO_BOOTSTRAP` symmetry pattern.
+- [x] **BRIDGE-UX-04**: `--bridges <comma-list>` (e.g., `--bridges gemini,codex`) flag forces bridge creation non-interactively for CI/scripted installs. Skips per-CLI prompt, requires the named CLI to be installed (errors with exit 1 if absent and `--fail-fast` is set; skips with warning otherwise).
 
 ### Uninstall integration (`scripts/uninstall.sh` extension)
 
