@@ -576,7 +576,15 @@ bridge_install_prompts() {
         # --bridges <list> path: force-create without prompt, but only for named targets.
         if [[ -n "${BRIDGES_FORCE:-}" ]]; then
             if _bridge_match "$target" "$BRIDGES_FORCE"; then
-                bridge_create_project "$target" "$project_root" || true
+                local _force_rc=0
+                bridge_create_project "$target" "$project_root" || _force_rc=$?
+                if [[ $_force_rc -ne 0 ]]; then
+                    case "$_force_rc" in
+                        1) echo -e "${YELLOW}Warning:${NC} --bridges $target: source CLAUDE.md missing (rc=1); skipped" >&2 ;;
+                        2) echo -e "${YELLOW}Warning:${NC} --bridges $target: write blocked (rc=2); skipped" >&2 ;;
+                        *) echo -e "${YELLOW}Warning:${NC} --bridges $target: bridge_create_project failed (rc=$_force_rc); skipped" >&2 ;;
+                    esac
+                fi
             fi
             continue
         fi
