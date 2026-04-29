@@ -455,7 +455,7 @@ Critical rules:
 5. **dispatch_rtk** pipes `</dev/null` to `rtk init -g` per RESEARCH §10 Risk 8.
 6. **shellcheck SC2034 silencing**: each dispatcher has `: "$var"` lines for unused parsed flags.
 
-Implements DISPATCH-01 (six dispatchers in canonical TK_DISPATCH_ORDER). Sets up `--yes` pass-through plumbing; the actual `--yes` flag-parsing additions in the underlying scripts come in Tasks 2 and 3.
+Implements DISPATCH-01 (six dispatchers in canonical TK_DISPATCH_ORDER). Sets up `--yes` pass-through plumbing; the actual `--yes` flag-parsing additions in the underlying scripts come in Task 2.
   </action>
 
   <verify>
@@ -484,27 +484,40 @@ Implements DISPATCH-01 (six dispatchers in canonical TK_DISPATCH_ORDER). Sets up
 </task>
 
 <task type="auto">
-  <name>Task 2: Patch scripts/setup-security.sh — accept --yes flag (DISPATCH-02)</name>
-  <files>scripts/setup-security.sh</files>
+  <name>Task 2: Patch --yes flag into setup-security.sh and install-statusline.sh (DISPATCH-02)</name>
+  <files>scripts/setup-security.sh, scripts/install-statusline.sh</files>
 
   <read_first>
     - scripts/setup-security.sh (full file, 1-280) — current implementation; NO existing argument loop today
+    - scripts/install-statusline.sh (full file) — current implementation; NO existing argument loop today
     - .planning/phases/24-unified-tui-installer-centralized-detection/24-PATTERNS.md §"scripts/setup-security.sh (modified)" (lines 519-545) — exact addition pattern
-    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §6 + §1 — verified that setup-security.sh has zero existing interactive `read` prompts
-    - 24-CONTEXT.md D-26 — `setup-security.sh` learns a real `--yes` flag (gates future interactive prompts; today is no-op since current code has zero `read -r -p` blocks)
+    - .planning/phases/24-unified-tui-installer-centralized-detection/24-PATTERNS.md §"scripts/install-statusline.sh (modified)" (lines 547-565) — exact addition pattern
+    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §6 + §1 — verified BOTH scripts have zero existing interactive `read` prompts
+    - 24-CONTEXT.md D-26 — `setup-security.sh` learns a real `--yes` flag (gates future interactive prompts; today is no-op since current code has zero `read -r -p` blocks); `install-statusline.sh` learns `--yes` as accepted-but-no-op (semantic symmetry; the script is already non-interactive)
   </read_first>
 
   <behavior>
+    setup-security.sh:
     - `bash scripts/setup-security.sh --yes` exits with the same exit code it would without the flag (DISPATCH-02 contract: parse-and-no-op today)
     - `bash scripts/setup-security.sh` without `--yes` continues to behave byte-identically to v4.4 (no other flag changes)
     - `bash scripts/setup-security.sh --unknown-flag` warns "unknown flag: --unknown-flag (ignoring)" but continues (does NOT abort)
     - `YES=1` is exposed as a script-level variable that future interactive `read -r -p` blocks can guard with `[[ "$YES" -eq 1 ]] || read ...` (per D-26 future-proofing)
+
+    install-statusline.sh:
+    - `bash scripts/install-statusline.sh --yes` on macOS with valid keychain token completes successfully (same behavior as no flag)
+    - `bash scripts/install-statusline.sh --yes` on Linux still exits 1 with the existing "requires macOS" error (no-op flag does not bypass platform check)
+    - `bash scripts/install-statusline.sh` without `--yes` continues to behave byte-identically to v4.4
+    - The script's existing `set -euo pipefail` continues to fire on actual errors
   </behavior>
 
   <action>
+This task makes parallel sibling edits: ~10 lines added to each of two scripts. Both share identical parse-and-no-op semantics (DISPATCH-02 contract); both insert their argument loop AFTER color constants and BEFORE `REPO_URL`. Pattern is intentionally near-identical so future engineers can read either as a reference for the other.
+
+**Edit 1 — `scripts/setup-security.sh`:**
+
 The current `scripts/setup-security.sh` has NO argument loop (verified by reading the file). Insert a minimal argument loop right after the color constants block (currently around lines 18-24). The file already has `set -euo pipefail` at line 16, so the argument-loop code runs under errexit; that's fine.
 
-Use the Edit tool to insert the argument loop. Find the exact block:
+Use the Edit tool to find the exact block:
 
 ```bash
 NC='\033[0m'
@@ -536,53 +549,8 @@ done
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 ```
 
-Critical rules:
+**Edit 2 — `scripts/install-statusline.sh`:**
 
-1. The argument loop comes AFTER color constants (so `${YELLOW}` is already defined for the warning) and BEFORE `REPO_URL` (so REPO_URL stays at its current line position relative to the rest of the script).
-2. The `*)` branch warns but does NOT exit — DISPATCH-02 contract is "accept --yes" not "validate every flag". Other flags would never reach this script via the dispatcher today (Plan 03 only passes `--yes` and `--force` for security), but the warning prevents future surprises.
-3. `: "${YES}"` is the project's idiomatic shellcheck SC2034 silencer (mirrors scripts/init-claude.sh:60-64 pattern).
-4. Do NOT add any logic that USES `$YES` today — the variable is a contract surface for future interactive prompts. Adding usage now would change behavior, violating D-26.
-
-Implements DISPATCH-02 (real `--yes` flag accepted; no behavior change today; future interactive prompts can guard with the variable).
-  </action>
-
-  <verify>
-    <automated>cd /Users/sergeiarutiunian/Projects/claude-code-toolkit/.claude/worktrees/heuristic-bassi-bb2f61 && shellcheck -S warning scripts/setup-security.sh && grep -q "YES=0" scripts/setup-security.sh && grep -q '\-\-yes) YES=1' scripts/setup-security.sh && echo setup-security-yes-flag-added</automated>
-  </verify>
-
-  <acceptance_criteria>
-    - `scripts/setup-security.sh` contains `YES=0` declaration
-    - `scripts/setup-security.sh` contains `--yes) YES=1` case branch (or equivalent: `--yes) YES=1 ;;`)
-    - `scripts/setup-security.sh` contains the argument loop `while [[ $# -gt 0 ]]` block
-    - `shellcheck -S warning scripts/setup-security.sh` exits 0
-    - Smoke test: `bash -n scripts/setup-security.sh` exits 0 (syntax check)
-    - `bash scripts/tests/test-setup-security-rtk.sh` exits 0 (existing test stays green; the RTK-related test is not affected by argument-loop addition)
-  </acceptance_criteria>
-
-  <done>
-    `setup-security.sh` accepts `--yes` flag without erroring. Existing four steps still run unchanged. Future interactive prompts can guard with `[[ "$YES" -eq 1 ]]`.
-  </done>
-</task>
-
-<task type="auto">
-  <name>Task 3: Patch scripts/install-statusline.sh — accept --yes flag as no-op (DISPATCH-02)</name>
-  <files>scripts/install-statusline.sh</files>
-
-  <read_first>
-    - scripts/install-statusline.sh (full file) — current implementation; NO existing argument loop today
-    - .planning/phases/24-unified-tui-installer-centralized-detection/24-PATTERNS.md §"scripts/install-statusline.sh (modified)" (lines 547-565) — exact addition pattern
-    - .planning/phases/24-unified-tui-installer-centralized-detection/24-RESEARCH.md §6 — verified that install-statusline.sh has zero existing interactive `read` prompts
-    - 24-CONTEXT.md D-26 — `install-statusline.sh` learns `--yes` as accepted-but-no-op (semantic symmetry; the script is already non-interactive)
-  </read_first>
-
-  <behavior>
-    - `bash scripts/install-statusline.sh --yes` on macOS with valid keychain token completes successfully (same behavior as no flag)
-    - `bash scripts/install-statusline.sh --yes` on Linux still exits 1 with the existing "requires macOS" error (no-op flag does not bypass platform check)
-    - `bash scripts/install-statusline.sh` without `--yes` continues to behave byte-identically to v4.4
-    - The script's existing `set -euo pipefail` continues to fire on actual errors
-  </behavior>
-
-  <action>
 The current `scripts/install-statusline.sh` has NO argument loop. Insert one right after the color constants (currently lines 8-13). Use the Edit tool to find:
 
 ```bash
@@ -612,36 +580,50 @@ done
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 ```
 
-Critical rules:
+Critical rules (apply to BOTH files):
 
-1. Use a `for _arg in "$@"` loop instead of `while [[ $# -gt 0 ]]` — both work equivalently for parse-only. The for-loop is slightly shorter and matches the simpler semantic ("we just iterate flags, we never shift them away").
-2. The argument loop is placed after color constants so `${YELLOW}` is defined.
-3. Unknown flags warn but don't abort — symmetric with setup-security.sh patch in Task 2.
-4. The macOS check at the existing line `if [[ "$(uname)" != "Darwin" ]]` runs AFTER the argument loop — meaning `--yes --some-other-flag` still reaches the platform check and exits 1 on Linux. This is correct per RESEARCH §10 Risk 9 (continue-on-error pattern in dispatcher handles the exit-1 result).
+1. The argument loop comes AFTER color constants (so `${YELLOW}` is already defined for the warning) and BEFORE `REPO_URL` (so REPO_URL stays at its current line position relative to the rest of the script).
+2. The `*)` branch warns but does NOT exit — DISPATCH-02 contract is "accept --yes" not "validate every flag". Other flags would never reach this script via the dispatcher today, but the warning prevents future surprises.
+3. `: "${YES}"` is the project's idiomatic shellcheck SC2034 silencer (mirrors scripts/init-claude.sh:60-64 pattern).
+4. Do NOT add any logic that USES `$YES` today — the variable is a contract surface for future interactive prompts. Adding usage now would change behavior, violating D-26.
 
-Implements DISPATCH-02 (no-op `--yes` flag accepted for symmetry).
+File-specific notes:
+
+- **setup-security.sh** uses `while [[ $# -gt 0 ]]` + `shift` (preserves $@ contract for future flag pass-through).
+- **install-statusline.sh** uses `for _arg in "$@"` loop instead — both work equivalently for parse-only; the for-loop is shorter and matches the simpler semantic ("we just iterate flags, we never shift them away"). The macOS check at `if [[ "$(uname)" != "Darwin" ]]` runs AFTER the argument loop — meaning `--yes --some-other-flag` still reaches the platform check and exits 1 on Linux. This is correct per RESEARCH §10 Risk 9 (continue-on-error in the dispatcher handles the exit-1 result).
+
+Implements DISPATCH-02 (real `--yes` flag accepted by setup-security.sh; no-op `--yes` flag accepted by install-statusline.sh; no behavior change today; future interactive prompts can guard with `$YES`).
   </action>
 
   <verify>
-    <automated>cd /Users/sergeiarutiunian/Projects/claude-code-toolkit/.claude/worktrees/heuristic-bassi-bb2f61 && shellcheck -S warning scripts/install-statusline.sh && grep -q "YES=0" scripts/install-statusline.sh && grep -q '\-\-yes) YES=1' scripts/install-statusline.sh && bash -n scripts/install-statusline.sh && echo install-statusline-yes-flag-added</automated>
+    <automated>shellcheck -S warning scripts/setup-security.sh scripts/install-statusline.sh && grep -q "YES=0" scripts/setup-security.sh && grep -q '\-\-yes) YES=1' scripts/setup-security.sh && grep -q "YES=0" scripts/install-statusline.sh && grep -q '\-\-yes) YES=1' scripts/install-statusline.sh && bash -n scripts/setup-security.sh && bash -n scripts/install-statusline.sh && echo both-yes-flags-added</automated>
   </verify>
 
   <acceptance_criteria>
-    - `scripts/install-statusline.sh` contains `YES=0` declaration
-    - `scripts/install-statusline.sh` contains `--yes) YES=1` case branch
-    - `scripts/install-statusline.sh` contains the for-loop `for _arg in "$@"` block
+    setup-security.sh:
+    - contains `YES=0` declaration
+    - contains `--yes) YES=1` case branch (or equivalent: `--yes) YES=1 ;;`)
+    - contains the argument loop `while [[ $# -gt 0 ]]` block
+    - `shellcheck -S warning scripts/setup-security.sh` exits 0
+    - `bash -n scripts/setup-security.sh` exits 0 (syntax check)
+    - `bash scripts/tests/test-setup-security-rtk.sh` exits 0 (existing test stays green; the RTK-related test is not affected by argument-loop addition)
+
+    install-statusline.sh:
+    - contains `YES=0` declaration
+    - contains `--yes) YES=1` case branch
+    - contains the for-loop `for _arg in "$@"` block
     - `shellcheck -S warning scripts/install-statusline.sh` exits 0
     - `bash -n scripts/install-statusline.sh` exits 0 (syntax check)
     - Smoke: on macOS, `bash scripts/install-statusline.sh --yes` does not produce a `--yes: command not found` or unknown-flag error from bash's argument parser (the script's argument loop intercepts it). [Note: full execution may still fail at Keychain step if no valid token exists; that's expected behavior, not an argument-handling regression.]
   </acceptance_criteria>
 
   <done>
-    `install-statusline.sh` accepts `--yes` flag as no-op. Platform check + Keychain logic unchanged. Existing tests continue to pass.
+    Both scripts accept `--yes` flag without erroring. Existing logic in both scripts unchanged (parse-and-store no-op today). Future interactive prompts in either script can guard with `[[ "$YES" -eq 1 ]]`.
   </done>
 </task>
 
 <task type="auto">
-  <name>Task 4: Smoke-test full Wave 2 contract (dispatch.sh end-to-end with mock dispatchers)</name>
+  <name>Task 3: Smoke-test full Wave 2 contract (dispatch.sh end-to-end with mock dispatchers)</name>
   <files>scripts/lib/dispatch.sh, scripts/setup-security.sh, scripts/install-statusline.sh</files>
 
   <read_first>
@@ -721,7 +703,7 @@ bash scripts/tests/test-bootstrap.sh
 ```
 Expected: exit 0 with `PASS=26 FAIL=0` (or whatever the v4.4 assertion count is — the key signal is FAIL=0).
 
-If any check fails, fix the offending file and re-run that check before proceeding to Task 5.
+If any check fails, fix the offending file and re-run that check before proceeding to Task 4.
   </action>
 
   <verify>
@@ -741,7 +723,7 @@ If any check fails, fix the offending file and re-run that check before proceedi
 </task>
 
 <task type="auto">
-  <name>Task 5: make check + commit Wave 2 deliverables</name>
+  <name>Task 4: make check + commit Wave 2 deliverables</name>
   <files>scripts/lib/dispatch.sh, scripts/setup-security.sh, scripts/install-statusline.sh</files>
 
   <read_first>
@@ -827,7 +809,7 @@ EOF
 </threat_model>
 
 <verification>
-After Task 5 completes:
+After Task 4 completes:
 
 ```bash
 # Lib loads cleanly
