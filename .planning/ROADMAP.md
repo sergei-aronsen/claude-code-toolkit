@@ -159,8 +159,8 @@
   5. `CHANGELOG.md [4.7.0]` is a single consolidated entry covering all 18 BRIDGE-* requirements (mirrors v4.4/v4.6 consolidation pattern); `make check` green; CI `validate-templates` green.
 **Plans**: 3 plans
 - [x] 31-01-PLAN.md — Manifest registration (`scripts/lib/bridges.sh` in `files.libs[]`) + version bump to 4.7.0 in manifest + 3 plugin.json files + CHANGELOG `[4.7.0]` consolidated entry
-- [ ] 31-02-PLAN.md — Aggregator test (`scripts/tests/test-bridges.sh` wrapping the 3 existing bridge suites = 50 assertions) + CI integration (`quality.yml` test-init-script append)
-- [ ] 31-03-PLAN.md — `docs/BRIDGES.md` (NEW, 9 sections) + `docs/INSTALL.md` Installer Flags table extension (4 new flag rows + Multi-CLI Bridges sub-section) + README Killer Features grid row
+- [x] 31-02-PLAN.md — Aggregator test (`scripts/tests/test-bridges.sh` wrapping the 3 existing bridge suites = 50 assertions) + CI integration (`quality.yml` test-init-script append)
+- [x] 31-03-PLAN.md — `docs/BRIDGES.md` (NEW, 9 sections) + `docs/INSTALL.md` Installer Flags table extension (4 new flag rows + Multi-CLI Bridges sub-section) + README Killer Features grid row
 
 ---
 
@@ -183,4 +183,4 @@
 | 28. Bridge Foundation | 3/3 | Complete   | 2026-04-29 |
 | 29. Sync & Uninstall Integration | 3/3 | Complete   | 2026-04-29 |
 | 30. Install-time UX | 2/3 | In Progress|  |
-| 31. Distribution + Tests + Docs | 1/3 | In Progress|  |
+| 31. Distribution + Tests + Docs | 3/3 | Complete   | 2026-04-29 |

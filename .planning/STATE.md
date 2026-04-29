@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
 status: executing
-stopped_at: Completed 31-01-PLAN.md
-last_updated: "2026-04-29T21:20:38.010Z"
+stopped_at: Completed 31-02-PLAN.md
+last_updated: "2026-04-29T21:22:54.674Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -106,6 +106,7 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - [Phase 30-install-time-ux]: bridge_install_prompts defaults Y at install-time (additive UX); dispatch cases deferred to install.sh (Plan 30-02); _bridge_match uses IFS-split for Bash 3.2 portability
 - [Phase 30-install-time-ux]: Bridge dispatch shim inlined in install.sh (not separate lib) — fewer files
 - [Phase 30-install-time-ux]: All TUI/dispatch loops use array-length-driven C-style for-loops (BACKCOMPAT-01)
+- [Phase 31]: Aggregator wraps 3 child suites via for-loop rather than rewriting into monolith — mirrors v4.4 test-update-libs.sh pattern
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -192,11 +193,12 @@ Carry-overs available for next milestone scoping:
 | Phase 30-install-time-ux P01 | 12 | 4 tasks | 2 files |
 | Phase 30-install-time-ux P02 | 30 | 4 tasks | 1 files |
 | Phase 30-install-time-ux P03 | 45 | 4 tasks | 4 files |
+| Phase 31 P02 | 5 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T21:20:38.006Z
-Stopped at: Completed 31-01-PLAN.md
+Last session: 2026-04-29T21:22:54.671Z
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
 
 **Next steps:**
