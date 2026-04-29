@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.7
 milestone_name: Multi-CLI Bridge
 status: Roadmap created — ready for `/gsd-plan-phase 28`
-stopped_at: Completed 28-bridge-foundation-02-PLAN.md
-last_updated: "2026-04-29T17:54:30.889Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-04-29T18:06:51.060Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 67
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -95,6 +95,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.6 highlights still relevan
 - [Phase 28]: detect2_cache IS_COD/IS_GEM appended after IS_SL; export line extended
 - [Phase 28-bridge-foundation]: write_state NOT reused for bridges[] patch — full-document overwrite would clobber installed_files[]; custom python3 tempfile+os.replace block used instead
 - [Phase 28-bridge-foundation]: Codex bridge filename locked as AGENTS.md (not CODEX.md) per OpenAI standard
+- [Phase 28]: Source libs at top level in test scripts, not inside scenario functions, to avoid Bash RETURN-trap pitfall where source fires RETURN trap on completion
+- [Phase 28]: Use EXIT trap with _SANDBOXES array for hermetic test cleanup instead of per-scenario RETURN traps
 
 ### Key v4.7 Constraints (from REQUIREMENTS.md + PROJECT.md milestone scoping)
 
@@ -174,11 +176,12 @@ Carry-overs available for next milestone scoping:
 | Parallel track | Council Rework Sub-Phases 2-11 | `phases/24-council-globalize/PLAN.md`; concurrent session |
 | Phase 28 P01 | 10m | 2 tasks | 1 files |
 | Phase 28-bridge-foundation P02 | 20 | 4 tasks | 1 files |
+| Phase 28 P03 | 26m | 2 tasks | 1 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T17:54:30.886Z
-Stopped at: Completed 28-bridge-foundation-02-PLAN.md
+Last session: 2026-04-29T18:06:51.057Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: None
 
 **Next steps:**
