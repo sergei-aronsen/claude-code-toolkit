@@ -69,15 +69,15 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 - [x] **MKT-01**: `.claude-plugin/marketplace.json` at repo root with schema `{name, owner.name, plugins[]}` validated against current Anthropic spec at `code.claude.com/docs/en/plugin-marketplaces`. `name` = `claude-code-toolkit`, `owner.name` = `sergei-aronsen`. Three sub-plugins listed.
 - [x] **MKT-02**: `plugins/<name>/.claude-plugin/plugin.json` for three sub-plugins: `tk-skills` (skills surface — Desktop-compatible), `tk-commands` (29 slash commands — Code only), `tk-framework-rules` (7 framework CLAUDE.md template fragments — Code only). Each plugin.json declares `version`, `description`, `category`, `tags`. Version is the single source of truth (do NOT also set version in marketplace.json entry — `plugin.json` silently wins).
-- [ ] **MKT-03**: Live `claude plugin marketplace add ./` smoke test from a hermetic clone validates the marketplace structure end-to-end. `make validate-marketplace` target runs the smoke (gated behind opt-in `TK_HAS_CLAUDE_CLI=1` env-var; CI runner does not have `claude` by default).
+- [x] **MKT-03**: Live `claude plugin marketplace add ./` smoke test from a hermetic clone validates the marketplace structure end-to-end. `make validate-marketplace` target runs the smoke (gated behind opt-in `TK_HAS_CLAUDE_CLI=1` env-var; CI runner does not have `claude` by default).
 - [ ] **MKT-04**: README + `docs/INSTALL.md` gain a "Install via marketplace" section alongside the curl-bash install. Both channels documented as equivalent for Code users; marketplace is the only path for Desktop users.
 
 #### Claude Desktop reach
 
 - [ ] **DESK-01**: `docs/CLAUDE_DESKTOP.md` documents the capability matrix: Claude Desktop Code tab has full plugin runtime parity with terminal Claude Code; Desktop Chat tab has no plugin system; remote (cloud-hosted) Code sessions block plugins per Anthropic docs. Marketplace is the only Desktop install channel (`/plugin marketplace add ./local-dir` is blocked).
-- [ ] **DESK-02**: `scripts/validate-skills-desktop.sh` scans `templates/skills-marketplace/*/SKILL.md` for Code-only assumptions (Bash code blocks that *require* execution by the agent, references to `Read`/`Bash`/`Write` tools as required dependencies). Output: per-skill PASS/FLAG verdict. Wired into `make check`.
+- [x] **DESK-02**: `scripts/validate-skills-desktop.sh` scans `templates/skills-marketplace/*/SKILL.md` for Code-only assumptions (Bash code blocks that *require* execution by the agent, references to `Read`/`Bash`/`Write` tools as required dependencies). Output: per-skill PASS/FLAG verdict. Wired into `make check`.
 - [ ] **DESK-03**: `scripts/install.sh` detects Desktop-only users (no `claude` CLI on PATH) and routes to `--skills-only` branch that places skills under `~/.claude/plugins/tk-skills/` (instead of project `.claude/`). Surfaces a one-liner explaining the limitation.
-- [ ] **DESK-04**: Skill audit gate fails Phase 27 if fewer than 4 skills pass `validate-skills-desktop.sh`. Below that threshold, `tk-skills` sub-plugin scope rebalances toward instruction-only (zero-tool) skills.
+- [x] **DESK-04**: Skill audit gate fails Phase 27 if fewer than 4 skills pass `validate-skills-desktop.sh`. Below that threshold, `tk-skills` sub-plugin scope rebalances toward instruction-only (zero-tool) skills.
 
 ## Future Requirements
 

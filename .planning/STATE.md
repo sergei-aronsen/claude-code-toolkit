@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 27-01-marketplace-surface-PLAN.md
-last_updated: "2026-04-29T14:32:17.967Z"
+stopped_at: Completed 27-02-validators-and-make-wiring-PLAN.md
+last_updated: "2026-04-29T14:39:04.672Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 27 (Marketplace Publishing + Claude Desktop Reach) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -120,6 +120,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 27]: Version declared once in plugin.json (4.5.0) — not duplicated in marketplace.json per MKT-02 single-source-of-truth rule
 - [Phase 27]: Symlinks use relative paths (../../) for portability across clones and CI worktrees
 - [Phase 27]: plugins/ excluded from markdownlint to prevent double-scanning third-party content through symlinks
+- [Phase 27]: validate-marketplace uses TK_HAS_CLAUDE_CLI=1 guard so it stays in make check without breaking CI
+- [Phase 27]: DESK-04 threshold=4 PASS (conservative gate); current state PASS=20 FLAG=2 at plan completion
 
 ### Key v4.5 Constraints (from research)
 
@@ -191,11 +193,12 @@ Carry-overs available for next milestone scoping:
 | Phase 26 P03 | 6 | 2 tasks | 2 files |
 | Phase 26 P04 | 20 | 3 tasks | 6 files |
 | Phase 27 P01 | 3 | 2 tasks | 5 files |
+| Phase 27 P02 | 4 | 2 tasks | 5 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T14:32:17.964Z
-Stopped at: Completed 27-01-marketplace-surface-PLAN.md
+Last session: 2026-04-29T14:39:04.669Z
+Stopped at: Completed 27-02-validators-and-make-wiring-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
