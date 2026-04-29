@@ -260,6 +260,17 @@ else
     exit 1
 fi
 
+# Phase 24 SP11 — download MCP server so Claude Desktop can call /council
+# without dropping to the terminal. brain.py is the dependency; we already
+# have it on disk at this point.
+if curl -sSLf "$REPO_URL/scripts/council/mcp-server.py" -o "$COUNCIL_DIR/mcp-server.py" 2>/dev/null; then
+    chmod +x "$COUNCIL_DIR/mcp-server.py"
+    echo -e "  ${GREEN}✓${NC} mcp-server.py"
+else
+    rm -f "$COUNCIL_DIR/mcp-server.py"
+    echo -e "  ${YELLOW}⚠${NC} mcp-server.py (Claude Desktop integration optional, skipping)"
+fi
+
 # Download README
 if curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$COUNCIL_DIR/README.md" 2>/dev/null; then
     echo -e "  ${GREEN}✓${NC} README.md"
@@ -459,6 +470,72 @@ else
     } >> "$SHELL_RC"
     echo -e "  ${GREEN}✓${NC} Added alias 'brain' to $SHELL_RC"
     echo -e "  Run: ${YELLOW}source $SHELL_RC${NC} to activate"
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 6b: Claude Desktop MCP registration (Phase 24 SP11)
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 6b: Claude Desktop MCP integration (optional)${NC}"
+
+case "$(uname -s)" in
+    Darwin) DESKTOP_CFG="$HOME/Library/Application Support/Claude/claude_desktop_config.json" ;;
+    Linux)  DESKTOP_CFG="$HOME/.config/Claude/claude_desktop_config.json" ;;
+    MINGW*|MSYS*|CYGWIN*) DESKTOP_CFG="${APPDATA:-$HOME/AppData/Roaming}/Claude/claude_desktop_config.json" ;;
+    *)      DESKTOP_CFG="" ;;
+esac
+
+if [[ ! -f "$COUNCIL_DIR/mcp-server.py" ]]; then
+    echo -e "  ${YELLOW}⚠${NC} mcp-server.py not installed — skipping Claude Desktop registration"
+elif [[ -z "$DESKTOP_CFG" ]]; then
+    echo -e "  ${YELLOW}⚠${NC} Unrecognized platform — skipping Claude Desktop registration"
+else
+    if [[ -f "$DESKTOP_CFG" ]]; then
+        echo -e "  Detected Claude Desktop config: ${BLUE}$DESKTOP_CFG${NC}"
+    else
+        echo -e "  Claude Desktop config not found at ${BLUE}$DESKTOP_CFG${NC}"
+        echo -e "  (Skip if you do not use Claude Desktop.)"
+    fi
+    printf "  Register Council as MCP server in Claude Desktop? [y/N]: "
+    read -r CD_ANSWER < /dev/tty
+    if [[ "$CD_ANSWER" =~ ^[Yy] ]]; then
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo -e "  ${RED}✗${NC} python3 missing — Claude Desktop integration aborted"
+        else
+            mkdir -p "$(dirname "$DESKTOP_CFG")"
+            if [[ -f "$DESKTOP_CFG" ]]; then
+                cp "$DESKTOP_CFG" "${DESKTOP_CFG}.bak.$(date -u +%s)"
+                echo -e "  ${GREEN}✓${NC} Existing config backed up"
+            fi
+            CD_TMP="$(mktemp "${TMPDIR:-/tmp}/claude_desktop_config.XXXXXX")"
+            COUNCIL_DIR_ESC="$COUNCIL_DIR" python3 - "$DESKTOP_CFG" "$CD_TMP" <<'PYEOF'
+import json, os, sys
+src, dst = sys.argv[1], sys.argv[2]
+council_dir = os.environ["COUNCIL_DIR_ESC"]
+data = {}
+if os.path.isfile(src):
+    try:
+        with open(src, "r", encoding="utf-8") as fh:
+            data = json.load(fh) or {}
+    except json.JSONDecodeError:
+        data = {}
+servers = data.setdefault("mcpServers", {})
+servers["supreme-council"] = {
+    "command": "python3",
+    "args": [os.path.join(council_dir, "mcp-server.py")],
+}
+with open(dst, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, ensure_ascii=False, indent=2)
+PYEOF
+            mv "$CD_TMP" "$DESKTOP_CFG"
+            echo -e "  ${GREEN}✓${NC} supreme-council MCP server registered"
+            echo -e "  Restart Claude Desktop to load it."
+        fi
+    else
+        echo -e "  Skipped Claude Desktop registration."
+    fi
 fi
 
 echo ""
