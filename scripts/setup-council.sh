@@ -31,7 +31,8 @@ fi
 # Source cli-recommendations helper (Phase 24 Sub-Phase 1).
 # Test seam: TK_COUNCIL_LIB_DIR=<path> uses local copies (init-local.sh / hermetic tests).
 LIB_CLI_TMP=$(mktemp "${TMPDIR:-/tmp}/cli-recommendations.XXXXXX")
-trap 'rm -f "$LIB_CLI_TMP"' EXIT
+LIB_PROMPTS_TMP=$(mktemp "${TMPDIR:-/tmp}/council-prompts.XXXXXX")
+trap 'rm -f "$LIB_CLI_TMP" "$LIB_PROMPTS_TMP"' EXIT
 
 if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" ]]; then
     cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$LIB_CLI_TMP"
@@ -43,6 +44,19 @@ elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$LIB_CLI_TMP"
 else
     echo -e "${YELLOW}⚠${NC} Could not fetch cli-recommendations.sh — skipping CLI hints"
     recommend_clis() { :; }
+fi
+
+# Source council-prompts helper (Phase 24 Sub-Phase 2).
+if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/council-prompts.sh" ]]; then
+    cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$LIB_PROMPTS_TMP"
+    # shellcheck source=/dev/null
+    source "$LIB_PROMPTS_TMP"
+elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$LIB_PROMPTS_TMP" 2>/dev/null; then
+    # shellcheck source=/dev/null
+    source "$LIB_PROMPTS_TMP"
+else
+    echo -e "${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
+    install_council_system_prompts() { :; }
 fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -224,6 +238,12 @@ else
     rm -f "$COUNCIL_DIR/prompts/audit-review.md.tmp"
     echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
 fi
+
+# Install editable system prompts (Phase 24 Sub-Phase 2).
+# Skeptic / Pragmatist / audit-review pair land in ~/.claude/council/prompts/.
+# brain.py reads them via load_prompt() and falls back to embedded constants
+# when files are missing.
+install_council_system_prompts
 
 # Install /council slash command globally (Phase 24 Sub-Phase 1).
 # Same idempotent + mtime-aware pattern as audit-review.md above. Council is

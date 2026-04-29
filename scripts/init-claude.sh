@@ -715,6 +715,24 @@ setup_council() {
     recommend_clis
     echo ""
 
+    # Source council-prompts helper (Phase 24 Sub-Phase 2) — installs editable
+    # system prompts under ~/.claude/council/prompts/. Test seam mirrors
+    # cli-recommendations above.
+    local lib_prompts_tmp
+    lib_prompts_tmp=$(mktemp "${TMPDIR:-/tmp}/council-prompts.XXXXXX")
+    if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/council-prompts.sh" ]]; then
+        cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$lib_prompts_tmp"
+        # shellcheck source=/dev/null
+        source "$lib_prompts_tmp"
+    elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$lib_prompts_tmp" 2>/dev/null; then
+        # shellcheck source=/dev/null
+        source "$lib_prompts_tmp"
+    else
+        echo -e "  ${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
+        install_council_system_prompts() { :; }
+    fi
+    rm -f "$lib_prompts_tmp"
+
     # Download brain.py
     mkdir -p "$council_dir"
     if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
@@ -749,6 +767,10 @@ setup_council() {
         rm -f "$council_dir/prompts/audit-review.md.tmp"
         echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
     fi
+
+    # Install editable system prompts (Phase 24 Sub-Phase 2). brain.py reads
+    # them via load_prompt() and falls back to embedded constants when missing.
+    install_council_system_prompts
 
     # Install /council slash command globally (Phase 24 Sub-Phase 1).
     # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
