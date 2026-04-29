@@ -67,7 +67,7 @@
 
 ### v4.5 Install Flow UX & Desktop Reach
 
-- [ ] **Phase 24: Unified TUI Installer + Centralized Detection** — Single `scripts/install.sh` entry point with Bash 3.2 TUI checklist; shared libs (`tui.sh`, `detect2.sh`, `dispatch.sh`) reused by Phases 25–26
+- [x] **Phase 24: Unified TUI Installer + Centralized Detection** — Single `scripts/install.sh` entry point with Bash 3.2 TUI checklist; shared libs (`tui.sh`, `detect2.sh`, `dispatch.sh`) reused by Phases 25–26 (completed 2026-04-29)
 - [ ] **Phase 25: MCP Selector** — Nine-entry MCP catalog with per-MCP install wizard, inline secret collection, and `mcp-config.env` secrets handling
 - [ ] **Phase 26: Skills Selector** — 22-skill marketplace mirror with `is_skill_installed` detection and TUI-driven copy to `~/.claude/skills/`
 - [ ] **Phase 27: Marketplace Publishing + Claude Desktop Reach** — Plugin marketplace surface (`marketplace.json` + three sub-plugins), Desktop capability matrix, skill safety audit CI gate
@@ -168,7 +168,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Unified TUI Installer + Centralized Detection | 4/5 | In Progress|  |
+| 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete   | 2026-04-29 |
 | 25. MCP Selector | 0/4 | Not started | - |
 | 26. Skills Selector | 0/3 | Not started | - |
 | 27. Marketplace Publishing + Claude Desktop Reach | 0/4 | Not started | - |
