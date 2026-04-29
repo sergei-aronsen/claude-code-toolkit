@@ -344,7 +344,171 @@ if [[ "$MCPS" -eq 1 ]]; then
     exit 0
 fi
 # ─────────────────────────────────────────────────
-# (End of MCP routing branch — components page continues below unchanged.)
+# Skills catalog page — --skills routing branch.
+# Mirror of the --mcps branch above; reuses TUI_* globals + print_install_status.
+# ─────────────────────────────────────────────────
+if [[ "$SKILLS" -eq 1 ]]; then
+    # Populate TUI_INSTALLED[] from the 22-skill catalog.
+    skills_status_array
+
+    # Build TUI globals from SKILLS_CATALOG.
+    # shellcheck disable=SC2034  # consumed by tui_checklist
+    TUI_LABELS=("${SKILLS_CATALOG[@]}")
+    # shellcheck disable=SC2034
+    TUI_GROUPS=()
+    # shellcheck disable=SC2034
+    TUI_DESCS=()
+    local_total=${#SKILLS_CATALOG[@]}
+    for ((i=0; i<local_total; i++)); do
+        TUI_GROUPS+=("Skills")
+        TUI_DESCS+=("Curated skill mirrored from upstream")
+    done
+
+    # Selection: --yes default-set OR TUI page.
+    TUI_RESULTS=()
+    if [[ "$YES" -eq 1 ]]; then
+        # Default-set: select all not-installed; --force re-runs already-installed.
+        for ((i=0; i<local_total; i++)); do
+            if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
+                TUI_RESULTS[$i]=0
+            else
+                TUI_RESULTS[$i]=1
+            fi
+        done
+    else
+        # TTY check (mirrors Phase 25 _install_tty_src gate).
+        _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
+        if [[ ! -r "$_install_tty_src" ]]; then
+            echo "No TTY available for skills TUI; pass --yes for non-interactive install."
+            exit 0
+        fi
+        if ! tui_checklist; then
+            echo "Skills install cancelled."
+            exit 0
+        fi
+        local_selected=0
+        for ((i=0; i<${#TUI_RESULTS[@]}; i++)); do
+            [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]] && local_selected=$((local_selected + 1))
+        done
+        if ! tui_confirm_prompt "Install ${local_selected} skill(s)? [y/N] "; then
+            echo "Skills install cancelled."
+            exit 0
+        fi
+    fi
+
+    # ─────────────────────────────────────────────
+    # Skills dispatch loop (mirrors Phase 25 D-08 continue-on-error pattern).
+    # ─────────────────────────────────────────────
+    echo ""
+    echo -e "${BLUE}Installing selected skill(s)...${NC}"
+    echo ""
+    INSTALLED_COUNT=0
+    SKIPPED_COUNT=0
+    FAILED_COUNT=0
+    COMPONENT_STATUS=()
+    COMPONENT_NAMES=()
+    COMPONENT_STDERR_TAIL=()
+    for ((i=0; i<local_total; i++)); do
+        local_name="${SKILLS_CATALOG[$i]}"
+        COMPONENT_NAMES+=("$local_name")
+        if [[ "${TUI_RESULTS[$i]:-0}" -ne 1 ]]; then
+            if [[ "${TUI_INSTALLED[$i]}" -eq 1 ]]; then
+                COMPONENT_STATUS+=("installed ✓")
+                INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+            else
+                COMPONENT_STATUS+=("skipped")
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            fi
+            COMPONENT_STDERR_TAIL+=("")
+            continue
+        fi
+
+        # Dry-run shortcut: announce would-install without invoking skills_install.
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            COMPONENT_STATUS+=("would-install")
+            COMPONENT_STDERR_TAIL+=("")
+            continue
+        fi
+
+        # Capture stderr to a per-skill tmpfile (D-28).
+        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skill-${local_name}-XXXXXX") || stderr_tmp=""
+        [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
+
+        local_skill_args=()
+        [[ "$FORCE" -eq 1 ]] && local_skill_args+=("--force")
+
+        local_rc=0
+        if [[ -n "$stderr_tmp" ]]; then
+            ( skills_install "$local_name" "${local_skill_args[@]+"${local_skill_args[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
+        else
+            skills_install "$local_name" "${local_skill_args[@]+"${local_skill_args[@]}"}" || local_rc=$?
+        fi
+
+        case "$local_rc" in
+            0)
+                COMPONENT_STATUS+=("installed ✓")
+                INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+                COMPONENT_STDERR_TAIL+=("")
+                ;;
+            2)
+                COMPONENT_STATUS+=("skipped: already installed (use --force)")
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                COMPONENT_STDERR_TAIL+=("")
+                ;;
+            *)
+                COMPONENT_STATUS+=("failed (exit $local_rc)")
+                FAILED_COUNT=$((FAILED_COUNT + 1))
+                local_tail=""
+                if [[ -n "$stderr_tmp" && -s "$stderr_tmp" ]]; then
+                    local_tail=$(tail -5 "$stderr_tmp")
+                fi
+                COMPONENT_STDERR_TAIL+=("$local_tail")
+                if [[ "$FAIL_FAST" -eq 1 ]]; then
+                    for ((j=i+1; j<local_total; j++)); do
+                        COMPONENT_NAMES+=("${SKILLS_CATALOG[$j]}")
+                        COMPONENT_STATUS+=("skipped")
+                        COMPONENT_STDERR_TAIL+=("")
+                        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                    done
+                    break
+                fi
+                ;;
+        esac
+    done
+
+    # Print skills install summary.
+    echo ""
+    echo -e "${BLUE}Skills install summary:${NC}"
+    echo ""
+    for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
+        local_name="${COMPONENT_NAMES[$i]}"
+        local_state="${COMPONENT_STATUS[$i]:-unknown}"
+        print_install_status "$local_name" "$local_state"
+        case "$local_state" in
+            failed*)
+                local_tail="${COMPONENT_STDERR_TAIL[$i]:-}"
+                if [[ -n "$local_tail" ]]; then
+                    while IFS= read -r tail_line; do
+                        printf '      %s\n' "$tail_line"
+                    done <<< "$local_tail"
+                fi
+                ;;
+        esac
+    done
+    echo ""
+    printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
+        "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+    if [[ "${NO_BANNER:-0}" != "1" ]]; then
+        echo ""
+        echo "To remove a skill: rm -rf ~/.claude/skills/<name>"
+    fi
+    if [[ $FAILED_COUNT -gt 0 ]]; then
+        exit 1
+    fi
+    exit 0
+fi
+# ─────────────────────────────────────────────────
+# (End of MCP / Skills routing branches — components page continues below unchanged.)
 # ─────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────
