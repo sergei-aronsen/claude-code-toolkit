@@ -1036,7 +1036,7 @@ def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
         snapshot["model"], snapshot["tokens_in"], snapshot["tokens_out"]
     )
     record = {
-        "ts": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "mode": mode,
         "provider": snapshot["provider"],
         "model": snapshot["model"],
@@ -1710,7 +1710,172 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     print(f"Report saved: {vp_report_path}")
 
 
+def cmd_stats(argv):
+    """Render usage.jsonl as a human or CSV summary.
+
+    Phase 24 Sub-Phase 4. Reads ~/.claude/council/usage.jsonl, filters by
+    --day / --week / --month / --total / --since / --until, groups by
+    (provider, model, mode), totals tokens + cost. Returns 0 on success and
+    a non-zero exit code only on argument errors.
+    """
+    parser = argparse.ArgumentParser(
+        prog="brain stats",
+        description="Summarize Council usage from ~/.claude/council/usage.jsonl",
+    )
+    period = parser.add_mutually_exclusive_group()
+    period.add_argument("--day", action="store_true", help="last 24h")
+    period.add_argument("--week", action="store_true", help="last 7 days")
+    period.add_argument("--month", action="store_true", help="last 30 days")
+    period.add_argument("--total", action="store_true", help="all time (default)")
+    parser.add_argument("--since", help="ISO date (YYYY-MM-DD), inclusive")
+    parser.add_argument("--until", help="ISO date (YYYY-MM-DD), inclusive")
+    parser.add_argument("--csv", action="store_true", help="emit CSV instead of table")
+    args = parser.parse_args(argv)
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    since_dt = None
+    until_dt = None
+    if args.day:
+        since_dt = now - datetime.timedelta(days=1)
+    elif args.week:
+        since_dt = now - datetime.timedelta(days=7)
+    elif args.month:
+        since_dt = now - datetime.timedelta(days=30)
+
+    if args.since:
+        try:
+            since_dt = datetime.datetime.strptime(args.since, "%Y-%m-%d")
+        except ValueError:
+            parser.error(f"--since must be YYYY-MM-DD, got {args.since!r}")
+    if args.until:
+        try:
+            # Inclusive: end of the requested day.
+            until_dt = (
+                datetime.datetime.strptime(args.until, "%Y-%m-%d")
+                + datetime.timedelta(days=1)
+            )
+        except ValueError:
+            parser.error(f"--until must be YYYY-MM-DD, got {args.until!r}")
+
+    if not USAGE_LOG_PATH.is_file():
+        if args.csv:
+            print("provider,model,mode,calls,tokens_in,tokens_out,cost_usd")
+        else:
+            print(f"No usage data yet at {USAGE_LOG_PATH}")
+        return 0
+
+    groups = {}
+    total_calls = 0
+    total_in = 0
+    total_out = 0
+    total_cost = 0.0
+    skipped = 0
+
+    with USAGE_LOG_PATH.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                skipped += 1
+                continue
+            ts = rec.get("ts", "")
+            try:
+                rec_dt = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                skipped += 1
+                continue
+            if since_dt and rec_dt < since_dt:
+                continue
+            if until_dt and rec_dt >= until_dt:
+                continue
+            key = (
+                rec.get("provider", "?"),
+                rec.get("model", "?"),
+                rec.get("mode", "?"),
+            )
+            agg = groups.setdefault(
+                key, {"calls": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
+            )
+            agg["calls"] += 1
+            agg["tokens_in"] += int(rec.get("tokens_in", 0))
+            agg["tokens_out"] += int(rec.get("tokens_out", 0))
+            agg["cost_usd"] += float(rec.get("cost_usd", 0.0))
+            total_calls += 1
+            total_in += int(rec.get("tokens_in", 0))
+            total_out += int(rec.get("tokens_out", 0))
+            total_cost += float(rec.get("cost_usd", 0.0))
+
+    rows = sorted(
+        ((p, m, mo, agg) for (p, m, mo), agg in groups.items()),
+        key=lambda r: (r[0], r[1], r[2]),
+    )
+
+    if args.csv:
+        print("provider,model,mode,calls,tokens_in,tokens_out,cost_usd")
+        for prov, model, mode, agg in rows:
+            print(
+                f"{prov},{model},{mode},{agg['calls']},"
+                f"{agg['tokens_in']},{agg['tokens_out']},{agg['cost_usd']:.6f}"
+            )
+        return 0
+
+    period_label = (
+        "last 24h" if args.day
+        else "last 7 days" if args.week
+        else "last 30 days" if args.month
+        else "all time"
+    )
+    if args.since or args.until:
+        s = args.since or "—"
+        u = args.until or "—"
+        period_label = f"since {s} until {u}"
+
+    print(f"Council usage — {period_label}")
+    print(f"  calls={total_calls}  tokens_in={total_in}  tokens_out={total_out}  cost=${total_cost:.4f}")
+    if skipped:
+        print(f"  ({skipped} malformed line(s) skipped)")
+    if not rows:
+        return 0
+    header = ("provider", "model", "mode", "calls", "in", "out", "$cost")
+    widths = [
+        max(len(header[i]), max((len(str(_row(r, i))) for r in rows), default=0))
+        for i in range(7)
+    ]
+    fmt = "  " + "  ".join(f"{{:<{w}}}" for w in widths)
+    print(fmt.format(*header))
+    print(fmt.format(*("-" * w for w in widths)))
+    for r in rows:
+        print(fmt.format(*[_row(r, i) for i in range(7)]))
+    return 0
+
+
+def _row(group_row, idx):
+    """Helper for cmd_stats table formatting."""
+    prov, model, mode, agg = group_row
+    if idx == 0:
+        return prov
+    if idx == 1:
+        return model
+    if idx == 2:
+        return mode
+    if idx == 3:
+        return str(agg["calls"])
+    if idx == 4:
+        return str(agg["tokens_in"])
+    if idx == 5:
+        return str(agg["tokens_out"])
+    return f"${agg['cost_usd']:.4f}"
+
+
 def main():
+    # Phase 24 Sub-Phase 4 — split off the stats subcommand BEFORE argparse so
+    # the existing positional `plan` argument keeps backwards-compat behavior.
+    if len(sys.argv) >= 2 and sys.argv[1] == "stats":
+        sys.exit(cmd_stats(sys.argv[2:]))
+
     parser = argparse.ArgumentParser(
         prog="brain",
         description=(

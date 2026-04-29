@@ -802,6 +802,24 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
     fi
 
+    # Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
+    if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+            -o "$commands_dir/council-stats.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/council-stats.md" ]; then
+            mv "$commands_dir/council-stats.md.tmp" "$commands_dir/council-stats.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md installed (global)"
+        elif [ "$commands_dir/council-stats.md.tmp" -nt "$commands_dir/council-stats.md" ]; then
+            mv "$commands_dir/council-stats.md.tmp" "$commands_dir/council-stats.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md (refreshed)"
+        else
+            rm -f "$commands_dir/council-stats.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/council-stats.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/council-stats.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/council-stats.md (not critical)"
+    fi
+
     # Ask to configure now (skip in non-interactive environments)
     echo ""
     local configure

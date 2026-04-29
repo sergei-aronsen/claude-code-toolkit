@@ -278,6 +278,24 @@ else
     echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
 fi
 
+# Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
+if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+        -o "$COMMANDS_DIR/council-stats.md.tmp" 2>/dev/null; then
+    if [ ! -f "$COMMANDS_DIR/council-stats.md" ]; then
+        mv "$COMMANDS_DIR/council-stats.md.tmp" "$COMMANDS_DIR/council-stats.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md installed (global)"
+    elif [ "$COMMANDS_DIR/council-stats.md.tmp" -nt "$COMMANDS_DIR/council-stats.md" ]; then
+        mv "$COMMANDS_DIR/council-stats.md.tmp" "$COMMANDS_DIR/council-stats.md"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md (refreshed)"
+    else
+        rm -f "$COMMANDS_DIR/council-stats.md.tmp"
+        echo -e "  ${GREEN}✓${NC} commands/council-stats.md (already current)"
+    fi
+else
+    rm -f "$COMMANDS_DIR/council-stats.md.tmp"
+    echo -e "  ${YELLOW}⚠${NC} commands/council-stats.md (not critical)"
+fi
+
 echo ""
 
 # ─────────────────────────────────────────────────
