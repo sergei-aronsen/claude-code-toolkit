@@ -1,0 +1,20 @@
+{
+    "name": "claude-code-toolkit",
+    "owner": {
+        "name": "sergei-aronsen"
+    },
+    "plugins": [
+        {
+            "name": "tk-skills",
+            "source": "./plugins/tk-skills"
+        },
+        {
+            "name": "tk-commands",
+            "source": "./plugins/tk-commands"
+        },
+        {
+            "name": "tk-framework-rules",
+            "source": "./plugins/tk-framework-rules"
+        }
+    ]
+}
