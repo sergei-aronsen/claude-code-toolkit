@@ -611,6 +611,32 @@ TUI_DESCS=(
     "60-90% token savings on dev commands"
     "macOS rate-limit statusline (Keychain)"
 )
+
+# BRIDGE-UX-01 (Phase 30): conditional bridge rows. ONLY appear when the corresponding CLI
+# is detected; CLIs absent => row OMITTED entirely (no greyed-out [unavailable] line).
+# When NO_BRIDGES=true the rows are STILL omitted from arrays so default-set, TUI render,
+# and dispatch loop all see a 6-element world (= unchanged BACKCOMPAT-01 invariant).
+if [[ "$NO_BRIDGES" != "true" ]]; then
+    if [[ "${IS_GEM:-0}" -eq 1 ]]; then
+        _gem_ver="$(_bridge_cli_version gemini)"
+        _gem_suffix="${_gem_ver:+@${_gem_ver}}"
+        TUI_LABELS+=("gemini-bridge")
+        TUI_GROUPS+=("Bridges")
+        TUI_INSTALLED+=("0")
+        TUI_DESCS+=("Gemini CLI bridge (CLAUDE.md -> GEMINI.md) [detected: gemini${_gem_suffix}]")
+        unset _gem_ver _gem_suffix
+    fi
+    if [[ "${IS_COD:-0}" -eq 1 ]]; then
+        _cod_ver="$(_bridge_cli_version codex)"
+        _cod_suffix="${_cod_ver:+@${_cod_ver}}"
+        TUI_LABELS+=("codex-bridge")
+        TUI_GROUPS+=("Bridges")
+        TUI_INSTALLED+=("0")
+        TUI_DESCS+=("OpenAI Codex CLI bridge (CLAUDE.md -> AGENTS.md) [detected: codex${_cod_suffix}]")
+        unset _cod_ver _cod_suffix
+    fi
+fi
+
 # Dispatch name maps 1:1 to TK_DISPATCH_ORDER.
 
 # ─────────────────────────────────────────────────
