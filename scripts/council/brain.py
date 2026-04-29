@@ -452,6 +452,23 @@ def load_config():
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
 
+    # Phase 24 SP5 defaults \u2014 additive, do not require config.json rewrite.
+    config["gemini"].setdefault("thinking_budget", 32768)
+    # OpenAI mode: if not set, prefer codex CLI when available, else api.
+    if "mode" not in config["openai"]:
+        config["openai"]["mode"] = "cli" if shutil.which("codex") else "api"
+    config["openai"].setdefault("reasoning_effort", "high")
+    config["openai"].setdefault("cli_reasoning_effort", "high")
+    fallback = config.setdefault("fallback", {})
+    openrouter = fallback.setdefault("openrouter", {})
+    openrouter.setdefault("api_key", os.getenv("OPENROUTER_API_KEY", ""))
+    openrouter.setdefault("models", [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free",
+    ])
+
     # Audit BRAIN-M5 + Council pass C: pre-flight WARN per provider, fail
     # only if BOTH providers are unavailable. Single-reviewer Council is a
     # legitimate use case (e.g. user with only a Gemini CLI install).
@@ -470,7 +487,13 @@ def load_config():
             print(f"   Set GEMINI_API_KEY env var or edit {CONFIG_PATH}")
             config["_gemini_available"] = False
 
-    if not config["openai"].get("api_key"):
+    if config["openai"].get("mode") == "cli":
+        if shutil.which("codex") is None:
+            print("\u26a0\ufe0f  OpenAI CLI mode selected but 'codex' is not in PATH.")
+            print("   Install: npm install -g @openai/codex   # or: brew install --cask codex")
+            print(f"   Or switch to API mode by editing {CONFIG_PATH}")
+            config["_openai_available"] = False
+    elif not config["openai"].get("api_key"):
         print("\u26a0\ufe0f  OpenAI API key not configured.")
         print(f"   Set OPENAI_API_KEY env var or edit {CONFIG_PATH}")
         config["_openai_available"] = False
@@ -1178,6 +1201,13 @@ def ask_gemini_api(prompt, model, api_key, config=None):
             "temperature": 0.2
         }
     }
+    # Phase 24 SP5 — pin Gemini thinking budget. Default 32768 (max public).
+    thinking_budget = (config or {}).get("gemini", {}).get("thinking_budget", 32768) if config else 32768
+    if thinking_budget:
+        payload["generationConfig"]["thinkingConfig"] = {
+            "includeThoughts": True,
+            "thinkingBudget": int(thinking_budget),
+        }
 
     # Audit BRAIN-H3: pass JSON via stdin instead of a tempfile so the full
     # prompt (which can include 200K chars of project source) doesn't sit on
@@ -1238,14 +1268,182 @@ def ask_gemini(prompt, config, file_paths=None):
 # ChatGPT integration (curl-only, no pip deps)
 # ─────────────────────────────────────────────────
 
+REASONING_MODELS = {
+    "gpt-5.2", "gpt-5.2-pro",
+    "o3", "o3-pro", "o3-mini",
+}
+
+
+def ask_chatgpt_cli(prompt, model, reasoning_effort="high", system_prompt=None):
+    """Query ChatGPT via Codex CLI (non-interactive `codex exec`).
+
+    Codex CLI ships under ChatGPT Plus/Pro subscriptions — no per-token cost
+    when the user is signed in. Accepts the same prompt body as the API path;
+    we prepend the system prompt because Codex CLI does not split system /
+    user roles.
+
+    Reasoning effort is pinned via `--config model_reasoning_effort=<level>`
+    (Codex CLI accepts low | medium | high; default is medium). We default to
+    high because Council runs are infrequent and we want the strongest review
+    Codex can produce.
+
+    Honors COUNCIL_STUB_CHATGPT for test harnesses (mirrors dispatch helpers).
+    """
+    stub = os.getenv("COUNCIL_STUB_CHATGPT")
+    if stub:
+        return run_command([stub], timeout=60)
+
+    full_prompt = (
+        f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+    )
+    cmd = [
+        "codex", "exec",
+        "--model", model,
+        "--config", f"model_reasoning_effort={reasoning_effort}",
+        "-",  # read prompt from stdin
+    ]
+    result = run_command(cmd, input_text=full_prompt, timeout=180)
+    if is_error_response(result):
+        return result
+    _set_last_usage(
+        "codex-cli", "codex-cli",
+        _estimate_tokens(full_prompt), _estimate_tokens(result),
+        estimated=True,
+    )
+    return result
+
+
+def ask_openrouter(prompt, api_key, models, system_prompt=None):
+    """Try each model in `models` in order via OpenRouter chat-completions API.
+
+    Returns the first successful text. Raises (returns the last error string)
+    only when every model in the chain fails — so the caller can flag the
+    record `fallback_used: true` regardless of which OpenRouter model
+    eventually answered.
+
+    Honors COUNCIL_STUB_OPENROUTER for test harnesses (mirror of the OpenAI /
+    Gemini stubs).
+    """
+    stub = os.getenv("COUNCIL_STUB_OPENROUTER")
+    if stub:
+        result = run_command([stub], timeout=60)
+        _set_last_usage(
+            "openrouter", "openrouter-stub",
+            _estimate_tokens(prompt), _estimate_tokens(result),
+            estimated=True,
+        )
+        return result
+
+    if not api_key:
+        return "Error: OpenRouter API key not set (check config.fallback.openrouter.api_key)"
+
+    last_error = "Error: OpenRouter chain exhausted (no models configured)"
+    for model in models or []:
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt or ""},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+        }
+        if not payload["messages"][0]["content"]:
+            payload["messages"] = payload["messages"][1:]
+
+        hdr = tempfile.NamedTemporaryFile(
+            mode="w", delete=False, prefix="council_or_hdr_", suffix=".txt"
+        )
+        try:
+            os.chmod(hdr.name, 0o600)
+            hdr.write(
+                f"Authorization: Bearer {api_key}\n"
+                f"Content-Type: application/json\n"
+                f"User-Agent: {USER_AGENT}\n"
+                f"HTTP-Referer: https://github.com/sergei-aronsen/claude-code-toolkit\n"
+                f"X-Title: Supreme Council\n"
+            )
+            hdr.close()
+            body = json.dumps(payload, ensure_ascii=False)
+            result = run_command([
+                "curl", "-sSf",
+                "https://openrouter.ai/api/v1/chat/completions",
+                "-H", f"@{hdr.name}",
+                "--data-binary", "@-",
+            ], input_text=body, timeout=180)
+        finally:
+            if os.path.exists(hdr.name):
+                os.unlink(hdr.name)
+
+        if is_error_response(result):
+            last_error = result
+            continue
+        try:
+            data = json.loads(result)
+            text = data["choices"][0]["message"]["content"]
+        except (json.JSONDecodeError, KeyError, IndexError):
+            last_error = f"OpenRouter parse error ({model}): {result[:300]}"
+            continue
+        usage = data.get("usage", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "openrouter", model,
+            usage.get("prompt_tokens", _estimate_tokens(prompt)),
+            usage.get("completion_tokens", _estimate_tokens(text)),
+            estimated="prompt_tokens" not in usage,
+        )
+        return text
+
+    return last_error
+
+
+def call_with_fallback(primary_callable, fallback_prompt, fallback_system, config, label):
+    """Run `primary_callable()` and, on failure, fall through to OpenRouter chain.
+
+    Returns (text, fallback_used). Caller decides what mode/verdict to record.
+    OpenRouter is invoked only when the primary returns an error response AND
+    config.fallback.openrouter.api_key (or COUNCIL_STUB_OPENROUTER stub) is set.
+    """
+    text = primary_callable()
+    if not is_error_response(text):
+        return text, False
+
+    fb_cfg = (config.get("fallback", {}) or {}).get("openrouter", {}) or {}
+    api_key = fb_cfg.get("api_key", "")
+    models = fb_cfg.get("models", [])
+    if not (api_key or os.getenv("COUNCIL_STUB_OPENROUTER")) or not models:
+        _debug(f"fallback: {label} — primary failed, OpenRouter not configured")
+        return text, False
+
+    print(
+        f"⚠️  {label} primary backend failed — retrying via OpenRouter free chain",
+        file=sys.stderr,
+    )
+    fb_text = ask_openrouter(
+        fallback_prompt, api_key, models, system_prompt=fallback_system
+    )
+    return fb_text, True
+
+
 def ask_chatgpt(prompt, config, system_prompt=None):
-    """Query ChatGPT via OpenAI API using curl.
+    """Query ChatGPT via OpenAI API or Codex CLI based on config.openai.mode.
 
     `system_prompt` overrides the default Pragmatist persona — used by
-    audit-review mode to swap in AUDIT_REVIEW_GPT_SYSTEM (WR-01 fix).
+    audit-review mode to swap in the audit-review-pragmatist file (WR-01 fix).
+    Reasoning effort defaults to `high` and is configurable via
+    config.openai.reasoning_effort (API) and config.openai.cli_reasoning_effort
+    (Codex CLI).
     """
-    api_key = config["openai"].get("api_key", "")
+    mode = config["openai"].get("mode", "api")
     model = config["openai"]["model"]
+    if mode == "cli":
+        cli_effort = config["openai"].get("cli_reasoning_effort", "high")
+        return ask_chatgpt_cli(
+            prompt, model,
+            reasoning_effort=cli_effort,
+            system_prompt=system_prompt,
+        )
+
+    api_key = config["openai"].get("api_key", "")
+    reasoning_effort = config["openai"].get("reasoning_effort", "high")
 
     if not api_key:
         return "Error: OpenAI API key not set (check config or OPENAI_API_KEY env)"
@@ -1258,6 +1456,10 @@ def ask_chatgpt(prompt, config, system_prompt=None):
         ],
         "temperature": 0.2
     }
+    # Phase 24 SP5 — pin reasoning effort to max for the gpt-5.2 / o3 family.
+    # Older models that don't accept the field are silently skipped.
+    if model in REASONING_MODELS:
+        payload["reasoning"] = {"effort": reasoning_effort}
 
     # Audit BRAIN-H4: write the Authorization header to a 0600 tempfile and
     # pass via `-H @file` so the API key never appears in `ps`/argv. Audit
@@ -1628,15 +1830,23 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         )
         if not cost_confirm_gate(skeptic_prompt, gemini_model_eff, label="Skeptic"):
             gemini_verdict = "Error: Skeptic call declined by cost-confirm gate"
+            fallback_used_skeptic = False
         else:
-            gemini_verdict = ask_gemini(
-                skeptic_prompt, config,
-                file_paths=file_paths if use_native_files else None
+            gemini_verdict, fallback_used_skeptic = call_with_fallback(
+                lambda: ask_gemini(
+                    skeptic_prompt, config,
+                    file_paths=file_paths if use_native_files else None,
+                ),
+                fallback_prompt=skeptic_prompt,
+                fallback_system=load_prompt("skeptic-system"),
+                config=config,
+                label="Skeptic",
             )
             record_usage(
                 "validate-plan-skeptic",
                 verdict=(extract_verdict(gemini_verdict) if not is_error_response(gemini_verdict) else None),
                 plan_hash=plan_hash,
+                fallback_used=fallback_used_skeptic,
             )
     else:
         gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
@@ -1680,15 +1890,26 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - SKIP — this doesn't need to be done"""
 
     if config.get("_openai_available", True):
-        openai_model_eff = config["openai"].get("model", "gpt-5.2")
+        openai_model_eff = (
+            "codex-cli" if config["openai"].get("mode") == "cli"
+            else config["openai"].get("model", "gpt-5.2")
+        )
         if not cost_confirm_gate(pragmatist_prompt, openai_model_eff, label="Pragmatist"):
             gpt_verdict = "Error: Pragmatist call declined by cost-confirm gate"
+            fallback_used_pragmatist = False
         else:
-            gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+            gpt_verdict, fallback_used_pragmatist = call_with_fallback(
+                lambda: ask_chatgpt(pragmatist_prompt, config),
+                fallback_prompt=pragmatist_prompt,
+                fallback_system=load_prompt("pragmatist-system"),
+                config=config,
+                label="Pragmatist",
+            )
             record_usage(
                 "validate-plan-pragmatist",
                 verdict=(extract_verdict(gpt_verdict) if not is_error_response(gpt_verdict) else None),
                 plan_hash=plan_hash,
+                fallback_used=fallback_used_pragmatist,
             )
     else:
         gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
