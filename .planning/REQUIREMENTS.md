@@ -67,8 +67,8 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 #### Marketplace surface
 
-- [ ] **MKT-01**: `.claude-plugin/marketplace.json` at repo root with schema `{name, owner.name, plugins[]}` validated against current Anthropic spec at `code.claude.com/docs/en/plugin-marketplaces`. `name` = `claude-code-toolkit`, `owner.name` = `sergei-aronsen`. Three sub-plugins listed.
-- [ ] **MKT-02**: `plugins/<name>/.claude-plugin/plugin.json` for three sub-plugins: `tk-skills` (skills surface — Desktop-compatible), `tk-commands` (29 slash commands — Code only), `tk-framework-rules` (7 framework CLAUDE.md template fragments — Code only). Each plugin.json declares `version`, `description`, `category`, `tags`. Version is the single source of truth (do NOT also set version in marketplace.json entry — `plugin.json` silently wins).
+- [x] **MKT-01**: `.claude-plugin/marketplace.json` at repo root with schema `{name, owner.name, plugins[]}` validated against current Anthropic spec at `code.claude.com/docs/en/plugin-marketplaces`. `name` = `claude-code-toolkit`, `owner.name` = `sergei-aronsen`. Three sub-plugins listed.
+- [x] **MKT-02**: `plugins/<name>/.claude-plugin/plugin.json` for three sub-plugins: `tk-skills` (skills surface — Desktop-compatible), `tk-commands` (29 slash commands — Code only), `tk-framework-rules` (7 framework CLAUDE.md template fragments — Code only). Each plugin.json declares `version`, `description`, `category`, `tags`. Version is the single source of truth (do NOT also set version in marketplace.json entry — `plugin.json` silently wins).
 - [ ] **MKT-03**: Live `claude plugin marketplace add ./` smoke test from a hermetic clone validates the marketplace structure end-to-end. `make validate-marketplace` target runs the smoke (gated behind opt-in `TK_HAS_CLAUDE_CLI=1` env-var; CI runner does not have `claude` by default).
 - [ ] **MKT-04**: README + `docs/INSTALL.md` gain a "Install via marketplace" section alongside the curl-bash install. Both channels documented as equivalent for Code users; marketplace is the only path for Desktop users.
 
