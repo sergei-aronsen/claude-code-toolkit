@@ -128,6 +128,9 @@ jobs:
       - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
         run: make validate-skills-desktop
 
+      - name: MKT-03 — marketplace structural smoke (skipped without TK_HAS_CLAUDE_CLI)
+        run: make validate-marketplace
+
       - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
         run: make cell-parity
 

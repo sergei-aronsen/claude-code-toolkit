@@ -19,10 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test: `scripts/tests/test-install-tui.sh` (38+ assertions, Test 31).
 
 - **MCP catalog + per-MCP wizard** (`scripts/lib/mcp.sh`,
-  `scripts/lib/mcp-catalog.json`, `templates/mcps/`) — MCP-01..05,
-  MCP-SEC-01..02: Phase 25. Nine curated MCP servers (`context7`, `magic`,
-  `notebooklm`, `openrouter`, `playwright`, `sentry`, `sequential-thinking`,
-  `toolbox`, `youtrack`) browsable via `scripts/install.sh --mcps`. Per-MCP
+  `scripts/lib/mcp-catalog.json`) — MCP-01..05,
+  MCP-SEC-01..02: Phase 25. Nine curated MCP servers (`context7`, `firecrawl`,
+  `magic`, `notion`, `openrouter`, `playwright`, `resend`, `sentry`,
+  `sequential-thinking`) browsable via `scripts/install.sh --mcps`. Per-MCP
   wizard collects API keys with hidden input (`read -rs`), persists to
   `~/.claude/mcp-config.env` (mode 0600), invokes `claude mcp add`. Fail-soft
   when CLI absent. Hermetic test: `scripts/tests/test-mcp-selector.sh`
