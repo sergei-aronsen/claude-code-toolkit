@@ -218,6 +218,31 @@
         ]
       }
     },
+    "council-integration": {
+      "path": ".claude/skills/council-integration/SKILL.md",
+      "description": "Supreme Council integration with GSD plan/execute and audit workflows; verdict-handling rules (PROCEED/SIMPLIFY/RETHINK/SKIP)",
+      "triggers": {
+        "keywords": [
+          "council",
+          "skeptic",
+          "pragmatist",
+          "/council",
+          "council audit-review",
+          "rethink verdict",
+          "council pass"
+        ],
+        "intentPatterns": [
+          ".*--council\\b.*",
+          "run.*council",
+          "validate.*plan.*council",
+          "council.*verdict"
+        ],
+        "filePatterns": [
+          ".claude/scratchpad/council-report.md",
+          ".claude/audits/**"
+        ]
+      }
+    },
     "debugging": {
       "path": ".claude/skills/debugging/SKILL.md",
       "description": "Systematic debugging and root cause analysis",
