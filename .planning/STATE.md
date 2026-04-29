@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 26-03-install-sh-skills-page-PLAN.md
-last_updated: "2026-04-29T13:51:28.059Z"
+stopped_at: Completed 26-04-tests-manifest-and-docs-PLAN.md
+last_updated: "2026-04-29T14:00:31.247Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 26 (Skills Selector) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -115,6 +115,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 26]: cp -R (not rsync) for skills_install per SKILL-03; sync-skills-mirror.sh not wired to CI — dev-side maintainer tool only
 - [Phase 26]: Exclude templates/skills-marketplace/ from markdownlint: upstream mirror content carries lint violations; exclusion correct since users install content, not read it as toolkit docs
 - [Phase 26]: DRY_RUN shortcut placed before skills_install call to prevent any filesystem writes in preview mode
+- [Phase 26]: sync-skills-mirror.sh excluded from manifest — maintainer-only tool, not user-shipped via curl|bash
+- [Phase 26]: skills_marketplace upstream URLs set as https://skills.sh/<name> placeholders — maintainer fills on first re-sync
 
 ### Key v4.5 Constraints (from research)
 
@@ -184,11 +186,12 @@ Carry-overs available for next milestone scoping:
 | Phase 25 P04 | 5 | 3 tasks | 6 files |
 | Phase 26 P01 | 3 | 2 tasks | 2 files |
 | Phase 26 P03 | 6 | 2 tasks | 2 files |
+| Phase 26 P04 | 20 | 3 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T13:51:28.056Z
-Stopped at: Completed 26-03-install-sh-skills-page-PLAN.md
+Last session: 2026-04-29T14:00:31.244Z
+Stopped at: Completed 26-04-tests-manifest-and-docs-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**

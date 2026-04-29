@@ -69,7 +69,7 @@
 
 - [x] **Phase 24: Unified TUI Installer + Centralized Detection** — Single `scripts/install.sh` entry point with Bash 3.2 TUI checklist; shared libs (`tui.sh`, `detect2.sh`, `dispatch.sh`) reused by Phases 25–26 (completed 2026-04-29)
 - [x] **Phase 25: MCP Selector** — Nine-entry MCP catalog with per-MCP install wizard, inline secret collection, and `mcp-config.env` secrets handling (completed 2026-04-29)
-- [ ] **Phase 26: Skills Selector** — 22-skill marketplace mirror with `is_skill_installed` detection and TUI-driven copy to `~/.claude/skills/`
+- [x] **Phase 26: Skills Selector** — 22-skill marketplace mirror with `is_skill_installed` detection and TUI-driven copy to `~/.claude/skills/` (completed 2026-04-29)
 - [ ] **Phase 27: Marketplace Publishing + Claude Desktop Reach** — Plugin marketplace surface (`marketplace.json` + three sub-plugins), Desktop capability matrix, skill safety audit CI gate
 
 ## Phase Details
@@ -150,7 +150,7 @@
 - [x] 26-01-skills-lib-and-sync-script-PLAN.md — `scripts/lib/skills.sh` (catalog + is_skill_installed + skills_install) + `scripts/sync-skills-mirror.sh` standalone maintainer tool (Wave 1; SKILL-03)
 - [x] 26-02-mirror-content-snapshot-PLAN.md — Commit 22-skill snapshot under `templates/skills-marketplace/` + per-skill license preservation with SKILL-LICENSE.md fallback (Wave 1; SKILL-01, SKILL-02)
 - [x] 26-03-install-sh-skills-page-PLAN.md — `scripts/install.sh --skills` routing branch with TUI page + cp-R install + --force overwrite + dry-run preview (Wave 2; SKILL-03)
-- [ ] 26-04-tests-manifest-and-docs-PLAN.md — Hermetic `test-install-skills.sh` (15 assertions) + `manifest.json` `files.skills_marketplace[]` (22) + Makefile Test 33 + `sync-skills-mirror` target + CI Tests 21-33 + `docs/SKILLS-MIRROR.md` + `docs/INSTALL.md` --skills subsection (Wave 3; SKILL-04, SKILL-05)
+- [x] 26-04-tests-manifest-and-docs-PLAN.md — Hermetic `test-install-skills.sh` (15 assertions) + `manifest.json` `files.skills_marketplace[]` (22) + Makefile Test 33 + `sync-skills-mirror` target + CI Tests 21-33 + `docs/SKILLS-MIRROR.md` + `docs/INSTALL.md` --skills subsection (Wave 3; SKILL-04, SKILL-05)
 
 ### Phase 27: Marketplace Publishing + Claude Desktop Reach
 
@@ -180,7 +180,7 @@
 |-------|----------------|--------|-----------|
 | 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete    | 2026-04-29 |
 | 25. MCP Selector | 4/4 | Complete    | 2026-04-29 |
-| 26. Skills Selector | 3/4 | In Progress|  |
+| 26. Skills Selector | 4/4 | Complete   | 2026-04-29 |
 | 27. Marketplace Publishing + Claude Desktop Reach | 0/4 | Not started | - |
 
 ---
