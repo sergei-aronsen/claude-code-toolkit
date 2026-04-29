@@ -41,18 +41,20 @@ FORCE=0
 FAIL_FAST=0
 MCPS=0
 SKILLS=0
+SKILLS_ONLY=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --yes)       YES=1;       shift ;;
-        --no-color)  NO_COLOR=1;  export NO_COLOR; shift ;;
-        --dry-run)   DRY_RUN=1;   shift ;;
-        --force)     FORCE=1;     shift ;;
-        --fail-fast) FAIL_FAST=1; shift ;;
-        --no-banner) NO_BANNER=1; shift ;;
-        --mcps)      MCPS=1;      shift ;;
-        --skills)    SKILLS=1;    shift ;;
+        --yes)         YES=1;                 shift ;;
+        --no-color)    NO_COLOR=1;  export NO_COLOR; shift ;;
+        --dry-run)     DRY_RUN=1;             shift ;;
+        --force)       FORCE=1;               shift ;;
+        --fail-fast)   FAIL_FAST=1;           shift ;;
+        --no-banner)   NO_BANNER=1;           shift ;;
+        --mcps)        MCPS=1;                shift ;;
+        --skills)      SKILLS=1;              shift ;;
+        --skills-only) SKILLS_ONLY=1; SKILLS=1; shift ;;
         -h|--help)
             cat <<USAGE
 Usage: bash scripts/install.sh [flags]
@@ -67,6 +69,8 @@ Flags:
   --no-banner   Suppress closing removal banner
   --mcps        Install curated MCP servers via TUI catalog (Phase 25)
   --skills      Install curated skills via TUI catalog (Phase 26)
+  --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
+                auto-activates when 'claude' CLI is absent on PATH (DESK-03)
 
 Backwards compatible: scripts/init-claude.sh URL still works unchanged.
 USAGE
@@ -140,9 +144,8 @@ if [[ "$MCPS" -eq 1 ]]; then
 fi
 
 # SKILLS=1 path needs the skills catalog + cp-R installer.
-if [[ "$SKILLS" -eq 1 ]]; then
-    _source_lib skills
-fi
+# NOTE: DESK-03 auto-routing may set SKILLS=1 later (after argparse), so we
+# re-check after the routing block below and source skills.sh then if needed.
 
 # Initialize colors for the dro_* family (used by summary).
 dro_init_colors
@@ -169,14 +172,61 @@ print_install_status() {
 }
 
 # ─────────────────────────────────────────────────
-# Routing gate: --mcps takes the MCP page; --skills takes the Skills page; default is
-# the Phase 24 components page. Mutex — exactly one of three branches per invocation.
+# Routing gate: --mcps takes the MCP page; --skills (or --skills-only / Desktop
+# auto-route) takes the Skills page; default is the Phase 24 components page.
+# Mutex — exactly one of three branches per invocation.
 # ─────────────────────────────────────────────────
 
 # --mcps and --skills are mutually exclusive: exactly one of three branches runs per invocation.
-if [[ "$MCPS" -eq 1 && "$SKILLS" -eq 1 ]]; then
+if [[ "$MCPS" -eq 1 && "$SKILLS" -eq 1 && "$SKILLS_ONLY" -eq 0 ]]; then
     echo -e "${RED}✗${NC} --mcps and --skills are mutually exclusive" >&2
     exit 1
+fi
+
+# ─────────────────────────────────────────────────
+# DESK-03: Desktop-only auto-routing.
+# Trigger condition (all must hold):
+#   - `command -v claude` returns non-zero (CLI absent)
+#   - no explicit page flag set (--mcps, --skills, --skills-only)
+#   - --yes not passed (CI / non-interactive paths get the components branch)
+# When triggered: promote to --skills-only mode + print explanatory banner.
+# ─────────────────────────────────────────────────
+TK_DESKTOP_ONLY=0
+if ! command -v claude >/dev/null 2>&1; then
+    TK_DESKTOP_ONLY=1
+fi
+
+AUTO_SKILLS_ONLY=0
+if [[ "$TK_DESKTOP_ONLY" -eq 1 \
+      && "$MCPS" -eq 0 \
+      && "$SKILLS" -eq 0 \
+      && "$SKILLS_ONLY" -eq 0 \
+      && "$YES" -eq 0 ]]; then
+    AUTO_SKILLS_ONLY=1
+    SKILLS_ONLY=1
+    SKILLS=1
+fi
+
+if [[ "$SKILLS_ONLY" -eq 1 ]]; then
+    export TK_SKILLS_HOME="$HOME/.claude/plugins/tk-skills"
+    if [[ "$AUTO_SKILLS_ONLY" -eq 1 ]]; then
+        echo ""
+        echo -e "${YELLOW}!${NC} Claude CLI not detected — installing skills only."
+        echo "  Skills available in Claude Desktop Code tab."
+        echo "  See docs/CLAUDE_DESKTOP.md for full capability matrix."
+        echo ""
+    else
+        echo ""
+        echo -e "${BLUE}i${NC} --skills-only mode: skills install to ~/.claude/plugins/tk-skills/"
+        echo ""
+    fi
+fi
+
+# Source skills lib now — covers both explicit --skills/--skills-only (SKILLS=1 at
+# parse time) and DESK-03 auto-route (SKILLS=1 set above). Idempotent: sourcing
+# twice is harmless, but in practice only one code path reaches this point.
+if [[ "$SKILLS" -eq 1 ]]; then
+    _source_lib skills
 fi
 
 if [[ "$MCPS" -eq 1 ]]; then
@@ -500,7 +550,11 @@ if [[ "$SKILLS" -eq 1 ]]; then
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
     if [[ "${NO_BANNER:-0}" != "1" ]]; then
         echo ""
-        echo "To remove a skill: rm -rf ~/.claude/skills/<name>"
+        if [[ "$SKILLS_ONLY" -eq 1 ]]; then
+            echo "To remove a skill: rm -rf ~/.claude/plugins/tk-skills/<name>"
+        else
+            echo "To remove a skill: rm -rf ~/.claude/skills/<name>"
+        fi
     fi
     if [[ $FAILED_COUNT -gt 0 ]]; then
         exit 1
