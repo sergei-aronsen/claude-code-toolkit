@@ -40,6 +40,8 @@ source "$SCRIPT_DIR/lib/state.sh"
 source "$SCRIPT_DIR/lib/optional-plugins.sh"
 # shellcheck source=/dev/null
 source "$SCRIPT_DIR/lib/bootstrap.sh"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/lib/bridges.sh"
 
 # Colors (auto-disabled when stdout is not a tty, per D-36). Reassigned AFTER
 # all library sources because lib/state.sh + detect.sh + lib/install.sh define
@@ -81,6 +83,9 @@ MODE=""
 FORCE=false
 FORCE_MODE_CHANGE=false
 NO_BOOTSTRAP=false
+NO_BRIDGES=false
+BRIDGES_FORCE=""
+FAIL_FAST=false
 NO_BANNER=${NO_BANNER:-0}
 
 # Parse arguments
@@ -101,13 +106,27 @@ while [[ $# -gt 0 ]]; do
             NO_BOOTSTRAP=true
             shift
             ;;
+        --no-bridges)
+            NO_BRIDGES=true
+            shift
+            ;;
+        --bridges)
+            if [[ -z "${2:-}" ]]; then
+                echo "ERROR: --bridges requires a comma-separated target list (e.g. --bridges gemini,codex)" >&2; exit 1
+            fi
+            BRIDGES_FORCE="$2"; shift 2 ;;
+        --fail-fast)
+            # shellcheck disable=SC2034  # FAIL_FAST consumed by bridge_install_prompts (sourced from bridges.sh)
+            FAIL_FAST=true
+            shift
+            ;;
         --no-banner) NO_BANNER=1; shift ;;
         --version|-v)
             echo "claude-code-toolkit v$VERSION (local)"
             exit 0
             ;;
         --help|-h)
-            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [--no-bootstrap] [--no-banner] [framework]"
+            echo "Usage: init-local.sh [--dry-run] [--mode <name>] [--force] [--force-mode-change] [--no-bootstrap] [--no-bridges] [--bridges <list>] [--fail-fast] [--no-banner] [framework]"
             echo ""
             echo "Frameworks: laravel, nextjs, nodejs, python, go, rails, base"
             echo "Modes: standalone, complement-sp, complement-gsd, complement-full"
@@ -118,6 +137,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --force               Re-install even if state file exists"
             echo "  --force-mode-change   Bypass the mode-change confirmation prompt"
             echo "  --no-bootstrap        Skip the SP/GSD install prompts (env: TK_NO_BOOTSTRAP=1)"
+            echo "  --no-bridges          Skip Gemini/Codex bridge prompts (env: TK_NO_BRIDGES=1)"
+            echo "  --bridges <list>      Force-create bridges for comma-listed CLIs (gemini,codex)"
+            echo "  --fail-fast           Exit 1 if --bridges named CLI not detected"
             echo "  --no-banner           Suppress closing 'To remove: ...' banner (env: NO_BANNER=1)"
             echo "  --version             Show version"
             echo "  --help                Show this help"
@@ -133,6 +155,19 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# BRIDGE-UX-03 + BRIDGE-UX-04: --no-bridges and --bridges are mutually exclusive.
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo "ERROR: --no-bridges and --bridges are mutually exclusive" >&2
+    exit 2
+fi
+if [[ "${TK_NO_BRIDGES:-}" == "1" ]]; then
+    NO_BRIDGES=true
+fi
+if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
+    echo "ERROR: --no-bridges (or TK_NO_BRIDGES=1) and --bridges are mutually exclusive" >&2
+    exit 2
+fi
 
 # Validate --mode value if provided (D-33). MODES is sourced from lib/install.sh.
 if [[ -n "$MODE" ]]; then
@@ -457,6 +492,15 @@ if [[ -f "$STATE_FILE" ]]; then
 fi
 write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "" "$BRIDGES_JSON"
 release_lock
+
+# Phase 30 BRIDGE-UX-02: per-CLI bridge prompts.
+# Source CLAUDE.md exists at "$CLAUDE_DIR/CLAUDE.md" (project local) — bridge_install_prompts
+# uses "$PWD" + reads "$PWD/CLAUDE.md". For init-local.sh we must point it at the project
+# root where the bridge file should land alongside the existing or just-created CLAUDE.md.
+bridge_install_prompts "$PWD" || {
+    echo "ERROR: Bridge install failed under --fail-fast" >&2
+    exit 1
+}
 
 # ============================================================================
 # SUMMARY
