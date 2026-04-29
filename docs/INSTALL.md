@@ -125,6 +125,39 @@ After `enter`, a confirmation prompt asks `Install N component(s)? [y/N]` (defau
 `N` cancels). Already-installed components render as `[installed ✓]` and are
 pre-unchecked; uninstalled components are pre-checked.
 
+### --mcps flag
+
+`scripts/install.sh --mcps` opens a separate TUI page listing nine curated MCP servers
+(see [docs/MCP-SETUP.md](MCP-SETUP.md) for the full guide). Selecting an MCP triggers a
+per-MCP wizard that prompts for required API keys with hidden input via `read -rs`, persists
+them to `~/.claude/mcp-config.env` (mode 0600), and invokes `claude mcp add`.
+
+Interactive TUI catalog — browse and select MCPs with arrow keys and space:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps
+```
+
+Non-interactive — install all non-OAuth MCPs without prompts:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps --yes
+```
+
+Dry-run preview — show what would be installed without writing anything:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --mcps --dry-run
+```
+
+When the `claude` CLI is not on `PATH`, `--mcps` prints a banner explaining that MCPs
+cannot be installed and renders the catalog read-only — selecting MCPs has no effect.
+Install the CLI first, then re-run.
+
+The components page and the MCPs page are mutually exclusive within a single invocation.
+To install components AND MCPs, run `install.sh` twice: once without `--mcps` for the
+components checklist, and once with `--mcps` for the MCP catalog.
+
 ### Backwards compatibility
 
 All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
