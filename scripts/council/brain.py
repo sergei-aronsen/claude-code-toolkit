@@ -41,6 +41,21 @@ TREE_EXCLUDE = "node_modules|dist|.git|__pycache__|env|venv|vendor|.next|.nuxt|t
 MAX_TOTAL_CONTEXT = 200000  # 200K characters total file context limit
 MAX_GIT_DIFF = 30000        # 30K characters git diff limit
 MAX_PROJECT_RULES = 10000   # 10K characters CLAUDE.md limit
+MAX_README = 10000          # 10K characters README.md limit (Phase 24 SP3)
+MAX_RECENT_LOG = 5000       # 5K characters git log -20 limit (SP3)
+MAX_TODOS = 5000            # 5K characters TODO/FIXME grep limit (SP3)
+MAX_PLANNING = 10000        # 10K characters .planning/PROJECT.md limit (SP3)
+
+
+def _debug(msg):
+    """Emit a stderr trace line when COUNCIL_DEBUG=1 is set.
+
+    Used by SP3 context-enrichment helpers so users running
+    `COUNCIL_DEBUG=1 brain "..."` can verify which blocks fed into the
+    Skeptic / Pragmatist prompts and see redaction counts.
+    """
+    if os.environ.get("COUNCIL_DEBUG") == "1":
+        print(f"[council:debug] {msg}", file=sys.stderr)
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -621,6 +636,146 @@ def get_project_rules():
 
 
 # ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 3 — context enrichment helpers
+# ─────────────────────────────────────────────────
+#
+# Each helper returns a string capped to its dedicated MAX_* constant so the
+# total context budget stays predictable. _truncate() appends a visible marker
+# that downstream readers (Skeptic, Pragmatist) can tell apart from real EOF.
+
+def _truncate(text, limit, marker="(context truncated)"):
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n... {marker}"
+
+
+def get_readme():
+    """Read project README.md (capped at MAX_README)."""
+    path = find_project_root() / "README.md"
+    if not path.is_file():
+        _debug("README.md: not found")
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        _debug(f"README.md: read failed ({exc})")
+        return ""
+    out = _truncate(text, MAX_README)
+    _debug(f"README.md: {len(out)} chars (capped at {MAX_README})")
+    return out
+
+
+def get_recent_log():
+    """Last 20 commits (`git log --oneline -20`), capped at MAX_RECENT_LOG."""
+    result = run_command(
+        ["git", "log", "--oneline", "-20"], timeout=10
+    )
+    if not result or result.startswith("Error"):
+        _debug("git log: empty or error")
+        return ""
+    out = _truncate(result, MAX_RECENT_LOG)
+    _debug(f"git log: {len(out)} chars (capped at {MAX_RECENT_LOG})")
+    return out
+
+
+def get_todos():
+    """Grep TODO|FIXME|HACK|XXX markers across top-level source dirs.
+
+    Skips vendored / generated paths. Uses git ls-files when available for an
+    accurate file list (respects .gitignore); falls back to a recursive walk
+    bounded by TREE_EXCLUDE.
+    """
+    root = find_project_root()
+    skip_dirs = {
+        "node_modules", "dist", ".git", "__pycache__", "env", "venv",
+        "vendor", ".next", ".nuxt", "tmp", "log", ".planning",
+    }
+    pattern = re.compile(r"\b(TODO|FIXME|HACK|XXX)\b")
+
+    files = []
+    listing = run_command(["git", "ls-files"], timeout=10)
+    if listing and not listing.startswith("Error"):
+        for rel in listing.splitlines():
+            if not rel:
+                continue
+            parts = rel.split("/")
+            if any(p in skip_dirs for p in parts):
+                continue
+            files.append(root / rel)
+    else:
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            if any(p in skip_dirs for p in path.parts):
+                continue
+            files.append(path)
+
+    hits = []
+    total = 0
+    for path in files:
+        try:
+            with path.open("r", encoding="utf-8", errors="replace") as fh:
+                for lineno, line in enumerate(fh, start=1):
+                    if pattern.search(line):
+                        rel = path.relative_to(root)
+                        snippet = line.rstrip()[:200]
+                        hits.append(f"{rel}:{lineno}: {snippet}")
+                        total += len(hits[-1]) + 1
+                        if total >= MAX_TODOS:
+                            break
+        except (OSError, UnicodeDecodeError):
+            continue
+        if total >= MAX_TODOS:
+            break
+
+    if not hits:
+        _debug("TODOs: 0 hits")
+        return ""
+    out = _truncate("\n".join(hits), MAX_TODOS)
+    _debug(f"TODOs: {len(hits)} hits, {len(out)} chars")
+    return out
+
+
+def get_planning_context():
+    """Read .planning/PROJECT.md if present (capped at MAX_PLANNING)."""
+    path = find_project_root() / ".planning" / "PROJECT.md"
+    if not path.is_file():
+        _debug(".planning/PROJECT.md: not found")
+        return ""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        _debug(f".planning/PROJECT.md: read failed ({exc})")
+        return ""
+    out = _truncate(text, MAX_PLANNING)
+    _debug(f".planning/PROJECT.md: {len(out)} chars (capped at {MAX_PLANNING})")
+    return out
+
+
+def apply_context_budget(blocks, hard_limit=MAX_TOTAL_CONTEXT):
+    """Truncate a list of (label, body) blocks proportionally to fit hard_limit.
+
+    Returns the same list with `body` shrunk so the sum of len(body) <= hard_limit.
+    Each shrunk block keeps a visible "(context truncated)" marker.
+    """
+    total = sum(len(body) for _, body in blocks)
+    if total <= hard_limit:
+        return blocks
+    scale = hard_limit / total
+    out = []
+    for label, body in blocks:
+        if not body:
+            out.append((label, body))
+            continue
+        target = max(0, int(len(body) * scale) - 32)
+        out.append((label, _truncate(body, target)))
+    _debug(
+        f"budget: total={total} > limit={hard_limit}; scaled by {scale:.2f}"
+    )
+    return out
+
+
+# ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
 
@@ -965,9 +1120,33 @@ def _run_validate_plan(plan, config):
     git_diff = get_git_diff()
     project_rules = get_project_rules()
 
+    # Phase 24 SP3 — extra context blocks for Skeptic + Pragmatist.
+    # Each fetch is capped to its own MAX_* limit; the budget pass below scales
+    # them down proportionally if their sum threatens MAX_TOTAL_CONTEXT.
+    readme = get_readme()
+    planning_md = get_planning_context()
+    recent_log = get_recent_log()
+    todos = get_todos()
+
     # Build shared context blocks
     diff_block = f"\nGIT CHANGES:\n{git_diff}" if git_diff else ""
     rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
+
+    enrichment_pairs = [
+        ("README", readme),
+        ("PLANNING CONTEXT", planning_md),
+        ("RECENT COMMITS", recent_log),
+        ("TODOS / FIXMES", todos),
+    ]
+    # Reserve ~20% of the budget for files_content + diff and let the
+    # enrichment blocks share the rest (4/5ths of the cap).
+    enrichment_budget = (MAX_TOTAL_CONTEXT * 4) // 5
+    enrichment_pairs = apply_context_budget(enrichment_pairs, hard_limit=enrichment_budget)
+    enrichment_block = "".join(
+        f"\n{label}:\n{body}\n"
+        for label, body in enrichment_pairs
+        if body
+    )
 
     # ── Phase 1: Context Discovery (skip if Gemini unavailable) ──
     files_content = ""
@@ -1003,7 +1182,7 @@ Reply ONLY with the comma-separated list of file paths. No explanations."""
     files_in_prompt = "" if use_native_files else (files_content if files_content else "(no files read)")
 
     skeptic_prompt = f"""{load_prompt("skeptic-system")}
-{rules_block}
+{rules_block}{enrichment_block}
 
 FILES CONTEXT:
 {files_in_prompt}
@@ -1046,7 +1225,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 
     pragmatist_prompt = f"""Review this implementation plan and The Skeptic's assessment.
 Do NOT repeat The Skeptic's points. Focus on what they missed or got wrong.
-{rules_block}
+{rules_block}{enrichment_block}
 
 FILES CONTEXT:
 {files_content if files_content else "(no files read)"}
