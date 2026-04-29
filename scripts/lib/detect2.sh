@@ -4,14 +4,16 @@
 # Source this file. Do NOT execute it directly.
 # Sources detect.sh first (do not duplicate SP/GSD logic — DET-01).
 # Exposes:
-#   is_superpowers_installed  — wraps HAS_SP from detect.sh (DET-01)
+#   is_codex_installed        — BRIDGE-DET-02: command -v codex
+#   is_gemini_installed       — BRIDGE-DET-01: command -v gemini
 #   is_gsd_installed          — wraps HAS_GSD from detect.sh (DET-01)
-#   is_toolkit_installed      — DET-05: ~/.claude/toolkit-install.json exists
-#   is_security_installed     — DET-02: cc-safety-net on PATH AND hook wired
 #   is_rtk_installed          — DET-04: command -v rtk
+#   is_security_installed     — DET-02: cc-safety-net on PATH AND hook wired
 #   is_statusline_installed   — DET-03: ~/.claude/statusline.sh + statusLine key
-# Globals (write, optional): IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL (cache vars,
-# populated only if the caller invokes detect2_cache).
+#   is_superpowers_installed  — wraps HAS_SP from detect.sh (DET-01)
+#   is_toolkit_installed      — DET-05: ~/.claude/toolkit-install.json exists
+# Globals (write, optional): IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_GEM IS_COD
+# (cache vars, populated only if the caller invokes detect2_cache).
 #
 # IMPORTANT: No errexit/nounset/pipefail here — sourced files must not alter caller error mode.
 
@@ -36,6 +38,20 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)/../de
 # DET-01: SP/GSD wrappers — DO NOT re-implement filesystem probes; reuse detect.sh exports.
 is_superpowers_installed() {
     [[ "${HAS_SP:-false}" == "true" ]]
+}
+
+# BRIDGE-DET-02: OpenAI Codex CLI presence (binary on PATH).
+# Soft cross-check: ~/.codex/ dir as confirmation only — CLI-PATH wins on conflict.
+# Fail-soft: absent CLI returns 1 with no stderr, no warning.
+is_codex_installed() {
+    command -v codex >/dev/null 2>&1
+}
+
+# BRIDGE-DET-01: Google Gemini CLI presence (binary on PATH).
+# Soft cross-check: ~/.gemini/ dir as confirmation only — CLI-PATH wins on conflict.
+# Fail-soft: absent CLI returns 1 with no stderr, no warning.
+is_gemini_installed() {
+    command -v gemini >/dev/null 2>&1
 }
 
 is_gsd_installed() {
@@ -78,7 +94,7 @@ is_statusline_installed() {
     grep -q '"statusLine"' "$HOME/.claude/settings.json" 2>/dev/null
 }
 
-# Optional helper: cache all six probes into IS_* vars. Callers that need
+# Optional helper: cache all probes into IS_* vars. Callers that need
 # the cache pattern (D-23) call this once at startup, then re-probe before
 # each dispatch.
 detect2_cache() {
@@ -88,5 +104,7 @@ detect2_cache() {
     IS_SEC=0; is_security_installed    && IS_SEC=1 || true
     IS_RTK=0; is_rtk_installed         && IS_RTK=1 || true
     IS_SL=0;  is_statusline_installed  && IS_SL=1  || true
-    export IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL
+    IS_COD=0; is_codex_installed       && IS_COD=1 || true
+    IS_GEM=0; is_gemini_installed      && IS_GEM=1 || true
+    export IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_COD IS_GEM
 }
