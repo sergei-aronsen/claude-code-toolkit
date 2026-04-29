@@ -19,3 +19,6 @@ Thumbs.db
 # Python bytecode (from validate-commands.py etc.)
 __pycache__/
 *.pyc
+
+# Skills Desktop-safety audit artifact (runtime output — do not commit)
+.audit-skills-desktop.txt
