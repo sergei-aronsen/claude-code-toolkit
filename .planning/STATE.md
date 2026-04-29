@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
-status: verifying
-stopped_at: Completed 24-05-manifest-and-docs-PLAN.md
-last_updated: "2026-04-29T11:40:17.914Z"
+status: executing
+stopped_at: Completed 25-01-mcp-catalog-and-loader-PLAN.md
+last_updated: "2026-04-29T12:08:27.502Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 9
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 24 — unified-tui-installer-centralized-detection
+**Current focus:** Phase 25 — MCP Selector
 
 ## Current Position
 
@@ -31,9 +31,9 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 |-------------------------------------------------------|
 ```
 
-Phase: 25
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 25 (MCP Selector) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-04-29
 
 ## Plan Count Estimate
@@ -100,6 +100,8 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 24]: D-31: install.sh flags documented alongside (not replacing) init-claude.sh flags in INSTALL.md
 - [Phase 24]: Manifest version NOT bumped to 4.5.0 in Phase 24 — deferred to Phase 27 distribution phase per CONTEXT.md Deferred Ideas
 - [Phase 24]: libs[] entries sorted alphabetically; scripts[] is order-preserving (install.sh appended after uninstall.sh)
+- [Phase 25]: mcp_catalog_load uses join('') for install_args (not unit-separator join); callers access raw JSON arrays directly
+- [Phase 25]: is_mcp_installed three-state return 0/1/2: 0=installed, 1=not-installed, 2=CLI-absent (MCP-02 fail-soft)
 
 ### Key v4.5 Constraints (from research)
 
@@ -163,11 +165,12 @@ Carry-overs available for next milestone scoping:
 | Phase 24 P03 | 4min | 4 tasks | 3 files |
 | Phase 24 P04 | 180 | 3 tasks | 5 files |
 | Phase 24 P05 | 10 | 3 tasks | 2 files |
+| Phase 25 P01 | 108 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T11:26:43.432Z
-Stopped at: Completed 24-05-manifest-and-docs-PLAN.md
+Last session: 2026-04-29T12:08:27.498Z
+Stopped at: Completed 25-01-mcp-catalog-and-loader-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
