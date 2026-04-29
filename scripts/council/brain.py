@@ -924,6 +924,151 @@ def redact_context(text, label="<unlabeled>"):
 
 
 # ─────────────────────────────────────────────────
+# Phase 24 Sub-Phase 4 — usage logging + pricing
+# ─────────────────────────────────────────────────
+#
+# Every Council API call appends one JSON line to usage.jsonl. Token counts
+# come from the provider's response when available (Gemini usageMetadata,
+# OpenAI usage object); CLI calls fall back to a chars/4 estimate marked
+# with `"estimated": true`. Cost is multiplied through pricing.json which
+# users maintain (rates ship as DEFAULT_PRICING fallback).
+
+import datetime
+import hashlib
+
+USAGE_LOG_PATH = Path.home() / ".claude" / "council" / "usage.jsonl"
+PRICING_PATH = Path.home() / ".claude" / "council" / "pricing.json"
+
+# $/1M tokens. Indicative rates as of Q1 2026 — users can override via
+# ~/.claude/council/pricing.json. CLI calls (Gemini CLI / Codex CLI) cost
+# zero per token under subscription, modeled with both rates = 0.
+DEFAULT_PRICING = {
+    "gemini-3-pro-preview": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "gemini-2.5-pro": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "gpt-5.2-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
+    "gpt-5.2": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "o3-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
+    "o3": {"input_per_1m": 2.0, "output_per_1m": 8.0},
+    # CLI-driven calls — covered by subscription, no per-token cost
+    "gemini-cli": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+    "codex-cli": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+    # OpenRouter free tier
+    "openrouter-free": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+}
+
+_PRICING_CACHE = None
+_LAST_USAGE = None  # populated by ask_*; consumed by record_usage()
+
+
+def _load_pricing():
+    """Merge user pricing.json on top of DEFAULT_PRICING. Cached per process."""
+    global _PRICING_CACHE
+    if _PRICING_CACHE is not None:
+        return _PRICING_CACHE
+    pricing = dict(DEFAULT_PRICING)
+    if PRICING_PATH.is_file():
+        try:
+            user_pricing = json.loads(PRICING_PATH.read_text(encoding="utf-8"))
+            if isinstance(user_pricing, dict):
+                for model, rates in user_pricing.items():
+                    if isinstance(rates, dict):
+                        pricing[model] = rates
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"⚠️  pricing.json unreadable: {exc}", file=sys.stderr)
+    _PRICING_CACHE = pricing
+    return pricing
+
+
+def _estimate_tokens(text):
+    """Approximate token count when the provider doesn't report usage.
+
+    Heuristic: 1 token ≈ 4 characters of English-like text. Conservative — over-
+    counts for code-heavy prompts, which is the side users want for cost
+    forecasting.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
+def _compute_cost(model, tokens_in, tokens_out):
+    """Return cost in USD for `tokens_in` input + `tokens_out` output of `model`.
+
+    Falls back to zero when the model is missing from pricing — avoids fake cost
+    spikes when DEFAULT_PRICING lags behind Council's configured model list.
+    """
+    pricing = _load_pricing()
+    rates = pricing.get(model) or {}
+    in_rate = float(rates.get("input_per_1m", 0.0))
+    out_rate = float(rates.get("output_per_1m", 0.0))
+    return round(
+        (tokens_in / 1_000_000.0) * in_rate
+        + (tokens_out / 1_000_000.0) * out_rate,
+        6,
+    )
+
+
+def _set_last_usage(provider, model, tokens_in, tokens_out, estimated=False):
+    """Stash the just-completed call's token usage for the next record_usage()."""
+    global _LAST_USAGE
+    _LAST_USAGE = {
+        "provider": provider,
+        "model": model,
+        "tokens_in": int(tokens_in or 0),
+        "tokens_out": int(tokens_out or 0),
+        "estimated": bool(estimated),
+    }
+
+
+def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
+    """Append one JSON line to usage.jsonl with the last call's tokens + cost.
+
+    Silent when no preceding ask_* set _LAST_USAGE (e.g. early error path) so
+    failed calls never write half-formed records. Users opt out by setting
+    COUNCIL_NO_USAGE_LOG=1 (rare — used by CI to keep the file clean).
+    """
+    global _LAST_USAGE
+    if _LAST_USAGE is None or os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
+        return
+    snapshot = _LAST_USAGE
+    _LAST_USAGE = None
+    cost = _compute_cost(
+        snapshot["model"], snapshot["tokens_in"], snapshot["tokens_out"]
+    )
+    record = {
+        "ts": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "mode": mode,
+        "provider": snapshot["provider"],
+        "model": snapshot["model"],
+        "tokens_in": snapshot["tokens_in"],
+        "tokens_out": snapshot["tokens_out"],
+        "cost_usd": cost,
+        "estimated": snapshot["estimated"],
+        "verdict": verdict,
+        "fallback_used": bool(fallback_used),
+        "plan_hash": plan_hash,
+    }
+    try:
+        USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
+    _debug(
+        f"usage: {snapshot['provider']}/{snapshot['model']} "
+        f"in={snapshot['tokens_in']} out={snapshot['tokens_out']} "
+        f"cost=${cost:.6f} verdict={verdict}"
+    )
+
+
+def _hash_plan(plan):
+    """Stable 16-hex-char digest of the plan / report content. None on empty input."""
+    if not plan:
+        return None
+    return hashlib.sha256(plan.encode("utf-8", errors="replace")).hexdigest()[:16]
+
+
+# ─────────────────────────────────────────────────
 # Gemini integration
 # ─────────────────────────────────────────────────
 
@@ -932,11 +1077,18 @@ def ask_gemini_cli(prompt, model, file_paths=None):
     if file_paths:
         file_refs = "\n".join(f"@{p}" for p in file_paths)
         prompt = f"{file_refs}\n\n{prompt}"
-    return run_command(
+    result = run_command(
         ["gemini", "--model", model],
         input_text=prompt,
         timeout=120
     )
+    # Gemini CLI does not surface token counts — estimate from chars/4.
+    _set_last_usage(
+        "gemini-cli", model,
+        _estimate_tokens(prompt), _estimate_tokens(result),
+        estimated=True,
+    )
+    return result
 
 
 def ask_gemini_api(prompt, model, api_key, config=None):
@@ -990,10 +1142,19 @@ def ask_gemini_api(prompt, model, api_key, config=None):
 
         try:
             data = json.loads(result)
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            text = data["candidates"][0]["content"]["parts"][0]["text"]
         except (json.JSONDecodeError, KeyError, IndexError):
             error = f"Gemini API error: {result[:500]}"
             return sanitize_error(error, config) if config else error
+        usage = data.get("usageMetadata", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "gemini",
+            model,
+            usage.get("promptTokenCount", _estimate_tokens(prompt)),
+            usage.get("candidatesTokenCount", _estimate_tokens(text)),
+            estimated="promptTokenCount" not in usage,
+        )
+        return text
     finally:
         if os.path.exists(hdr.name):
             os.unlink(hdr.name)
@@ -1064,9 +1225,18 @@ def ask_chatgpt(prompt, config, system_prompt=None):
             return sanitize_error(result, config)
         try:
             data = json.loads(result)
-            return data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError):
             return sanitize_error(f"OpenAI API error: {result[:500]}", config)
+        usage = data.get("usage", {}) if isinstance(data, dict) else {}
+        _set_last_usage(
+            "openai",
+            model,
+            usage.get("prompt_tokens", _estimate_tokens(prompt)),
+            usage.get("completion_tokens", _estimate_tokens(text)),
+            estimated="prompt_tokens" not in usage,
+        )
+        return text
     finally:
         if os.path.exists(hdr.name):
             os.unlink(hdr.name)
@@ -1077,7 +1247,7 @@ def ask_chatgpt(prompt, config, system_prompt=None):
 # ─────────────────────────────────────────────────
 
 
-def dispatch_audit_review_gemini(prompt, config):
+def dispatch_audit_review_gemini(prompt, config, plan_hash=None):
     """Gemini dispatch for audit-review mode.
 
     Honors COUNCIL_STUB_GEMINI env var (RESEARCH.md §5) — when set, the value
@@ -1087,10 +1257,12 @@ def dispatch_audit_review_gemini(prompt, config):
     stub = os.getenv("COUNCIL_STUB_GEMINI")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_gemini(prompt, config)
+    result = ask_gemini(prompt, config)
+    record_usage("audit-review-skeptic", plan_hash=plan_hash)
+    return result
 
 
-def dispatch_audit_review_chatgpt(prompt, config):
+def dispatch_audit_review_chatgpt(prompt, config, plan_hash=None):
     """ChatGPT dispatch for audit-review mode.
 
     Honors COUNCIL_STUB_CHATGPT env var (RESEARCH.md §5).
@@ -1098,7 +1270,9 @@ def dispatch_audit_review_chatgpt(prompt, config):
     stub = os.getenv("COUNCIL_STUB_CHATGPT")
     if stub:
         return run_command([stub], timeout=30)
-    return ask_chatgpt(prompt, config, system_prompt=load_prompt("audit-review-pragmatist"))
+    result = ask_chatgpt(prompt, config, system_prompt=load_prompt("audit-review-pragmatist"))
+    record_usage("audit-review-pragmatist", plan_hash=plan_hash)
+    return result
 
 
 def run_audit_review(report_path_str, config):
@@ -1137,6 +1311,7 @@ def run_audit_review(report_path_str, config):
         return 1
 
     prompt = prompt_template.replace("{REPORT_CONTENT}", report_content)
+    plan_hash = _hash_plan(report_content)
 
     # 3. Parallel dispatch (D-08, COUNCIL-06)
     stub_gemini = os.getenv("COUNCIL_STUB_GEMINI")
@@ -1159,8 +1334,8 @@ def run_audit_review(report_path_str, config):
     print("\n\U0001f9e0 Council audit-review: dispatching Gemini and ChatGPT in parallel...")
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future_g = executor.submit(dispatch_audit_review_gemini, prompt, config)
-        future_c = executor.submit(dispatch_audit_review_chatgpt, prompt, config)
+        future_g = executor.submit(dispatch_audit_review_gemini, prompt, config, plan_hash)
+        future_c = executor.submit(dispatch_audit_review_chatgpt, prompt, config, plan_hash)
         try:
             gemini_raw = future_g.result(timeout=90)
         except FuturesTimeoutError:
@@ -1263,6 +1438,7 @@ def _run_validate_plan(plan, config):
     to the v3.0.0 brain.py main() body — no logic changes here.
     """
     validate_plan(plan)
+    plan_hash = _hash_plan(plan)
 
     project_map = get_project_structure()
     git_diff = get_git_diff()
@@ -1315,6 +1491,7 @@ List the file paths (comma-separated) that are critical to review for this plan.
 Reply ONLY with the comma-separated list of file paths. No explanations."""
 
         files_to_read = ask_gemini(context_prompt, config)
+        record_usage("validate-plan-discovery", plan_hash=plan_hash)
 
         if files_to_read and "/" in files_to_read and not is_error_response(files_to_read):
             file_list = [f.strip() for f in files_to_read.replace("\n", ",").split(",")]
@@ -1378,6 +1555,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
             skeptic_prompt, config,
             file_paths=file_paths if use_native_files else None
         )
+        record_usage(
+            "validate-plan-skeptic",
+            verdict=(extract_verdict(gemini_verdict) if not is_error_response(gemini_verdict) else None),
+            plan_hash=plan_hash,
+        )
     else:
         gemini_verdict = "Error: Gemini not configured (skipped per --allow-partial flow)"
 
@@ -1421,6 +1603,11 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 
     if config.get("_openai_available", True):
         gpt_verdict = ask_chatgpt(pragmatist_prompt, config)
+        record_usage(
+            "validate-plan-pragmatist",
+            verdict=(extract_verdict(gpt_verdict) if not is_error_response(gpt_verdict) else None),
+            plan_hash=plan_hash,
+        )
     else:
         gpt_verdict = "Error: OpenAI not configured (skipped per --allow-partial flow)"
 

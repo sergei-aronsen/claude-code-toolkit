@@ -62,6 +62,55 @@ _fetch_council_prompt() {
     return 1
 }
 
+# install_council_pricing
+# Installs the default pricing.json into ~/.claude/council/, preserving any
+# local customizations via the .upstream-new.json sidecar pattern.
+# Phase 24 Sub-Phase 4.
+install_council_pricing() {
+    local target="${COUNCIL_DIR:-${council_dir:-$HOME/.claude/council}}"
+    mkdir -p "$target"
+    local installed_path="$target/pricing.json"
+    local tmp_path
+    tmp_path="$(mktemp "${TMPDIR:-/tmp}/council-pricing.XXXXXX")"
+
+    if [[ -n "${TK_COUNCIL_PROMPTS_DIR:-}" && -f "$TK_COUNCIL_PROMPTS_DIR/../council-pricing.json" ]]; then
+        cp "$TK_COUNCIL_PROMPTS_DIR/../council-pricing.json" "$tmp_path"
+    elif [[ -n "${TK_COUNCIL_PRICING_FILE:-}" && -f "$TK_COUNCIL_PRICING_FILE" ]]; then
+        cp "$TK_COUNCIL_PRICING_FILE" "$tmp_path"
+    elif curl -sSLf "$REPO_URL/templates/council-pricing.json" -o "$tmp_path" 2>/dev/null; then
+        :
+    else
+        rm -f "$tmp_path"
+        echo -e "  ${YELLOW}⚠${NC} pricing.json (download failed — skipping)"
+        return 0
+    fi
+
+    if [[ ! -f "$installed_path" ]]; then
+        mv "$tmp_path" "$installed_path"
+        echo -e "  ${GREEN}✓${NC} pricing.json installed"
+        return 0
+    fi
+
+    if cmp -s "$tmp_path" "$installed_path" 2>/dev/null; then
+        rm -f "$tmp_path"
+        echo -e "  ${GREEN}✓${NC} pricing.json (already current)"
+        return 0
+    fi
+
+    local new_path="${installed_path}.upstream-new.json"
+    local stamp
+    if [[ -f "$new_path" ]] && ! cmp -s "$new_path" "$tmp_path" 2>/dev/null; then
+        stamp=$(date -u +%s)
+        mv "$new_path" "${new_path}.${stamp}"
+        echo -e "  ${YELLOW}⚠${NC} pricing.json: preserved prior reconciliation as .upstream-new.json.${stamp}"
+    fi
+    mv "$tmp_path" "$new_path"
+    echo -e "  ${YELLOW}⚠${NC} pricing.json differs from upstream — wrote ${new_path}"
+    echo -e "       Diff:  diff -u \"$installed_path\" \"$new_path\""
+    echo -e "       Apply: mv \"$new_path\" \"$installed_path\""
+}
+
+
 # install_council_redaction_patterns
 # Installs the default redaction-patterns.txt into ~/.claude/council/, preserving
 # any local customizations via the same .upstream-new.md sidecar pattern.

@@ -250,6 +250,11 @@ install_council_system_prompts
 # secret shapes. User edits preserved via .upstream-new.txt sidecar.
 install_council_redaction_patterns
 
+# Install pricing.json (Phase 24 Sub-Phase 4) so brain.py can compute
+# accurate $ cost per call for /council stats. User edits preserved via
+# .upstream-new.json sidecar.
+install_council_pricing
+
 # Install /council slash command globally (Phase 24 Sub-Phase 1).
 # Same idempotent + mtime-aware pattern as audit-review.md above. Council is
 # a global feature — its slash command lives in ~/.claude/commands/, not in

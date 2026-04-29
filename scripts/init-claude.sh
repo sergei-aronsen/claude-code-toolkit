@@ -777,6 +777,10 @@ setup_council() {
     # secret shapes. User edits preserved via .upstream-new.txt sidecar.
     install_council_redaction_patterns
 
+    # Install pricing.json (Phase 24 Sub-Phase 4) so brain.py can compute
+    # accurate $ cost per call for /council stats.
+    install_council_pricing
+
     # Install /council slash command globally (Phase 24 Sub-Phase 1).
     # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
     # ~/.claude/commands/, not in per-project ./.claude/commands/.
