@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-04-29T10:06:10.783Z"
-last_activity: 2026-04-29 -- Phase 24 planning complete
+stopped_at: Completed 24-01-detect2-centralized-detection-PLAN.md
+last_updated: "2026-04-29T10:44:32.056Z"
+last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 20
 ---
 
 # Project State
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-29)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.5 milestone — roadmap created, Phase 24 ready for planning.
+**Current focus:** Phase 24 — unified-tui-installer-centralized-detection
 
 ## Current Position
 
@@ -31,10 +31,10 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 |-------------------------------------------------------|
 ```
 
-Phase: 24 — Unified TUI Installer + Centralized Detection (not started)
-Plan: —
+Phase: 24 (unified-tui-installer-centralized-detection) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-04-29 -- Phase 24 planning complete
+Last activity: 2026-04-29
 
 ## Plan Count Estimate
 
@@ -86,6 +86,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - `files.libs[]` in manifest.json auto-discovered by existing `update-claude.sh` jq path with zero code changes (D-07 zero-special-casing invariant)
 - Phase 21 + Phase 22 consolidated into single `[4.4.0]` CHANGELOG entry — Phase 21 was never separately released before Phase 22 landed
 - `--keep-state` gate at D-06 LAST-step position — preserves all UN-01..UN-08 invariants (backup → strip → file-delete → state-delete ordering unchanged)
+- [Phase 24]: D-21: detect2.sh sources detect.sh — SP/GSD logic not duplicated
+- [Phase 24]: D-22: binary 0/1 return from every is_*_installed probe
+- [Phase 24]: D-23: detect2_cache helper for D-23 mid-run drift recheck pattern
 
 ### Key v4.5 Constraints (from research)
 
@@ -144,12 +147,13 @@ Carry-overs available for next milestone scoping:
 | Future | Grouped sections in TUI (Essentials / Optional) | TUI-FUT-03 — should-have, may land in Phase 24 if plan capacity allows |
 | Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 — v4.6+ |
 | Future | Marketplace signing/integrity | MKT-FUT-01 — no Anthropic spec for it yet |
+| Phase 24 P01 | 15m | 3 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T08:28:07.824Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-unified-tui-installer-centralized-detection/24-CONTEXT.md
+Last session: 2026-04-29T10:44:32.053Z
+Stopped at: Completed 24-01-detect2-centralized-detection-PLAN.md
+Resume file: None
 
 **To start v4.5 implementation:**
 

@@ -22,11 +22,11 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 
 #### Centralized detection v2
 
-- [ ] **DET-01**: `scripts/lib/detect2.sh` sources existing `scripts/detect.sh` (does not duplicate SP/GSD logic). Adds `is_<name>_installed` functions returning 0/1 for: `toolkit`, `superpowers`, `gsd`, `security`, `rtk`, `statusline`.
-- [ ] **DET-02**: `is_security_installed` uses `command -v cc-safety-net` (covers brew **and** npm install paths) plus `grep cc-safety-net ~/.claude/hooks/pre-bash.sh` (or equivalent settings.json scan). Fixes v4.4 regression where brew installs were missed.
-- [ ] **DET-03**: `is_statusline_installed` checks `~/.claude/statusline.sh` exists AND `grep statusLine ~/.claude/settings.json` returns 0.
-- [ ] **DET-04**: `is_rtk_installed` uses `command -v rtk` (filesystem and PATH agnostic).
-- [ ] **DET-05**: `is_toolkit_installed` checks `~/.claude/toolkit-install.json` exists (existing v4.0 STATE-01 contract).
+- [x] **DET-01**: `scripts/lib/detect2.sh` sources existing `scripts/detect.sh` (does not duplicate SP/GSD logic). Adds `is_<name>_installed` functions returning 0/1 for: `toolkit`, `superpowers`, `gsd`, `security`, `rtk`, `statusline`.
+- [x] **DET-02**: `is_security_installed` uses `command -v cc-safety-net` (covers brew **and** npm install paths) plus `grep cc-safety-net ~/.claude/hooks/pre-bash.sh` (or equivalent settings.json scan). Fixes v4.4 regression where brew installs were missed.
+- [x] **DET-03**: `is_statusline_installed` checks `~/.claude/statusline.sh` exists AND `grep statusLine ~/.claude/settings.json` returns 0.
+- [x] **DET-04**: `is_rtk_installed` uses `command -v rtk` (filesystem and PATH agnostic).
+- [x] **DET-05**: `is_toolkit_installed` checks `~/.claude/toolkit-install.json` exists (existing v4.0 STATE-01 contract).
 
 #### Dispatch + install.sh entry
 
