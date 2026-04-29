@@ -58,8 +58,8 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Distribution + tests + docs
 
-- [ ] **BRIDGE-DIST-01**: `manifest.json` registers `scripts/lib/bridges.sh` under existing `files.libs[]` array. `update-claude.sh` auto-discovers it via the v4.4 LIB-01 D-07 jq path (`.files | to_entries[] | .value[] | .path`) — zero code changes to `update-claude.sh` needed. `manifest.json` version bumped to `4.7.0`.
-- [ ] **BRIDGE-DIST-02**: `CHANGELOG.md [4.7.0]` consolidated entry covers all BRIDGE-* requirements, mirrors v4.4/v4.5 consolidation pattern.
+- [x] **BRIDGE-DIST-01**: `manifest.json` registers `scripts/lib/bridges.sh` under existing `files.libs[]` array. `update-claude.sh` auto-discovers it via the v4.4 LIB-01 D-07 jq path (`.files | to_entries[] | .value[] | .path`) — zero code changes to `update-claude.sh` needed. `manifest.json` version bumped to `4.7.0`.
+- [x] **BRIDGE-DIST-02**: `CHANGELOG.md [4.7.0]` consolidated entry covers all BRIDGE-* requirements, mirrors v4.4/v4.5 consolidation pattern.
 - [ ] **BRIDGE-TEST-01**: `scripts/tests/test-bridges.sh` hermetic test (≥15 assertions) covers:
   - Plain copy correctness (header + content match)
   - Idempotency on re-create
