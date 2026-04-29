@@ -112,11 +112,11 @@ Explicit exclusions for v4.5 with reasoning.
 
 ## Traceability
 
-Phases mapped to requirements. Filled by gsd-roadmapper.
+Phases mapped to requirements. Filled by gsd-roadmapper on 2026-04-29.
 
-| Phase | Requirements | Plans (TBD) |
-|-------|--------------|-------------|
-| 24 — TUI Installer + Centralized Detection | TUI-01..07, DET-01..05, DISPATCH-01..03, BACKCOMPAT-01 | TBD |
-| 25 — MCP Selector | MCP-01..05, MCP-SEC-01..02 | TBD |
-| 26 — Skills Selector | SKILL-01..05 | TBD |
-| 27 — Marketplace + Desktop Reach | MKT-01..04, DESK-01..04 | TBD |
+| Phase | Requirements | Status |
+|-------|--------------|--------|
+| 24 — Unified TUI Installer + Centralized Detection | TUI-01, TUI-02, TUI-03, TUI-04, TUI-05, TUI-06, TUI-07, DET-01, DET-02, DET-03, DET-04, DET-05, DISPATCH-01, DISPATCH-02, DISPATCH-03, BACKCOMPAT-01 | Pending |
+| 25 — MCP Selector | MCP-01, MCP-02, MCP-03, MCP-04, MCP-05, MCP-SEC-01, MCP-SEC-02 | Pending |
+| 26 — Skills Selector | SKILL-01, SKILL-02, SKILL-03, SKILL-04, SKILL-05 | Pending |
+| 27 — Marketplace + Desktop Reach | MKT-01, MKT-02, MKT-03, MKT-04, DESK-01, DESK-02, DESK-03, DESK-04 | Pending |
