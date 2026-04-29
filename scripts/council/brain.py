@@ -2277,7 +2277,24 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     scratchpad.mkdir(parents=True, exist_ok=True)
     vp_report_path = scratchpad / "council-report.md"
 
+    # ── Phase 24 SP8 — TL;DR auto-summary at the top of the report ──
+    tldr_concerns = (_extract_concerns(gemini_verdict)
+                     + _extract_concerns(gpt_verdict))[:3]
+    tldr_lines = ["## TL;DR", "", f"- Verdict: **{final_verdict}** — {VERDICTS[final_verdict]}"]
+    if tldr_concerns:
+        tldr_lines.append("- Top concerns:")
+        for c in tldr_concerns:
+            tldr_lines.append(f"  - {c}")
+    else:
+        tldr_lines.append("- No concerns extracted — see full reviewer text below.")
+    tldr_lines.append(f"- Domain: {domain}")
+    tldr_block = "\n".join(tldr_lines)
+
     report = f"""# Supreme Council Review Report
+
+{tldr_block}
+
+---
 
 ## Verdict: {final_verdict}
 
