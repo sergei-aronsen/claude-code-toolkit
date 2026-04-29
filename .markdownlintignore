@@ -20,3 +20,8 @@ AUDIT-REPORT.md
 # toolkit's own authored markdown (templates/base/, commands/, components/, etc.)
 # remains fully linted. Exclusion approved as part of Phase 26 Plan 03.
 templates/skills-marketplace/
+
+# plugins/ sub-plugin trees use symlinks to canonical repo content. Exclude
+# the symlinked paths from lint to avoid double-processing content already
+# covered above (plugins/ are distribution artifacts, not authored markdown).
+plugins/
