@@ -32,7 +32,9 @@ must_haves:
     - "--dry-run zero-mutation: every dispatcher prints would-run command but invokes nothing; exit 0"
     - "--force re-runs detected components"
     - "--fail-fast stops on first failure; default is continue-on-error"
-    - "Per-component summary uses dro_print_install_status with states: 'installed ✓' | 'skipped' | 'failed (exit N)'"
+    - "Per-component summary uses dro_print_install_status with states: 'installed ✓' | 'skipped' | 'would-install' (under --dry-run) | 'failed (exit N)'"
+    - "D-28 stderr tail: failed components surface last 5 lines of stderr (captured via per-component tmpfile, cleaned up via CLEANUP_PATHS); tail printed indented under the failure row using dro_print_* helpers"
+    - "Under --dry-run: dispatcher rc=0 maps to 'would-install' state (NOT 'installed ✓') so summary doesn't falsely claim work was done"
     - "Exit code 0 if no failures, 1 if any failure (or --fail-fast triggered)"
     - "test-install-tui.sh contains ≥15 distinct assert_* invocations covering all flag modes + keystroke paths + no-TTY fallback"
     - "Makefile gains Test 31 (test-install-tui), .PHONY updated, target invokable standalone"
@@ -433,10 +435,11 @@ fi
 print_install_status() {
     local component="$1" state="$2"
     case "$state" in
-        installed*)  printf '  %b%-30s %s%b\n' "${_DRO_G:-}" "$component" "$state" "${_DRO_NC:-}" ;;
-        skipped)     printf '  %b%-30s %s%b\n' "${_DRO_Y:-}" "$component" "$state" "${_DRO_NC:-}" ;;
-        failed*)     printf '  %b%-30s %s%b\n' "${_DRO_R:-}" "$component" "$state" "${_DRO_NC:-}" ;;
-        *)           printf '  %-30s %s\n' "$component" "$state" ;;
+        installed*)     printf '  %b%-30s %s%b\n' "${_DRO_G:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        would-install)  printf '  %b%-30s %s%b\n' "${_DRO_C:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        skipped)        printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        failed*)        printf '  %b%-30s %s%b\n' "${_DRO_R:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        *)              printf '  %-30s %s\n' "$component" "$state" ;;
     esac
 }
 
@@ -453,6 +456,9 @@ SKIPPED_COUNT=0
 FAILED_COUNT=0
 COMPONENT_STATUS=()
 COMPONENT_NAMES=()
+# D-28 — per-component stderr tail buffer; populated only when dispatcher fails.
+# Tmpfile paths are added to CLEANUP_PATHS so the EXIT trap removes them.
+COMPONENT_STDERR_TAIL=()
 
 for i in 0 1 2 3 4 5; do
     local_name="${TK_DISPATCH_ORDER[$i]}"
@@ -472,6 +478,7 @@ for i in 0 1 2 3 4 5; do
             COMPONENT_STATUS+=("skipped")
             SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
         fi
+        COMPONENT_STDERR_TAIL+=("")  # parallel array padding (D-28)
         continue
     fi
 
@@ -489,6 +496,7 @@ for i in 0 1 2 3 4 5; do
     if [[ $local_re_installed -eq 1 && "$FORCE" -ne 1 ]]; then
         COMPONENT_STATUS+=("skipped")
         SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+        COMPONENT_STDERR_TAIL+=("")  # parallel array padding (D-28)
         continue
     fi
 
@@ -498,24 +506,54 @@ for i in 0 1 2 3 4 5; do
     [[ "$DRY_RUN" -eq 1 ]] && local_flags+=("--dry-run")
     [[ "$YES" -eq 1 ]]     && local_flags+=("--yes")
 
-    # Dispatch with continue-on-error (D-08). Capture exit code.
+    # D-28 — Capture dispatcher stderr to a per-component tmpfile so we can
+    # surface the last 5 lines under the failure row in the summary. Tmpfile
+    # is added to CLEANUP_PATHS so the EXIT trap (set up at top of file)
+    # removes it.
+    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install-${local_name}-XXXXXX") || stderr_tmp=""
+    [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
+
+    # Dispatch with continue-on-error (D-08). Capture exit code AND stderr.
+    # Use a subshell + 2>"$stderr_tmp" redirection (Bash 3.2 compatible —
+    # avoids process substitution which is not portable across all callers).
     local_rc=0
-    "dispatch_$local_name" "${local_flags[@]}" || local_rc=$?
+    if [[ -n "$stderr_tmp" ]]; then
+        ( "dispatch_$local_name" "${local_flags[@]}" ) 2>"$stderr_tmp" || local_rc=$?
+    else
+        # mktemp failed (rare); fall back to no-capture path.
+        "dispatch_$local_name" "${local_flags[@]}" || local_rc=$?
+    fi
 
     if [[ $local_rc -eq 0 ]]; then
-        COMPONENT_STATUS+=("installed ✓")
-        INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+        # Under --dry-run, dispatchers return rc=0 after printing the
+        # would-run command WITHOUT executing — map to 'would-install' so
+        # the summary doesn't falsely claim "installed ✓" (D-10 extension).
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            COMPONENT_STATUS+=("would-install")
+        else
+            COMPONENT_STATUS+=("installed ✓")
+            INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+        fi
+        COMPONENT_STDERR_TAIL+=("")
     else
         COMPONENT_STATUS+=("failed (exit $local_rc)")
         FAILED_COUNT=$((FAILED_COUNT + 1))
+        # D-28 — stash last 5 lines of stderr for the failure summary row.
+        local_tail=""
+        if [[ -n "$stderr_tmp" && -s "$stderr_tmp" ]]; then
+            local_tail=$(tail -5 "$stderr_tmp")
+        fi
+        COMPONENT_STDERR_TAIL+=("$local_tail")
         if [[ "$FAIL_FAST" -eq 1 ]]; then
             # Stop dispatching; remaining components stay 'skipped'.
-            for j in $((i + 1)) 2 3 4 5; do
-                if [[ $j -le 5 && $j -gt $i ]]; then
-                    COMPONENT_NAMES+=("${TUI_LABELS[$j]}")
-                    COMPONENT_STATUS+=("skipped")
-                    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-                fi
+            # C-style for-loop avoids the duplicate-index bug from the prior
+            # `for j in $((i + 1)) 2 3 4 5` form (which expanded to e.g.
+            # `for j in 2 2 3 4 5` when i=1 — counting index 2 twice).
+            for (( j=i+1; j<=5; j++ )); do
+                COMPONENT_NAMES+=("${TUI_LABELS[$j]}")
+                COMPONENT_STATUS+=("skipped")
+                COMPONENT_STDERR_TAIL+=("")
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
             done
             break
         fi
@@ -532,6 +570,19 @@ for i in 0 1 2 3 4 5; do
     local_name="${COMPONENT_NAMES[$i]:-${TUI_LABELS[$i]}}"
     local_state="${COMPONENT_STATUS[$i]:-unknown}"
     print_install_status "$local_name" "$local_state"
+    # D-28 — under failure rows, indent the captured stderr tail (last 5 lines).
+    case "$local_state" in
+        failed*)
+            local_tail="${COMPONENT_STDERR_TAIL[$i]:-}"
+            if [[ -n "$local_tail" ]]; then
+                # Indent each line by 6 spaces so it visually nests under the
+                # `  <component> failed...` row written by print_install_status.
+                while IFS= read -r tail_line; do
+                    printf '      %s\n' "$tail_line"
+                done <<< "$local_tail"
+            fi
+            ;;
+    esac
 done
 echo ""
 printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
@@ -563,6 +614,10 @@ Critical rules:
 9. **Closing banner** mirrors `init-claude.sh` `NO_BANNER` honor pattern (D-31).
 10. **No-TTY auto-fallback**: when `tui_checklist` returns 1 (which happens on EOF / no /dev/tty), the orchestrator prints "Install cancelled." and exits 0. The `--yes` flag is the explicit non-interactive entry — without it, no TTY = exit 0 fail-closed (D-11).
 11. **`shellcheck -S warning`** must pass; ignore SC2034 for some color codes (project pattern; add `# shellcheck disable=SC2034` per-line if needed).
+12. **D-28 stderr capture (per-failure tail)**: each dispatch invocation runs in a subshell with `2>"$stderr_tmp"` redirection. Tmpfile path is added to `CLEANUP_PATHS` so the EXIT trap removes it. On failure, `tail -5` extracts the last 5 lines into `COMPONENT_STDERR_TAIL[i]`; the summary loop prints those lines indented under the failure row using a `while IFS= read -r` over a `<<< "$local_tail"` here-string. This is Bash 3.2 compatible (no process substitution required).
+13. **--fail-fast loop range fix**: use C-style `for (( j=i+1; j<=5; j++ ))` (Bash 3.2 supports this form). Do NOT use `for j in $((i + 1)) 2 3 4 5` — that expands to e.g. `for j in 2 2 3 4 5` when i=1, double-counting index 2 in `SKIPPED_COUNT`.
+14. **--dry-run state mapping (D-10 extension)**: when `DRY_RUN=1` and `local_rc=0`, set `COMPONENT_STATUS+=("would-install")` instead of `"installed ✓"`. The dispatcher printed `[+ INSTALL] ... (would run: ...)` and exited 0 without executing — calling that "installed" would falsely claim work was done. Do NOT increment `INSTALLED_COUNT` under --dry-run. The `print_install_status` helper has a `would-install` case arm that uses cyan (`${_DRO_C:-}`) to visually distinguish the state.
+15. **Parallel array invariant**: `COMPONENT_STDERR_TAIL` MUST stay aligned with `COMPONENT_STATUS` and `COMPONENT_NAMES`. Every code path that does `COMPONENT_STATUS+=(...)` must also `COMPONENT_STDERR_TAIL+=(...)` — empty string for non-failure paths. Three paths to update: (a) unselected/installed branch, (b) re-probe skip branch, (c) --fail-fast remaining-as-skipped loop.
 
 Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32 except those covered by libs (D-21..D-26 for dispatch.sh, D-33..D-34 for tests).
   </action>
@@ -586,6 +641,13 @@ Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32
     - File contains `print_install_status` helper using `_DRO_G/_DRO_Y/_DRO_R/_DRO_NC`
     - File contains the summary line format `'Installed: %d · Skipped: %d · Failed: %d\n'`
     - File contains `NO_BANNER` honor at the closing banner
+    - File contains `COMPONENT_STDERR_TAIL=()` global declaration (D-28)
+    - File contains `mktemp "${TMPDIR:-/tmp}/tk-install-` and `CLEANUP_PATHS+=("$stderr_tmp")` (D-28 stderr capture + cleanup wiring)
+    - File contains `tail -5 "$stderr_tmp"` (D-28 last-5-lines extraction)
+    - File contains the summary-loop `failed*)` arm that iterates `COMPONENT_STDERR_TAIL[$i]` and prints with 6-space indent
+    - File contains the `--fail-fast` C-style loop `for (( j=i+1; j<=5; j++ ))` (NOT `for j in $((i + 1)) 2 3 4 5`)
+    - File contains `would-install` state assignment under `[[ "$DRY_RUN" -eq 1 ]]` branch (NOT `installed ✓`)
+    - File contains `would-install)` case arm in `print_install_status` helper
     - `shellcheck -S warning scripts/install.sh` exits 0
     - `bash -n scripts/install.sh` exits 0 (syntax)
     - `bash scripts/install.sh --help` exits 0 with usage text
@@ -619,7 +681,7 @@ Implements DISPATCH-03 (top-level orchestrator). Honors all decisions D-01..D-32
   </behavior>
 
   <action>
-Edit `scripts/tests/test-install-tui.sh` to add five new scenarios after the existing `run_s1_detect` and `run_s2_detect` calls. Add the new scenario functions BEFORE the final invocation block, and add the calls to `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty` after `run_s2_detect`.
+Edit `scripts/tests/test-install-tui.sh` to add six new scenarios after the existing `run_s1_detect` and `run_s2_detect` calls. Add the new scenario functions BEFORE the final invocation block, and add the calls to `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty`, `run_s8_stderr_tail` after `run_s2_detect`.
 
 Use Edit tool to find:
 
@@ -706,8 +768,12 @@ run_s4_dry_run() {
         bash "$REPO_ROOT/scripts/install.sh" --yes --dry-run 2>&1
     ) || RC=$?
 
-    assert_eq       "0" "$RC"          "S4_dry_run: install.sh --yes --dry-run exits 0"
-    assert_contains "INSTALL.*toolkit" "$OUTPUT" "S4_dry_run: prints [+ INSTALL] toolkit (would run)"
+    assert_eq           "0" "$RC"           "S4_dry_run: install.sh --yes --dry-run exits 0"
+    assert_contains     "INSTALL.*toolkit"   "$OUTPUT" "S4_dry_run: prints [+ INSTALL] toolkit (would run)"
+    # D-10 extension: under --dry-run, summary must show 'would-install', NOT 'installed ✓'.
+    # Calling it 'installed ✓' would falsely claim work was done when nothing executed.
+    assert_not_contains "installed ✓"        "$OUTPUT" "S4_dry_run: summary must NOT contain 'installed ✓' (false-positive guard)"
+    assert_contains     "would-install"      "$OUTPUT" "S4_dry_run: summary contains 'would-install' state for dry-run dispatchers"
     if [[ -e "$SENTINEL" ]]; then
         assert_fail "S4_dry_run: dispatcher must NOT execute under --dry-run" \
             "sentinel file was created at $SENTINEL"
@@ -838,6 +904,60 @@ run_s7_no_tty() {
         assert_pass "S7_no_tty: dispatcher did not run (D-11 fail-closed contract)"
     fi
 }
+
+# ─────────────────────────────────────────────────
+# S8_stderr_tail — D-28: failed components surface last 5 lines of stderr
+# Mock dispatcher exits 1 after writing 6 stderr lines; assert summary
+# contains lines 2..6 (the last 5) and NOT line 1 (truncated).
+# ─────────────────────────────────────────────────
+run_s8_stderr_tail() {
+    local SANDBOX RC OUTPUT
+    SANDBOX="$(mktemp -d /tmp/test-install-tui.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S8_stderr_tail: failed dispatcher's last 5 stderr lines surface in summary --"
+
+    local FAKE_BIN="$SANDBOX/bin"
+    mkdir -p "$FAKE_BIN"
+
+    # Mock dispatcher writes 6 distinct lines to stderr then exits 1.
+    # Expected: summary contains line2..line6 (last 5); does NOT contain line1.
+    local MOCK_TK_FAIL="$SANDBOX/mock-tk-stderr-fail.sh"
+    cat > "$MOCK_TK_FAIL" <<'MOCK_EOF'
+#!/bin/bash
+printf 'line1-should-be-truncated\n' >&2
+printf 'line2-tail\n'                 >&2
+printf 'line3-tail\n'                 >&2
+printf 'line4-tail\n'                 >&2
+printf 'line5-tail\n'                 >&2
+printf 'line6-tail\n'                 >&2
+exit 1
+MOCK_EOF
+    chmod +x "$MOCK_TK_FAIL"
+
+    RC=0
+    OUTPUT=$(
+        HOME="$SANDBOX" \
+        PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_DISPATCH_OVERRIDE_SUPERPOWERS=":" \
+        TK_DISPATCH_OVERRIDE_GSD=":" \
+        TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK_FAIL" \
+        TK_DISPATCH_OVERRIDE_SECURITY=":" \
+        TK_DISPATCH_OVERRIDE_RTK=":" \
+        TK_DISPATCH_OVERRIDE_STATUSLINE=":" \
+        NO_COLOR=1 \
+        bash "$REPO_ROOT/scripts/install.sh" --yes 2>&1
+    ) || RC=$?
+
+    assert_eq           "1" "$RC"                     "S8_stderr_tail: install.sh exits 1 on dispatcher failure"
+    assert_contains     "failed (exit 1)"  "$OUTPUT"  "S8_stderr_tail: summary shows 'failed (exit 1)' for toolkit"
+    # Last 5 lines (line2..line6) MUST appear in summary tail output.
+    assert_contains     "line2-tail"       "$OUTPUT"  "S8_stderr_tail: summary contains line2 (D-28 tail)"
+    assert_contains     "line5-tail"       "$OUTPUT"  "S8_stderr_tail: summary contains line5 (D-28 tail)"
+    assert_contains     "line6-tail"       "$OUTPUT"  "S8_stderr_tail: summary contains line6 (D-28 tail)"
+    # First line MUST be truncated (only last 5 lines surface).
+    assert_not_contains "line1-should-be-truncated" "$OUTPUT" "S8_stderr_tail: line1 truncated (D-28: only last 5 lines)"
+}
 ```
 
 Then update the invocation block at the bottom from:
@@ -857,6 +977,7 @@ run_s4_dry_run
 run_s5_force
 run_s6_fail_fast
 run_s7_no_tty
+run_s8_stderr_tail
 ```
 
 Critical rules:
@@ -866,8 +987,9 @@ Critical rules:
 3. **NO_COLOR=1** on every install.sh invocation so OUTPUT capture is plain-text grep-friendly.
 4. Use `HOME="$SANDBOX"` to prevent any real `~/.claude` interference (detection probes hit the sandbox).
 5. The sentinel-file approach (touch a file IFF dispatcher runs) is the canonical zero-mutation proof — verified against test-bootstrap.sh:265-271 for similar pattern.
-6. Total new assertions added: 4 (S3_yes) + 3 (S4_dry_run) + 2 (S5_force) + 3 (S6_fail_fast) + 2 (S7_no_tty) = **14 new assertions**.
-7. Combined with Plan 01's 10 (S1+S2): total = **24 assertions** ≥ 15 (TUI-07 contract).
+6. Total new assertions added: 4 (S3_yes) + 5 (S4_dry_run) + 2 (S5_force) + 3 (S6_fail_fast) + 2 (S7_no_tty) + 6 (S8_stderr_tail) = **22 new assertions**.
+7. Combined with Plan 01's 10 (S1+S2): total = **32 assertions** ≥ 15 (TUI-07 contract).
+8. **S8_stderr_tail (D-28)** uses a mock dispatcher that writes 6 distinct stderr lines then exits 1; assertions verify the last 5 lines (line2..line6) appear in the summary while line1 is truncated. Mirrors the per-failure tail contract from CONTEXT.md D-28.
   </action>
 
   <verify>
@@ -875,14 +997,18 @@ Critical rules:
   </verify>
 
   <acceptance_criteria>
-    - `scripts/tests/test-install-tui.sh` contains all seven scenario functions: `run_s1_detect`, `run_s2_detect`, `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty`
-    - All seven scenarios are invoked at the bottom of the file
+    - `scripts/tests/test-install-tui.sh` contains all eight scenario functions: `run_s1_detect`, `run_s2_detect`, `run_s3_yes`, `run_s4_dry_run`, `run_s5_force`, `run_s6_fail_fast`, `run_s7_no_tty`, `run_s8_stderr_tail`
+    - All eight scenarios are invoked at the bottom of the file
     - `bash scripts/tests/test-install-tui.sh` exits 0
-    - Final output line shows `PASS=N FAIL=0` with N ≥ 15 (likely 24+)
-    - `grep -c "assert_eq\|assert_contains\|assert_pass\|assert_fail" scripts/tests/test-install-tui.sh` returns ≥ 15
+    - Final output line shows `PASS=N FAIL=0` with N ≥ 15 (likely 30+)
+    - `grep -c "assert_eq\|assert_contains\|assert_not_contains\|assert_pass\|assert_fail" scripts/tests/test-install-tui.sh` returns ≥ 15
     - File contains `TK_DISPATCH_OVERRIDE_TOOLKIT` (mock dispatcher injection — D-33)
     - File contains `TK_TUI_TTY_SRC=/dev/null` (no-TTY fallback test — D-11)
     - File contains a sentinel-file assertion (`SENTINEL` variable + `[[ -e "$SENTINEL" ]]` check) for zero-mutation proof
+    - File contains `would-install` assertion under S4_dry_run (D-10 extension: dry-run state mapping)
+    - File contains `assert_not_contains "installed ✓"` under S4_dry_run (false-positive guard)
+    - File contains `line1-should-be-truncated` mock stderr line AND `assert_not_contains "line1-should-be-truncated"` under S8_stderr_tail (D-28 truncation contract)
+    - File contains `line2-tail` and `line6-tail` mock stderr lines AND assert_contains for both (D-28 last-5-lines surface)
     - `shellcheck -S warning scripts/tests/test-install-tui.sh` exits 0
     - `bash scripts/tests/test-bootstrap.sh` exits 0 (BACKCOMPAT-01 invariant)
   </acceptance_criteria>
