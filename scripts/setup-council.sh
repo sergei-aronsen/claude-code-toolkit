@@ -174,10 +174,32 @@ echo ""
 # ─────────────────────────────────────────────────
 
 echo -e "${CYAN}Step 3: OpenAI (ChatGPT) configuration${NC}"
+echo ""
+echo -e "  Choose OpenAI access method:"
+echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
+echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
+echo ""
 
+OPENAI_MODE="api"
 OPENAI_KEY=""
 
-if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+if ! read -r -p "  Enter choice [1/2] (default: 1 if codex on PATH, else 2): " OPENAI_CHOICE < /dev/tty 2>/dev/null; then
+    OPENAI_CHOICE=""
+fi
+if [[ -z "$OPENAI_CHOICE" ]]; then
+    OPENAI_CHOICE=$(command -v codex >/dev/null 2>&1 && echo "1" || echo "2")
+fi
+
+if [[ "$OPENAI_CHOICE" == "1" ]]; then
+    OPENAI_MODE="cli"
+    if ! command -v codex &>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC} Codex CLI not found. Install:"
+        echo -e "      npm install -g @openai/codex   # or: brew install --cask codex"
+        echo -e "      codex login"
+    else
+        echo -e "  ${GREEN}✓${NC} Codex CLI found"
+    fi
+elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
     OPENAI_KEY="$OPENAI_API_KEY"
     echo -e "  ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
 else
@@ -187,6 +209,32 @@ else
     if [[ -z "$OPENAI_KEY" ]]; then
         echo -e "  ${YELLOW}⚠${NC} You'll need to add it later to config.json"
         echo -e "  Get key: https://platform.openai.com/api-keys"
+    fi
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 3b: OpenRouter fallback (optional)
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 3b: OpenRouter free-tier fallback (optional)${NC}"
+echo -e "  When the primary backend fails (quota / 5xx / network), Council can"
+echo -e "  retry through a free-model chain on OpenRouter. Skip if you only want"
+echo -e "  to use the primary providers configured above."
+echo ""
+
+OPENROUTER_KEY=""
+if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+    OPENROUTER_KEY="$OPENROUTER_API_KEY"
+    echo -e "  ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
+else
+    read -rs -p "  Enter OpenRouter API key (or press Enter to skip): " OPENROUTER_KEY < /dev/tty 2>/dev/null || true
+    echo ""
+    if [[ -z "$OPENROUTER_KEY" ]]; then
+        echo -e "  ${YELLOW}⚠${NC} OpenRouter fallback disabled — Council still works with primary only."
+    else
+        echo -e "  ${GREEN}✓${NC} OpenRouter fallback configured"
     fi
 fi
 
@@ -315,18 +363,37 @@ else
     # shellcheck disable=SC2016
     GEMINI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_KEY")
     # shellcheck disable=SC2016
+    OPENAI_MODE_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_MODE")
+    # shellcheck disable=SC2016
     OPENAI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_KEY")
+    # shellcheck disable=SC2016
+    OPENROUTER_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENROUTER_KEY")
 
     cat > "$CONFIG_FILE" << CONFIGEOF
 {
   "gemini": {
     "mode": $GEMINI_MODE_JSON,
     "api_key": $GEMINI_KEY_JSON,
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": $OPENAI_MODE_JSON,
     "api_key": $OPENAI_KEY_JSON,
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": $OPENROUTER_KEY_JSON,
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF

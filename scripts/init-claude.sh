@@ -838,11 +838,26 @@ setup_council() {
   "gemini": {
     "mode": "cli",
     "api_key": "",
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": "api",
     "api_key": "",
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": "",
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF
@@ -888,12 +903,37 @@ CONFIGEOF
         fi
     fi
 
-    # OpenAI setup
+    # OpenAI setup (Phase 24 SP5 — adds Codex CLI option)
     echo ""
     echo -e "  ${BLUE}OpenAI (ChatGPT) configuration:${NC}"
+    echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
+    echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
+    echo ""
 
+    local openai_mode="api"
     local openai_key=""
-    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+    local openai_choice
+    if ! read -r -p "    Enter choice [1/2] (default: 1 if codex on PATH, else 2): " openai_choice < /dev/tty 2>/dev/null; then
+        openai_choice=""
+    fi
+    if [[ -z "$openai_choice" ]]; then
+        if command -v codex &>/dev/null; then
+            openai_choice="1"
+        else
+            openai_choice="2"
+        fi
+    fi
+
+    if [[ "$openai_choice" == "1" ]]; then
+        openai_mode="cli"
+        if ! command -v codex &>/dev/null; then
+            echo -e "    ${YELLOW}⚠${NC} Codex CLI not found. Install:"
+            echo -e "      npm install -g @openai/codex   # or: brew install --cask codex"
+            echo -e "      codex login"
+        else
+            echo -e "    ${GREEN}✓${NC} Codex CLI found"
+        fi
+    elif [[ -n "${OPENAI_API_KEY:-}" ]]; then
         openai_key="$OPENAI_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
     else
@@ -904,27 +944,62 @@ CONFIGEOF
         fi
     fi
 
+    # OpenRouter fallback (optional)
+    echo ""
+    echo -e "  ${BLUE}OpenRouter free-tier fallback (optional):${NC}"
+    local openrouter_key=""
+    if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+        openrouter_key="$OPENROUTER_API_KEY"
+        echo -e "    ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
+    else
+        read -r -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        if [[ -z "$openrouter_key" ]]; then
+            echo -e "    ${YELLOW}⚠${NC} OpenRouter fallback disabled"
+        else
+            echo -e "    ${GREEN}✓${NC} OpenRouter fallback configured"
+        fi
+    fi
+
     # Create config
     if [[ ! -f "$council_dir/config.json" ]]; then
         # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
-        local gemini_mode_json gemini_key_json openai_key_json
+        local gemini_mode_json gemini_key_json openai_mode_json openai_key_json openrouter_key_json
         # shellcheck disable=SC2016
         gemini_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_mode")
         # shellcheck disable=SC2016
         gemini_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_key")
         # shellcheck disable=SC2016
+        openai_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_mode")
+        # shellcheck disable=SC2016
         openai_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_key")
+        # shellcheck disable=SC2016
+        openrouter_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openrouter_key")
 
         cat > "$council_dir/config.json" << CONFIGEOF
 {
   "gemini": {
     "mode": $gemini_mode_json,
     "api_key": $gemini_key_json,
-    "model": "gemini-3-pro-preview"
+    "model": "gemini-3-pro-preview",
+    "thinking_budget": 32768
   },
   "openai": {
+    "mode": $openai_mode_json,
     "api_key": $openai_key_json,
-    "model": "gpt-5.2"
+    "model": "gpt-5.2",
+    "reasoning_effort": "high",
+    "cli_reasoning_effort": "high"
+  },
+  "fallback": {
+    "openrouter": {
+      "api_key": $openrouter_key_json,
+      "models": [
+        "tencent/hy3-preview:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "inclusionai/ling-2.6-1t:free",
+        "openrouter/free"
+      ]
+    }
   }
 }
 CONFIGEOF
