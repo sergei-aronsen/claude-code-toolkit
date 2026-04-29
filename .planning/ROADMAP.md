@@ -70,7 +70,7 @@
 - [x] **Phase 24: Unified TUI Installer + Centralized Detection** — Single `scripts/install.sh` entry point with Bash 3.2 TUI checklist; shared libs (`tui.sh`, `detect2.sh`, `dispatch.sh`) reused by Phases 25–26 (completed 2026-04-29)
 - [x] **Phase 25: MCP Selector** — Nine-entry MCP catalog with per-MCP install wizard, inline secret collection, and `mcp-config.env` secrets handling (completed 2026-04-29)
 - [x] **Phase 26: Skills Selector** — 22-skill marketplace mirror with `is_skill_installed` detection and TUI-driven copy to `~/.claude/skills/` (completed 2026-04-29)
-- [ ] **Phase 27: Marketplace Publishing + Claude Desktop Reach** — Plugin marketplace surface (`marketplace.json` + three sub-plugins), Desktop capability matrix, skill safety audit CI gate
+- [x] **Phase 27: Marketplace Publishing + Claude Desktop Reach** — Plugin marketplace surface (`marketplace.json` + three sub-plugins), Desktop capability matrix, skill safety audit CI gate (completed 2026-04-29)
 
 ## Phase Details
 
@@ -175,7 +175,7 @@
 - [x] 27-01-marketplace-surface-PLAN.md — `.claude-plugin/marketplace.json` + 3 sub-plugin `plugin.json` + symlink trees (Wave 1; MKT-01, MKT-02)
 - [x] 27-02-validators-and-make-wiring-PLAN.md — `validate-skills-desktop.sh` + `validate-marketplace.sh` + Makefile/CI wiring (Wave 2; MKT-03, DESK-02, DESK-04)
 - [x] 27-03-install-sh-desktop-routing-PLAN.md — `scripts/install.sh` --skills-only flag + Desktop auto-routing + S10 hermetic test (Wave 3; DESK-03)
-- [ ] 27-04-docs-manifest-changelog-PLAN.md — `docs/CLAUDE_DESKTOP.md` + README/INSTALL.md marketplace sections + manifest 4.5.0 + CHANGELOG [4.5.0] (Wave 4; DESK-01, MKT-04)
+- [x] 27-04-docs-manifest-changelog-PLAN.md — `docs/CLAUDE_DESKTOP.md` + README/INSTALL.md marketplace sections + manifest 4.5.0 + CHANGELOG [4.5.0] (Wave 4; DESK-01, MKT-04)
 
 **UI hint**: yes
 
@@ -186,7 +186,7 @@
 | 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete    | 2026-04-29 |
 | 25. MCP Selector | 4/4 | Complete    | 2026-04-29 |
 | 26. Skills Selector | 4/4 | Complete    | 2026-04-29 |
-| 27. Marketplace Publishing + Claude Desktop Reach | 3/4 | In Progress|  |
+| 27. Marketplace Publishing + Claude Desktop Reach | 4/4 | Complete   | 2026-04-29 |
 
 ---
 
