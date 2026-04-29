@@ -46,7 +46,7 @@ Requirements grouped by phase. Each maps to exactly one phase via the Traceabili
 - [x] **MCP-02**: `is_mcp_installed <name>` parses `claude mcp list` output (one MCP per row) and returns 0/1. Fail-soft: if `claude` CLI absent, return "unknown" and warn rather than error.
 - [x] **MCP-03**: `scripts/install.sh --mcps` (or second TUI page) renders the catalog with detected status per MCP. Selected MCPs trigger per-MCP wizard.
 - [x] **MCP-04**: Per-MCP wizard reads `config-prompt.txt`, prompts inline for required values (`read -rs` for sensitive fields like API keys, `read -r` for URLs/usernames), runs `setup.sh` if present, then invokes `claude mcp add <name> <flags-from-mcp.json>` with collected values plumbed in via env vars.
-- [ ] **MCP-05**: `scripts/tests/test-install-mcp.sh` hermetic test: mock `claude mcp list` and `claude mcp add` via PATH override, assert per-MCP wizard prompts/persistence/invocation contract for at least one zero-config MCP (sequential-thinking) and one keyed MCP (openrouter).
+- [x] **MCP-05**: `scripts/tests/test-install-mcp.sh` hermetic test: mock `claude mcp list` and `claude mcp add` via PATH override, assert per-MCP wizard prompts/persistence/invocation contract for at least one zero-config MCP (sequential-thinking) and one keyed MCP (openrouter).
 
 #### MCP secrets handling
 

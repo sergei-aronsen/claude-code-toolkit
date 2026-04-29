@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
-status: executing
-stopped_at: Completed 25-03-install-sh-mcps-page-PLAN.md
-last_updated: "2026-04-29T12:25:57.311Z"
+status: verifying
+stopped_at: Completed 25-04-tests-manifest-and-docs-PLAN.md
+last_updated: "2026-04-29T12:34:21.567Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 89
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -33,7 +33,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 
 Phase: 25 (MCP Selector) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-29
 
 ## Plan Count Estimate
@@ -108,6 +108,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 25]: dry-run early-out in mcp_wizard_run moved before secrets collection — makes --dry-run fully non-interactive (no TTY required)
 - [Phase 25]: print_install_status moved before MCP routing gate so both MCP branch and components branch share the same function definition
 - [Phase 25]: mcps mutex routing: components page skipped when mcps set; exit at end of MCP branch prevents components code executing
+- [Phase 25]: S4/S5 collision tests use real fixture files not process substitution for portability
+- [Phase 25]: test files not added to manifest — they ship via repo, not curl-bash install
+- [Phase 25]: manifest.json version stays 4.4.0 — version bump deferred to Phase 27 per D-31 convention
 
 ### Key v4.5 Constraints (from research)
 
@@ -174,11 +177,12 @@ Carry-overs available for next milestone scoping:
 | Phase 25 P01 | 108 | 2 tasks | 2 files |
 | Phase 25 P02 | 304 | 2 tasks | 3 files |
 | Phase 25 P03 | 780 | 2 tasks | 2 files |
+| Phase 25 P04 | 5 | 3 tasks | 6 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T12:25:57.307Z
-Stopped at: Completed 25-03-install-sh-mcps-page-PLAN.md
+Last session: 2026-04-29T12:34:21.564Z
+Stopped at: Completed 25-04-tests-manifest-and-docs-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
