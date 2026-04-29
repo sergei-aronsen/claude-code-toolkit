@@ -2298,6 +2298,34 @@ def cmd_stats(argv):
     return 0
 
 
+def cmd_clear_cache(argv):
+    """Phase 24 SP6 — empty the content-hash cache directory.
+
+    Called via `brain clear-cache` (and the /council clear-cache slash
+    command). Removes every <key>.json under ~/.claude/council/cache/
+    but leaves the directory itself in place. Returns 0 even when the
+    cache dir doesn't exist yet — first /council on a fresh install is
+    not an error.
+    """
+    parser = argparse.ArgumentParser(
+        prog="brain clear-cache",
+        description="Remove all cached Council results.",
+    )
+    parser.parse_args(argv)
+    if not CACHE_DIR.is_dir():
+        print(f"No cache to clear at {CACHE_DIR}")
+        return 0
+    removed = 0
+    for entry in CACHE_DIR.glob("*.json"):
+        try:
+            entry.unlink()
+            removed += 1
+        except OSError as exc:
+            print(f"⚠️  could not remove {entry}: {exc}", file=sys.stderr)
+    print(f"Cleared {removed} cached entr{'y' if removed == 1 else 'ies'} in {CACHE_DIR}")
+    return 0
+
+
 def _row(group_row, idx):
     """Helper for cmd_stats table formatting."""
     prov, model, mode, agg = group_row
@@ -2322,6 +2350,11 @@ def main():
     if len(sys.argv) >= 2 and sys.argv[1] == "stats":
         sys.exit(cmd_stats(sys.argv[2:]))
 
+    # Phase 24 Sub-Phase 6 — same pattern for `clear-cache`. Empties the
+    # SP6 content-hash cache so the next /council run starts fresh.
+    if len(sys.argv) >= 2 and sys.argv[1] == "clear-cache":
+        sys.exit(cmd_clear_cache(sys.argv[2:]))
+
     parser = argparse.ArgumentParser(
         prog="brain",
         description=(
@@ -2341,6 +2374,14 @@ def main():
         help="Path to audit report (required when --mode audit-review)",
     )
     parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help=(
+            "Phase 24 SP6 — bypass the content-hash cache and force a fresh "
+            "Council run even when an identical request is cached."
+        ),
+    )
+    parser.add_argument(
         "plan",
         nargs="?",
         default=None,
@@ -2357,6 +2398,7 @@ def main():
             sys.exit(1)
 
     config = load_config()
+    config["_no_cache"] = bool(args.no_cache)
 
     if args.mode == "audit-review":
         if not args.report:

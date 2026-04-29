@@ -820,6 +820,24 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} commands/council-stats.md (not critical)"
     fi
 
+    # Install /council clear-cache slash command globally (Phase 24 Sub-Phase 6).
+    if curl -sSLf "$REPO_URL/commands/council-clear-cache.md" \
+            -o "$commands_dir/council-clear-cache.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/council-clear-cache.md" ]; then
+            mv "$commands_dir/council-clear-cache.md.tmp" "$commands_dir/council-clear-cache.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md installed (global)"
+        elif [ "$commands_dir/council-clear-cache.md.tmp" -nt "$commands_dir/council-clear-cache.md" ]; then
+            mv "$commands_dir/council-clear-cache.md.tmp" "$commands_dir/council-clear-cache.md"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (refreshed)"
+        else
+            rm -f "$commands_dir/council-clear-cache.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/council-clear-cache.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/council-clear-cache.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/council-clear-cache.md (not critical)"
+    fi
+
     # Ask to configure now (skip in non-interactive environments)
     echo ""
     local configure
