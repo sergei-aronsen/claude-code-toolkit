@@ -278,7 +278,7 @@ prompt_modified_for_uninstall() {
     # Bridges (GEMINI.md / AGENTS.md) live OUTSIDE $CLAUDE_DIR so is_protected_path
     # would always return true and silently keep them. Bypass for tracked bridges.
     local _is_bridge_path=1
-    if [[ ${#BRIDGE_PATHS[@]:-0} -gt 0 ]]; then
+    if [[ -n "${BRIDGE_PATHS+set}" ]] && [[ ${#BRIDGE_PATHS[@]} -gt 0 ]]; then
         for _bp in "${BRIDGE_PATHS[@]}"; do
             if [[ "$_bp" == "$rel" || "$_bp" == "$local_path" ]]; then
                 _is_bridge_path=0
