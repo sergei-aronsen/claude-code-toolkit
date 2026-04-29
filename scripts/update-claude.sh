@@ -528,6 +528,125 @@ print_update_dry_run() {
     dro_print_total "$total"
 }
 
+# sync_bridges — Phase 29 BRIDGE-SYNC-01/02/03 sync loop.
+# Iterates .bridges[] from STATE_FILE and applies the per-entry decision tree:
+#   user_owned=true                          → SKIP, log [- SKIP]
+#   source missing                           → ORPHAN, log [? ORPHANED] + auto-flip user_owned=true
+#   bridge SHA differs from recorded         → drift prompt [y/N/d]
+#       y → rewrite via bridge_create_*  + log [~ UPDATE]
+#       N → keep file, log [~ MODIFIED]
+#       d → diff and re-prompt (handled inside bridge_prompt_drift)
+#   source SHA differs and bridge clean      → REWRITE via bridge_create_*, log [~ UPDATE]
+#   in-sync                                  → silent no-op
+#
+# Reads bridges[] via jq from STATE_FILE. Empty array → silent no-op.
+# Logs via dro_print_* helpers (chezmoi-grade output).
+#
+# Returns: 0 always (sync errors are per-entry; never abort the main flow).
+sync_bridges() {
+    [[ -f "$STATE_FILE" ]] || return 0
+    local entries
+    entries=$(jq -c '.bridges // [] | .[]' "$STATE_FILE" 2>/dev/null || echo "")
+    [[ -z "$entries" ]] && return 0
+
+    # Honor TK_UPDATE_HOME → TK_BRIDGE_HOME so bridge_create_* and
+    # _bridge_set_user_owned use the same sandbox as the rest of update.
+    export TK_BRIDGE_HOME="${TK_UPDATE_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+
+    # Initialize dro colors once before any dro_print_* call.
+    dro_init_colors 2>/dev/null || true
+
+    local b_target b_path b_scope b_src_sha b_bridge_sha b_user_owned
+    local cur_src_sha cur_bridge_sha source_path scope_root
+
+    while IFS= read -r entry; do
+        [[ -z "$entry" ]] && continue
+        b_target=$(jq -r '.target'             <<<"$entry")
+        b_path=$(  jq -r '.path'               <<<"$entry")
+        b_scope=$( jq -r '.scope'              <<<"$entry")
+        b_src_sha=$(    jq -r '.source_sha256' <<<"$entry")
+        b_bridge_sha=$( jq -r '.bridge_sha256' <<<"$entry")
+        b_user_owned=$( jq -r '.user_owned'    <<<"$entry")
+
+        # 1. user_owned=true → SKIP silently except for the log line.
+        if [[ "$b_user_owned" == "true" ]]; then
+            dro_print_header "-" "SKIP" 1 _DRO_Y 2>/dev/null || \
+                echo "[- SKIP] $b_path (--break-bridge)"
+            dro_print_file "$b_path  (user_owned=true)" 2>/dev/null || true
+            continue
+        fi
+
+        # Resolve canonical source path by scope.
+        if [[ "$b_scope" == "global" ]]; then
+            source_path="${TK_BRIDGE_HOME}/.claude/CLAUDE.md"
+        else
+            # project scope: bridge sits next to CLAUDE.md → derive source
+            # from the bridge's parent directory.
+            scope_root=$(dirname "$b_path")
+            source_path="${scope_root}/CLAUDE.md"
+        fi
+
+        # 2. Source missing → ORPHAN.
+        if [[ ! -f "$source_path" ]]; then
+            dro_print_header "?" "ORPHANED" 1 _DRO_Y 2>/dev/null || \
+                echo "[? ORPHANED] $b_path (CLAUDE.md missing)"
+            dro_print_file "$b_path  (source: $source_path)" 2>/dev/null || true
+            # Auto-flip user_owned=true so future runs skip silently.
+            _bridge_set_user_owned "$b_target" true >/dev/null 2>&1 || \
+                log_warning "Could not auto-flip user_owned=true for $b_target"
+            continue
+        fi
+
+        # Compute current SHAs (bridge file may also be missing on disk
+        # despite being in state — treat missing bridge as "needs rewrite").
+        cur_src_sha=$(sha256_file "$source_path" 2>/dev/null || echo "")
+        if [[ -f "$b_path" ]]; then
+            cur_bridge_sha=$(sha256_file "$b_path" 2>/dev/null || echo "")
+        else
+            cur_bridge_sha=""
+        fi
+
+        # 3. Bridge SHA differs from recorded → drift prompt (or auto-rewrite
+        # if bridge is missing entirely).
+        if [[ -n "$cur_bridge_sha" && "$cur_bridge_sha" != "$b_bridge_sha" ]]; then
+            if bridge_prompt_drift "$b_path" "$source_path"; then
+                # y → rewrite
+                if [[ "$b_scope" == "global" ]]; then
+                    bridge_create_global "$b_target" >/dev/null 2>&1
+                else
+                    bridge_create_project "$b_target" "$scope_root" >/dev/null 2>&1
+                fi
+                dro_print_header "~" "UPDATE" 1 _DRO_C 2>/dev/null || \
+                    echo "[~ UPDATE] $b_path"
+                dro_print_file "$b_path" 2>/dev/null || true
+            else
+                # N → keep
+                dro_print_header "~" "MODIFIED" 1 _DRO_Y 2>/dev/null || \
+                    echo "[~ MODIFIED] $b_path (kept)"
+                dro_print_file "$b_path  (kept; user edits preserved)" 2>/dev/null || true
+            fi
+            continue
+        fi
+
+        # 4. Source SHA changed and bridge clean (or bridge missing) → REWRITE.
+        if [[ "$cur_src_sha" != "$b_src_sha" || -z "$cur_bridge_sha" ]]; then
+            if [[ "$b_scope" == "global" ]]; then
+                bridge_create_global "$b_target" >/dev/null 2>&1
+            else
+                bridge_create_project "$b_target" "$scope_root" >/dev/null 2>&1
+            fi
+            dro_print_header "~" "UPDATE" 1 _DRO_C 2>/dev/null || \
+                echo "[~ UPDATE] $b_path"
+            dro_print_file "$b_path" 2>/dev/null || true
+            continue
+        fi
+
+        # 5. In-sync → silent no-op.
+    done <<<"$entries"
+
+    return 0
+}
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -745,6 +864,9 @@ SKIPPED_BY_MODE_JSON=$(jq -nc \
     '($manifest - $installed) - (($manifest - $installed) - $skipset)')
 
 if is_update_noop; then
+    # Phase 29 BRIDGE-SYNC-01: even on a manifest-clean no-op, bridges may
+    # still need re-sync (CLAUDE.md edits don't change the manifest hash).
+    sync_bridges
     echo "Already up-to-date. Nothing to do."
     exit 0
 fi
@@ -1081,10 +1203,26 @@ done
 # in the same os.replace call as installed_files. Previously a separate jq
 # splice happened after write_state; SIGKILL between the two left the state
 # without manifest_hash and is_update_noop never fired again.
+#
+# Phase 29 BRIDGE-SYNC-02: capture pre-existing bridges[] from the on-disk
+# state file and pass it as the 10th arg so the rebuild does not clobber
+# bridges. Plan 29-01 made write_state preserve-on-default, so the explicit
+# capture is defensive (survives any future refactor).
+BRIDGES_JSON='[]'
+if [[ -f "$STATE_FILE" ]]; then
+    BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
+fi
 write_state "$STATE_MODE" "$HAS_SP" "$SP_VERSION" "$HAS_GSD" "$GSD_VERSION" \
-            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "$MANIFEST_HASH"
+            "$FINAL_INSTALLED_CSV" "$FINAL_SKIPPED_CSV" "false" "$MANIFEST_HASH" \
+            "$BRIDGES_JSON"
 
 print_update_summary "$BACKUP_DIR"
+
+# Phase 29 BRIDGE-SYNC-01: run sync_bridges UNCONDITIONALLY (regardless of
+# is_update_noop). User edits to CLAUDE.md don't change the manifest hash,
+# so the no-op early-exit above short-circuits before we get here when
+# nothing changed at all — but if we DID get here, we always sync bridges.
+sync_bridges
 
 # Phase 13 (Plan 13-04 — EXC-05): seed audit-exceptions.md if missing.
 # Idempotent: never overwrites a populated file. Runs on every update.
