@@ -1,21 +1,30 @@
 #!/bin/bash
 
-# Claude Code Toolkit — MCP Catalog Loader + Detection (v4.5+)
+# Claude Code Toolkit — MCP Catalog Loader + Detection + Wizard (v4.5+)
 # Source this file. Do NOT execute it directly.
-# Exposes:
+# Exposes (Plan 01):
 #   mcp_catalog_load           — parses scripts/lib/mcp-catalog.json into MCP_* arrays
 #   mcp_catalog_names          — prints 9 names one-per-line (alpha sorted)
 #   is_mcp_installed <name>    — returns 0 (installed) / 1 (not installed) / 2 (claude CLI absent)
-# Globals (write):
+# Exposes (Plan 02):
+#   mcp_secrets_load           — populates MCP_SECRET_KEYS[] MCP_SECRET_VALUES[] from mcp-config.env
+#   mcp_secrets_set <KEY> <V>  — append/overwrite KEY=V in mcp-config.env (mode 0600)
+#   mcp_wizard_run <name> [--dry-run] — per-MCP install wizard (hidden input + claude mcp add)
+# Globals (write, Plan 01):
 #   MCP_NAMES[]            — 9 catalog keys (alpha order)
 #   MCP_DISPLAY[]          — display_name strings (parallel to MCP_NAMES)
 #   MCP_ENV_KEYS[]         — env-var names joined with ';' (empty string = zero-config)
 #   MCP_INSTALL_ARGS[]     — install_args[] joined with $'\037' (unit-separator) for safe split
 #   MCP_DESCS[]            — description strings (parallel)
 #   MCP_OAUTH[]            — 0/1 ints (parallel)
+# Globals (write, Plan 02):
+#   MCP_SECRET_KEYS[]      — keys from mcp-config.env (parallel to MCP_SECRET_VALUES)
+#   MCP_SECRET_VALUES[]    — values from mcp-config.env
 # Test seams:
 #   TK_MCP_CLAUDE_BIN     — override path to claude binary (mocked in tests)
 #   TK_MCP_CATALOG_PATH   — override path to mcp-catalog.json (mocked in tests)
+#   TK_MCP_TTY_SRC        — override /dev/tty for wizard read prompts (Plan 02)
+#   TK_MCP_CONFIG_HOME    — override $HOME for mcp-config.env path resolution (Plan 02)
 #
 # IMPORTANT: No errexit/nounset/pipefail — sourced libraries must not alter caller error mode.
 
@@ -128,4 +137,142 @@ is_mcp_installed() {
         return 0
     fi
     return 1
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Secrets persistence — ~/.claude/mcp-config.env (MCP-SEC-01, MCP-SEC-02)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# _mcp_config_path — resolve ~/.claude/mcp-config.env honoring TK_MCP_CONFIG_HOME test seam.
+_mcp_config_path() {
+    echo "${TK_MCP_CONFIG_HOME:-$HOME}/.claude/mcp-config.env"
+}
+
+# _mcp_validate_value — reject values with shell metacharacters that would expand when sourced.
+# Rejected: $, backtick, backslash, double-quote, single-quote, newline.
+# Returns 0 if safe, 1 if rejected (caller re-prompts or errors).
+_mcp_validate_value() {
+    local v="$1"
+    if [[ "$v" == *'$'* || "$v" == *'`'* || "$v" == *'\'* || "$v" == *'"'* || "$v" == *"'"* ]]; then
+        return 1
+    fi
+    # Reject embedded newline (would split KEY=VALUE records).
+    if [[ "$v" == *$'\n'* ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# mcp_secrets_load — populate parallel arrays MCP_SECRET_KEYS[] MCP_SECRET_VALUES[] from
+# ~/.claude/mcp-config.env. Empty/absent file → both arrays length 0.
+# Comments (#-prefix) and blank lines are skipped. Lines without '=' are skipped silently.
+# Reads from ${TK_MCP_CONFIG_HOME:-$HOME}/.claude/mcp-config.env.
+# shellcheck disable=SC2034
+mcp_secrets_load() {
+    MCP_SECRET_KEYS=()
+    MCP_SECRET_VALUES=()
+    local cfg
+    cfg="$(_mcp_config_path)"
+    if [[ ! -f "$cfg" ]]; then
+        return 0
+    fi
+    local line key value
+    while IFS= read -r line; do
+        # Skip comments and blank lines.
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// /}" ]] && continue
+        # Require KEY=value form.
+        [[ "$line" != *=* ]] && continue
+        key="${line%%=*}"
+        value="${line#*=}"
+        # Trim leading/trailing whitespace from key.
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        [[ -z "$key" ]] && continue
+        MCP_SECRET_KEYS+=("$key")
+        MCP_SECRET_VALUES+=("$value")
+    done < "$cfg"
+}
+
+# _mcp_secrets_index — echo the 0-based index of $1 in MCP_SECRET_KEYS; returns 1 if absent.
+# Requires mcp_secrets_load to have been called first.
+_mcp_secrets_index() {
+    local target="$1"
+    local i
+    for ((i=0; i<${#MCP_SECRET_KEYS[@]}; i++)); do
+        if [[ "${MCP_SECRET_KEYS[$i]}" == "$target" ]]; then
+            echo "$i"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# mcp_secrets_set <KEY> <VALUE> — append or overwrite KEY=VALUE in mcp-config.env.
+# Security order-of-operations (MCP-SEC-01):
+#   1. mkdir -p ~/.claude
+#   2. touch mcp-config.env (creates if absent)
+#   3. chmod 0600 mcp-config.env (idempotent — before any write)
+#   4. Load existing entries via mcp_secrets_load
+#   5. If KEY already present:
+#        prompt "[y/N] Overwrite KEY?" via TK_MCP_TTY_SRC (default /dev/tty)
+#        default N → no write, return 0 (preserves existing value)
+#        y/Y → rewrite file with new value at the existing key position
+#   6. If KEY absent: append "KEY=VALUE\n" to file
+#   7. chmod 0600 again (idempotent — defends against umask widening on rewrite)
+# Returns:
+#   0 on success (write or deliberate no-op via N choice)
+#   1 on validation failure, missing KEY arg, or write error
+mcp_secrets_set() {
+    local key="${1:-}"
+    local value="${2:-}"
+    if [[ -z "$key" ]]; then
+        echo -e "${RED}✗${NC} mcp_secrets_set: missing KEY argument" >&2
+        return 1
+    fi
+    if ! _mcp_validate_value "$value"; then
+        echo -e "${RED}✗${NC} mcp_secrets_set: value for ${key} contains shell metacharacters (\$, backtick, backslash, quote, newline) — refusing to write" >&2
+        return 1
+    fi
+    local cfg
+    cfg="$(_mcp_config_path)"
+    mkdir -p "$(dirname "$cfg")" || return 1
+    touch "$cfg" || return 1
+    chmod 0600 "$cfg" || return 1
+    mcp_secrets_load
+    local idx
+    if idx=$(_mcp_secrets_index "$key"); then
+        # Collision: key already present — prompt for confirmation.
+        local tty_src="${TK_MCP_TTY_SRC:-/dev/tty}"
+        local choice
+        if ! read -r -p "[y/N] Overwrite ${key}? " choice < "$tty_src" 2>/dev/null; then
+            choice="N"
+        fi
+        case "${choice:-N}" in
+            y|Y)
+                # Rewrite the file, substituting the updated value at the matching index.
+                local tmp
+                tmp="$(mktemp "${cfg}.XXXXXX")" || return 1
+                local i
+                for ((i=0; i<${#MCP_SECRET_KEYS[@]}; i++)); do
+                    if [[ "$i" -eq "$idx" ]]; then
+                        printf '%s=%s\n' "$key" "$value" >> "$tmp"
+                    else
+                        printf '%s=%s\n' "${MCP_SECRET_KEYS[$i]}" "${MCP_SECRET_VALUES[$i]}" >> "$tmp"
+                    fi
+                done
+                mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+                chmod 0600 "$cfg" || return 1
+                ;;
+            *)
+                # Default N: keep existing value, no write.
+                return 0
+                ;;
+        esac
+    else
+        # Key is new: append entry.
+        printf '%s=%s\n' "$key" "$value" >> "$cfg" || return 1
+        chmod 0600 "$cfg" || return 1
+    fi
+    return 0
 }
