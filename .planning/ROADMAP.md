@@ -120,7 +120,12 @@
 4. `~/.claude/mcp-config.env` is created with mode 0600 (owner-only readable) and appends/overwrites individual keys with `[y/N]` confirmation on collision
 5. When `claude` CLI is absent (Desktop-only or not yet installed), the MCP selector warns rather than errors and suggests the CLI install path
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 25-01-mcp-catalog-and-loader-PLAN.md — `lib/mcp-catalog.json` (9-entry catalog) + `lib/mcp.sh` foundation: loader + `is_mcp_installed` three-state probe (Wave 1; MCP-01, MCP-02)
+- [ ] 25-02-wizard-and-secrets-PLAN.md — Per-MCP wizard with hidden input + `~/.claude/mcp-config.env` (0600) secrets persistence + collision prompt (Wave 2; MCP-04, MCP-SEC-01, MCP-SEC-02)
+- [ ] 25-03-install-sh-mcps-page-PLAN.md — `scripts/install.sh --mcps` flag wiring + TUI catalog page + `mcp_status_array` helper (Wave 3; MCP-03)
+- [ ] 25-04-tests-manifest-and-docs-PLAN.md — Hermetic `test-mcp-selector.sh` (≥12 assertions) + manifest.json + Makefile Test 32 + CI + `docs/MCP-SETUP.md` + `docs/INSTALL.md` --mcps subsection (Wave 4; MCP-05, MCP-SEC-02 doc, MCP-01 manifest)
 
 ### Phase 26: Skills Selector
 
