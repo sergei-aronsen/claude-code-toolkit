@@ -257,12 +257,40 @@ fi
 section "5. Supreme Council (optional)"
 
 COUNCIL_DIR="$GLOBAL_DIR/council"
+GLOBAL_COMMANDS_DIR="$GLOBAL_DIR/commands"
 
 if [[ -f "$COUNCIL_DIR/brain.py" ]]; then
     pass "brain.py orchestrator installed"
 
+    # Phase 24 Sub-Phase 1 — orchestrator should be executable so the `brain`
+    # shell alias resolves. setup-council.sh chmod +x'es it; warn if drift.
+    if [[ -x "$COUNCIL_DIR/brain.py" ]]; then
+        pass "brain.py is executable"
+    else
+        warn "brain.py not executable — run: chmod +x $COUNCIL_DIR/brain.py"
+    fi
+
+    # Phase 24 Sub-Phase 1 — global slash command moved out of per-project
+    # ./.claude/commands/ to ~/.claude/commands/ in v4.5. Verify it landed.
+    if [[ -f "$GLOBAL_COMMANDS_DIR/council.md" ]]; then
+        pass "Global /council slash command installed (~/.claude/commands/council.md)"
+    else
+        fail "Global /council command missing — run: bash <(curl -sSL .../scripts/setup-council.sh)"
+    fi
+
     if [[ -f "$COUNCIL_DIR/config.json" ]]; then
         pass "config.json configured"
+
+        # Verify owner-only permissions on config.json (holds API keys).
+        # macOS BSD stat: -f %Lp; GNU stat: -c %a. Try BSD first, fall back.
+        CONFIG_PERMS=$(stat -f %Lp "$COUNCIL_DIR/config.json" 2>/dev/null \
+            || stat -c %a "$COUNCIL_DIR/config.json" 2>/dev/null \
+            || echo "")
+        if [[ "$CONFIG_PERMS" == "600" ]]; then
+            pass "config.json permissions 0600 (owner-only)"
+        elif [[ -n "$CONFIG_PERMS" ]]; then
+            warn "config.json permissions are $CONFIG_PERMS (expected 600) — run: chmod 600 $COUNCIL_DIR/config.json"
+        fi
 
         # Check API keys (just presence, not validity)
         if grep -q "gemini" "$COUNCIL_DIR/config.json" 2>/dev/null; then
@@ -278,6 +306,21 @@ if [[ -f "$COUNCIL_DIR/brain.py" ]]; then
         fi
     else
         warn "config.json not found — copy from config.json.template and add API keys"
+    fi
+
+    # `brain` shell alias — declared in user's .zshrc / .bash_profile / .bashrc.
+    # Detection is lexical (alias declarations are not exported into our shell).
+    BRAIN_ALIAS_FOUND=false
+    for rc_file in "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc"; do
+        if [[ -f "$rc_file" ]] && grep -q "alias brain=" "$rc_file" 2>/dev/null; then
+            BRAIN_ALIAS_FOUND=true
+            break
+        fi
+    done
+    if [[ "$BRAIN_ALIAS_FOUND" == "true" ]]; then
+        pass "brain shell alias declared"
+    else
+        warn "brain shell alias not found in .zshrc/.bash_profile/.bashrc"
     fi
 
     if command -v python3 &>/dev/null; then
