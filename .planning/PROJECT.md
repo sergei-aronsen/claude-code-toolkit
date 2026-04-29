@@ -152,28 +152,34 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 
 ## Current Milestone: v4.5 Install Flow UX & Desktop Reach
 
-**Goal:** Replace the multi-command first-run flow with a single TUI checklist installer for Claude Code, and publish the toolkit as a Claude Code plugin marketplace so Claude Desktop users get the skills surface that's architecturally available to them.
+**Goal:** Replace the multi-command first-run flow with a single TUI installer that bundles three selectors (Components / MCPs / Skills), and publish the toolkit as a Claude Code plugin marketplace so Claude Desktop users get the value surface architecturally available to them.
 
 **Target features:**
 
-- **Unified TUI installer (Phase 24)** — one curl-bash entry point (`scripts/install.sh`) opens a pure-bash checklist (arrow + space + enter via `< /dev/tty`, no deps, BSD/Linux compat). Components: Toolkit / superpowers / GSD / Security Pack / RTK / Statusline. Auto-detect installed components, pre-check + label `[installed ✓]`. `--force` re-installs detected components, `--yes` non-interactive default-set for CI. Old per-component scripts retained as advanced fallback.
-- **Centralized detection (Phase 24)** — extend `scripts/lib/detect.sh` with corrected signals: `cc-safety-net` via `command -v` (covers brew **and** npm — current `setup-security.sh` only checks npm), statusline via `~/.claude/statusline.sh` + `grep statusLine ~/.claude/settings.json`, RTK via `command -v rtk`. Each component exposes `is_<name>_installed` returning 0/1.
-- **Marketplace publishing (Phase 25)** — root-level `marketplace.json` exposes the toolkit as a Claude Code plugin marketplace (`/plugin marketplace add sergei-aronsen/claude-code-toolkit`). Three sub-plugins: `tk-skills` (Desktop-compatible — the primary Desktop value), `tk-commands` (Code only), `tk-framework-rules` (Code only). Marketplace schema verified against current Anthropic spec at planning time.
-- **Claude Desktop reach (Phase 25)** — `docs/CLAUDE_DESKTOP.md` documents what works (skills via marketplace) vs what doesn't (hooks, statusline, project rules, slash commands — architecturally Code-only). Audit which existing TK skills are Desktop-safe (no Bash/tools assumption). Phase 24 installer detects Desktop-only users and routes them to a `--skills-only` install path that places skills under `~/.claude/plugins/` instead of project `.claude/`.
+- **Phase 24 — Unified TUI Installer (Components Selector + shared lib)** — one curl-bash entry point (`scripts/install.sh`) opens a pure-bash checklist (arrow + space + enter via `< /dev/tty`, Bash 3.2 compat, no deps). Components selector: Toolkit / superpowers / GSD / Security Pack / RTK / Statusline. Auto-detect installed, pre-check + `[installed ✓]` label. `--force` re-runs detected, `--yes` uses default-set for CI. Old per-component scripts retained as advanced fallback. Foundation libs (`scripts/lib/{tui,detect2,dispatch}.sh`) reused by Phases 25–26. Extends `scripts/lib/detect.sh` with `cc-safety-net` via `command -v` (covers brew **and** npm), statusline via `~/.claude/statusline.sh` + settings.json scan, RTK via `command -v rtk`. Each component exposes `is_<name>_installed` returning 0/1.
+
+- **Phase 25 — MCP Selector** — second TUI page (or separate `--mcps` invocation) lists 9 curated MCP servers: `context7`, `magic`, `notebooklm`, `openrouter`, `playwright`, `sentry`, `sequential-thinking`, `toolbox`, `youtrack`. TK ships `templates/mcps/<name>/{mcp.json, setup.sh, config-prompt.txt}` per MCP. Per-MCP install wizard collects required secrets/URLs inline (`read -rs` for sensitive values), persists to `~/.claude/mcp-config.env` with mode `0600` (gitignored, never committed), then runs `claude mcp add ... -- ...` with values plumbed in. Detection: `claude mcp list` parsing. `--mcps-only` install path.
+
+- **Phase 26 — Skills Selector** — third TUI page lists ~22 curated skills mirrored in `templates/skills-marketplace/<name>/SKILL.md` (sourced from skills.sh upstream, license-audited). Skills: `ai-models`, `analytics-tracking`, `chrome-extension-development`, `copywriting`, `docx`, `find-skills`, `firecrawl`, `i18n-localization`, `memo-skill`, `next-best-practices`, `notebooklm`, `pdf`, `resend`, `seo-audit`, `shadcn`, `stripe-best-practices`, `tailwind-design-system`, `typescript-advanced-types`, `ui-ux-pro-max`, `vercel-composition-patterns`, `vercel-react-best-practices`, `webapp-testing`. Selected skills copy from `templates/skills-marketplace/<name>/` to `~/.claude/skills/<name>/`. Detection via directory presence. Sync upstream once per milestone.
+
+- **Phase 27 — Marketplace Publishing + Claude Desktop reach** — `.claude-plugin/marketplace.json` at repo root + `plugins/{tk-skills,tk-commands,tk-framework-rules}/.claude-plugin/plugin.json` per sub-plugin. Schema verified against live `claude plugin marketplace add` invocation. `docs/CLAUDE_DESKTOP.md` documents capability matrix (Code tab full parity vs remote/Chat tab gaps). Skills audited via `scripts/validate-skills-desktop.sh` for Bash/Code-only assumptions. Phase 24 installer detects Desktop-only users and routes to `--skills-only` install path under `~/.claude/plugins/`.
 
 **Key context:**
 
-- Two phases: Phase 24 = TUI installer + detection (Code), Phase 25 = Marketplace + Desktop reach (cross-runtime).
-- Existing `scripts/lib/bootstrap.sh` (v4.4 BOOTSTRAP-01..04) two-prompt y/N flow is superseded by the new TUI checklist; bootstrap.sh stays as the no-tty fallback (CI / piped) and `--no-bootstrap` opt-out remains. `--no-banner` (BANNER-01) preserved.
-- Constraint: POSIX bash 3.2+, `curl | bash` compat (no stdin assumptions, all reads from `< /dev/tty`), no Node/Python in install path. Marketplace can ship Markdown+JSON only.
-- Detection invariant unchanged: filesystem-primary, CLI cross-check secondary (per v4.1 DETECT-06).
-- Backwards compatibility: existing `init-claude.sh` URL stays valid. New `install.sh` is the recommended entry point; old script trampolines to it with previous flag semantics intact.
+- Four phases. Phase 24 ships first (foundation lib + Components selector). Phases 25/26/27 can run in parallel after Phase 24 lands (independent file surfaces, all reuse `tui.sh`).
+- `scripts/install.sh` becomes a 3-page wizard: Components → MCPs → Skills. Each page can be skipped (`--components-only`, `--mcps-only`, `--skills-only`). All-default flow (`--yes`) installs only what's currently uninstalled, no overwrites without `--force`.
+- Existing `scripts/lib/bootstrap.sh` (v4.4 BOOTSTRAP-01..04) survives as no-tty fallback for SP/GSD prompts only — Phase 24 TUI replaces the interactive layer above it. `--no-bootstrap`, `--no-banner` flags preserved. 26-assertion `test-bootstrap.sh` stays green throughout.
+- **Secret handling (Phase 25)**: `~/.claude/mcp-config.env` mode `0600`, gitignored, owner-only readable. TUI uses `read -rs` (no echo) for keys. Documented as plaintext-on-disk so users can swap to a secret manager if they want.
+- Constraint: POSIX bash 3.2+ (verified `read -rsn1` + `read -rsn2` pattern, no `read -N`, no float `-t`), `curl | bash` compat (`< /dev/tty` reads only), no Node/Python in install path. Marketplace ships Markdown + JSON only.
+- Detection invariant: filesystem-primary; `claude` CLI cross-check secondary (per v4.1 DETECT-06). Phase 25 needs `claude mcp list` parsing — fail-soft if CLI absent.
+- Backwards compatibility: existing `init-claude.sh` URL stays valid (calls run unchanged). `install.sh` is a new independent entry point — no trampoline.
 
 ### Carry-overs not in this milestone
 
 - `--no-council` flag for `/audit` — keep deferred (mandatory pass guarantees FP discipline; revisit if friction surfaces)
 - Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01 — wraps toolkit-owned writes in `<!-- TOOLKIT-START --> ... <!-- TOOLKIT-END -->` markers; reader side already shipped in v4.3)
 - Selective uninstall (`--only commands/`, `--except council/`) — combinatorial test surface, only revisit on real demand
+- Skill install via skills.sh trampoline — rejected in favour of TK-mirror approach (no external runtime dependency)
 - Permanently locked out: Docker-per-cell isolation (conflicts with POSIX invariant), agent-cut release tags (CLAUDE.md "never push main")
 
 ## Key Decisions
