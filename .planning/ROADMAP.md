@@ -170,7 +170,12 @@
 4. A Desktop-only user (no `claude` CLI on PATH) running `scripts/install.sh` is automatically routed to `--skills-only` mode and told where skills are placed (`~/.claude/plugins/tk-skills/`) with a one-line explanation of the limitation
 5. README and `docs/INSTALL.md` document both install channels (curl-bash for Code users; marketplace for Desktop users) as equivalent for Claude Code, with the marketplace as the only path for Desktop
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+- [ ] 27-01-marketplace-surface-PLAN.md — `.claude-plugin/marketplace.json` + 3 sub-plugin `plugin.json` + symlink trees (Wave 1; MKT-01, MKT-02)
+- [ ] 27-02-validators-and-make-wiring-PLAN.md — `validate-skills-desktop.sh` + `validate-marketplace.sh` + Makefile/CI wiring (Wave 2; MKT-03, DESK-02, DESK-04)
+- [ ] 27-03-install-sh-desktop-routing-PLAN.md — `scripts/install.sh` --skills-only flag + Desktop auto-routing + S10 hermetic test (Wave 3; DESK-03)
+- [ ] 27-04-docs-manifest-changelog-PLAN.md — `docs/CLAUDE_DESKTOP.md` + README/INSTALL.md marketplace sections + manifest 4.5.0 + CHANGELOG [4.5.0] (Wave 4; DESK-01, MKT-04)
 
 **UI hint**: yes
 
