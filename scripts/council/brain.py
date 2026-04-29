@@ -2231,6 +2231,87 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         })
 
 
+def _run_dry_run(plan):
+    """Phase 24 SP8 — preview prompts and estimated cost without API calls.
+
+    Builds the same context blocks that _run_validate_plan would assemble
+    (project rules, README, planning context, recent commits, todos, git
+    diff, redacted), runs detect_domain, composes the Skeptic and
+    Pragmatist system prompts (with persona overlays), prints both prompts
+    plus a cost estimate. Never calls a provider.
+    """
+    validate_plan(plan)
+    domain = detect_domain(plan)
+    project_rules = get_project_rules()
+    readme = get_readme()
+    planning_md = get_planning_context()
+    recent_log = get_recent_log()
+    todos = get_todos()
+    git_diff = get_git_diff()
+
+    enrichment_pairs = [
+        ("README", readme),
+        ("PLANNING CONTEXT", planning_md),
+        ("RECENT COMMITS", recent_log),
+        ("TODOS / FIXMES", todos),
+    ]
+    enrichment_budget = (MAX_TOTAL_CONTEXT * 4) // 5
+    enrichment_pairs = apply_context_budget(enrichment_pairs, hard_limit=enrichment_budget)
+    enrichment_block = "".join(
+        f"\n{label}:\n{redact_context(body, label=label)}\n"
+        for label, body in enrichment_pairs
+        if body
+    )
+    rules_block = f"\nPROJECT RULES (CLAUDE.md):\n{project_rules}" if project_rules else ""
+    diff_block = f"\nGIT CHANGES:\n{redact_context(git_diff, label='GIT CHANGES')}" if git_diff else ""
+
+    skeptic_system = compose_system_prompt("skeptic", plan, domain=domain)
+    pragmatist_system = compose_system_prompt("pragmatist", plan, domain=domain)
+
+    skeptic_prompt = f"""{skeptic_system}
+{rules_block}{enrichment_block}
+
+IMPLEMENTATION PLAN:
+{plan}
+"""
+    pragmatist_prompt = f"""{pragmatist_system}
+
+(In a real run the Pragmatist also receives the Skeptic's full verdict
+appended after this point; dry-run substitutes a placeholder.)
+
+PLAN:
+{plan}
+"""
+
+    pricing = _load_pricing()
+    skeptic_tokens = _estimate_tokens(skeptic_prompt)
+    pragmatist_tokens = _estimate_tokens(pragmatist_prompt)
+
+    def _estimate_cost(model_key, tokens_in):
+        rate = float((pricing.get(model_key) or {}).get("input_per_1m", 0.0))
+        return (tokens_in / 1_000_000.0) * rate, rate
+
+    sk_cost, sk_rate = _estimate_cost("gemini-3-pro-preview", skeptic_tokens)
+    pr_cost, pr_rate = _estimate_cost("gpt-5.2", pragmatist_tokens)
+
+    print("=" * 60)
+    print("🌵 SUPREME COUNCIL DRY-RUN — no API calls will be made")
+    print("=" * 60)
+    print(f"Plan length:  {len(plan)} chars")
+    print(f"Domain:       {domain}")
+    print(f"Skeptic ~tok: {skeptic_tokens}  (gemini-3-pro-preview @ ${sk_rate:.2f}/M in -> ~${sk_cost:.4f})")
+    print(f"Pragmatist ~tok: {pragmatist_tokens}  (gpt-5.2 @ ${pr_rate:.2f}/M in -> ~${pr_cost:.4f})")
+    print(f"Estimated input cost: ~${sk_cost + pr_cost:.4f} (output not estimated)")
+    print("=" * 60)
+    print("\n--- SKEPTIC PROMPT ---\n")
+    print(skeptic_prompt)
+    print("\n--- PRAGMATIST PROMPT ---\n")
+    print(pragmatist_prompt)
+    print("\n=" * 1 + "=" * 59)
+    print("Dry-run complete. Re-run without --dry-run to actually call providers.")
+    return 0
+
+
 def cmd_stats(argv):
     """Render usage.jsonl as a human or CSV summary.
 
@@ -2457,6 +2538,15 @@ def main():
         ),
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Phase 24 SP8 — build the full Skeptic + Pragmatist prompts, "
+            "print them with an estimated cost, and exit 0 without calling "
+            "any provider. Use to preview cost or audit redaction."
+        ),
+    )
+    parser.add_argument(
         "plan",
         nargs="?",
         default=None,
@@ -2471,6 +2561,19 @@ def main():
         else:
             parser.print_help()
             sys.exit(1)
+
+    # Phase 24 SP8 — short-circuit into the dry-run preview before
+    # load_config() so users with no Council install yet can still
+    # estimate cost. dry_run still needs config for pricing rates,
+    # but tolerates missing API keys.
+    if getattr(args, "dry_run", False):
+        if args.mode == "audit-review":
+            print("\n⚠️  --dry-run is only supported in validate-plan mode.", file=sys.stderr)
+            sys.exit(2)
+        if not args.plan:
+            print("\n❌ --dry-run requires a positional plan argument.", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(_run_dry_run(args.plan))
 
     config = load_config()
     config["_no_cache"] = bool(args.no_cache)
