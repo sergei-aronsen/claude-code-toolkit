@@ -186,7 +186,7 @@
 | 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete    | 2026-04-29 |
 | 25. MCP Selector | 4/4 | Complete    | 2026-04-29 |
 | 26. Skills Selector | 4/4 | Complete    | 2026-04-29 |
-| 27. Marketplace Publishing + Claude Desktop Reach | 4/4 | Complete   | 2026-04-29 |
+| 27. Marketplace Publishing + Claude Desktop Reach | 4/4 | Complete    | 2026-04-29 |
 
 ---
 
