@@ -22,6 +22,8 @@
     ".claude/**",
     "CLAUDE.md",
     "AUDIT-REPORT.md",
-    "scripts/tests/fixtures/**"
+    "scripts/tests/fixtures/**",
+    "templates/skills-marketplace/**",
+    "plugins/**"
   ]
 }
