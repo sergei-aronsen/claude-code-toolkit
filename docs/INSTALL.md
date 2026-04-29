@@ -26,6 +26,35 @@ and selects the appropriate mode; pass `--mode <name>` to override.
 
 ---
 
+## Install via marketplace
+
+The toolkit ships a Claude Code plugin marketplace listing at the repository's
+`.claude-plugin/marketplace.json`. Three sub-plugins are exposed:
+
+| Sub-plugin | Reach | Content |
+|------------|-------|---------|
+| `tk-skills` | Desktop Code tab + terminal Code | 22 curated skills mirrored from skills.sh |
+| `tk-commands` | Terminal Code only | 29 slash commands for Claude Code workflows |
+| `tk-framework-rules` | Terminal Code only | 7 framework CLAUDE.md fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base) |
+
+Install all three via:
+
+```text
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
+```
+
+This works in both Claude Desktop's Code tab and terminal Claude Code with plugin
+support enabled. The marketplace channel is **equivalent** to curl-bash for terminal
+Code users; for Desktop users it is the **only** install path.
+
+### Claude Desktop users
+
+Claude Desktop's Chat tab does not run the plugin runtime. The Code tab does and
+has feature parity with terminal Code for skills, slash commands, MCPs, and rules.
+See [CLAUDE_DESKTOP.md](CLAUDE_DESKTOP.md) for the full capability matrix.
+
+---
+
 ## Installer Flags
 
 Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
@@ -198,6 +227,30 @@ for license + upstream URL per skill.
 
 **Mutex with `--mcps`:** `--mcps` and `--skills` cannot be combined in the same
 invocation. Run two separate commands.
+
+### --skills-only flag
+
+`--skills-only` redirects the install target so skills land at
+`~/.claude/plugins/tk-skills/<name>/` (the Desktop plugin tree) instead of
+`~/.claude/skills/<name>/`. Use this when you want the toolkit's skills
+available in Claude Desktop's Code tab.
+
+```bash
+# Explicit Desktop install (works regardless of CLI presence)
+bash scripts/install.sh --skills-only --yes
+```
+
+Auto-routing: when `claude` is not on PATH and no other page flag is passed,
+`scripts/install.sh` automatically promotes to `--skills-only` mode and prints:
+
+```text
+! Claude CLI not detected — installing skills only.
+  Skills available in Claude Desktop Code tab.
+  See docs/CLAUDE_DESKTOP.md for full capability matrix.
+```
+
+This makes the installer Desktop-friendly out of the box. Pass any explicit
+flag (`--mcps`, `--skills`, `--components`, `--yes`) to opt out of auto-routing.
 
 ### Backwards compatibility
 
