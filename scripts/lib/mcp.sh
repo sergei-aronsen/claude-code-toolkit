@@ -377,6 +377,14 @@ mcp_wizard_run() {
 
     local tty_src="${TK_MCP_TTY_SRC:-/dev/tty}"
 
+    # Dry-run early-out — print the would-run command and return without any
+    # secrets collection or claude invocation. Moved before the secrets loop so
+    # --dry-run is fully non-interactive (no TTY required, no env file writes).
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] mcp ${name} (would run: ${claude_bin} mcp add ${install_args[*]})"
+        return 0
+    fi
+
     # Collect env vars (skipped for OAuth-only MCPs).
     local exported_env=()
     if [[ "$oauth" -eq 1 ]]; then
@@ -416,12 +424,6 @@ mcp_wizard_run() {
             # Overwrite local copy immediately — never let it linger as a named var.
             collected_value=""
         done
-    fi
-
-    # Dry-run early-out — no file writes beyond secrets already persisted above.
-    if [[ "$dry_run" -eq 1 ]]; then
-        echo "[+ INSTALL] mcp ${name} (would run: ${claude_bin} mcp add ${install_args[*]})"
-        return 0
     fi
 
     # Invoke claude mcp add with env vars scoped to the child process only.
