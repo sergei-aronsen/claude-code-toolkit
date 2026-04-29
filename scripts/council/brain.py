@@ -2428,6 +2428,122 @@ PLAN:
     return 0
 
 
+def _run_retro(commit_sha, config):
+    """Phase 24 SP8 — retrospective post-implementation review.
+
+    Reads the commit's diff plus a prior Council report (if any), asks
+    the Pragmatist to compare what shipped against what was approved,
+    and prints an ALIGNED / DRIFT / UNCLEAR verdict.
+
+    Lookups:
+      - `git show <sha>`           — body of the commit (message + diff).
+      - `.claude/scratchpad/council-report.md` at HEAD~1 of <sha>, if any.
+        Falls back to current scratchpad copy when the historical version
+        is not in tree.
+
+    Output is markdown to stdout; exit codes:
+      0  ALIGNED, no drift detected
+      0  UNCLEAR, model could not decide (still informational)
+      1  DRIFT, the implementation deviates from the approved plan
+      2  Setup error (no commit, git missing, model failure)
+    """
+    if not commit_sha:
+        print("\n❌ retro mode requires --commit <sha>", file=sys.stderr)
+        return 2
+
+    # Pull commit body (message + diff) within MAX_GIT_DIFF cap.
+    git_show = run_command(["git", "show", commit_sha], timeout=30)
+    if not git_show or git_show.startswith("Error"):
+        print(f"\n❌ git show {commit_sha} failed: {git_show}", file=sys.stderr)
+        return 2
+    git_show = _truncate(git_show, MAX_GIT_DIFF)
+
+    # Try to recover the Council report that existed just before this commit.
+    prior_report = run_command(
+        ["git", "show", f"{commit_sha}~1:.claude/scratchpad/council-report.md"],
+        timeout=10,
+    ) or ""
+    if not prior_report or prior_report.startswith("Error"):
+        report_path = Path.cwd() / ".claude" / "scratchpad" / "council-report.md"
+        prior_report = report_path.read_text(encoding="utf-8") if report_path.is_file() else ""
+    prior_report = _truncate(prior_report or "(no prior Council report on file)", 30000)
+
+    pragmatist_system = compose_system_prompt("pragmatist", git_show)
+    retro_prompt = f"""{pragmatist_system}
+
+You are reviewing whether a shipped commit matches the implementation plan
+that the Council approved BEFORE the commit was made. The two inputs are:
+
+PRIOR COUNCIL REPORT (approved plan + verdict):
+{redact_context(prior_report, label='PRIOR REPORT')}
+
+---
+
+COMMIT {commit_sha} (full diff + message):
+{redact_context(git_show, label='COMMIT')}
+
+---
+
+Compare what shipped against what was approved. Use this structure:
+
+## Alignment Summary
+One paragraph: did the implementation match the approved plan?
+
+## Specific Drift (if any)
+- Bullet list of concrete deviations: feature added that wasn't approved,
+  approved item missing, scope expanded, etc. Empty list when fully aligned.
+
+## Verdict
+End with exactly one line:
+VERDICT: ALIGNED   — implementation matches what Council approved
+VERDICT: DRIFT     — implementation deviates from approved plan
+VERDICT: UNCLEAR   — insufficient context to decide
+"""
+
+    if not config.get("_openai_available", True):
+        print("\n❌ Pragmatist (ChatGPT) unavailable — retro mode needs at least one reviewer.", file=sys.stderr)
+        return 2
+
+    print(f"\n🔁 Retrospective review of commit {commit_sha[:12]}...")
+    response, fallback_used = call_with_fallback(
+        lambda: ask_chatgpt(retro_prompt, config, system_prompt=pragmatist_system),
+        fallback_prompt=retro_prompt,
+        fallback_system=pragmatist_system,
+        config=config,
+        label="Retro",
+    )
+    record_usage("retro", verdict=None, plan_hash=_hash_plan(commit_sha),
+                 fallback_used=fallback_used)
+
+    if is_error_response(response):
+        print(f"\n❌ Retro reviewer failed: {response}", file=sys.stderr)
+        return 2
+
+    text_upper = response.upper()
+    m = re.search(r"VERDICT:\s*(ALIGNED|DRIFT|UNCLEAR)", text_upper)
+    verdict = m.group(1) if m else "UNCLEAR"
+
+    print("=" * 60)
+    print("🔁 SUPREME COUNCIL — RETROSPECTIVE REPORT")
+    print("=" * 60)
+    print(f"Commit: {commit_sha}")
+    print(response)
+    print("=" * 60)
+    print(f"VERDICT: {verdict}")
+    print("=" * 60)
+
+    if config.get("_format") == "json":
+        print(json.dumps({
+            "mode": "retro",
+            "commit": commit_sha,
+            "verdict": verdict,
+            "review_text": response,
+            "fallback_used": bool(fallback_used),
+        }, ensure_ascii=False))
+
+    return 1 if verdict == "DRIFT" else 0
+
+
 def cmd_stats(argv):
     """Render usage.jsonl as a human or CSV summary.
 
@@ -2636,7 +2752,7 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["validate-plan", "audit-review"],
+        choices=["validate-plan", "audit-review", "retro"],
         default=None,
         help="Council mode (default: validate-plan when a positional plan is given)",
     )
@@ -2644,6 +2760,16 @@ def main():
         "--report",
         default=None,
         help="Path to audit report (required when --mode audit-review)",
+    )
+    parser.add_argument(
+        "--commit",
+        default=None,
+        help=(
+            "Phase 24 SP8 — commit SHA for --mode retro. Council reads the "
+            "commit diff + the Council report saved before the commit, then "
+            "renders an ALIGNED / DRIFT / UNCLEAR verdict on whether the "
+            "implementation matches what was approved."
+        ),
     )
     parser.add_argument(
         "--no-cache",
@@ -2711,6 +2837,10 @@ def main():
             parser.error("--report is required with --mode audit-review")
         rc = run_audit_review(args.report, config)
         sys.exit(rc)
+    elif args.mode == "retro":
+        if not args.commit:
+            parser.error("--commit <sha> is required with --mode retro")
+        sys.exit(_run_retro(args.commit, config))
     else:
         if not args.plan:
             print("\n❌ validate-plan mode requires a positional plan argument",
