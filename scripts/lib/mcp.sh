@@ -431,3 +431,54 @@ mcp_wizard_run() {
         "$claude_bin" mcp add "${install_args[@]}"
     fi
 }
+
+# ─────────────────────────────────────────────────
+# TUI page assembly helper (MCP-03)
+# ─────────────────────────────────────────────────
+
+# mcp_status_array — populate TUI_LABELS/GROUPS/INSTALLED/DESCS for the MCP page.
+# Side effects: writes to global arrays consumed by tui_checklist (from lib/tui.sh).
+# Globals (write):
+#   TUI_LABELS[]      — 9 names (alpha)
+#   TUI_GROUPS[]      — all "MCP" (single section)
+#   TUI_INSTALLED[]   — 0/1 per probe (state=2 maps to 0 with [unavailable] in desc)
+#   TUI_DESCS[]       — description strings (prefixed when CLI absent)
+#   MCP_CLI_PRESENT   — 0 if all 9 probes returned 2 (no CLI), 1 otherwise
+mcp_status_array() {
+    if [[ "${#MCP_NAMES[@]}" -eq 0 ]]; then
+        mcp_catalog_load || return 1
+    fi
+    TUI_LABELS=()
+    TUI_GROUPS=()
+    TUI_INSTALLED=()
+    TUI_DESCS=()
+    MCP_CLI_PRESENT=0
+    local i name desc rc
+    for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
+        name="${MCP_NAMES[$i]}"
+        desc="${MCP_DESCS[$i]}"
+        TUI_LABELS+=("${MCP_DISPLAY[$i]}")
+        TUI_GROUPS+=("MCP")
+        rc=0
+        is_mcp_installed "$name" || rc=$?
+        case "$rc" in
+            0)
+                TUI_INSTALLED+=(1)
+                MCP_CLI_PRESENT=1
+                ;;
+            1)
+                TUI_INSTALLED+=(0)
+                MCP_CLI_PRESENT=1
+                ;;
+            *)
+                # rc=2 (CLI absent or list failed) — render row but mark unavailable.
+                # Using *) instead of 2) to treat any unexpected return as unavailable
+                # (fail-soft posture if jq fails or catalog is corrupted).
+                TUI_INSTALLED+=(0)
+                desc="[unavailable] ${desc}"
+                ;;
+        esac
+        TUI_DESCS+=("$desc")
+    done
+    export MCP_CLI_PRESENT
+}
