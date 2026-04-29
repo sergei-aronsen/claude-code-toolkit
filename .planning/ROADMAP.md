@@ -168,7 +168,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete   | 2026-04-29 |
+| 24. Unified TUI Installer + Centralized Detection | 5/5 | Complete    | 2026-04-29 |
 | 25. MCP Selector | 0/4 | Not started | - |
 | 26. Skills Selector | 0/3 | Not started | - |
 | 27. Marketplace Publishing + Claude Desktop Reach | 0/4 | Not started | - |

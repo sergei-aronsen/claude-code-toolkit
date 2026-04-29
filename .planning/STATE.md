@@ -4,7 +4,7 @@ milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: verifying
 stopped_at: Completed 24-05-manifest-and-docs-PLAN.md
-last_updated: "2026-04-29T11:26:43.441Z"
+last_updated: "2026-04-29T11:40:17.914Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
@@ -31,8 +31,8 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 |-------------------------------------------------------|
 ```
 
-Phase: 24 (unified-tui-installer-centralized-detection) — EXECUTING
-Plan: 5 of 5
+Phase: 25
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-04-29
 
