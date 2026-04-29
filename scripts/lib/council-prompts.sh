@@ -237,6 +237,78 @@ install_council_personas() {
 }
 
 
+# Phase 24 SP9 — Russian translations of the four system prompts. Same names
+# as the English originals; brain.py picks them up via load_prompt() when
+# language detection or `--lang ru` selects ru.
+COUNCIL_RU_PROMPTS=(
+    "skeptic-system"
+    "pragmatist-system"
+    "audit-review-skeptic"
+    "audit-review-pragmatist"
+)
+
+# _fetch_council_ru_prompt <name> <dest>
+# Returns 0 if a fresh upstream copy is now at <dest>, 1 on fetch failure.
+_fetch_council_ru_prompt() {
+    local name="$1"
+    local dest="$2"
+
+    if [[ -n "${TK_COUNCIL_PROMPTS_DIR:-}" && -f "$TK_COUNCIL_PROMPTS_DIR/ru/${name}.md" ]]; then
+        cp "$TK_COUNCIL_PROMPTS_DIR/ru/${name}.md" "$dest"
+        return 0
+    fi
+    if curl -sSLf "$REPO_URL/templates/council-prompts/ru/${name}.md" -o "$dest" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$dest"
+    return 1
+}
+
+# install_council_ru_prompts
+# Installs the Russian translations into <target>/prompts/ru/.
+# Phase 24 SP9.
+install_council_ru_prompts() {
+    local target="${COUNCIL_DIR:-${council_dir:-$HOME/.claude/council}}"
+    local ru_dir="$target/prompts/ru"
+    mkdir -p "$ru_dir"
+
+    local name installed_path tmp_path new_path stamp
+    for name in "${COUNCIL_RU_PROMPTS[@]}"; do
+        installed_path="$ru_dir/${name}.md"
+        tmp_path="$(mktemp "${TMPDIR:-/tmp}/council-ru-${name}.XXXXXX")"
+
+        if ! _fetch_council_ru_prompt "$name" "$tmp_path"; then
+            echo -e "  ${YELLOW}⚠${NC} prompts/ru/${name}.md (download failed — skipping)"
+            rm -f "$tmp_path"
+            continue
+        fi
+
+        if [[ ! -f "$installed_path" ]]; then
+            mv "$tmp_path" "$installed_path"
+            echo -e "  ${GREEN}✓${NC} prompts/ru/${name}.md installed"
+            continue
+        fi
+
+        if cmp -s "$tmp_path" "$installed_path" 2>/dev/null; then
+            rm -f "$tmp_path"
+            echo -e "  ${GREEN}✓${NC} prompts/ru/${name}.md (already current)"
+            continue
+        fi
+
+        new_path="${installed_path}.upstream-new.md"
+        if [[ -f "$new_path" ]] && ! cmp -s "$new_path" "$tmp_path" 2>/dev/null; then
+            stamp=$(date -u +%s)
+            mv "$new_path" "${new_path}.${stamp}"
+            echo -e "  ${YELLOW}⚠${NC} prompts/ru/${name}.md: preserved prior reconciliation as .upstream-new.md.${stamp}"
+        fi
+        mv "$tmp_path" "$new_path"
+        echo -e "  ${YELLOW}⚠${NC} prompts/ru/${name}.md differs from upstream — wrote ${new_path}"
+        echo -e "       Diff:  diff -u \"$installed_path\" \"$new_path\""
+        echo -e "       Apply: mv \"$new_path\" \"$installed_path\""
+    done
+}
+
+
 # install_council_system_prompts
 # Installs all four system prompts into <target>/prompts/, preserving any
 # local customizations.

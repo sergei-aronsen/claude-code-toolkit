@@ -731,6 +731,7 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
         install_council_system_prompts() { :; }
         install_council_personas() { :; }
+        install_council_ru_prompts() { :; }
     fi
     rm -f "$lib_prompts_tmp"
 
@@ -772,6 +773,11 @@ setup_council() {
     # Install editable system prompts (Phase 24 Sub-Phase 2). brain.py reads
     # them via load_prompt() and falls back to embedded constants when missing.
     install_council_system_prompts
+
+    # Install Russian translations (Phase 24 SP9). brain.py picks them up
+    # via load_prompt() when --lang ru is set or CLAUDE.md auto-detects
+    # cyrillic > 0.2.
+    install_council_ru_prompts
 
     # Install domain persona overlays (Phase 24 SP8). detect_domain() in
     # brain.py classifies the plan into security / performance / ux /

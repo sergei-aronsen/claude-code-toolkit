@@ -58,6 +58,7 @@ else
     echo -e "${YELLOW}⚠${NC} Could not fetch council-prompts.sh — skipping system-prompt install"
     install_council_system_prompts() { :; }
     install_council_personas() { :; }
+    install_council_ru_prompts() { :; }
 fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -293,6 +294,10 @@ fi
 # brain.py reads them via load_prompt() and falls back to embedded constants
 # when files are missing.
 install_council_system_prompts
+
+# Install Russian translations (Phase 24 SP9) — selected via --lang ru or
+# auto-detection of cyrillic CLAUDE.md.
+install_council_ru_prompts
 
 # Install domain persona overlays (Phase 24 SP8). detect_domain() in brain.py
 # classifies the plan into security / performance / ux / migration and the
