@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.5
 milestone_name: Install Flow UX & Desktop Reach
 status: executing
-stopped_at: Completed 25-02-wizard-and-secrets-PLAN.md
-last_updated: "2026-04-29T12:17:49.416Z"
+stopped_at: Completed 25-03-install-sh-mcps-page-PLAN.md
+last_updated: "2026-04-29T12:25:57.311Z"
 last_activity: 2026-04-29
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -32,7 +32,7 @@ Phase 24 [ ] Phase 25 [ ] Phase 26 [ ] Phase 27 [ ]
 ```
 
 Phase: 25 (MCP Selector) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-29
 
@@ -105,6 +105,9 @@ Full log in PROJECT.md Key Decisions table. Recent v4.4 highlights:
 - [Phase 25]: mcp_catalog_load join separator was already $'\037' (SUMMARY note was a display artifact — no bug)
 - [Phase 25]: dry-run skips only claude mcp add invocation — secrets collection runs even in dry-run mode
 - [Phase 25]: TK_MCP_TTY_SRC + TK_MCP_CONFIG_HOME seams mirror Phase 24 TK_TUI_TTY_SRC / TK_BOOTSTRAP_TTY_SRC pattern exactly
+- [Phase 25]: dry-run early-out in mcp_wizard_run moved before secrets collection — makes --dry-run fully non-interactive (no TTY required)
+- [Phase 25]: print_install_status moved before MCP routing gate so both MCP branch and components branch share the same function definition
+- [Phase 25]: mcps mutex routing: components page skipped when mcps set; exit at end of MCP branch prevents components code executing
 
 ### Key v4.5 Constraints (from research)
 
@@ -170,11 +173,12 @@ Carry-overs available for next milestone scoping:
 | Phase 24 P05 | 10 | 3 tasks | 2 files |
 | Phase 25 P01 | 108 | 2 tasks | 2 files |
 | Phase 25 P02 | 304 | 2 tasks | 3 files |
+| Phase 25 P03 | 780 | 2 tasks | 2 files |
 
 ## Session Continuity
 
-Last session: 2026-04-29T12:17:49.412Z
-Stopped at: Completed 25-02-wizard-and-secrets-PLAN.md
+Last session: 2026-04-29T12:25:57.307Z
+Stopped at: Completed 25-03-install-sh-mcps-page-PLAN.md
 Resume file: None
 
 **To start v4.5 implementation:**
