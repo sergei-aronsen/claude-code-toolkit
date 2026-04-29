@@ -224,6 +224,9 @@
         "path": "scripts/lib/bootstrap.sh"
       },
       {
+        "path": "scripts/lib/cli-recommendations.sh"
+      },
+      {
         "path": "scripts/lib/dry-run-output.sh"
       },
       {

@@ -19,12 +19,30 @@ NC='\033[0m'
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 COUNCIL_DIR="$CLAUDE_DIR/council"
+COMMANDS_DIR="$CLAUDE_DIR/commands"
 
 # Guard: exit cleanly when stdin is not a terminal (CI / curl | bash without pty)
 if [[ ! -r /dev/tty ]]; then
     echo -e "${RED}✗${NC} This script requires an interactive terminal."
     echo -e "  Run it directly (or via \`bash <(curl -sSL ...)\`), not \`curl | bash\`."
     exit 1
+fi
+
+# Source cli-recommendations helper (Phase 24 Sub-Phase 1).
+# Test seam: TK_COUNCIL_LIB_DIR=<path> uses local copies (init-local.sh / hermetic tests).
+LIB_CLI_TMP=$(mktemp "${TMPDIR:-/tmp}/cli-recommendations.XXXXXX")
+trap 'rm -f "$LIB_CLI_TMP"' EXIT
+
+if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" ]]; then
+    cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$LIB_CLI_TMP"
+    # shellcheck source=/dev/null
+    source "$LIB_CLI_TMP"
+elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$LIB_CLI_TMP" 2>/dev/null; then
+    # shellcheck source=/dev/null
+    source "$LIB_CLI_TMP"
+else
+    echo -e "${YELLOW}⚠${NC} Could not fetch cli-recommendations.sh — skipping CLI hints"
+    recommend_clis() { :; }
 fi
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -82,6 +100,14 @@ else
     echo -e "  ${GREEN}✓${NC} tree"
 fi
 
+echo ""
+
+# ─────────────────────────────────────────────────
+# Step 1b: Provider CLI recommendations (informational)
+# ─────────────────────────────────────────────────
+
+echo -e "${CYAN}Step 1b: Provider CLI availability${NC}"
+recommend_clis
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -199,6 +225,29 @@ else
     echo -e "  ${YELLOW}⚠${NC} audit-review.md (not critical)"
 fi
 
+# Install /council slash command globally (Phase 24 Sub-Phase 1).
+# Same idempotent + mtime-aware pattern as audit-review.md above. Council is
+# a global feature — its slash command lives in ~/.claude/commands/, not in
+# per-project ./.claude/commands/ (where it duplicated effort across every
+# project that ran init-claude.sh).
+mkdir -p "$COMMANDS_DIR"
+if curl -sSLf "$REPO_URL/commands/council.md" \
+        -o "$COMMANDS_DIR/council.md.tmp" 2>/dev/null; then
+    if [ ! -f "$COMMANDS_DIR/council.md" ]; then
+        mv "$COMMANDS_DIR/council.md.tmp" "$COMMANDS_DIR/council.md"
+        echo -e "  ${GREEN}✓${NC} commands/council.md installed (global)"
+    elif [ "$COMMANDS_DIR/council.md.tmp" -nt "$COMMANDS_DIR/council.md" ]; then
+        mv "$COMMANDS_DIR/council.md.tmp" "$COMMANDS_DIR/council.md"
+        echo -e "  ${GREEN}✓${NC} commands/council.md (refreshed)"
+    else
+        rm -f "$COMMANDS_DIR/council.md.tmp"
+        echo -e "  ${GREEN}✓${NC} commands/council.md (already current)"
+    fi
+else
+    rm -f "$COMMANDS_DIR/council.md.tmp"
+    echo -e "  ${YELLOW}⚠${NC} commands/council.md (not critical)"
+fi
+
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -288,6 +337,15 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# Check global slash command (Phase 24 Sub-Phase 1)
+if [[ -f "$COMMANDS_DIR/council.md" ]]; then
+    echo -e "  ${GREEN}✓${NC} commands/council.md installed (global)"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${RED}✗${NC} commands/council.md missing"
+    FAIL=$((FAIL + 1))
+fi
+
 # Check config
 if [[ -f "$CONFIG_FILE" ]]; then
     echo -e "  ${GREEN}✓${NC} config.json exists"
@@ -336,7 +394,8 @@ echo ""
 echo -e "${BLUE}What was installed:${NC}"
 echo -e "  1. ${GREEN}Orchestrator${NC}  — ~/.claude/council/brain.py"
 echo -e "  2. ${GREEN}Configuration${NC} — ~/.claude/council/config.json"
-echo -e "  3. ${GREEN}Shell alias${NC}   — brain → python3 ~/.claude/council/brain.py"
+echo -e "  3. ${GREEN}Slash command${NC} — ~/.claude/commands/council.md (global)"
+echo -e "  4. ${GREEN}Shell alias${NC}   — brain → python3 ~/.claude/council/brain.py"
 echo ""
 
 # Show next steps if keys are missing
