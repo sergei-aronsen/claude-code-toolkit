@@ -85,6 +85,7 @@ log_error()   { echo -e "${RED}✗${NC} $1"; }
 LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
+LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
 # UN-05 base-plugin invariant snapshots (sorted file lists, pre/post)
 SP_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/sp-snap.XXXXXX")
 GSD_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-snap.XXXXXX")
@@ -93,10 +94,10 @@ GSD_AFTER_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-after.XXXXXX")
 # Trap registered BEFORE acquire_lock so SIGINT mid-acquire still releases cleanly.
 # release_lock is defined in lib/state.sh (sourced below); the 2>/dev/null guard
 # handles the case where the trap fires before sourcing completes.
-trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$SP_SNAP_TMP" "$GSD_SNAP_TMP" "$SP_AFTER_TMP" "$GSD_AFTER_TMP"' EXIT
+trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$SP_SNAP_TMP" "$GSD_SNAP_TMP" "$SP_AFTER_TMP" "$GSD_AFTER_TMP"' EXIT
 
 # ───────── source libs HARD-fail (with TK_UNINSTALL_LIB_DIR test seam) ─────────
-for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP"; do
+for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UNINSTALL_LIB_DIR:-}" && -f "$TK_UNINSTALL_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UNINSTALL_LIB_DIR/$lib_name" "$lib_path"
@@ -179,6 +180,37 @@ is_protected_path() {
         "$HOME"/.claude/get-shit-done/*) return 0 ;;
     esac
     return 1
+}
+
+# classify_bridge_file <abs_path> <recorded_bridge_sha256>
+# Like classify_file but skips the is_protected_path guard. Bridges live
+# OUTSIDE $CLAUDE_DIR/ by design (next to <project>/CLAUDE.md or in
+# ~/.gemini/, ~/.codex/) so the path-outside-CLAUDE_DIR rule must NOT
+# block them. Base-plugin trees (~/.claude/plugins/.../superpowers,
+# ~/.claude/get-shit-done) are still protected via an inline check.
+classify_bridge_file() {
+    local path="$1" recorded="$2"
+    # Defensive: no bridge should ever live inside SP/GSD trees, but guard
+    # in case a corrupt state file claims otherwise.
+    case "$path" in
+        "$HOME"/.claude/plugins/cache/claude-plugins-official/superpowers/*) printf 'PROTECTED'; return 0 ;;
+        "$HOME"/.claude/get-shit-done/*) printf 'PROTECTED'; return 0 ;;
+    esac
+    if [[ ! -f "$path" ]]; then
+        printf 'MISSING'
+        return 0
+    fi
+    local current
+    current=$(sha256_file "$path" 2>/dev/null || echo "")
+    if [[ -z "$current" ]]; then
+        printf 'MISSING'
+        return 0
+    fi
+    if [[ "$current" == "$recorded" ]]; then
+        printf 'REMOVE'
+    else
+        printf 'MODIFIED'
+    fi
 }
 
 # ───────── classify_file <relative_or_absolute_path> <recorded_sha256> ─────────
@@ -486,6 +518,32 @@ while IFS=$'\t' read -r path sha256; do
     esac
 done < <(jq -r '.installed_files[] | "\(.path)\t\(.sha256)"' <<<"$STATE_JSON")
 
+# Phase 29 BRIDGE-UN-01: classify bridges[] entries alongside installed_files[].
+# Bridges are tracked files like any other — same classify_bridge_file helper, same
+# REMOVE/MODIFIED/MISSING/PROTECTED buckets. Per-bridge metadata (target, scope)
+# is stashed in BRIDGE_META_<n> arrays so the post-removal _bridge_remove_state_entry
+# call can find the right (target, scope, path) triple.
+#
+# bash 3.2 invariant: NO associative arrays. We use parallel indexed arrays
+# keyed by absolute path; a linear scan recovers (target, scope) on need.
+BRIDGE_PATHS=()
+BRIDGE_TARGETS=()
+BRIDGE_SCOPES=()
+while IFS=$'\t' read -r b_target b_path b_scope b_sha; do
+    [[ -z "$b_path" ]] && continue
+    BRIDGE_PATHS+=("$b_path")
+    BRIDGE_TARGETS+=("$b_target")
+    BRIDGE_SCOPES+=("$b_scope")
+    verdict=$(classify_bridge_file "$b_path" "$b_sha")
+    case "$verdict" in
+        REMOVE)    REMOVE_LIST+=("$b_path") ;;
+        MODIFIED)  MODIFIED_LIST+=("$b_path") ;;
+        MISSING)   MISSING_LIST+=("$b_path") ;;
+        PROTECTED) PROTECTED_LIST+=("$b_path") ;;
+        KEEP)      KEEP_LIST+=("$b_path") ;;
+    esac
+done < <(jq -r '.bridges // [] | .[] | "\(.target)\t\(.path)\t\(.scope)\t\(.bridge_sha256)"' <<<"$STATE_JSON")
+
 # Derive counters from array lengths.
 n_remove=${#REMOVE_LIST[@]}
 n_modified=${#MODIFIED_LIST[@]}
@@ -577,6 +635,34 @@ if [[ ${#MODIFIED_LIST[@]} -gt 0 ]]; then
     log_info "${#MODIFIED_LIST[@]} file(s) modified since install. Per-file decision required."
     for rel in "${MODIFIED_LIST[@]}"; do
         prompt_modified_for_uninstall "$rel"
+    done
+fi
+
+# Phase 29 BRIDGE-UN-01: purge bridges[] entries whose files were removed
+# this run. Skip when --keep-state (BRIDGE-UN-02). Bridge metadata recovered
+# by linear scan against BRIDGE_PATHS / BRIDGE_TARGETS / BRIDGE_SCOPES.
+#
+# This must run BEFORE the state-file deletion block at line ~659, otherwise
+# the state file is gone and _bridge_remove_state_entry no-ops silently.
+# Order: backup → strip → file-delete → bridges[] purge → state-delete (LAST).
+if [[ $KEEP_STATE -eq 0 && ${#DELETED_LIST[@]} -gt 0 && ${#BRIDGE_PATHS[@]} -gt 0 ]]; then
+    # Honor TK_UNINSTALL_HOME → TK_BRIDGE_HOME so the helper resolves the
+    # same state file path we are operating on.
+    export TK_BRIDGE_HOME="${TK_UNINSTALL_HOME:-${TK_BRIDGE_HOME:-$HOME}}"
+    for deleted in "${DELETED_LIST[@]}"; do
+        # Linear scan to find this deleted path in BRIDGE_PATHS.
+        idx=0
+        for bp in "${BRIDGE_PATHS[@]}"; do
+            if [[ "$bp" == "$deleted" ]]; then
+                _bridge_remove_state_entry \
+                    "${BRIDGE_TARGETS[$idx]}" \
+                    "${BRIDGE_SCOPES[$idx]}" \
+                    "$bp" >/dev/null 2>&1 \
+                    || log_warning "Failed to purge bridges[] entry for $bp"
+                break
+            fi
+            idx=$((idx + 1))
+        done
     done
 fi
 
