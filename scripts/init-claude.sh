@@ -475,13 +475,18 @@ download_extras() {
         # -f makes curl exit non-zero on HTTP 4xx/5xx so we don't write
         # error bodies (e.g. "404: Not Found") into user-facing files
         # and so the fallback branch actually triggers (audit C-06).
-        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null; then
+        # Audit M5: -f does NOT catch 200 OK with empty body (CDN bug,
+        # transient redirect to empty resource). Verify size > 0 and treat
+        # zero-byte as failure to trigger the fallback. Matches the
+        # update-claude.sh:1145 `[[ ! -s ... ]]` discard pattern.
+        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
             echo -e "  ${GREEN}✓${NC} $dest"
         else
+            rm -f "$full_dest"
             echo -e "  ${YELLOW}⚠${NC} $dest (using base template)"
             # Try base template as fallback
             base_src="${src/templates\/$FRAMEWORK/templates\/base}"
-            if ! curl -sSLf "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null; then
+            if ! curl -sSLf "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || [[ ! -s "$full_dest" ]]; then
                 rm -f "$full_dest"   # avoid leaving a half-written or empty file
                 echo -e "  ${RED}✗${NC} $dest (download failed, no fallback)"
             fi

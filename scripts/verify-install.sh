@@ -347,15 +347,18 @@ MCP_FOUND=false
 if [[ -f "$MCP_GLOBAL" ]]; then
     MCP_FOUND=true
     if command -v python3 &>/dev/null; then
+        # Audit H2: pass path via argv, not heredoc interpolation.
+        # Apostrophes / backslashes in $HOME (e.g. /Users/o'brien) would
+        # otherwise break the Python source.
         SERVER_COUNT=$(python3 -c "
-import json
-with open('$MCP_GLOBAL') as f:
+import json, sys
+with open(sys.argv[1]) as f:
     config = json.load(f)
 servers = config.get('mcpServers', {})
 print(len(servers))
 for name in servers:
     print(f'  {name}')
-" 2>/dev/null || echo "0")
+" "$MCP_GLOBAL" 2>/dev/null || echo "0")
         COUNT=$(echo "$SERVER_COUNT" | head -1)
         if [[ "$COUNT" -gt 0 ]]; then
             pass "Global MCP: $COUNT server(s) configured"
@@ -373,15 +376,16 @@ fi
 if [[ -f "$MCP_PROJECT" ]]; then
     MCP_FOUND=true
     if command -v python3 &>/dev/null; then
+        # Audit H2: pass path via argv (see MCP_GLOBAL above).
         SERVER_COUNT=$(python3 -c "
-import json
-with open('$MCP_PROJECT') as f:
+import json, sys
+with open(sys.argv[1]) as f:
     config = json.load(f)
 servers = config.get('mcpServers', {})
 print(len(servers))
 for name in servers:
     print(f'  {name}')
-" 2>/dev/null || echo "0")
+" "$MCP_PROJECT" 2>/dev/null || echo "0")
         COUNT=$(echo "$SERVER_COUNT" | head -1)
         if [[ "$COUNT" -gt 0 ]]; then
             pass "Project MCP: $COUNT server(s) configured"

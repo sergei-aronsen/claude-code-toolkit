@@ -33,7 +33,14 @@ YES=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --yes) YES=1 ;;
-        *) echo -e "${YELLOW}⚠${NC} unknown flag: $1 (ignoring)" ;;
+        *)
+            # Audit M3/M4: fail-closed on unknown flag (matches uninstall.sh:42,
+            # init-claude.sh:64). Was previously warn-and-continue. setup-security
+            # rewrites ~/.claude/settings.json — typos must not silently proceed.
+            echo -e "${RED}✗${NC} unknown flag: $1" >&2
+            echo "Supported: --yes" >&2
+            exit 1
+            ;;
     esac
     shift
 done
@@ -285,7 +292,34 @@ if [[ -f "$SETTINGS_JSON" ]]; then
     fi
 else
     echo -e "  Creating settings.json with combined hook..."
-    cat > "$SETTINGS_JSON" << SETTINGS
+    # Audit M6: previous heredoc interpolated $COMBINED_HOOK directly into the
+    # JSON literal. A $HOME containing `"` or `\` (rare but possible) produced
+    # malformed JSON. Build via jq --arg to keep the path as a JSON-encoded
+    # string regardless of shell-special characters. Fall back to heredoc only
+    # if jq is missing (it is required by the surrounding hooks anyway).
+    if command -v jq &>/dev/null; then
+        if ! jq -n --arg cmd "$COMBINED_HOOK" '{
+              hooks: {
+                PreToolUse: [
+                  {
+                    matcher: "Bash",
+                    _tk_owned: true,
+                    hooks: [ { type: "command", command: $cmd } ]
+                  }
+                ]
+              },
+              enabledPlugins: {
+                "code-review@claude-plugins-official": true,
+                "commit-commands@claude-plugins-official": true,
+                "security-guidance@claude-plugins-official": true,
+                "frontend-design@claude-plugins-official": true
+              }
+            }' > "$SETTINGS_JSON"; then
+            echo -e "  ${RED}✗${NC} jq failed to write settings.json"
+            exit 1
+        fi
+    else
+        cat > "$SETTINGS_JSON" << SETTINGS
 {
   "hooks": {
     "PreToolUse": [
@@ -309,6 +343,7 @@ else
   }
 }
 SETTINGS
+    fi
     echo -e "  ${GREEN}✓${NC} Created settings.json with combined hook and official plugins"
 fi
 

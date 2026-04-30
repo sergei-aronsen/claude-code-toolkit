@@ -290,6 +290,14 @@ run_clean_backups() {
                 epoch="${name#.claude-backup-pre-migrate-}" ;;
             *) idx=$((idx + 1)); continue ;;
         esac
+        # Audit L4: case glob matches digit prefix but does NOT bound the suffix
+        # (e.g. `.claude-backup-pre-migrate-1234abc` parses to `1234abc`). With
+        # set -euo pipefail the arith below would abort the entire script.
+        # Reject non-numeric and skip the entry.
+        if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
+            idx=$((idx + 1))
+            continue
+        fi
         age_secs=$(( now_epoch - epoch ))
         # Audit L: `du | cut || echo "?"` only fires the fallback when cut
         # itself fails — du's exit code never reached the OR. Capture du

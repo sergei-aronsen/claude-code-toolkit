@@ -34,7 +34,15 @@ for arg in "$@"; do
             sed -n '3,18p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
-        *) echo -e "\033[1;33m⚠\033[0m unknown flag: $arg (ignoring)" >&2 ;;
+        *)
+            # Audit M3: fail-closed on unknown flag. Migration is destructive
+            # (renames duplicates after backup). A typo like `--dry-runn`
+            # previously warned and proceeded with the interactive default.
+            # Mirrors the uninstall.sh:42 / setup-security.sh:33 pattern.
+            echo -e "\033[0;31m✗\033[0m unknown flag: $arg" >&2
+            echo "Supported: --yes/-y --dry-run --verbose/-v --no-backup --help/-h" >&2
+            exit 1
+            ;;
     esac
 done
 # VERBOSE is reserved for Plan 05-03 (extended logging); referenced here to satisfy shellcheck

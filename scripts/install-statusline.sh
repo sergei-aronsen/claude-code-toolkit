@@ -20,7 +20,14 @@ YES=0
 for _arg in "$@"; do
     case "$_arg" in
         --yes) YES=1 ;;
-        *) echo -e "${YELLOW}⚠${NC} unknown flag: $_arg (ignoring)" ;;
+        *)
+            # Audit M4: fail-closed on unknown flag (matches uninstall.sh:42,
+            # init-claude.sh:64, setup-security.sh:33). Typos like
+            # `--dry-runn` previously warned-and-continued.
+            echo -e "${RED}✗${NC} unknown flag: $_arg" >&2
+            echo "Supported: --yes" >&2
+            exit 1
+            ;;
     esac
 done
 : "${YES}"  # silence shellcheck SC2034 — no-op stub today
@@ -129,15 +136,20 @@ fi
 echo ""
 echo -e "${BLUE}Running initial rate limit check...${NC}"
 
+# Audit H3: probe + statusline use ${TMPDIR:-/tmp}; on macOS TMPDIR is per-user
+# (/var/folders/.../T/). Hardcoded /tmp here always missed the file the probe
+# just produced — installer always reported "Initial probe failed" on macOS.
+CACHE_FILE="${TMPDIR:-/tmp}/claude-rate-limits.json"
+
 # Remove cache to force fresh probe
-rm -f /tmp/claude-rate-limits.json
+rm -f "$CACHE_FILE"
 
 if bash "$CLAUDE_DIR/rate-limit-probe.sh" 2>/dev/null; then
-    if [ -f /tmp/claude-rate-limits.json ]; then
-        ERR=$(jq -r '.error // empty' /tmp/claude-rate-limits.json 2>/dev/null)
+    if [ -f "$CACHE_FILE" ]; then
+        ERR=$(jq -r '.error // empty' "$CACHE_FILE" 2>/dev/null)
         if [ -z "$ERR" ]; then
-            S_PCT=$(jq -r '.session_pct' /tmp/claude-rate-limits.json 2>/dev/null)
-            W_PCT=$(jq -r '.weekly_pct' /tmp/claude-rate-limits.json 2>/dev/null)
+            S_PCT=$(jq -r '.session_pct' "$CACHE_FILE" 2>/dev/null)
+            W_PCT=$(jq -r '.weekly_pct' "$CACHE_FILE" 2>/dev/null)
             echo -e "  ${GREEN}✓${NC} Session (5h): ${S_PCT}%"
             echo -e "  ${GREEN}✓${NC} Weekly  (7d): ${W_PCT}%"
         else

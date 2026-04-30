@@ -21,6 +21,11 @@ fi
 # Format time remaining from epoch
 time_remaining() {
     local reset_epoch=$1
+    # Audit M2: bash arithmetic context recursively expands $(...) inside
+    # array-index brackets. A poisoned cache (possible on Linux shared /tmp)
+    # like {"session_reset_epoch":"x[$(touch /tmp/pwn)]"} would otherwise
+    # execute commands as the statusline owner. Force numeric.
+    [[ "$reset_epoch" =~ ^[0-9]+$ ]] || reset_epoch=0
     local now
     now=$(date +%s)
     local diff=$(( reset_epoch - now ))
@@ -43,6 +48,9 @@ time_remaining() {
 colorize() {
     local pct=$1
     local text=$2
+    # Audit M2: same bash-arith RCE guard as time_remaining(). pct may be
+    # negative-prefixed by future probe; allow optional minus.
+    [[ "$pct" =~ ^-?[0-9]+$ ]] || pct=0
     if [ "$pct" -ge 90 ]; then
         printf '\033[38;5;197m%s\033[0m' "$text"
     elif [ "$pct" -ge 80 ]; then
