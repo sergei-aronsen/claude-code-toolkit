@@ -85,14 +85,14 @@ fi
 
 # Install RTK.md fallback notes to ~/.claude/RTK.md (guard: never clobber existing)
 install_rtk_notes() {
-    local src_rtk
-    src_rtk="$(dirname "$0")/../templates/global/RTK.md"
+    # Audit H3: under `bash <(curl ...)` $0 = `bash` or `/dev/fd/N`, so
+    # `dirname "$0"/../templates/global/RTK.md` resolves to a path that
+    # never exists. The previous code logged "offline / partial install"
+    # and returned 0, leaving every curl|bash user without RTK.md.
+    # Detect that case via $0 / $BASH_SOURCE and fall through to a
+    # network download from raw.githubusercontent.com — same pattern
+    # the rest of this script already uses for templates/global/CLAUDE.md.
     local dst_rtk="$HOME/.claude/RTK.md"
-
-    if [[ ! -f "$src_rtk" ]]; then
-        echo "ℹ Skipping RTK.md install — source file not found (offline / partial install)"
-        return 0
-    fi
 
     if [[ -f "$dst_rtk" ]]; then
         echo -e "  ℹ ~/.claude/RTK.md already exists (rtk init -g or prior TK install); leaving untouched."
@@ -100,8 +100,41 @@ install_rtk_notes() {
         return 0
     fi
 
-    cp "$src_rtk" "$dst_rtk"
-    echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (points to components/optional-plugins.md for rtk-ai/rtk#1276)"
+    local src_rtk
+    src_rtk="$(dirname "$0")/../templates/global/RTK.md"
+
+    # Local checkout path: $0 points at scripts/setup-security.sh and the
+    # sibling templates/ tree exists. Use cp if so.
+    if [[ -f "$src_rtk" ]]; then
+        cp "$src_rtk" "$dst_rtk"
+        echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (points to components/optional-plugins.md for rtk-ai/rtk#1276)"
+        return 0
+    fi
+
+    # curl|bash path (or any other case where the local file is absent):
+    # download via the same REPO_URL the rest of this script uses.
+    local rtk_tmp
+    rtk_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-rtk.XXXXXX") || {
+        echo "ℹ Skipping RTK.md install — mktemp failed"
+        return 0
+    }
+    # Audit M3: shell-safe trap registration so a TMPDIR with `'` works.
+    local _quoted_rtk_tmp
+    _quoted_rtk_tmp=$(printf '%q' "$rtk_tmp")
+    # shellcheck disable=SC2064
+    trap "rm -f $_quoted_rtk_tmp" RETURN
+
+    if ! curl -sSLf --max-time 30 --connect-timeout 10 --retry 2 \
+            "$REPO_URL/templates/global/RTK.md" -o "$rtk_tmp" 2>/dev/null; then
+        echo "ℹ Skipping RTK.md install — could not fetch from $REPO_URL/templates/global/RTK.md (offline?)"
+        return 0
+    fi
+    if [[ ! -s "$rtk_tmp" ]]; then
+        echo "ℹ Skipping RTK.md install — empty response from $REPO_URL/templates/global/RTK.md"
+        return 0
+    fi
+    cp "$rtk_tmp" "$dst_rtk"
+    echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (downloaded; points to components/optional-plugins.md for rtk-ai/rtk#1276)"
 }
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
