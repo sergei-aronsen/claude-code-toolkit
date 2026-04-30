@@ -58,6 +58,21 @@ def _debug(msg):
     if os.environ.get("COUNCIL_DEBUG") == "1":
         print(f"[council:debug] {msg}", file=sys.stderr)
 
+
+# Audit BRAIN-MEM-01: read at most `limit_bytes` from `path`. Replaces the
+# `path.read_text()[:N]` pattern that allocated the entire file before slicing
+# and could OOM on multi-GB files (a 229GB ~/.claude/CLAUDE.md infinite-append
+# loop hung Python at >50GB RSS). Reads `limit_bytes + 1` so the caller can
+# detect truncation. Returns "" on any OSError. Decodes as UTF-8 with
+# `errors="replace"` to preserve original Path.read_text() semantics.
+def _read_capped(path, limit_bytes):
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read(limit_bytes + 1)
+    except OSError:
+        return ""
+    return data.decode("utf-8", errors="replace")
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -146,10 +161,7 @@ def detect_council_lang(default="en"):
     path = Path.home() / ".claude" / "CLAUDE.md"
     if not path.is_file():
         return default
-    try:
-        sample = path.read_text(encoding="utf-8", errors="replace")[:500]
-    except OSError:
-        return default
+    sample = _read_capped(path, 500)[:500]
     if not sample:
         return default
     cyrillic = sum(1 for ch in sample if "Ѐ" <= ch <= "ӿ")
@@ -752,7 +764,7 @@ def read_files(file_list):
             print(f"\u26a0\ufe0f  Context limit reached ({MAX_TOTAL_CONTEXT} chars), skipping remaining files")
             break
         try:
-            text = resolved.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(resolved, 20000)
             if len(text) > 20000:
                 text = text[:20000] + "\n... (truncated)"
             remaining = MAX_TOTAL_CONTEXT - total_size
@@ -805,13 +817,10 @@ def get_project_rules():
     claude_md = find_project_root() / "CLAUDE.md"
     if not claude_md.exists():
         return ""
-    try:
-        text = claude_md.read_text(encoding="utf-8", errors="replace")
-        if len(text) > MAX_PROJECT_RULES:
-            text = text[:MAX_PROJECT_RULES] + "\n... (truncated)"
-        return text
-    except Exception:
-        return ""
+    text = _read_capped(claude_md, MAX_PROJECT_RULES)
+    if len(text) > MAX_PROJECT_RULES:
+        text = text[:MAX_PROJECT_RULES] + "\n... (truncated)"
+    return text
 
 
 # ─────────────────────────────────────────────────
@@ -834,10 +843,9 @@ def get_readme():
     if not path.is_file():
         _debug("README.md: not found")
         return ""
-    try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError as exc:
-        _debug(f"README.md: read failed ({exc})")
+    text = _read_capped(path, MAX_README)
+    if not text:
+        _debug("README.md: empty or read failed")
         return ""
     out = _truncate(text, MAX_README)
     _debug(f"README.md: {len(out)} chars (capped at {MAX_README})")
@@ -921,10 +929,9 @@ def get_planning_context():
     if not path.is_file():
         _debug(".planning/PROJECT.md: not found")
         return ""
-    try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except OSError as exc:
-        _debug(f".planning/PROJECT.md: read failed ({exc})")
+    text = _read_capped(path, MAX_PLANNING)
+    if not text:
+        _debug(".planning/PROJECT.md: empty or read failed")
         return ""
     out = _truncate(text, MAX_PLANNING)
     _debug(f".planning/PROJECT.md: {len(out)} chars (capped at {MAX_PLANNING})")
@@ -978,9 +985,8 @@ def get_tests_for(file_paths):
             if key in seen:
                 continue
             seen.add(key)
-            try:
-                text = cand.read_text(encoding="utf-8", errors="replace")
-            except OSError:
+            text = _read_capped(cand, MAX_TEST_FILE)
+            if not text:
                 continue
             text = _truncate(text, MAX_TEST_FILE, marker="(test file truncated)")
             block = f"\n--- TEST FILE: {key} ---\n{text}\n"
