@@ -967,7 +967,8 @@ CONFIGEOF
             gemini_key="$GEMINI_API_KEY"
             echo -e "    ${GREEN}✓${NC} GEMINI_API_KEY found in environment"
         else
-            read -r -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty 2>/dev/null || true
+            read -rs -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty 2>/dev/null || true
+            echo
             if [[ -z "$gemini_key" ]]; then
                 echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             fi
@@ -1017,7 +1018,8 @@ CONFIGEOF
         openai_key="$OPENAI_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
     else
-        read -r -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty 2>/dev/null || true
+        read -rs -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty 2>/dev/null || true
+        echo
         if [[ -z "$openai_key" ]]; then
             echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             echo -e "    Get key: https://platform.openai.com/api-keys"
@@ -1032,7 +1034,8 @@ CONFIGEOF
         openrouter_key="$OPENROUTER_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
     else
-        read -r -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        read -rs -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        echo
         if [[ -z "$openrouter_key" ]]; then
             echo -e "    ${YELLOW}⚠${NC} OpenRouter fallback disabled"
         else
