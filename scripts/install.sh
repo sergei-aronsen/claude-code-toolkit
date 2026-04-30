@@ -918,11 +918,15 @@ for ((i=0; i<_disp_count; i++)); do
             # Use a subshell + 2>"$stderr_tmp" redirection (Bash 3.2 compatible —
             # avoids process substitution which is not portable across all callers).
             local_rc=0
+            # Audit M4: guard the local_flags expansion for Bash 3.2
+            # (macOS support floor) — `"${arr[@]}"` aborts under set -u
+            # when arr is empty. Match the safe form already used at
+            # lines 363/365/531/533.
             if [[ -n "$stderr_tmp" ]]; then
-                ( "dispatch_${local_name}" "${local_flags[@]}" ) 2>"$stderr_tmp" || local_rc=$?
+                ( "dispatch_${local_name}" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
             else
                 # mktemp failed (rare); fall back to no-capture path.
-                "dispatch_${local_name}" "${local_flags[@]}" || local_rc=$?
+                "dispatch_${local_name}" "${local_flags[@]+"${local_flags[@]}"}" || local_rc=$?
             fi
             ;;
     esac
