@@ -74,6 +74,100 @@ def _read_capped(path, limit_bytes):
         return ""
     return data.decode("utf-8", errors="replace")
 
+
+# Audit B2/B3: secure-tempfile helper + at-exit registry. The previous pattern
+# `NamedTemporaryFile(delete=False)` then `os.chmod(0o600)` left a TOCTOU
+# window where the file briefly existed at default umask (often 0644) before
+# the chmod executed — another local user could read the API-key headers in
+# that window. mkstemp creates with mode 0600 atomically (POSIX
+# O_CREAT|O_EXCL|0600). Files registered here are also unlinked on normal
+# exit / SystemExit, so a SIGTERM mid-curl can't strand the secret in /tmp.
+# (SIGKILL still leaks — Python cannot intercept it.)
+import atexit  # noqa: E402  (placed near helper so refactors stay local)
+import signal  # noqa: E402
+
+_SECURE_TEMPFILES = set()
+
+
+def _secure_tempfile_register(path):
+    _SECURE_TEMPFILES.add(path)
+
+
+def _secure_tempfile_unregister(path):
+    _SECURE_TEMPFILES.discard(path)
+
+
+def _secure_tempfile_cleanup_all():
+    for path in list(_SECURE_TEMPFILES):
+        try:
+            os.unlink(path)
+        except (FileNotFoundError, OSError):
+            pass
+        _SECURE_TEMPFILES.discard(path)
+
+
+atexit.register(_secure_tempfile_cleanup_all)
+
+
+def _secure_tempfile_signal_handler(signum, _frame):
+    _secure_tempfile_cleanup_all()
+    # Re-raise as default disposition so callers see the actual signal
+    # (atexit will run before re-raise but we already cleaned up above).
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
+for _sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+    try:
+        signal.signal(_sig, _secure_tempfile_signal_handler)
+    except (ValueError, OSError):
+        # Signal not available on this platform / not on main thread — skip.
+        pass
+
+
+def _write_secure_tempfile(content, prefix):
+    """Create a 0600 tempfile atomically and write `content` to it.
+
+    Returns the path string. Caller MUST call os.unlink + the unregister
+    helper when done; alternatively, _secure_tempfile_cleanup_all() runs at
+    interpreter exit. mkstemp uses O_CREAT|O_EXCL|0600 so the file never
+    exists in a world-readable state.
+    """
+    fd, path = tempfile.mkstemp(prefix=prefix, suffix=".txt")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(content)
+    except Exception:
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+        raise
+    _secure_tempfile_register(path)
+    return path
+
+
+# Audit B6: world-readable JSONL / cache. Previous code wrote usage.jsonl,
+# cached reports, and the validate-plan report under the default umask.
+# _open_0600 opens for append/write with mode 0600 atomically; existing files
+# are mode-fixed via fchmod after open so historical 0644 records are
+# tightened on next write.
+def _open_0600(path, mode_str):
+    """Open `path` for `mode_str` ('a' or 'w'), enforcing 0600 perms."""
+    flags = os.O_CREAT | os.O_WRONLY
+    if mode_str == "a":
+        flags |= os.O_APPEND
+    elif mode_str == "w":
+        flags |= os.O_TRUNC
+    else:
+        raise ValueError(f"unsupported mode: {mode_str}")
+    fd = os.open(str(path), flags, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+    except OSError:
+        pass
+    return os.fdopen(fd, mode_str, encoding="utf-8")
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -736,13 +830,38 @@ def validate_file_path(file_path):
     Audit BRAIN-H2: previous implementation rejected bare filenames like
     `Makefile` (no `/`) and the project root itself (string-prefix check
     excluded `cwd` exactly). Path.relative_to() handles both correctly.
+
+    Audit B4: refuse symlinks. Path.resolve() follows symlinks transparently,
+    so a hostile symlink at `node_modules/foo -> /Users/me/.ssh/id_rsa`
+    would resolve to a path INSIDE cwd if the link target was placed inside
+    cwd, but more dangerously could resolve to a path outside cwd while
+    appearing to start inside (since the link itself sits inside cwd).
+    Reject any path component that is a symlink \u2014 Council reviewers should
+    not be able to coerce reading of files outside the explicit tree.
     """
     file_path = file_path.strip().strip("'\"`)>")
     if not file_path:
         return None
     cwd = Path.cwd().resolve()
+    raw = cwd / file_path
+    # Walk every component looking for symlinks BEFORE resolving \u2014 once we
+    # call .resolve() the symlink chain is collapsed and we can't tell.
+    cur = Path(cwd)
     try:
-        resolved = (cwd / file_path).resolve()
+        rel_parts = (cwd / file_path).relative_to(cwd).parts
+    except ValueError:
+        try:
+            rel_parts = Path(file_path).parts
+        except (ValueError, OSError):
+            print(f"\u26a0\ufe0f  Invalid path: {file_path}")
+            return None
+    for part in rel_parts:
+        cur = cur / part
+        if cur.is_symlink():
+            print(f"\u26a0\ufe0f  Refusing symlink in path: {file_path}")
+            return None
+    try:
+        resolved = raw.resolve()
         resolved.relative_to(cwd)
     except (ValueError, OSError):
         print(f"\u26a0\ufe0f  Skipping path outside project: {file_path}")
@@ -754,13 +873,23 @@ def validate_file_path(file_path):
 
 
 def read_files(file_list):
-    """Read requested files safely with total context limit."""
+    """Read requested files safely with total context limit.
+
+    Audit B5: dedup file_list. A reviewer that repeats the same path 10K
+    times in its response previously triggered 10K stat() calls inside
+    validate_file_path. Track resolved paths in a set and skip repeats.
+    """
     content = ""
     total_size = 0
+    seen_paths = set()
     for file_path in file_list:
         resolved = validate_file_path(file_path)
         if not resolved:
             continue
+        resolved_str = str(resolved)
+        if resolved_str in seen_paths:
+            continue
+        seen_paths.add(resolved_str)
         if total_size >= MAX_TOTAL_CONTEXT:
             print(f"\u26a0\ufe0f  Context limit reached ({MAX_TOTAL_CONTEXT} chars), skipping remaining files")
             break
@@ -1246,7 +1375,9 @@ def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
     }
     try:
         USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+        # Audit B6: 0600 — usage.jsonl records token usage and plan hashes;
+        # multi-user boxes must not let other accounts read this billing data.
+        with _open_0600(USAGE_LOG_PATH, "a") as fh:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
     except OSError as exc:
         print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
@@ -1282,7 +1413,7 @@ def log_cache_hit(plan_hash, verdict):
     }
     try:
         USAGE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with USAGE_LOG_PATH.open("a", encoding="utf-8") as fh:
+        with _open_0600(USAGE_LOG_PATH, "a") as fh:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
     except OSError as exc:
         print(f"⚠️  could not append usage.jsonl: {exc}", file=sys.stderr)
@@ -1357,7 +1488,15 @@ def _set_cached(key, payload):
         return
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(_cache_path(key), json.dumps(payload, ensure_ascii=False, indent=2))
+        cache_path = _cache_path(key)
+        atomic_write_text(cache_path, json.dumps(payload, ensure_ascii=False, indent=2))
+        # Audit B6: tighten perms after atomic_write_text. The cache holds full
+        # Council reports including snippets of project source — same
+        # confidentiality class as usage.jsonl.
+        try:
+            os.chmod(cache_path, 0o600)
+        except OSError:
+            pass
     except OSError as e:
         _debug(f"cache write failed: {e}")
 
@@ -1486,21 +1625,20 @@ def ask_gemini_api(prompt, model, api_key, config=None):
     # interrupt would leak tempfiles in /tmp.
     body = json.dumps(payload, ensure_ascii=False)
 
-    hdr = tempfile.NamedTemporaryFile(
-        mode="w", delete=False, prefix="council_gemini_hdr_", suffix=".txt"
+    hdr_path = _write_secure_tempfile(
+        f"Content-Type: application/json\n"
+        f"User-Agent: {USER_AGENT}\n"
+        f"x-goog-api-key: {api_key}\n",
+        prefix="council_gemini_hdr_",
     )
     try:
-        os.chmod(hdr.name, 0o600)
-        hdr.write(
-            f"Content-Type: application/json\n"
-            f"User-Agent: {USER_AGENT}\n"
-            f"x-goog-api-key: {api_key}\n"
-        )
-        hdr.close()
-
         result = run_command([
             "curl", "-s",
-            "-H", f"@{hdr.name}",
+            "--max-time", "120",
+            "--connect-timeout", "10",
+            "--retry", "2",
+            "--retry-delay", "2",
+            "-H", f"@{hdr_path}",
             "--data-binary", "@-",
             url
         ], input_text=body, timeout=120)
@@ -1509,8 +1647,12 @@ def ask_gemini_api(prompt, model, api_key, config=None):
             data = json.loads(result)
             text = data["candidates"][0]["content"]["parts"][0]["text"]
         except (json.JSONDecodeError, KeyError, IndexError):
-            error = f"Gemini API error: {result[:500]}"
-            return sanitize_error(error, config) if config else error
+            # Audit M-Council: sanitize FIRST, then truncate. Truncating
+            # before sanitize_error could split a key in the middle and
+            # leak the head while the tail (mistakenly thought to contain
+            # the key) was redacted.
+            sanitized = sanitize_error(result, config) if config else result
+            return f"Gemini API error: {sanitized[:500]}"
         usage = data.get("usageMetadata", {}) if isinstance(data, dict) else {}
         _set_last_usage(
             "gemini",
@@ -1521,8 +1663,11 @@ def ask_gemini_api(prompt, model, api_key, config=None):
         )
         return text
     finally:
-        if os.path.exists(hdr.name):
-            os.unlink(hdr.name)
+        try:
+            os.unlink(hdr_path)
+        except FileNotFoundError:
+            pass
+        _secure_tempfile_unregister(hdr_path)
 
 
 def ask_gemini(prompt, config, file_paths=None):
@@ -1621,29 +1766,32 @@ def ask_openrouter(prompt, api_key, models, system_prompt=None):
         if not payload["messages"][0]["content"]:
             payload["messages"] = payload["messages"][1:]
 
-        hdr = tempfile.NamedTemporaryFile(
-            mode="w", delete=False, prefix="council_or_hdr_", suffix=".txt"
+        hdr_path = _write_secure_tempfile(
+            f"Authorization: Bearer {api_key}\n"
+            f"Content-Type: application/json\n"
+            f"User-Agent: {USER_AGENT}\n"
+            f"HTTP-Referer: https://github.com/sergei-aronsen/claude-code-toolkit\n"
+            f"X-Title: Supreme Council\n",
+            prefix="council_or_hdr_",
         )
         try:
-            os.chmod(hdr.name, 0o600)
-            hdr.write(
-                f"Authorization: Bearer {api_key}\n"
-                f"Content-Type: application/json\n"
-                f"User-Agent: {USER_AGENT}\n"
-                f"HTTP-Referer: https://github.com/sergei-aronsen/claude-code-toolkit\n"
-                f"X-Title: Supreme Council\n"
-            )
-            hdr.close()
             body = json.dumps(payload, ensure_ascii=False)
             result = run_command([
                 "curl", "-sSf",
+                "--max-time", "180",
+                "--connect-timeout", "10",
+                "--retry", "2",
+                "--retry-delay", "2",
                 "https://openrouter.ai/api/v1/chat/completions",
-                "-H", f"@{hdr.name}",
+                "-H", f"@{hdr_path}",
                 "--data-binary", "@-",
             ], input_text=body, timeout=180)
         finally:
-            if os.path.exists(hdr.name):
-                os.unlink(hdr.name)
+            try:
+                os.unlink(hdr_path)
+            except FileNotFoundError:
+                pass
+            _secure_tempfile_unregister(hdr_path)
 
         if is_error_response(result):
             last_error = result
@@ -1735,26 +1883,26 @@ def ask_chatgpt(prompt, config, system_prompt=None):
     # Audit BRAIN-H4: write the Authorization header to a 0600 tempfile and
     # pass via `-H @file` so the API key never appears in `ps`/argv. Audit
     # BRAIN-H3: send the body via stdin so the full prompt isn't persisted.
-    hdr = tempfile.NamedTemporaryFile(
-        mode="w", delete=False, prefix="council_hdr_", suffix=".txt"
+    # Audit B2: tempfile is created 0600 atomically (no chmod TOCTOU).
+    hdr_path = _write_secure_tempfile(
+        f"Authorization: Bearer {api_key}\n"
+        f"Content-Type: application/json\n"
+        f"User-Agent: {USER_AGENT}\n",
+        prefix="council_hdr_",
     )
     try:
-        os.chmod(hdr.name, 0o600)
-        hdr.write(
-            f"Authorization: Bearer {api_key}\n"
-            f"Content-Type: application/json\n"
-            f"User-Agent: {USER_AGENT}\n"
-        )
-        hdr.close()
-
         body = json.dumps(payload, ensure_ascii=False)
         # Council pass D: -f makes curl exit non-zero on HTTP 4xx/5xx so we
         # don't try to JSON-parse an HTML error page or empty body. Also -S
         # so we still get the status reason in the captured stderr.
         result = run_command([
             "curl", "-sSf",
+            "--max-time", "120",
+            "--connect-timeout", "10",
+            "--retry", "2",
+            "--retry-delay", "2",
             "https://api.openai.com/v1/chat/completions",
-            "-H", f"@{hdr.name}",
+            "-H", f"@{hdr_path}",
             "--data-binary", "@-"
         ], input_text=body, timeout=120)
 
@@ -1764,7 +1912,9 @@ def ask_chatgpt(prompt, config, system_prompt=None):
             data = json.loads(result)
             text = data["choices"][0]["message"]["content"]
         except (json.JSONDecodeError, KeyError, IndexError):
-            return sanitize_error(f"OpenAI API error: {result[:500]}", config)
+            # Audit M-Council: sanitize before truncate (see ask_gemini_api).
+            sanitized = sanitize_error(result, config)
+            return f"OpenAI API error: {sanitized[:500]}"
         usage = data.get("usage", {}) if isinstance(data, dict) else {}
         _set_last_usage(
             "openai",
@@ -1775,8 +1925,11 @@ def ask_chatgpt(prompt, config, system_prompt=None):
         )
         return text
     finally:
-        if os.path.exists(hdr.name):
-            os.unlink(hdr.name)
+        try:
+            os.unlink(hdr_path)
+        except FileNotFoundError:
+            pass
+        _secure_tempfile_unregister(hdr_path)
 
 
 # ─────────────────────────────────────────────────
