@@ -1,3 +1,8 @@
+---
+name: LLM Patterns
+description: LLM integration patterns — RAG, embeddings, streaming, tool use. Triggers on rag/embeddings/vector/llm/prompt keywords.
+---
+
 # LLM Patterns Skill
 
 > Load this skill when working with LLMs, RAG systems, embeddings, or AI integrations.

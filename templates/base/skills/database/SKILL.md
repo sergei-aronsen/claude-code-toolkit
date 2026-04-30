@@ -1,3 +1,8 @@
+---
+name: Database
+description: Database patterns — migrations, indexes, N+1 prevention, query optimization. Triggers on database/migration/query/sql/orm keywords.
+---
+
 # Database Skill
 
 > Load this skill when working with databases, migrations, queries, or data modeling.

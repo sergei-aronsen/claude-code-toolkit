@@ -1,3 +1,8 @@
+---
+name: API Design
+description: REST API design patterns — naming, status codes, OpenAPI/Swagger, versioning. Triggers on api/endpoint/openapi/swagger keywords.
+---
+
 # API Design Skill
 
 > Load this skill when designing REST APIs, creating endpoints, or working with OpenAPI.

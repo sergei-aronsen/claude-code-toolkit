@@ -1,24 +1,32 @@
 # Pre-commit hooks configuration
 # Install: pip install pre-commit && pre-commit install
+#
+# Audit L9: revs are pinned to immutable commit SHAs (not tags) to match the
+# CI Actions SHA-pinning rule from CLAUDE.md §11. Tags on these upstream repos
+# are mutable. The original tag is preserved in the trailing comment for
+# human-readable reference; bump both fields together when upgrading.
+#
+# Audit L10: pre-commit/pre-commit-hooks declared once with all hook ids in a
+# single block (was duplicated, risking rev drift between the two declarations).
 
 repos:
   # Shell script linting
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
+    rev: 2491238703a5d3415bb2b7ff11388bf775372f29  # v0.10.0
     hooks:
       - id: shellcheck
         args: ['--severity=warning']
 
   # Markdown linting
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.45.0
+    rev: 192ad822316c3a22fb3d3cc8aa6eafa0b8488360  # v0.45.0
     hooks:
       - id: markdownlint
         args: ['--config', '.markdownlint.json']
 
-  # General checks
+  # General checks (single block — Audit L10)
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -26,9 +34,4 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=500']
       - id: detect-private-key
-
-  # Check for merge conflicts
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
       - id: check-merge-conflict

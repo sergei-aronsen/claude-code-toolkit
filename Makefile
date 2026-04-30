@@ -353,10 +353,13 @@ cell-parity:
 	@bash scripts/cell-parity.sh
 
 # Clean temporary files
+# Audit L11: scope find to current tree, exclude .git/ and node_modules/, and
+# stop at the first level of test fixtures so a contributor's stashed *.bak
+# under .git/ or a vendored node_modules/ tree is not silently deleted.
 clean:
 	@echo "Cleaning..."
 	@rm -rf /tmp/test-claude-*
-	@find . -name "*.bak" -delete
-	@find . -name "*.tmp" -delete
-	@find . -name ".DS_Store" -delete
+	@find . -path ./.git -prune -o -path ./node_modules -prune -o -type f -name "*.bak" -print -delete
+	@find . -path ./.git -prune -o -path ./node_modules -prune -o -type f -name "*.tmp" -print -delete
+	@find . -path ./.git -prune -o -path ./node_modules -prune -o -type f -name ".DS_Store" -print -delete
 	@echo "Done!"

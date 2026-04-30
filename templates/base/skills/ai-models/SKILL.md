@@ -1,3 +1,8 @@
+---
+name: AI Models — Current Versions
+description: Current AI model versions (Claude, Gemini, GPT) — pin correct identifiers when adding/migrating model integrations
+---
+
 # AI Models — Current Versions
 
 > Load this skill when working with AI API (Anthropic, Google)

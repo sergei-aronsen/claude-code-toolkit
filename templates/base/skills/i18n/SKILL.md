@@ -1,3 +1,8 @@
+---
+name: i18n — Internationalization
+description: Internationalization and localization — translations, locale files, multilanguage support. Triggers on i18n/l10n/translation/localization keywords.
+---
+
 # i18n — Internationalization Skill
 
 > Load when: adding multilanguage support, translations, localization

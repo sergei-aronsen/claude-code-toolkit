@@ -1,3 +1,8 @@
+---
+name: Observability
+description: Logging, metrics, tracing, monitoring patterns. Triggers on logging/metrics/tracing/monitoring keywords.
+---
+
 # Observability Skill
 
 > Load this skill when implementing logging, metrics, tracing, or monitoring.

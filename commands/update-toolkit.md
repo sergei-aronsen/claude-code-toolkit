@@ -93,10 +93,16 @@ If something went wrong:
 # Find backup
 ls -la .claude-backup-*
 
+# Move current .claude aside (NEVER `rm -rf .claude` — keep it as a recovery point)
+mv .claude .claude-pre-rollback-$(date +%s)
+
 # Restore
-rm -rf .claude
 mv .claude-backup-YYYYMMDD-HHMMSS .claude
 ```
+
+> Audit L13: previously this snippet used `rm -rf .claude && mv …` — a copy-paste
+> from the wrong directory deletes an unrelated `.claude/`. The two-step `mv`
+> form mirrors `commands/rollback-update.md` and keeps the original recoverable.
 
 ## Example Output
 

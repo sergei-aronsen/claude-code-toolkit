@@ -1,3 +1,8 @@
+---
+name: Council Integration
+description: Supreme Council integration with GSD plan/execute and audit workflows; verdict-handling rules (PROCEED/SIMPLIFY/RETHINK/SKIP)
+---
+
 # Council Integration Skill
 
 > Load this skill whenever the user invokes a GSD workflow command with

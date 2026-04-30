@@ -1,3 +1,8 @@
+---
+name: Systematic Debugging
+description: Systematic debugging and root cause analysis. Triggers on debug/bug/crash/exception/stack-trace keywords.
+---
+
 # Systematic Debugging Skill
 
 > Debugging methodology: understand the cause, don't guess the fix.

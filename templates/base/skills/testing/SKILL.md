@@ -1,3 +1,8 @@
+---
+name: Testing
+description: Testing patterns — TDD, mocking, coverage, e2e. Triggers on test/testing/tdd/mock/coverage/e2e keywords.
+---
+
 # Testing Skill
 
 > Load this skill when writing tests, implementing TDD, or setting up test infrastructure.

@@ -1,3 +1,8 @@
+---
+name: Docker
+description: Docker and container best practices — Dockerfile patterns, multi-stage builds, compose, security. Triggers on docker/container/dockerfile/compose keywords.
+---
+
 # Docker Skill
 
 > Load this skill when working with containers, Dockerfiles, or docker-compose.

@@ -1,4 +1,4 @@
-# Contributing to Claude Guides
+# Contributing to Claude Code Toolkit
 
 Thank you for your interest in contributing! This document provides guidelines and instructions.
 
@@ -29,8 +29,8 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/claude-guides.git
-cd claude-guides
+git clone https://github.com/YOUR_USERNAME/claude-code-toolkit.git
+cd claude-code-toolkit
 
 # Install dependencies
 make install
@@ -97,7 +97,7 @@ Common errors to avoid:
 # Test init script with your changes
 cd /tmp && mkdir test-project && cd test-project
 touch artisan  # or next.config.js for Next.js
-bash /path/to/claude-guides/scripts/init-local.sh
+bash /path/to/claude-code-toolkit/scripts/init-local.sh
 
 # Verify templates work
 cat .claude/prompts/SECURITY_AUDIT.md

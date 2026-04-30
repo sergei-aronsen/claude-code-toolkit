@@ -32,18 +32,19 @@
       "triggers": {
         "keywords": [
           "tailwind",
-          "css",
-          "styling",
-          "className"
+          "tailwindcss",
+          "tw-",
+          "@apply"
         ],
         "intentPatterns": [
-          "style.*",
-          "add.*styles",
-          "change.*design"
+          "tailwind.*config",
+          "add.*tailwind",
+          "tailwind.*class"
         ],
         "filePatterns": [
-          "**/*.css",
-          "**/tailwind.config.*"
+          "**/tailwind.config.*",
+          "**/*.tw.css",
+          "**/postcss.config.*"
         ]
       }
     },
