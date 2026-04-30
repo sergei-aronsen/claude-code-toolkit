@@ -326,8 +326,13 @@ mkdir -p "$CLAUDE_DIR"/{prompts,commands,agents,skills,rules,cheatsheets,scratch
 # Compute skip-list and acquire lock. LOCK_DIR is global per state.sh, but
 # STATE_FILE was overridden above to the per-project location (D-43).
 SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
+# Audit S-MED-2 (2026-04-30 deep): register the EXIT trap BEFORE
+# acquire_lock so a SIGINT in the 1-instruction window between the two
+# lines doesn't leak the lock dir. Mirrors the pattern in uninstall.sh:108
+# and migrate-to-complement.sh:82 (lessons-learned #3 — pattern propagation
+# requires a sweep, not a single-site fix).
+trap 'release_lock 2>/dev/null || true' EXIT
 acquire_lock || exit 1
-trap 'release_lock' EXIT
 
 echo ""
 echo -e "${BLUE}Installing files (mode: $MODE)...${NC}"
@@ -336,7 +341,6 @@ INSTALLED_PATHS=()
 SKIPPED_PATHS=()
 while IFS= read -r entry; do
     path=$(jq -r '.path' <<< "$entry")
-    bucket=$(jq -r '.bucket' <<< "$entry")
     skip=$(jq -r '.skip' <<< "$entry")
     reason=$(jq -r '.reason' <<< "$entry")
     if [[ "$skip" == "true" ]]; then

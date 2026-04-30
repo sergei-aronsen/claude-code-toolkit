@@ -563,12 +563,11 @@ download_files() {
     NEED_LOCK_RELEASE=true
 
     # Iterate manifest.files.* — download all entries NOT in skip-list
-    local path bucket skip reason full_dest full_url
+    local path skip reason full_dest full_url
     INSTALLED_PATHS=()
     SKIPPED_PATHS=()
     while IFS= read -r entry; do
         path=$(jq -r '.path' <<< "$entry")
-        bucket=$(jq -r '.bucket' <<< "$entry")
         skip=$(jq -r '.skip' <<< "$entry")
         reason=$(jq -r '.reason' <<< "$entry")
         if [[ "$skip" == "true" ]]; then

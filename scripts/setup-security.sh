@@ -173,17 +173,22 @@ if [[ -z "$SECURITY_CONTENT" ]]; then
     echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"
 else
     if [[ ! -f "$CLAUDE_MD" ]]; then
-        # No file — create from scratch
-        echo "$SECURITY_CONTENT" > "$CLAUDE_MD"
+        # No file — create from scratch.
+        # Audit S-MED-4 (2026-04-30 deep): use printf so a future template
+        # whose first line begins with `-e`/`-n`/`-E` cannot be parsed as
+        # echo flags. Bash builtin echo today is immune, but the script is
+        # `#!/bin/bash` and a sh-symlink invocation could pick up a different
+        # echo. printf '%s\n' is canonical and matches the heredoc pattern
+        # used elsewhere in this file.
+        printf '%s\n' "$SECURITY_CONTENT" > "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Created ~/.claude/CLAUDE.md with security rules"
     elif ! grep -q "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
-        # File exists but no security rules — append all
+        # File exists but no security rules — append all.
         echo -e "  ${YELLOW}⚠${NC} ~/.claude/CLAUDE.md exists but lacks security rules"
+        # Audit S-MED-4: same printf '%s\n' defense for the append path.
         {
-            echo ""
-            echo "---"
-            echo ""
-            echo "$SECURITY_CONTENT"
+            printf '\n---\n\n'
+            printf '%s\n' "$SECURITY_CONTENT"
         } >> "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Security rules appended to existing CLAUDE.md"
     else

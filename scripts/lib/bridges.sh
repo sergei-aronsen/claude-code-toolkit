@@ -220,31 +220,38 @@ _bridge_write_state_entry() {
     local state_file
     state_file="$(_bridge_state_file)"
 
-    # Honour the resolved state file's parent for the lock dir so
-    # hermetic tests / project-local installs share the same scope.
-    local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="$(_bridge_lock_dir)"
+    # Audit S-MED-1 (2026-04-30 deep): confine the LOCK_DIR mutation to a
+    # subshell so a SIGINT mid-helper cannot leave the parent's LOCK_DIR
+    # pointing at the bridge lock dir. The parent's EXIT trap (e.g.
+    # update-claude.sh:947) reads LOCK_DIR at trap-fire time; without subshell
+    # isolation, signal-EXIT would release the bridge lock and silently leak
+    # the parent's. Subshell isolates the variable AND the lock work; the
+    # parent's globals remain untouched on either normal return or SIGINT.
+    (
+        # Honour the resolved state file's parent for the lock dir so
+        # hermetic tests / project-local installs share the same scope.
+        LOCK_DIR="$(_bridge_lock_dir)"
 
-    # Self-deadlock guard: if the caller (e.g. update-claude.sh sync_bridges path)
-    # already holds the lock under this PID, skip acquire/release to avoid a 3-retry
-    # spin that would silently drop the state write.
-    local _caller_holds_lock=0
-    local _existing_pid
-    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
-    # file (mirrors state.sh fix).
-    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
-    if [[ "$_existing_pid" == "$$" ]]; then
-        _caller_holds_lock=1
-    fi
+        # Self-deadlock guard: if the caller (e.g. update-claude.sh
+        # sync_bridges path) already holds the lock under this PID, skip
+        # acquire/release to avoid a 3-retry spin that would silently drop
+        # the state write.
+        local _caller_holds_lock=0
+        local _existing_pid
+        # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+        # file (mirrors state.sh fix).
+        _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+        if [[ "$_existing_pid" == "$$" ]]; then
+            _caller_holds_lock=1
+        fi
 
-    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
-        LOCK_DIR="$saved_lock_dir"
-        return 1
-    fi
+        if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
+            exit 1
+        fi
 
-    local rc=0
-    python3 - "$target" "$path" "$scope" "$source_sha" "$bridge_sha" \
-              "$state_file" <<'PYEOF' || rc=1
+        local rc=0
+        python3 - "$target" "$path" "$scope" "$source_sha" "$bridge_sha" \
+                  "$state_file" <<'PYEOF' || rc=1
 import json, os, sys, tempfile
 
 target, path, scope, src_sha, br_sha, state_path = sys.argv[1:7]
@@ -296,9 +303,10 @@ except Exception:
     raise
 PYEOF
 
-    [[ $_caller_holds_lock -eq 0 ]] && release_lock
-    LOCK_DIR="$saved_lock_dir"
-    return $rc
+        [[ $_caller_holds_lock -eq 0 ]] && release_lock
+        exit $rc
+    )
+    return $?
 }
 
 # bridge_create_project — write GEMINI.md/AGENTS.md next to <project_root>/CLAUDE.md.
@@ -384,25 +392,26 @@ _bridge_set_user_owned() {
     # No state file means there is nothing to mutate — treat as success no-op.
     [[ -f "$state_file" ]] || return 0
 
-    local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="$(_bridge_lock_dir)"
+    # Audit S-MED-1 (2026-04-30 deep): subshell-isolate LOCK_DIR mutation —
+    # see _bridge_write_state_entry above for full rationale.
+    (
+        LOCK_DIR="$(_bridge_lock_dir)"
 
-    local _caller_holds_lock=0
-    local _existing_pid
-    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
-    # file (mirrors state.sh fix).
-    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
-    if [[ "$_existing_pid" == "$$" ]]; then
-        _caller_holds_lock=1
-    fi
+        local _caller_holds_lock=0
+        local _existing_pid
+        # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+        # file (mirrors state.sh fix).
+        _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+        if [[ "$_existing_pid" == "$$" ]]; then
+            _caller_holds_lock=1
+        fi
 
-    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
-        LOCK_DIR="$saved_lock_dir"
-        return 1
-    fi
+        if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
+            exit 1
+        fi
 
-    local rc=0
-    python3 - "$target" "$value" "$state_file" <<'PYEOF' || rc=1
+        local rc=0
+        python3 - "$target" "$value" "$state_file" <<'PYEOF' || rc=1
 import json, os, sys, tempfile
 
 target, value, state_path = sys.argv[1:4]
@@ -433,9 +442,10 @@ except Exception:
     raise
 PYEOF
 
-    [[ $_caller_holds_lock -eq 0 ]] && release_lock
-    LOCK_DIR="$saved_lock_dir"
-    return $rc
+        [[ $_caller_holds_lock -eq 0 ]] && release_lock
+        exit $rc
+    )
+    return $?
 }
 
 # _bridge_remove_state_entry — remove one bridges[] entry matching the
@@ -450,25 +460,26 @@ _bridge_remove_state_entry() {
 
     [[ -f "$state_file" ]] || return 0   # no state = nothing to remove
 
-    local saved_lock_dir="${LOCK_DIR:-}"
-    LOCK_DIR="$(_bridge_lock_dir)"
+    # Audit S-MED-1 (2026-04-30 deep): subshell-isolate LOCK_DIR mutation —
+    # see _bridge_write_state_entry above for full rationale.
+    (
+        LOCK_DIR="$(_bridge_lock_dir)"
 
-    local _caller_holds_lock=0
-    local _existing_pid
-    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
-    # file (mirrors state.sh fix).
-    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
-    if [[ "$_existing_pid" == "$$" ]]; then
-        _caller_holds_lock=1
-    fi
+        local _caller_holds_lock=0
+        local _existing_pid
+        # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+        # file (mirrors state.sh fix).
+        _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+        if [[ "$_existing_pid" == "$$" ]]; then
+            _caller_holds_lock=1
+        fi
 
-    if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
-        LOCK_DIR="$saved_lock_dir"
-        return 1
-    fi
+        if [[ $_caller_holds_lock -eq 0 ]] && ! acquire_lock; then
+            exit 1
+        fi
 
-    local rc=0
-    python3 - "$target" "$scope" "$path" "$state_file" <<'PYEOF' || rc=1
+        local rc=0
+        python3 - "$target" "$scope" "$path" "$state_file" <<'PYEOF' || rc=1
 import json, os, sys, tempfile
 
 target, scope, path, state_path = sys.argv[1:5]
@@ -503,9 +514,10 @@ except Exception:
     raise
 PYEOF
 
-    [[ $_caller_holds_lock -eq 0 ]] && release_lock
-    LOCK_DIR="$saved_lock_dir"
-    return $rc
+        [[ $_caller_holds_lock -eq 0 ]] && release_lock
+        exit $rc
+    )
+    return $?
 }
 
 # bridge_prompt_drift — interactive [y/N/d] for a drifted bridge file.
