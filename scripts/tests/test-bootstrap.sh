@@ -91,6 +91,7 @@ run_s1() {
     OUTPUT=$(cd "$SANDBOX" && \
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_BOOTSTRAP_SP_CMD="$MOCK_SP" \
         TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD" \
         TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
@@ -131,6 +132,7 @@ run_s2() {
     OUTPUT=$(cd "$SANDBOX" && \
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_BOOTSTRAP_SP_CMD="$MOCK_SP" \
         TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD" \
         TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
@@ -194,6 +196,7 @@ run_s4() {
     OUTPUT=$(cd "$SANDBOX" && \
         HOME="$SANDBOX" \
         PATH="/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD" \
         TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
         bash "$REPO_ROOT/scripts/init-local.sh" --dry-run base 2>&1) || RC=$?
@@ -232,6 +235,7 @@ run_s5() {
     OUTPUT=$(cd "$SANDBOX" && \
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_BOOTSTRAP_SP_CMD="$MOCK_SP" \
         TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD" \
         TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
