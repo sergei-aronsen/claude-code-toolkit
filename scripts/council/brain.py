@@ -475,6 +475,36 @@ def sanitize_error(text, config):
     return text
 
 
+# Audit L5: hostile/compromised LLM output can embed ANSI escape sequences,
+# OSC hyperlink terminators, and C0 control characters. When the report is
+# later `cat`-ed in a terminal those sequences hijack the cursor, hide
+# subsequent text, or rewrite the user's prompt. Strip them before any
+# write to disk that the user (or another tool) is going to render.
+# Mirrors the sed/tr pattern in scripts/update-claude.sh:1005-1008.
+_ANSI_ESC_RE = re.compile(r'\x1b\[[0-9;?]*[ -/]*[@-~]')   # CSI sequences
+_OSC_RE = re.compile(r'\x1b\][^\x07]*(?:\x07|\x1b\\)')    # OSC ... BEL/ST
+# Drop other C0 control bytes except \t (0x09) and \n (0x0a). Keeping \r
+# would break terminals; drop it too. Printable + tab + newline only.
+_CTRL_RE = re.compile(r'[\x00-\x08\x0b-\x1f\x7f]')
+
+
+def _sanitize_reviewer_text(text):
+    """Return *text* with terminal control sequences removed.
+
+    Idempotent: safe to apply twice. Returns a string even if input is
+    falsy (defensive — empty string instead of None to keep f-strings
+    sane downstream).
+    """
+    if not text:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+    text = _OSC_RE.sub('', text)
+    text = _ANSI_ESC_RE.sub('', text)
+    text = _CTRL_RE.sub('', text)
+    return text
+
+
 # ─────────────────────────────────────────────────
 # Council audit-review helpers (Phase 15)
 # ─────────────────────────────────────────────────
@@ -2203,8 +2233,10 @@ def run_audit_review(report_path_str, config):
         "|----|---------|------------|---------------|",
     ]
     for row in rows:
-        # Sanitize pipe characters in justification to avoid breaking the table
-        just = row["justification"].replace("|", "\\|")
+        # Audit L5: strip terminal control sequences from reviewer text
+        # before it lands on disk; then sanitize pipe characters so the
+        # surrounding markdown table still renders.
+        just = _sanitize_reviewer_text(row["justification"]).replace("|", "\\|")
         verdict_lines.append(
             f"| {row['id']} | {row['verdict']} | {row['confidence']} | {just} |"
         )
@@ -2215,6 +2247,9 @@ def run_audit_review(report_path_str, config):
     # Normalise common empty representations
     if missed_text.strip().lower() in ("(none)", "none", ""):
         missed_text = "(none)"
+    else:
+        # Audit L5: strip ANSI / control bytes from reviewer text.
+        missed_text = _sanitize_reviewer_text(missed_text)
 
     # 10. Rewrite report (atomic, in-place)
     rewrite_report(report_path, status, verdict_text, missed_text)
@@ -2627,6 +2662,13 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     scratchpad.mkdir(parents=True, exist_ok=True)
     vp_report_path = scratchpad / "council-report.md"
 
+    # Audit L5: strip terminal control sequences from reviewer output
+    # before it gets embedded in the report (and the cache snapshot
+    # below). A hostile model could otherwise hide diagnostics with
+    # ANSI codes when the file is `cat`-ed.
+    gemini_verdict = _sanitize_reviewer_text(gemini_verdict)
+    gpt_verdict = _sanitize_reviewer_text(gpt_verdict)
+
     # ── Phase 24 SP8 — TL;DR auto-summary at the top of the report ──
     tldr_concerns = (_extract_concerns(gemini_verdict)
                      + _extract_concerns(gpt_verdict))[:3]
@@ -2634,7 +2676,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     if tldr_concerns:
         tldr_lines.append("- Top concerns:")
         for c in tldr_concerns:
-            tldr_lines.append(f"  - {c}")
+            tldr_lines.append(f"  - {_sanitize_reviewer_text(c)}")
     else:
         tldr_lines.append("- No concerns extracted — see full reviewer text below.")
     tldr_lines.append(f"- Domain: {domain}")
