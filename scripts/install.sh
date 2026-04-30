@@ -834,7 +834,7 @@ _disp_count=${#TUI_LABELS[@]}
 # metacharacters or starting with a dash.
 for _local_check_name in "${TK_DISPATCH_ORDER[@]}"; do
     if [[ ! "$_local_check_name" =~ ^[a-z][a-z0-9-]*$ ]]; then
-        log_error "TK_DISPATCH_ORDER contains invalid component name: ${_local_check_name@Q}"
+        echo -e "${RED}Error:${NC} TK_DISPATCH_ORDER contains invalid component name: ${_local_check_name@Q}" >&2
         exit 1
     fi
 done
