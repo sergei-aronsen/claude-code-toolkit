@@ -70,6 +70,13 @@ _dispatch_run_gsd_default() {
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
 # remains the highest-priority override (full URL with ref baked in).
 [[ -z "${TK_TOOLKIT_REF:-}" ]] && TK_TOOLKIT_REF='main'
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset plus any
+# `..` traversal. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    return 1 2>/dev/null || exit 1
+fi
 [[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
 
 # Audit L4 — global rules §2: outgoing curl gets a real browser UA.
@@ -77,6 +84,10 @@ _dispatch_run_gsd_default() {
 # that source dispatch.sh without also sourcing bootstrap.sh.
 # shellcheck disable=SC2034
 [[ -z "${TK_USER_AGENT:-}" ]] && TK_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+
+# Audit INF-MED-3 (2026-04-30 deep): export so children inherit pinned ref +
+# UA across `bash <(curl ...)` boundaries.
+export TK_TOOLKIT_REF TK_USER_AGENT
 
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
