@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Audit M7: cancel redundant runs on the same ref (e.g., PR force-pushes)
+# so we don't waste minutes on superseded commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   shellcheck:
     name: ShellCheck
