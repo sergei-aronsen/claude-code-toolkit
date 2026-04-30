@@ -490,7 +490,17 @@ BRIDGES_JSON='[]'
 if [[ -f "$STATE_FILE" ]]; then
     BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
 fi
-write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "" "$BRIDGES_JSON"
+# Audit LOG-MED-1 (2026-04-30 deep): compute manifest content-hash so the
+# state's manifest_hash field is populated. Without it, is_update_noop
+# (update-claude.sh:454) cannot short-circuit on the next update.
+if command -v sha256sum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
+else
+    MANIFEST_HASH=""
+fi
+write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "${MANIFEST_HASH:-}" "$BRIDGES_JSON"
 release_lock
 
 # Phase 30 BRIDGE-UX-02: per-CLI bridge prompts.

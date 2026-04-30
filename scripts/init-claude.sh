@@ -218,6 +218,19 @@ if [[ "$MANIFEST_VER" != "2" ]]; then
 fi
 MANIFEST_FILE="$MANIFEST_TMP"
 
+# Audit LOG-MED-1 (2026-04-30 deep): compute manifest content-hash so the
+# subsequent write_state at the end of install carries it as the 9th arg.
+# Without this, the state file lands with manifest_hash="" and is_update_noop
+# (update-claude.sh:454) cannot short-circuit on the next update — full work
+# loop runs every time.
+if command -v sha256sum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
+else
+    MANIFEST_HASH=""
+fi
+
 # Validate --mode value if provided (D-33). MODES is sourced from lib/install.sh.
 if [[ -n "$MODE" ]]; then
     valid=false
@@ -588,7 +601,7 @@ download_files() {
     # Persist install state (state.sh)
     INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
     SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
-    write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
+    write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "${MANIFEST_HASH:-}"
     release_lock
     # Explicit release succeeded — flip flag off so run_cleanup does not call
     # release_lock again on EXIT (release_lock itself is idempotent, but the
