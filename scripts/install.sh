@@ -352,7 +352,9 @@ if [[ "$MCPS" -eq 1 ]]; then
         fi
 
         # Capture stderr to a per-MCP tmpfile (D-28).
-        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp-${local_name}-XXXXXX") || stderr_tmp=""
+        # Audit L2: do not embed the component name in the path so shared
+        # `/tmp` on Linux can't enumerate which MCPs the user installs.
+        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp.XXXXXX") || stderr_tmp=""
         [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
         local_flags=()
@@ -520,7 +522,8 @@ if [[ "$SKILLS" -eq 1 ]]; then
         fi
 
         # Capture stderr to a per-skill tmpfile (D-28).
-        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skill-${local_name}-XXXXXX") || stderr_tmp=""
+        # Audit L2: do not embed the component name in the path.
+        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skill.XXXXXX") || stderr_tmp=""
         [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
         local_skill_args=()
@@ -889,7 +892,9 @@ for ((i=0; i<_disp_count; i++)); do
     # surface the last 5 lines under the failure row in the summary. Tmpfile
     # is added to CLEANUP_PATHS so the EXIT trap (set up at top of file)
     # removes it.
-    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install-${local_name}-XXXXXX") || stderr_tmp=""
+    # Audit L2: do not embed the component name — shared /tmp on Linux
+    # would otherwise leak which dispatchers the user is running.
+    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install.XXXXXX") || stderr_tmp=""
     [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
     # BRIDGE-UX-01 dispatch shim: bridge labels do not have a dispatch_<name> function;
