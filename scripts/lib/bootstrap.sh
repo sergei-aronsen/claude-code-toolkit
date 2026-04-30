@@ -63,8 +63,11 @@ _bootstrap_run_gsd_default() {
     if [[ -n "${TK_GSD_PIN_SHA256:-}" ]]; then
         local tmp
         tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX.sh")
+        # Audit M3: shell-safe trap registration (printf '%q' for paths with `'`).
+        local _quoted_tmp
+        _quoted_tmp=$(printf '%q' "$tmp")
         # shellcheck disable=SC2064
-        trap "rm -f '$tmp'" RETURN
+        trap "rm -f $_quoted_tmp" RETURN
         if ! curl -sSLf --max-time 60 --connect-timeout 10 --retry 2 "$url" -o "$tmp"; then
             _bootstrap_log_warning "GSD installer download failed — aborting."
             return 1

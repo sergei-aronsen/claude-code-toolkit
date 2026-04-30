@@ -296,8 +296,13 @@ insert_blocks() {
     local f="$1"
     local tmp
     tmp=$(mktemp "${f}.XXXXXX")
+    # Audit M3: previous trap single-quoted '$tmp' which breaks when the
+    # path contains a literal `'`. Use printf '%q' to produce a shell-safe
+    # representation (matches the line-128 pattern in this same file).
+    local _quoted_tmp
+    _quoted_tmp=$(printf '%q' "$tmp")
     # shellcheck disable=SC2064
-    trap "rm -f '$tmp'" INT TERM
+    trap "rm -f $_quoted_tmp" INT TERM
 
     # ── Shape detection (numbered vs unnumbered) ──
     local has_numbered_sections=0
