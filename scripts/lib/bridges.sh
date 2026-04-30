@@ -164,6 +164,14 @@ _bridge_write_file() {
     local source="$1" target_path="$2"
     [[ -f "$source" ]] || return 1
     mkdir -p "$(dirname "$target_path")" 2>/dev/null || return 2
+    # Audit M-bridge: previous implementation streamed banner+source straight
+    # into $target_path. A SIGINT mid-write left a half-written GEMINI.md /
+    # AGENTS.md whose SHA didn't match anything in toolkit-install.json, so
+    # the next sync_bridges run treated the corruption as user drift and
+    # nagged for confirmation. Stage into a sibling tmpfile then mv into
+    # place — atomic on POSIX same-filesystem.
+    local tmp
+    tmp="$(mktemp "${target_path}.tk-bridge.XXXXXX")" || return 2
     {
         cat <<'BANNER'
 <!--
@@ -174,7 +182,11 @@ _bridge_write_file() {
 BANNER
         echo ""
         cat "$source"
-    } > "$target_path" 2>/dev/null || return 2
+    } >"$tmp" 2>/dev/null || { rm -f "$tmp"; return 2; }
+    if ! mv "$tmp" "$target_path" 2>/dev/null; then
+        rm -f "$tmp"
+        return 2
+    fi
     return 0
 }
 
@@ -202,7 +214,9 @@ _bridge_write_state_entry() {
     # spin that would silently drop the state write.
     local _caller_holds_lock=0
     local _existing_pid
-    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+    # file (mirrors state.sh fix).
+    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
     if [[ "$_existing_pid" == "$$" ]]; then
         _caller_holds_lock=1
     fi
@@ -359,7 +373,9 @@ _bridge_set_user_owned() {
 
     local _caller_holds_lock=0
     local _existing_pid
-    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+    # file (mirrors state.sh fix).
+    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
     if [[ "$_existing_pid" == "$$" ]]; then
         _caller_holds_lock=1
     fi
@@ -423,7 +439,9 @@ _bridge_remove_state_entry() {
 
     local _caller_holds_lock=0
     local _existing_pid
-    _existing_pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null || echo "")
+    # Audit M-bridge: 16-byte cap guards against a hostile / corrupt pid
+    # file (mirrors state.sh fix).
+    _existing_pid=$(head -c 16 "${LOCK_DIR}/pid" 2>/dev/null || echo "")
     if [[ "$_existing_pid" == "$$" ]]; then
         _caller_holds_lock=1
     fi
@@ -511,10 +529,17 @@ BANNER
         } > "$tmp_new" 2>/dev/null || true
     fi
 
+    # Audit M-bridge: cap on read attempts so an EOF mid-loop (after [d]iff)
+    # doesn't tight-loop forever. Mirrors the uninstall fix.
+    local _read_fail=0
     while :; do
         local choice=""
         if ! read -r -p "Bridge ${bridge_path} modified locally. Overwrite? [y/N/d]: " choice < "$tty_target" 2>/dev/null; then
             choice="N"
+            _read_fail=$((_read_fail + 1))
+            if [[ $_read_fail -ge 5 ]]; then
+                return 1
+            fi
         fi
         case "${choice:-N}" in
             y|Y)

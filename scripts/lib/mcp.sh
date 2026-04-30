@@ -133,7 +133,12 @@ is_mcp_installed() {
     fi
     # Match a row that begins with "<name>" followed by whitespace OR end-of-line.
     # `claude mcp list` rows look like "context7    sse    https://..."
-    if printf '%s\n' "$list_out" | grep -E "^${name}([[:space:]]|$)" >/dev/null 2>&1; then
+    # Audit M-MCP: $name was interpolated into the regex without escaping. An
+    # MCP entry whose registered name contains "." or "+" (both legal) would
+    # match unrelated rows. Escape regex metacharacters before substitution.
+    local _name_escaped
+    _name_escaped=$(printf '%s' "$name" | sed -e 's/[][\\.^$*+?(){}|]/\\&/g')
+    if printf '%s\n' "$list_out" | grep -E "^${_name_escaped}([[:space:]]|\$)" >/dev/null 2>&1; then
         return 0
     fi
     return 1

@@ -318,10 +318,19 @@ prompt_modified_for_uninstall() {
     local tty_target="/dev/tty"
     [[ -n "${TK_UNINSTALL_TTY_FROM_STDIN:-}" ]] && tty_target="/dev/stdin"
 
+    # Audit M-Uninstall: cap on read attempts. If /dev/tty closes mid-loop
+    # (e.g. user piped uninstall into `cat`), the previous code would tight-
+    # loop on read failures forever. Bail out as 'keep' after 5 failures.
+    local _read_fail=0
     while :; do
         local choice=""
         if ! read -r -p "File $rel modified locally. Remove? [y/N/d]: " choice < "$tty_target" 2>/dev/null; then
             choice="N"   # fail-closed: tty source unreachable
+            _read_fail=$((_read_fail + 1))
+            if [[ $_read_fail -ge 5 ]]; then
+                KEEP_LIST+=("$rel")
+                return 0
+            fi
         fi
         case "${choice:-N}" in
             y|Y)
@@ -584,9 +593,13 @@ echo -e "  ${RED}PROTECTED${NC}: $n_protected (excluded from any action)"
 acquire_lock || { log_error "Another toolkit install/update/uninstall is in progress."; exit 1; }
 
 # ───────── UN-04: backup CLAUDE_DIR before any rm ─────────
-BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-uninstall-$(date -u +%s)"
+# Audit M-Uninstall: epoch-only suffix collided when two uninstalls fired in
+# the same second; the second cp -R then layered into the first dir. Append
+# $$ for per-process disambiguation. -P keeps symlinks as symlinks instead
+# of dereferencing them (preserves user customisations / ACLs more honestly).
+BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-pre-uninstall-$(date -u +%s)-$$"
 log_info "Creating backup at $BACKUP_DIR (this may take a moment)…"
-if ! cp -R "$CLAUDE_DIR" "$BACKUP_DIR"; then
+if ! cp -RP "$CLAUDE_DIR" "$BACKUP_DIR"; then
     log_error "Backup failed — aborting uninstall without removing any files"
     [[ -d "$BACKUP_DIR" ]] && rm -rf "$BACKUP_DIR"
     exit 1
