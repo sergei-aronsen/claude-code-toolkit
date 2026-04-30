@@ -291,7 +291,14 @@ run_clean_backups() {
             *) idx=$((idx + 1)); continue ;;
         esac
         age_secs=$(( now_epoch - epoch ))
-        size=$(du -sh "$d" 2>/dev/null | cut -f1 || echo "?")
+        # Audit L: `du | cut || echo "?"` only fires the fallback when cut
+        # itself fails — du's exit code never reached the OR. Capture du
+        # alone, fall back, then strip with cut.
+        if size=$(du -sh "$d" 2>/dev/null); then
+            size=$(printf '%s' "$size" | cut -f1)
+        else
+            size="?"
+        fi
         age_str=$(_fmt_age "$age_secs")
 
         if [[ $idx -lt $keep_count ]]; then
@@ -1038,8 +1045,14 @@ prompt_modified_file() {
     fi
     # Modified — fetch remote for comparison/overwrite
     remote_tmp=$(mktemp "${TMPDIR:-/tmp}/remote.XXXXXX")
-    # shellcheck disable=SC2064  # intentional: variable captured at trap registration time
-    trap "rm -f '$remote_tmp'" RETURN
+    # Audit I4: previous form `trap "rm -f '$remote_tmp'" RETURN` interpolated
+    # the path INTO the quoted command at registration time; a TMPDIR with a
+    # literal single quote (rare but legal) produced unbalanced quoting and
+    # the trap silently failed. printf '%q' shell-quotes safely under any
+    # path. shellcheck still flags expansion-at-registration which is what
+    # we want here.
+    # shellcheck disable=SC2064
+    trap "rm -f $(printf '%q' "$remote_tmp")" RETURN
     # TK_UPDATE_FILE_SRC: test seam for hermetic file-src injection (never set in production).
     # When set, ONLY copy from the seam dir; never fall through to curl (hermetic boundary).
     if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then

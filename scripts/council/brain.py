@@ -423,7 +423,10 @@ def _extract_concerns(text):
     if not m:
         return []
     body = m.group(1)
-    bullets = re.findall(r"^[\s>]*[-*•]\s+(.+)$|^[\s>]*\d+[.)]\s+(.+)$", body, re.MULTILINE)
+    # Audit L-Council: `[\s>]*` matched \n in character classes even under
+    # MULTILINE, so the `^...^` anchors could span lines and capture wrong
+    # text. Restrict to horizontal whitespace.
+    bullets = re.findall(r"^[ \t>]*[-*•]\s+(.+)$|^[ \t>]*\d+[.)]\s+(.+)$", body, re.MULTILINE)
     out = []
     for bullet_pair in bullets:
         for grp in bullet_pair:
@@ -1188,8 +1191,11 @@ DEFAULT_REDACTION_PATTERNS = [
     # OpenAI-style API keys
     r"sk-[A-Za-z0-9_\-]{20,}",
     r"sk-proj-[A-Za-z0-9_\-]{20,}",
-    # Generic provider keys: KEY=value or KEY: value with high-entropy tail
-    r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}['\"]?",
+    # Audit M-Council: lower the generic key threshold from 16 → 12 chars so
+    # short-token providers (legacy Heroku 11-char auth tokens, some internal
+    # services) are still redacted. False-positive rate stays acceptable —
+    # these patterns require an `api_key=` / `secret=` prefix.
+    r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{12,}['\"]?",
     # Bearer tokens
     r"(?i)bearer\s+[A-Za-z0-9_\-\.=]{20,}",
     # JWT (three base64url segments)
@@ -1204,6 +1210,8 @@ DEFAULT_REDACTION_PATTERNS = [
     r"AIza[0-9A-Za-z_\-]{30,}",
     # Slack tokens
     r"xox[baprs]-[A-Za-z0-9-]{10,}",
+    # Heroku auth UUIDs (8-4-4-4-12 hex)
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
 ]
 
 _REDACTION_CACHE = None

@@ -40,7 +40,13 @@ for arg in "$@"; do
             exit 1
             ;;
         *)
-            echo -e "\033[1;33m⚠\033[0m unknown flag: $arg (ignoring)" >&2
+            # Audit L-Uninstall: unknown flag was previously a warn-and-ignore.
+            # For a destructive command that's the wrong default — a typo'd
+            # `--dry-runn` would have removed files instead of previewing.
+            # Fail closed and tell the user what's supported.
+            echo -e "\033[0;31m✗\033[0m unknown flag: $arg" >&2
+            echo "Supported flags: --dry-run, --keep-state, --no-backup (rejected), --help" >&2
+            exit 1
             ;;
     esac
 done
