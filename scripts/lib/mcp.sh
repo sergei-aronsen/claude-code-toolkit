@@ -194,6 +194,14 @@ mcp_secrets_load() {
         key="${key#"${key%%[![:space:]]*}"}"
         key="${key%"${key##*[![:space:]]}"}"
         [[ -z "$key" ]] && continue
+        # Audit L1: defense in depth — only accept keys shaped like real
+        # POSIX env-var names (uppercase letter or underscore, then
+        # alphanumeric/underscore). Rejects shell metacharacters and
+        # leading digits that could later be reflected into env or
+        # argv via `export "$key=..."` or `--header "$key:..."`.
+        if [[ ! "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+            continue
+        fi
         MCP_SECRET_KEYS+=("$key")
         MCP_SECRET_VALUES+=("$value")
     done < "$cfg"
