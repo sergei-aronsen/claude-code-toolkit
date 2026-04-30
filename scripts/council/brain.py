@@ -27,6 +27,7 @@ import sys
 import os
 import json
 import tempfile
+import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
@@ -1141,7 +1142,14 @@ DEFAULT_PRICING = {
 }
 
 _PRICING_CACHE = None
-_LAST_USAGE = None  # populated by ask_*; consumed by record_usage()
+
+# Audit BRAIN-T1: per-thread usage stash. The audit-review mode dispatches
+# Gemini and ChatGPT in parallel via ThreadPoolExecutor (run_audit_review at
+# ~line 1855). A module-level global was racy — both threads wrote, the loser
+# was lost, and record_usage() could attribute one provider's tokens to the
+# other's mode. threading.local() gives each worker its own stash so
+# _set_last_usage and record_usage stay paired within the same thread.
+_THREAD_LOCAL = threading.local()
 
 
 def _load_pricing():
@@ -1193,9 +1201,13 @@ def _compute_cost(model, tokens_in, tokens_out):
 
 
 def _set_last_usage(provider, model, tokens_in, tokens_out, estimated=False):
-    """Stash the just-completed call's token usage for the next record_usage()."""
-    global _LAST_USAGE
-    _LAST_USAGE = {
+    """Stash the just-completed call's token usage for the next record_usage().
+
+    Per-thread storage (threading.local) so audit-review's parallel Gemini +
+    ChatGPT dispatch doesn't race; each worker thread reads back exactly the
+    snapshot its own ask_* set.
+    """
+    _THREAD_LOCAL.last_usage = {
         "provider": provider,
         "model": model,
         "tokens_in": int(tokens_in or 0),
@@ -1207,15 +1219,15 @@ def _set_last_usage(provider, model, tokens_in, tokens_out, estimated=False):
 def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
     """Append one JSON line to usage.jsonl with the last call's tokens + cost.
 
-    Silent when no preceding ask_* set _LAST_USAGE (e.g. early error path) so
-    failed calls never write half-formed records. Users opt out by setting
-    COUNCIL_NO_USAGE_LOG=1 (rare — used by CI to keep the file clean).
+    Silent when no preceding ask_* set _THREAD_LOCAL.last_usage (e.g. early
+    error path) so failed calls never write half-formed records. Users opt out
+    by setting COUNCIL_NO_USAGE_LOG=1 (rare — used by CI to keep the file
+    clean). Per-thread storage; safe under audit-review parallel dispatch.
     """
-    global _LAST_USAGE
-    if _LAST_USAGE is None or os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
+    snapshot = getattr(_THREAD_LOCAL, "last_usage", None)
+    if snapshot is None or os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
         return
-    snapshot = _LAST_USAGE
-    _LAST_USAGE = None
+    _THREAD_LOCAL.last_usage = None
     cost = _compute_cost(
         snapshot["model"], snapshot["tokens_in"], snapshot["tokens_out"]
     )
@@ -1248,7 +1260,7 @@ def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
 def log_cache_hit(plan_hash, verdict):
     """Phase 24 SP6 — append a zero-token cache_hit record to usage.jsonl.
 
-    A cache hit makes no provider call, so _LAST_USAGE is empty. We still
+    A cache hit makes no provider call, so _THREAD_LOCAL.last_usage is empty. We still
     want one row per /council invocation so `brain stats` shows cache
     activity and confirms the user wasn't billed for the replay.
     """
