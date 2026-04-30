@@ -299,10 +299,13 @@ insert_blocks() {
     # Audit M3: previous trap single-quoted '$tmp' which breaks when the
     # path contains a literal `'`. Use printf '%q' to produce a shell-safe
     # representation (matches the line-128 pattern in this same file).
+    # Audit S-LOW-2 (2026-04-30 deep): also cover EXIT so a `set -e`
+    # script-abort between mktemp and the trap-clear at line 359 cleans up
+    # the tempfile instead of leaking it.
     local _quoted_tmp
     _quoted_tmp=$(printf '%q' "$tmp")
     # shellcheck disable=SC2064
-    trap "rm -f $_quoted_tmp" INT TERM
+    trap "rm -f $_quoted_tmp" INT TERM EXIT
 
     # ── Shape detection (numbered vs unnumbered) ──
     local has_numbered_sections=0
@@ -356,7 +359,8 @@ insert_blocks() {
     fi
 
     mv "$tmp" "$f"
-    trap - INT TERM
+    # Audit S-LOW-2: clear all signals we installed for this tempfile.
+    trap - INT TERM EXIT
 }
 
 # ─────────────────────────────────────────────────
