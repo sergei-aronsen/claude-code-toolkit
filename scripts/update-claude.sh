@@ -1118,12 +1118,16 @@ PYEOF
 # A user who never reconciles otherwise accumulates one .new.<epoch> file per
 # update (versioned by Council pass B above to avoid clobbering an in-progress
 # reconcile). Keep the 3 newest by mtime, drop the rest.
-# Glob ${CLAUDE_MD_NEW_FILE}.[0-9]* anchors on the digit-first suffix so we
-# never touch a hand-named foo.new.bak or similar. ls -1t works on BSD + GNU.
+# Glob ${CLAUDE_MD_NEW_FILE}.[0-9]* selects digit-prefix candidates; we then
+# post-filter via regex `\.[0-9]+$` so user-named files like
+# `CLAUDE.md.new.1234.bak` (digits in middle, non-digit suffix) are skipped.
+# ls -1t works on BSD + GNU.
 prune_claude_md_new_versions() {
     local kept=0 f
     while IFS= read -r f; do
         [[ -z "$f" ]] && continue
+        # Anchor on digit-only suffix to skip user reconciliation drafts.
+        [[ "$f" =~ \.[0-9]+$ ]] || continue
         kept=$((kept + 1))
         if [[ $kept -gt 3 ]]; then
             rm -f "$f" && log_info "Pruned stale reconciliation: $f"
@@ -1146,9 +1150,13 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
            && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
             # Unchanged — clear any stale .new and any timestamped versions.
             # User accepted upstream; old reconciliation drafts are now noise.
+            # Anchor on digit-only suffix so user-named drafts (e.g.
+            # CLAUDE.md.new.1234.bak) are preserved.
             rm -f "$CLAUDE_MD_TMP" "$CLAUDE_MD_NEW_FILE"
             for f in "${CLAUDE_MD_NEW_FILE}".[0-9]*; do
-                [[ -f "$f" ]] && rm -f "$f"
+                [[ -f "$f" ]] || continue
+                [[ "$f" =~ \.[0-9]+$ ]] || continue
+                rm -f "$f"
             done
             log_info "CLAUDE.md already matches latest template"
         else
