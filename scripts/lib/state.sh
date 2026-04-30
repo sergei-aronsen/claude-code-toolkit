@@ -246,6 +246,16 @@ acquire_lock() {
 }
 
 release_lock() {
-    [[ -d "$LOCK_DIR" ]] && rm -rf "$LOCK_DIR"
+    # Audit H1: must only release the lock we own. If acquire_lock's
+    # stale-reclaim path (line 211-217) gave a different PID our slot,
+    # that PID is now mid-mutation; deleting unconditionally would let a
+    # third process barge in. Compare $LOCK_DIR/pid against $$ first.
+    [[ -d "$LOCK_DIR" ]] || return 0
+    local lock_pid=""
+    lock_pid=$(head -c 16 "$LOCK_DIR/pid" 2>/dev/null || echo "")
+    [[ "$lock_pid" =~ ^[0-9]+$ ]] || lock_pid=""
+    if [[ "$lock_pid" == "$$" ]]; then
+        [[ -n "$LOCK_DIR" && "$LOCK_DIR" != "/" ]] && rm -rf "$LOCK_DIR"
+    fi
     return 0
 }

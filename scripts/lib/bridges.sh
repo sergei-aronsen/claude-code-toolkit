@@ -161,9 +161,17 @@ _bridge_match() {
 # Returns: 0=success, 1=missing source, 2=mkdir/write blocked.
 # Banner is byte-identical across all bridges (BRIDGE-GEN-03 contract).
 _bridge_write_file() {
-    local source="$1" target_path="$2"
+    local source="$1" target_path="$2" target_dir
     [[ -f "$source" ]] || return 1
-    mkdir -p "$(dirname "$target_path")" 2>/dev/null || return 2
+    target_dir="$(dirname "$target_path")"
+    # Audit L6: refuse to traverse a symlinked parent dir or write through a
+    # symlinked target. Defense-in-depth against a hostile symlink already in
+    # place (e.g. ~/.gemini -> /etc/sudoers.d/) — only reachable from a
+    # self-attack but cheap to block.
+    if [[ -L "$target_dir" ]] || [[ -L "$target_path" ]]; then
+        return 2
+    fi
+    mkdir -p "$target_dir" 2>/dev/null || return 2
     # Audit M-bridge: previous implementation streamed banner+source straight
     # into $target_path. A SIGINT mid-write left a half-written GEMINI.md /
     # AGENTS.md whose SHA didn't match anything in toolkit-install.json, so
