@@ -932,7 +932,14 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
+# Audit M6: include the late-mktemp paths (CLAUDE_MD_TMP, CMP_LOCAL_NORM,
+# CMP_REMOTE_NORM) in the trap. They are assigned later in the file, so
+# they're empty when this trap is registered — `rm -f ""` is a no-op.
+# A SIGINT mid-update would otherwise leak them.
+CLAUDE_MD_TMP=""
+CMP_LOCAL_NORM=""
+CMP_REMOTE_NORM=""
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP" "$CLAUDE_MD_TMP" "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
@@ -1126,7 +1133,9 @@ echo ""
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CLAUDE_MD_NEW_FILE="$CLAUDE_DIR/CLAUDE.md.new"
-CLAUDE_MD_TMP=$(mktemp)
+# Audit M6: explicit template + prefix so a leaked tempfile is
+# attributable. Already registered in the EXIT trap above.
+CLAUDE_MD_TMP=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
 
 # Test seam: TK_UPDATE_FILE_SRC short-circuits the network fetch for hermetic
 # tests. Same convention as the manifest-driven download loop above.
@@ -1208,8 +1217,10 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
     else
         # Compare normalized content so CRLF/BOM/trailing-newline drift doesn't
         # spam .new files on every update (Council pass A).
-        CMP_LOCAL_NORM=$(mktemp)
-        CMP_REMOTE_NORM=$(mktemp)
+        # Audit M6: explicit template + prefix; both registered in the
+        # EXIT trap above so SIGINT mid-update doesn't leak them.
+        CMP_LOCAL_NORM=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
+        CMP_REMOTE_NORM=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
         if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
            && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
            && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
