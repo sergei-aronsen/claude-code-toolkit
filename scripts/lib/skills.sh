@@ -144,6 +144,13 @@ skills_install() {
         return 2
     fi
     if [[ -d "$target" && "$force" -eq 1 ]]; then
+        # Audit L3: defense in depth — refuse to recurse-delete `/`,
+        # empty string, or any single-slash variant before invoking
+        # `rm -rf`. Mirrors the guard pattern in scripts/lib/state.sh.
+        if [[ -z "$target" || "$target" == "/" || "$target" == "//" ]]; then
+            echo -e "${RED}✗${NC} skills_install: refusing rm -rf on suspicious target: ${target@Q}" >&2
+            return 1
+        fi
         rm -rf "$target" || return 1
     fi
     mkdir -p "$home" || return 1
