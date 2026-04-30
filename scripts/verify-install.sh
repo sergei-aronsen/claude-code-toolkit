@@ -18,6 +18,10 @@ CYAN='\033[0;36m'
 DIM='\033[2m'
 NC='\033[0m'
 
+
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 PASS=0
 FAIL=0
 WARN=0

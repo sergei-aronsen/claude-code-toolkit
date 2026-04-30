@@ -47,6 +47,9 @@ done
 : "${YES}"  # silence shellcheck SC2034 — YES consumed by future read blocks
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 CLAUDE_DIR="$HOME/.claude"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SETTINGS_JSON="$CLAUDE_DIR/settings.json"
@@ -75,7 +78,7 @@ if [[ -f "$(dirname "$0")/lib/install.sh" ]]; then
 else
     LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
     trap 'rm -f "$LIB_INSTALL_TMP"' EXIT
-    if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
         echo -e "${RED}Failed to download lib/install.sh - aborting${NC}"
         exit 1
     fi
@@ -124,7 +127,7 @@ install_rtk_notes() {
     # shellcheck disable=SC2064
     trap "rm -f $_quoted_rtk_tmp" RETURN
 
-    if ! curl -sSLf --max-time 30 --connect-timeout 10 --retry 2 \
+    if ! curl -sSLf -A "$TK_USER_AGENT" --max-time 30 --connect-timeout 10 --retry 2 \
             "$REPO_URL/templates/global/RTK.md" -o "$rtk_tmp" 2>/dev/null; then
         echo "ℹ Skipping RTK.md install — could not fetch from $REPO_URL/templates/global/RTK.md (offline?)"
         return 0
@@ -151,7 +154,7 @@ echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
 mkdir -p "$CLAUDE_DIR"
 
 # Download latest security rules
-SECURITY_CONTENT=$(curl -sSLf "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+SECURITY_CONTENT=$(curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
 if [[ -z "$SECURITY_CONTENT" ]]; then
     echo -e "  ${RED}✗${NC} Failed to download security rules"
     echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"

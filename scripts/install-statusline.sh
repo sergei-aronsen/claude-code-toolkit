@@ -33,6 +33,9 @@ done
 : "${YES}"  # silence shellcheck SC2034 — no-op stub today
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 CLAUDE_DIR="$HOME/.claude"
 
 # Audit M3: source lib/install.sh for backup_settings_once + atomic merge helpers.
@@ -44,7 +47,7 @@ if [[ -f "$(dirname "$0")/lib/install.sh" ]]; then
 else
     LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
     trap 'rm -f "$LIB_INSTALL_TMP"' EXIT
-    if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP" 2>/dev/null; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP" 2>/dev/null; then
         # Non-fatal: only the atomic-merge path needs it. Statusline can still install.
         echo -e "${YELLOW}⚠${NC} Could not fetch lib/install.sh — settings.json merge will use fallback (non-atomic)"
     else
@@ -117,7 +120,7 @@ download_with_sidecar() {
     local rel_url="$1" dest="$2" label="$3"
     local tmp
     tmp=$(mktemp "${TMPDIR:-/tmp}/$(basename "$dest").XXXXXX")
-    if ! curl -sSLf "$REPO_URL/$rel_url" -o "$tmp" 2>/dev/null; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel_url" -o "$tmp" 2>/dev/null; then
         rm -f "$tmp"
         echo -e "  ${RED}✗${NC} Failed to download $label"
         return 1

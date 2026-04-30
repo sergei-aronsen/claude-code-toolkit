@@ -30,6 +30,10 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 # Config
 TK_REPO_URL="${TK_REPO_URL:-https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main}"
 NO_BANNER=${NO_BANNER:-0}
@@ -132,7 +136,7 @@ _is_curl_pipe() {
 # canonical `-sSLf` with --max-time / --connect-timeout / --retry. Errors out
 # on HTTP 4xx/5xx (-f) so we never source a 502 HTML body as shell code.
 _tk_curl_safe() {
-    curl -sSLf \
+    curl -sSLf -A "$TK_USER_AGENT" \
         --max-time 60 --connect-timeout 10 \
         --retry 2 --retry-delay 2 \
         "$@"
@@ -720,14 +724,14 @@ else
             _bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-boot-XXXXXX") || _bootstrap_tmp=""
             if [[ -n "$_bootstrap_tmp" ]]; then
                 CLEANUP_PATHS+=("$_bootstrap_tmp")
-                if curl -sSLf "$TK_REPO_URL/scripts/lib/bootstrap.sh" -o "$_bootstrap_tmp" 2>/dev/null; then
+                if curl -sSLf -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/lib/bootstrap.sh" -o "$_bootstrap_tmp" 2>/dev/null; then
                     # Source SP/GSD canonical install commands first so
                     # bootstrap_base_plugins picks them up (TK_SP_INSTALL_CMD /
                     # TK_GSD_INSTALL_CMD from optional-plugins.sh).
                     _opt_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-opt-XXXXXX") || _opt_tmp=""
                     if [[ -n "$_opt_tmp" ]]; then
                         CLEANUP_PATHS+=("$_opt_tmp")
-                        if curl -sSLf "$TK_REPO_URL/scripts/lib/optional-plugins.sh" -o "$_opt_tmp" 2>/dev/null; then
+                        if curl -sSLf -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/lib/optional-plugins.sh" -o "$_opt_tmp" 2>/dev/null; then
                             # shellcheck source=/dev/null
                             source "$_opt_tmp"
                         fi

@@ -17,6 +17,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 CLAUDE_DIR="$HOME/.claude"
 COUNCIL_DIR="$CLAUDE_DIR/council"
 COMMANDS_DIR="$CLAUDE_DIR/commands"
@@ -38,7 +41,7 @@ if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/cli-recommendation
     cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$LIB_CLI_TMP"
     # shellcheck source=/dev/null
     source "$LIB_CLI_TMP"
-elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$LIB_CLI_TMP" 2>/dev/null; then
+elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$LIB_CLI_TMP" 2>/dev/null; then
     # shellcheck source=/dev/null
     source "$LIB_CLI_TMP"
 else
@@ -51,7 +54,7 @@ if [[ -n "${TK_COUNCIL_LIB_DIR:-}" && -f "$TK_COUNCIL_LIB_DIR/council-prompts.sh
     cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$LIB_PROMPTS_TMP"
     # shellcheck source=/dev/null
     source "$LIB_PROMPTS_TMP"
-elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$LIB_PROMPTS_TMP" 2>/dev/null; then
+elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/council-prompts.sh" -o "$LIB_PROMPTS_TMP" 2>/dev/null; then
     # shellcheck source=/dev/null
     source "$LIB_PROMPTS_TMP"
 else
@@ -251,7 +254,7 @@ echo -e "${CYAN}Step 4: Installing Supreme Council${NC}"
 mkdir -p "$COUNCIL_DIR"
 
 # Download brain.py
-if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$COUNCIL_DIR/brain.py" 2>/dev/null; then
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/brain.py" -o "$COUNCIL_DIR/brain.py" 2>/dev/null; then
     chmod +x "$COUNCIL_DIR/brain.py"
     echo -e "  ${GREEN}✓${NC} brain.py"
 else
@@ -263,7 +266,7 @@ fi
 # Phase 24 SP11 — download MCP server so Claude Desktop can call /council
 # without dropping to the terminal. brain.py is the dependency; we already
 # have it on disk at this point.
-if curl -sSLf "$REPO_URL/scripts/council/mcp-server.py" -o "$COUNCIL_DIR/mcp-server.py" 2>/dev/null; then
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/mcp-server.py" -o "$COUNCIL_DIR/mcp-server.py" 2>/dev/null; then
     chmod +x "$COUNCIL_DIR/mcp-server.py"
     echo -e "  ${GREEN}✓${NC} mcp-server.py"
 else
@@ -272,7 +275,7 @@ else
 fi
 
 # Download README
-if curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$COUNCIL_DIR/README.md" 2>/dev/null; then
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/README.md" -o "$COUNCIL_DIR/README.md" 2>/dev/null; then
     echo -e "  ${GREEN}✓${NC} README.md"
 else
     rm -f "$COUNCIL_DIR/README.md"
@@ -283,7 +286,7 @@ fi
 # Idempotent + mtime-aware: only overwrites if upstream is newer than local copy.
 # NOTE: --force flag (to unconditionally overwrite) is deferred to a future hardening pass.
 mkdir -p "$COUNCIL_DIR/prompts"
-if curl -sSLf "$REPO_URL/scripts/council/prompts/audit-review.md" \
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/prompts/audit-review.md" \
         -o "$COUNCIL_DIR/prompts/audit-review.md.tmp" 2>/dev/null; then
     if [ ! -f "$COUNCIL_DIR/prompts/audit-review.md" ]; then
         mv "$COUNCIL_DIR/prompts/audit-review.md.tmp" "$COUNCIL_DIR/prompts/audit-review.md"
@@ -331,7 +334,7 @@ install_council_pricing
 # per-project ./.claude/commands/ (where it duplicated effort across every
 # project that ran init-claude.sh).
 mkdir -p "$COMMANDS_DIR"
-if curl -sSLf "$REPO_URL/commands/council.md" \
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council.md" \
         -o "$COMMANDS_DIR/council.md.tmp" 2>/dev/null; then
     if [ ! -f "$COMMANDS_DIR/council.md" ]; then
         mv "$COMMANDS_DIR/council.md.tmp" "$COMMANDS_DIR/council.md"
@@ -349,7 +352,7 @@ else
 fi
 
 # Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
-if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council-stats.md" \
         -o "$COMMANDS_DIR/council-stats.md.tmp" 2>/dev/null; then
     if [ ! -f "$COMMANDS_DIR/council-stats.md" ]; then
         mv "$COMMANDS_DIR/council-stats.md.tmp" "$COMMANDS_DIR/council-stats.md"
@@ -367,7 +370,7 @@ else
 fi
 
 # Install /council clear-cache slash command globally (Phase 24 Sub-Phase 6).
-if curl -sSLf "$REPO_URL/commands/council-clear-cache.md" \
+if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council-clear-cache.md" \
         -o "$COMMANDS_DIR/council-clear-cache.md.tmp" 2>/dev/null; then
     if [ ! -f "$COMMANDS_DIR/council-clear-cache.md" ]; then
         mv "$COMMANDS_DIR/council-clear-cache.md.tmp" "$COMMANDS_DIR/council-clear-cache.md"

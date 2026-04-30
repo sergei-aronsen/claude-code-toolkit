@@ -52,7 +52,7 @@
 #    function runs — overrides are documented to go through the
 #    TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD path-to-script seam instead.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
-[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL -A "$TK_USER_AGENT" https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
 
 # Hardcoded default execution paths — strings live in code, never in env.
 _dispatch_run_sp_default() {
@@ -62,12 +62,18 @@ _dispatch_run_sp_default() {
 _dispatch_run_gsd_default() {
     # Process substitution stays inside the function body so there is no
     # untrusted string crossing the shell parser.
-    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 \
+    bash <(curl -sSL -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 \
         'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
 }
 
 # Default repo URL (overridable for testing or fork installs).
 [[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL='https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main'
+
+# Audit L4 — global rules §2: outgoing curl gets a real browser UA.
+# Default mirrors lib/bootstrap.sh; safe to redefine here for callers
+# that source dispatch.sh without also sourcing bootstrap.sh.
+# shellcheck disable=SC2034
+[[ -z "${TK_USER_AGENT:-}" ]] && TK_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
 
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
@@ -202,7 +208,7 @@ dispatch_toolkit() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path init-claude.sh)"
@@ -245,7 +251,7 @@ dispatch_security() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/setup-security.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/setup-security.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path setup-security.sh)"
@@ -320,7 +326,7 @@ dispatch_statusline() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/install-statusline.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install-statusline.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install-statusline.sh)"

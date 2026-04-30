@@ -79,6 +79,9 @@ fi
 # ───────── constants + log helpers ─────────
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 log_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
@@ -107,7 +110,7 @@ for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-o
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UNINSTALL_LIB_DIR:-}" && -f "$TK_UNINSTALL_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UNINSTALL_LIB_DIR/$lib_name" "$lib_path"
-    elif ! curl -sSLf "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
+    elif ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
         log_error "Failed to fetch scripts/lib/$lib_name — uninstall cannot proceed"
         exit 1
     fi
@@ -327,7 +330,7 @@ prompt_modified_for_uninstall() {
         cp "$TK_UNINSTALL_FILE_SRC/$rel" "$reference_tmp"
         reference_source="local seam"
     # Try remote
-    elif curl -sSLf "$REPO_URL/$rel" -o "$reference_tmp" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$reference_tmp" 2>/dev/null; then
         reference_source="remote ($REPO_URL/$rel)"
     else
         rm -f "$reference_tmp"

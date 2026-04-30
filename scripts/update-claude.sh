@@ -74,6 +74,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 CLAUDE_DIR=".claude"
 # shellcheck disable=SC2034  # MANIFEST_URL kept as legacy reference; Plan 04-02 removes it
 MANIFEST_URL="$REPO_URL/manifest.json"
@@ -97,7 +100,7 @@ trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLU
 # the whole update flow forever; without -f a 502 / 404 HTML body would be
 # sourced as shell. _tk_curl_safe wraps the canonical pattern.
 _tk_curl_safe() {
-    curl -sSLf \
+    curl -sSLf -A "$TK_USER_AGENT" \
         --max-time 60 --connect-timeout 10 \
         --retry 2 --retry-delay 2 \
         "$@"
@@ -975,7 +978,7 @@ while IFS= read -r rel; do
             install_status=1  # missing from seam dir = treat as download failure
         fi
     else
-        if curl -sSLf "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
+        if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
             install_status=0
         else
             install_status=1
@@ -1089,7 +1092,7 @@ prompt_modified_file() {
             return 0
         fi
     else
-        if ! curl -sSLf "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
+        if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
             log_warning "Cannot fetch remote $rel for compare; skipping"
             SKIPPED_PATHS+=("$rel:remote_fetch_failed")
             return 0
@@ -1151,8 +1154,8 @@ if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
         log_warning "TK_UPDATE_FILE_SRC has no CLAUDE.md template — keeping existing file untouched"
         CLAUDE_MD_TMP=""
     fi
-elif ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
-    if ! curl -sSLf "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+elif ! curl -sSLf -A "$TK_USER_AGENT" "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
         rm -f "$CLAUDE_MD_TMP"
         log_warning "Failed to download CLAUDE.md template — keeping existing file untouched"
         CLAUDE_MD_TMP=""

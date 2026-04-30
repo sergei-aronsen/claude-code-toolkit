@@ -58,6 +58,9 @@ NC='\033[0m'
 
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 log_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
@@ -79,7 +82,7 @@ trap 'release_lock 2>/dev/null || true; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "
 # ───────── detect.sh soft-fail (with test seam) ─────────
 if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
     : # env vars set by caller (test seam or CI) — skip detect.sh fetch
-elif curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
+elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
     # shellcheck source=/dev/null
     source "$DETECT_TMP"
 else
@@ -96,7 +99,7 @@ for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "backup.
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_MIGRATE_LIB_DIR:-}" && -f "$TK_MIGRATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_MIGRATE_LIB_DIR/$lib_name" "$lib_path"
-    elif ! curl -sSLf "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
+    elif ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
         log_error "Failed to fetch scripts/lib/$lib_name — migrate cannot proceed"
         exit 1
     fi
@@ -108,7 +111,7 @@ done
 MANIFEST_SRC="${TK_MIGRATE_MANIFEST_OVERRIDE:-}"
 if [[ -n "$MANIFEST_SRC" && -f "$MANIFEST_SRC" ]]; then
     cp "$MANIFEST_SRC" "$MANIFEST_TMP"
-elif ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
+elif ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
     log_error "Failed to fetch manifest.json — migrate cannot proceed"
     exit 1
 fi
@@ -145,7 +148,7 @@ fetch_tk_template_hash() {
             out=$(sha256_file "$TK_MIGRATE_FILE_SRC/$rel" 2>/dev/null || echo "")
         fi
     else
-        if curl -sSLf "$REPO_URL/$rel" -o "$TK_TMPL_TMP" 2>/dev/null; then
+        if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$TK_TMPL_TMP" 2>/dev/null; then
             out=$(sha256_file "$TK_TMPL_TMP" 2>/dev/null || echo "")
         fi
     fi
@@ -440,7 +443,7 @@ prompt_duplicate_file() {
                 # Re-fetch TK template into TK_TMPL_TMP (may have been overwritten by prior iterations)
                 if [[ -n "${TK_MIGRATE_FILE_SRC:-}" && -f "$TK_MIGRATE_FILE_SRC/$rel" ]]; then
                     cp "$TK_MIGRATE_FILE_SRC/$rel" "$TK_TMPL_TMP"
-                elif ! curl -sSLf "$REPO_URL/$rel" -o "$TK_TMPL_TMP" 2>/dev/null; then
+                elif ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$TK_TMPL_TMP" 2>/dev/null; then
                     log_warning "Cannot fetch TK template for diff; skipping diff render"
                     continue
                 fi
