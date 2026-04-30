@@ -74,6 +74,7 @@ Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
 | `--break-bridge <target>` | `update-claude.sh` | Flip `user_owned: true` for the named bridge target. Subsequent `update-claude.sh` runs skip that bridge silently. |
 | `--restore-bridge <target>` | `update-claude.sh` | Reverse `--break-bridge`. Next `update-claude.sh` re-syncs the named bridge. |
 | `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
+| _(env-only)_ `TK_TOOLKIT_REF=<ref>` | every installer | Pin the raw.githubusercontent.com fetch path to a git ref (tag or full SHA) instead of the mutable `main` branch. Default `main` keeps backwards-compat. Example: `TK_TOOLKIT_REF=v4.8.0 bash <(curl -sSL .../init-claude.sh)`. Set `TK_REPO_URL` instead if you want to override the entire URL (e.g. fork). Audit H5. |
 
 ### `--no-bootstrap` (v4.4+)
 

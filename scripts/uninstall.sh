@@ -77,7 +77,9 @@ else
 fi
 
 # ───────── constants + log helpers ─────────
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
 
 # Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
 # shellcheck disable=SC2034

@@ -73,7 +73,9 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
 # Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
 # shellcheck disable=SC2034
 TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"

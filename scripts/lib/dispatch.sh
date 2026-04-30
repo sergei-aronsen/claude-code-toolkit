@@ -67,7 +67,10 @@ _dispatch_run_gsd_default() {
 }
 
 # Default repo URL (overridable for testing or fork installs).
-[[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL='https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main'
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
+# remains the highest-priority override (full URL with ref baked in).
+[[ -z "${TK_TOOLKIT_REF:-}" ]] && TK_TOOLKIT_REF='main'
+[[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
 
 # Audit L4 — global rules §2: outgoing curl gets a real browser UA.
 # Default mirrors lib/bootstrap.sh; safe to redefine here for callers

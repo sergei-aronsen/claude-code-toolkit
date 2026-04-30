@@ -35,7 +35,10 @@ NC='\033[0m'
 # shellcheck disable=SC2034
 TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
 # Config
-TK_REPO_URL="${TK_REPO_URL:-https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main}"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
+# remains the highest-priority override (full URL with ref baked in).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+TK_REPO_URL="${TK_REPO_URL:-https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}}"
 NO_BANNER=${NO_BANNER:-0}
 
 # Flags (defaults)
