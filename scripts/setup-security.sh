@@ -52,6 +52,20 @@ CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SETTINGS_JSON="$CLAUDE_DIR/settings.json"
 MARKER="# Global Security Rules"
 
+# Audit M4: jq is required by every code path that writes settings.json (the
+# bundled hook itself depends on jq at runtime). Previously the heredoc fallback
+# at line 322 interpolated $COMBINED_HOOK directly into JSON — a $HOME containing
+# `"` or `\` produced malformed JSON and the heredoc-vs-jq branch had no backup.
+# Make jq mandatory at startup so there is exactly one settings.json write path.
+if ! command -v jq &>/dev/null; then
+    echo -e "${RED}✗${NC} jq is required but not installed."
+    echo -e "  Install:"
+    echo -e "    macOS:  ${YELLOW}brew install jq${NC}"
+    echo -e "    Linux:  ${YELLOW}apt-get install jq${NC}  (or distro equivalent)"
+    echo -e "  Then re-run this script."
+    exit 1
+fi
+
 # Source lib/install.sh for backup_settings_once + merge_settings_python helpers (Phase 3 D-37..D-40).
 # Remote curl|bash callers download to mktemp; local callers source from a known path next to this script.
 LIB_INSTALL_TMP=""
@@ -261,8 +275,34 @@ echo -e "  ${GREEN}✓${NC} Combined hook installed: $COMBINED_HOOK"
 HOOK_COMMAND="$COMBINED_HOOK"
 
 if [[ -f "$SETTINGS_JSON" ]]; then
-    # Check if combined hook or safety-net already configured
-    if grep -q "pre-bash.sh" "$SETTINGS_JSON" 2>/dev/null; then
+    # Audit M5: `grep -q "pre-bash.sh"` falsely matched inside any string value
+    # (e.g., a comment field or unrelated key). Use python3 to require the path
+    # appear inside an actual hooks.PreToolUse[*].hooks[*].command field.
+    HOOK_ALREADY_CONFIGURED=0
+    if command -v python3 &>/dev/null; then
+        if python3 - "$SETTINGS_JSON" <<'PYEOF' 2>/dev/null
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        cfg = json.load(f)
+except Exception:
+    sys.exit(1)
+for entry in (cfg.get('hooks', {}).get('PreToolUse', []) or []):
+    for h in (entry.get('hooks', []) or []):
+        cmd = h.get('command', '')
+        if isinstance(cmd, str) and 'pre-bash.sh' in cmd:
+            sys.exit(0)
+sys.exit(1)
+PYEOF
+        then
+            HOOK_ALREADY_CONFIGURED=1
+        fi
+    else
+        if grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*pre-bash\.sh' "$SETTINGS_JSON" 2>/dev/null; then
+            HOOK_ALREADY_CONFIGURED=1
+        fi
+    fi
+    if [[ $HOOK_ALREADY_CONFIGURED -eq 1 ]]; then
         echo -e "  ${GREEN}✓${NC} Combined hook already configured in settings.json"
     else
         echo -e "  Configuring combined hook in settings.json..."
@@ -292,59 +332,35 @@ if [[ -f "$SETTINGS_JSON" ]]; then
     fi
 else
     echo -e "  Creating settings.json with combined hook..."
-    # Audit M6: previous heredoc interpolated $COMBINED_HOOK directly into the
-    # JSON literal. A $HOME containing `"` or `\` (rare but possible) produced
-    # malformed JSON. Build via jq --arg to keep the path as a JSON-encoded
-    # string regardless of shell-special characters. Fall back to heredoc only
-    # if jq is missing (it is required by the surrounding hooks anyway).
-    if command -v jq &>/dev/null; then
-        if ! jq -n --arg cmd "$COMBINED_HOOK" '{
-              hooks: {
-                PreToolUse: [
-                  {
-                    matcher: "Bash",
-                    _tk_owned: true,
-                    hooks: [ { type: "command", command: $cmd } ]
-                  }
-                ]
-              },
-              enabledPlugins: {
-                "code-review@claude-plugins-official": true,
-                "commit-commands@claude-plugins-official": true,
-                "security-guidance@claude-plugins-official": true,
-                "frontend-design@claude-plugins-official": true
+    # Audit M4: jq required at startup (line ~62), so single write path via jq --arg.
+    # Previous heredoc fallback interpolated $COMBINED_HOOK directly into JSON —
+    # a $HOME containing `"` or `\` produced malformed JSON. Now atomic: jq writes
+    # to tempfile + mv. Naked `> "$SETTINGS_JSON"` was racy (SIGINT → 0 bytes).
+    SETTINGS_TMP=$(mktemp "${SETTINGS_JSON}.tmp.XXXXXX")
+    if jq -n --arg cmd "$COMBINED_HOOK" '{
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: "Bash",
+                _tk_owned: true,
+                hooks: [ { type: "command", command: $cmd } ]
               }
-            }' > "$SETTINGS_JSON"; then
-            echo -e "  ${RED}✗${NC} jq failed to write settings.json"
-            exit 1
-        fi
-    else
-        cat > "$SETTINGS_JSON" << SETTINGS
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "_tk_owned": true,
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$COMBINED_HOOK"
+            ]
+          },
+          enabledPlugins: {
+            "code-review@claude-plugins-official": true,
+            "commit-commands@claude-plugins-official": true,
+            "security-guidance@claude-plugins-official": true,
+            "frontend-design@claude-plugins-official": true
           }
-        ]
-      }
-    ]
-  },
-  "enabledPlugins": {
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "security-guidance@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
-  }
-}
-SETTINGS
+        }' > "$SETTINGS_TMP" && [ -s "$SETTINGS_TMP" ]; then
+        mv "$SETTINGS_TMP" "$SETTINGS_JSON"
+        echo -e "  ${GREEN}✓${NC} Created settings.json with combined hook and official plugins"
+    else
+        rm -f "$SETTINGS_TMP"
+        echo -e "  ${RED}✗${NC} jq failed to write settings.json"
+        exit 1
     fi
-    echo -e "  ${GREEN}✓${NC} Created settings.json with combined hook and official plugins"
 fi
 
 echo ""
@@ -464,17 +480,46 @@ else
     PASS=$((PASS + 1))
 fi
 
-# Check hook
-if [[ -f "$SETTINGS_JSON" ]] && grep -q "pre-bash.sh" "$SETTINGS_JSON"; then
-    echo -e "  ${GREEN}✓${NC} Combined PreToolUse hook configured (safety-net + RTK)"
-    PASS=$((PASS + 1))
-elif [[ -f "$SETTINGS_JSON" ]] && grep -q "cc-safety-net" "$SETTINGS_JSON"; then
-    echo -e "  ${YELLOW}~${NC} Legacy safety-net hook (consider upgrading to combined hook)"
-    PASS=$((PASS + 1))
-else
-    echo -e "  ${RED}✗${NC} PreToolUse hook not configured"
-    FAIL=$((FAIL + 1))
+# Check hook — Audit M5: JSON-parse settings to verify hook is wired in
+# hooks.PreToolUse[*].hooks[*].command, not anywhere in the file.
+hook_check_state="missing"
+if [[ -f "$SETTINGS_JSON" ]] && command -v python3 &>/dev/null; then
+    hook_check_state=$(python3 - "$SETTINGS_JSON" <<'PYEOF' 2>/dev/null || echo "missing"
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        cfg = json.load(f)
+except Exception:
+    print("missing"); sys.exit(0)
+for entry in (cfg.get('hooks', {}).get('PreToolUse', []) or []):
+    for h in (entry.get('hooks', []) or []):
+        cmd = h.get('command', '')
+        if isinstance(cmd, str):
+            if 'pre-bash.sh' in cmd:
+                print("combined"); sys.exit(0)
+            if 'cc-safety-net' in cmd:
+                print("legacy"); sys.exit(0)
+print("missing")
+PYEOF
+)
+elif [[ -f "$SETTINGS_JSON" ]]; then
+    if grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*pre-bash\.sh' "$SETTINGS_JSON" 2>/dev/null; then
+        hook_check_state="combined"
+    elif grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*cc-safety-net' "$SETTINGS_JSON" 2>/dev/null; then
+        hook_check_state="legacy"
+    fi
 fi
+case "$hook_check_state" in
+    combined)
+        echo -e "  ${GREEN}✓${NC} Combined PreToolUse hook configured (safety-net + RTK)"
+        PASS=$((PASS + 1)) ;;
+    legacy)
+        echo -e "  ${YELLOW}~${NC} Legacy safety-net hook (consider upgrading to combined hook)"
+        PASS=$((PASS + 1)) ;;
+    *)
+        echo -e "  ${RED}✗${NC} PreToolUse hook not configured"
+        FAIL=$((FAIL + 1)) ;;
+esac
 
 # Test safety-net blocking
 if command -v cc-safety-net &>/dev/null; then
@@ -488,24 +533,38 @@ if command -v cc-safety-net &>/dev/null; then
     fi
 fi
 
-# Check official plugins
-if [[ -f "$SETTINGS_JSON" ]] && grep -q "enabledPlugins" "$SETTINGS_JSON"; then
-    PLUGIN_COUNT=0
+# Check official plugins — Audit M5: substring grep matches inside _disabled_*
+# keys and other unrelated paths. Use python3 to require enabledPlugins[<name>] is True.
+PLUGIN_COUNT=0
+if [[ -f "$SETTINGS_JSON" ]] && command -v python3 &>/dev/null; then
+    PLUGIN_COUNT=$(python3 - "$SETTINGS_JSON" "${PLUGINS[@]}" <<'PYEOF' 2>/dev/null || echo 0
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        cfg = json.load(f)
+except Exception:
+    print(0); sys.exit(0)
+ep = cfg.get('enabledPlugins', {}) or {}
+n = sum(1 for p in sys.argv[2:] if ep.get(p) is True)
+print(n)
+PYEOF
+)
+elif [[ -f "$SETTINGS_JSON" ]]; then
     for plugin in "${PLUGINS[@]}"; do
-        if grep -q "$plugin" "$SETTINGS_JSON" 2>/dev/null; then
+        if grep -qE "\"${plugin}\"[[:space:]]*:[[:space:]]*true" "$SETTINGS_JSON" 2>/dev/null; then
             PLUGIN_COUNT=$((PLUGIN_COUNT + 1))
         fi
     done
-    if [[ $PLUGIN_COUNT -eq ${#PLUGINS[@]} ]]; then
-        echo -e "  ${GREEN}✓${NC} All ${#PLUGINS[@]} official plugins enabled"
-        PASS=$((PASS + 1))
-    else
-        echo -e "  ${YELLOW}~${NC} $PLUGIN_COUNT/${#PLUGINS[@]} official plugins enabled"
-        PASS=$((PASS + 1))
-    fi
-else
+fi
+if [[ ! -f "$SETTINGS_JSON" ]]; then
     echo -e "  ${RED}✗${NC} Official plugins not configured"
     FAIL=$((FAIL + 1))
+elif [[ $PLUGIN_COUNT -eq ${#PLUGINS[@]} ]]; then
+    echo -e "  ${GREEN}✓${NC} All ${#PLUGINS[@]} official plugins enabled"
+    PASS=$((PASS + 1))
+else
+    echo -e "  ${YELLOW}~${NC} $PLUGIN_COUNT/${#PLUGINS[@]} official plugins enabled"
+    PASS=$((PASS + 1))
 fi
 
 echo ""

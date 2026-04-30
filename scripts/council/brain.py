@@ -28,6 +28,7 @@ import os
 import json
 import tempfile
 import threading
+import time  # Audit M8 — TTL math on UTC epoch (datetime.now() is naive local).
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
@@ -626,13 +627,44 @@ def resolve_council_status(verdicts_g, verdicts_c):
     return status, rows
 
 
+def refuse_if_symlink(path):
+    """Audit M7/L1: refuse to read or overwrite a path that is currently a symlink.
+
+    On shared dev/CI hosts, an attacker (or a stale prior process) can plant
+    `.claude/scratchpad/council-report.md` as a symlink to ~/.ssh/authorized_keys
+    (or any other writable target). `Path.write_text` follows symlinks; the
+    Council would then overwrite the linked target with attacker-controlled
+    LLM-generated report content (= local privilege escalation).
+
+    Defence: lstat the path first; raise PermissionError before opening it.
+    Cheap: O(1) syscall. False-positive risk: zero (Council never legitimately
+    creates a symlink at this path).
+
+    `os.replace` in atomic_write_text() severs symlinks at the destination
+    (atomic rename replaces the symlink itself, not its target), so a write
+    that goes through atomic_write_text after this guard is safe end-to-end.
+    """
+    try:
+        st = os.lstat(path)
+    except FileNotFoundError:
+        return  # OK — fresh write
+    import stat as _stat
+    if _stat.S_ISLNK(st.st_mode):
+        raise PermissionError(
+            f"refusing to follow symlink at {path} (audit M7/L1 — symlink overwrite/read guard)"
+        )
+
+
 def atomic_write_text(path, content):
     """Atomic file write: tempfile in same dir + os.replace.
 
     Atomic on POSIX same-filesystem (Python 3.3+). Pattern mirrors the
     header-tempfile precedent in ask_chatgpt() to keep brain.py's atomicity
     discipline consistent (BRAIN-H3/H4).
+
+    Audit M7: refuse to overwrite a symlink at the target path (LPE guard).
     """
+    refuse_if_symlink(path)
     parent = Path(path).resolve().parent
     with tempfile.NamedTemporaryFile(
         mode="w",
@@ -1507,14 +1539,29 @@ def _cache_ttl_days(config):
 
 
 def _get_cached(key, ttl_days):
-    """Return cached payload dict if present and within TTL, else None."""
+    """Return cached payload dict if present and within TTL, else None.
+
+    Audit M8: was datetime.datetime.now().timestamp() — naive local-time
+    flip-flops on DST/tz changes. Use time.time() (UTC epoch) for cache TTL math.
+
+    Audit L1: refuse to read through a symlink at the cache path (defence-in-depth
+    even though the cache lives in CACHE_DIR which the Council owns).
+    """
     if not key:
         return None
     p = _cache_path(key)
-    if not p.is_file():
+    try:
+        st = os.lstat(p)
+    except FileNotFoundError:
+        return None
+    import stat as _stat
+    if _stat.S_ISLNK(st.st_mode):
+        _debug(f"cache read refused: {p} is a symlink")
+        return None
+    if not _stat.S_ISREG(st.st_mode):
         return None
     try:
-        age_seconds = datetime.datetime.now().timestamp() - p.stat().st_mtime
+        age_seconds = time.time() - p.stat().st_mtime
         if age_seconds > ttl_days * 86400:
             return None
         return json.loads(p.read_text(encoding="utf-8"))
@@ -2246,7 +2293,9 @@ def _run_validate_plan(plan, config):
         scratchpad = Path.cwd() / ".claude" / "scratchpad"
         scratchpad.mkdir(parents=True, exist_ok=True)
         vp_report_path = scratchpad / "council-report.md"
-        vp_report_path.write_text(cached.get("report_md", ""), encoding="utf-8")
+        # Audit M7: was vp_report_path.write_text(...) which follows symlinks.
+        # atomic_write_text refuses symlink targets and writes via tempfile+os.replace.
+        atomic_write_text(vp_report_path, cached.get("report_md", ""))
         print(f"Report saved: {vp_report_path}")
         log_cache_hit(plan_hash, cached.get("final_verdict"))
         return
@@ -2629,7 +2678,8 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
 - **SKIP** — don't do this. Move on to something else.
 """
 
-    vp_report_path.write_text(report, encoding="utf-8")
+    # Audit M7: was vp_report_path.write_text(...) — symlink-follow LPE guard.
+    atomic_write_text(vp_report_path, report)
     print(f"Report saved: {vp_report_path}")
 
     # ── Phase 24 SP6 — store cache snapshot for future identical calls ──
@@ -2945,6 +2995,27 @@ def cmd_stats(argv):
                 continue
             if until_dt and rec_dt >= until_dt:
                 continue
+            # Audit M9: validate per-row bounds before accumulating into totals.
+            # usage.jsonl is 0600 + same-UID, but a corrupt or attacker-supplied
+            # row with `cost_usd: 1e308` produces inf totals (bogus billing) and
+            # `tokens_in: "9" * 10_000_000` burns CPU in int parsing. Reject
+            # ridiculous magnitudes; the file is append-only so a single bad
+            # row should not poison stats.
+            try:
+                t_in  = int(rec.get("tokens_in", 0))
+                t_out = int(rec.get("tokens_out", 0))
+                cost  = float(rec.get("cost_usd", 0.0))
+            except (TypeError, ValueError, OverflowError):
+                skipped += 1
+                continue
+            # 10**12 tokens = ~1 trillion, ~$1e6 single-call cost — both far above
+            # any plausible legitimate value. Reject negatives and NaN/inf.
+            if not (0 <= t_in < 10**12) or not (0 <= t_out < 10**12):
+                skipped += 1
+                continue
+            if not (cost == cost) or cost < 0 or cost > 1e9:  # NaN check via self-equality
+                skipped += 1
+                continue
             key = (
                 rec.get("provider", "?"),
                 rec.get("model", "?"),
@@ -2954,13 +3025,13 @@ def cmd_stats(argv):
                 key, {"calls": 0, "tokens_in": 0, "tokens_out": 0, "cost_usd": 0.0}
             )
             agg["calls"] += 1
-            agg["tokens_in"] += int(rec.get("tokens_in", 0))
-            agg["tokens_out"] += int(rec.get("tokens_out", 0))
-            agg["cost_usd"] += float(rec.get("cost_usd", 0.0))
+            agg["tokens_in"] += t_in
+            agg["tokens_out"] += t_out
+            agg["cost_usd"] += cost
             total_calls += 1
-            total_in += int(rec.get("tokens_in", 0))
-            total_out += int(rec.get("tokens_out", 0))
-            total_cost += float(rec.get("cost_usd", 0.0))
+            total_in += t_in
+            total_out += t_out
+            total_cost += cost
 
     rows = sorted(
         ((p, m, mo, agg) for (p, m, mo), agg in groups.items()),

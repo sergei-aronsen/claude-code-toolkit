@@ -47,8 +47,49 @@ _bootstrap_run_sp_default() {
 }
 
 _bootstrap_run_gsd_default() {
-    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 \
-        'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
+    # Audit H1: GSD installer is a third-party `curl|bash` over HTTPS only.
+    # No checksum, no GPG signature, no pinned commit — repo takeover or
+    # account hijack of `gsd-build` becomes RCE under the installing user.
+    # Guarded by:
+    #   1) the [y/N] prompt in _bootstrap_prompt_and_run (see below),
+    #   2) an extra explicit URL display + warning here so the user has the
+    #      target visible before bytes are executed,
+    #   3) optional integrity check via TK_GSD_PIN_SHA256 — when set, the
+    #      installer is downloaded to a tempfile, sha256 verified, then run.
+    local url='https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh'
+    _bootstrap_log_warning "About to fetch + execute third-party installer:"
+    _bootstrap_log_warning "  $url"
+    _bootstrap_log_warning "  This runs arbitrary upstream code under your account."
+    if [[ -n "${TK_GSD_PIN_SHA256:-}" ]]; then
+        local tmp
+        tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX.sh")
+        # shellcheck disable=SC2064
+        trap "rm -f '$tmp'" RETURN
+        if ! curl -sSLf --max-time 60 --connect-timeout 10 --retry 2 "$url" -o "$tmp"; then
+            _bootstrap_log_warning "GSD installer download failed — aborting."
+            return 1
+        fi
+        local actual
+        if command -v sha256sum >/dev/null 2>&1; then
+            actual=$(sha256sum "$tmp" | awk '{print $1}')
+        elif command -v shasum >/dev/null 2>&1; then
+            actual=$(shasum -a 256 "$tmp" | awk '{print $1}')
+        else
+            _bootstrap_log_warning "Neither sha256sum nor shasum found — cannot verify TK_GSD_PIN_SHA256. Aborting."
+            return 1
+        fi
+        if [[ "$actual" != "$TK_GSD_PIN_SHA256" ]]; then
+            _bootstrap_log_warning "GSD installer SHA-256 mismatch:"
+            _bootstrap_log_warning "  expected: $TK_GSD_PIN_SHA256"
+            _bootstrap_log_warning "  actual:   $actual"
+            _bootstrap_log_warning "Aborting."
+            return 1
+        fi
+        _bootstrap_log_info "GSD installer SHA-256 verified"
+        bash "$tmp"
+        return $?
+    fi
+    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 "$url")
 }
 
 _bootstrap_prompt_and_run() {
@@ -104,12 +145,14 @@ bootstrap_base_plugins() {
     fi
 
     # GSD prompt block — independent of SP.
+    # Audit H1: prompt copy now flags the third-party + curl|bash nature so a
+    # user defaulting to "y" sees the trust boundary before pressing enter.
     if [[ -d "$gsd_dir" ]]; then
         _bootstrap_log_info "get-shit-done already installed — skipping."
     else
         TK_BOOTSTRAP_OVERRIDE_CMD="${TK_BOOTSTRAP_GSD_CMD:-${TK_GSD_INSTALL_CMD:-}}" \
             _bootstrap_prompt_and_run "get-shit-done" \
-                "Install get-shit-done via curl install script? [y/N] " \
+                "Install get-shit-done? Runs third-party curl|bash from raw.githubusercontent.com/gsd-build/get-shit-done (set TK_GSD_PIN_SHA256 to verify). [y/N] " \
                 _bootstrap_run_gsd_default
     fi
 
