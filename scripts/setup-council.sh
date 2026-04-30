@@ -509,7 +509,8 @@ else
         echo -e "  (Skip if you do not use Claude Desktop.)"
     fi
     printf "  Register Council as MCP server in Claude Desktop? [y/N]: "
-    read -r CD_ANSWER < /dev/tty
+    CD_ANSWER=""
+    read -r CD_ANSWER < /dev/tty 2>/dev/null || true
     if [[ "$CD_ANSWER" =~ ^[Yy] ]]; then
         if ! command -v python3 >/dev/null 2>&1; then
             echo -e "  ${RED}✗${NC} python3 missing — Claude Desktop integration aborted"
