@@ -22,10 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Run ShellCheck
+      - name: Run ShellCheck (scripts/)
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
         with:
           scandir: './scripts'
+          severity: warning
+
+      # Audit M-03 / INF-HIGH-2: templates/global/{rate-limit-probe,statusline}.sh
+      # ship to users via install-statusline.sh. Local make shellcheck covers
+      # this scope; CI must too so a regression blocks the PR.
+      - name: Run ShellCheck (templates/global/)
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
+        with:
+          scandir: './templates/global'
           severity: warning
 
   markdownlint:
@@ -128,6 +137,7 @@ jobs:
           bash scripts/tests/test-mcp-selector.sh
           bash scripts/tests/test-install-skills.sh
           bash scripts/tests/test-bridges.sh
+          bash scripts/tests/test-install-dispatch-h1.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands

@@ -159,6 +159,9 @@ test:
 	@echo "Test 33: Skills selector + cp-R install + idempotency + --force (SKILL-03..05)"
 	@bash scripts/tests/test-install-skills.sh
 	@echo ""
+	@echo "Test 34: H1 regression — install dispatch name-based lookup (DISPATCH-H1-01..06)"
+	@bash scripts/tests/test-install-dispatch-h1.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
