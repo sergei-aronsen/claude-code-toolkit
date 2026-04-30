@@ -21,7 +21,10 @@ Thank you for your interest in contributing! This document provides guidelines a
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make your changes
-4. Run tests: `make lint && make test`
+4. Run the primary quality gate: `make check` (covers lint, validate,
+   manifest schema, version alignment, translation drift, agent
+   collisions, command headings, skills desktop-safety, marketplace,
+   markdownlint config sync, and cell-parity)
 5. Commit with a descriptive message
 6. Push and create a Pull Request
 
@@ -35,14 +38,13 @@ cd claude-code-toolkit
 # Install dependencies
 make install
 
-# Run linters
-make lint
+# Primary quality gate (run this before every commit):
+make check
 
-# Run tests
-make test
-
-# Validate templates
-make validate
+# Individual targets, if you want to drill in:
+make lint            # shellcheck + markdownlint
+make test            # init-script + helper test suites
+make validate        # template structure + manifest schema
 ```
 
 ## Template Guidelines

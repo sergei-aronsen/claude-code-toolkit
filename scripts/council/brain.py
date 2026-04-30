@@ -49,6 +49,12 @@ MAX_TODOS = 5000            # 5K characters TODO/FIXME grep limit (SP3)
 MAX_PLANNING = 10000        # 10K characters .planning/PROJECT.md limit (SP3)
 MAX_TEST_FILE = 20000       # 20K characters per matching test file (SP3)
 
+# Audit SEC-LOW-1 (2026-04-30 deep): allowlist for model names that flow
+# into provider URL paths. Prevents a hostile config.json (which is
+# 0600/user-owned, so this is defense-in-depth) from injecting URL
+# traversal via the gemini.model field at brain.py:1721.
+_MODEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
 
 def _debug(msg):
     """Emit a stderr trace line when COUNCIL_DEBUG=1 is set.
@@ -1791,6 +1797,15 @@ def ask_gemini(prompt, config, file_paths=None):
     """Route to CLI or API based on config."""
     mode = config["gemini"].get("mode", "cli")
     model = config["gemini"]["model"]
+
+    # Audit SEC-LOW-1 (2026-04-30 deep): defense-in-depth — `model` flows into
+    # ask_gemini_api's URL path. Reject anything outside the conventional
+    # google-model charset before constructing the URL. Self-DoS only since
+    # config.json is 0600/user-owned, but cheap to enforce.
+    if mode == "api" and not _MODEL_NAME_RE.match(model):
+        raise ValueError(
+            f"Invalid Gemini model name (must match [a-zA-Z0-9._-]+): {model!r}"
+        )
 
     if mode == "cli":
         return ask_gemini_cli(prompt, model, file_paths=file_paths)

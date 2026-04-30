@@ -166,8 +166,15 @@ echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
 
 mkdir -p "$CLAUDE_DIR"
 
-# Download latest security rules
-SECURITY_CONTENT=$(curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+# Download latest security rules.
+# Audit S-LOW-4 (2026-04-30 deep): cap response size + add network safety
+# flags so a hostile or runaway server can't exhaust memory via the shell
+# variable buffer. 2MB ceiling is far beyond the current ~14KB template
+# while still providing back-pressure.
+SECURITY_CONTENT=$(curl -sSLf -A "$TK_USER_AGENT" \
+    --max-filesize 2097152 \
+    --max-time 60 --connect-timeout 10 --retry 2 --retry-delay 2 \
+    "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
 if [[ -z "$SECURITY_CONTENT" ]]; then
     echo -e "  ${RED}✗${NC} Failed to download security rules"
     echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"

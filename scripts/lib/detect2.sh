@@ -118,9 +118,26 @@ is_rtk_installed() {
 
 # DET-03: statusline.sh exists AND statusLine key wired in settings.json.
 # Top-level "statusLine" key per install-statusline.sh — NOT ".statusLine.enabled".
+# Audit S-LOW-1 (2026-04-30 deep): bare `grep -q '"statusLine"'` matched any
+# substring "statusLine" inside a description/comment field, or keys like
+# "statusLine_disabled". Match the canonical key shape ("statusLine" followed
+# by `:`) via `grep -E`, with a python+json fallback for hardened matching.
 is_statusline_installed() {
     [[ -f "$HOME/.claude/statusline.sh" ]] || return 1
-    grep -q '"statusLine"' "$HOME/.claude/settings.json" 2>/dev/null
+    local settings="$HOME/.claude/settings.json"
+    [[ -f "$settings" ]] || return 1
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c '
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        cfg = json.load(f)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if "statusLine" in cfg else 1)' "$settings" 2>/dev/null
+    else
+        grep -qE '"statusLine"[[:space:]]*:' "$settings" 2>/dev/null
+    fi
 }
 
 # Optional helper: cache all probes into IS_* vars. Callers that need
