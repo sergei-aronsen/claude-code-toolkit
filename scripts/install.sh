@@ -843,9 +843,31 @@ for _local_check_name in "${TK_DISPATCH_ORDER[@]}"; do
 done
 unset _local_check_name
 
+# Audit H1: previously this loop indexed both TK_DISPATCH_ORDER and
+# TUI_LABELS by the same $i — but TK_DISPATCH_ORDER is fixed-length 8
+# while TUI_LABELS is dynamic 6/7/8 entries (bridges are conditional).
+# With only Codex detected (IS_GEM=0, IS_COD=1), TUI_LABELS[6] was
+# "codex-bridge" while TK_DISPATCH_ORDER[6] was "gemini-bridge", so
+# the user got a Gemini bridge written despite no Gemini CLI and the
+# Codex bridge silently never installed. The same bug fired on
+# `--bridges codex` and any future label rearrangement.
+#
+# Fix: derive the dispatch name from the TUI label directly. Labels
+# already use kebab-case names that map 1:1 to dispatcher functions
+# after a single get-shit-done → gsd renaming step.
+_local_label_to_dispatch_name() {
+    case "$1" in
+        get-shit-done) echo "gsd" ;;
+        # Bridges keep their kebab-case label — the dispatch loop has a
+        # dedicated bridge branch (case "$local_name" in gemini-bridge|
+        # codex-bridge) that handles them without invoking dispatch_*.
+        *) echo "$1" ;;
+    esac
+}
+
 for ((i=0; i<_disp_count; i++)); do
-    local_name="${TK_DISPATCH_ORDER[$i]}"
     local_label="${TUI_LABELS[$i]}"
+    local_name="$(_local_label_to_dispatch_name "$local_label")"
     COMPONENT_NAMES+=("$local_label")
 
     if [[ "${TUI_RESULTS[$i]:-0}" -ne 1 ]]; then
