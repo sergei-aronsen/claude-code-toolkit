@@ -35,7 +35,12 @@ FLAG_NAMES=()
 # Heuristic — extended grep for either tool call pattern OR English instruction.
 # FLAG_REGEX intentionally conservative: matches anything that suggests the
 # skill needs Claude Code's tool-execution layer.
-FLAG_REGEX='(Read|Write|Bash|Grep|Edit|Task)\(|Use (the )?(Read|Bash|Write) tool'
+#
+# Audit M10: previously the prose-form alternation only included Read/Bash/Write,
+# so "Use the Edit tool" / "Use the Grep tool" / "Use the Task tool" silently
+# PASSED the Desktop-safety gate, defeating the threshold check. Extend to all
+# six tool names that the call-form alternation already covers.
+FLAG_REGEX='(Read|Write|Bash|Grep|Edit|Task)\(|Use (the )?(Read|Write|Bash|Grep|Edit|Task) tool'
 
 # Iterate skills in alphabetical order (predictable output for diffing).
 while IFS= read -r skill_dir; do

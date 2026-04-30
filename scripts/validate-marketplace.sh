@@ -44,12 +44,14 @@ fi
 echo -e "${BLUE}Validating marketplace via claude CLI...${NC}"
 echo ""
 
-TMPOUT="/tmp/tk-marketplace-out.$$"
+# Audit L12: predictable /tmp/tk-marketplace-out.$$ is symlink-attackable on
+# shared hosts. Use mktemp for an O_EXCL-secured per-run path.
+TMPOUT=$(mktemp -t tk-marketplace.XXXXXX)
+trap 'rm -f "$TMPOUT"' EXIT
 
 # Smoke: add the marketplace from the local repo. The CLI prints discovered plugins.
 if ! claude plugin marketplace add ./ 2>&1 | tee "$TMPOUT"; then
     echo -e "${RED}✗${NC} claude plugin marketplace add ./ failed"
-    rm -f "$TMPOUT"
     exit 1
 fi
 
@@ -61,7 +63,7 @@ for plugin in tk-skills tk-commands tk-framework-rules; do
         MISSING=$((MISSING + 1))
     fi
 done
-rm -f "$TMPOUT"
+# trap EXIT removes $TMPOUT (Audit L12)
 
 if [ "$MISSING" -gt 0 ]; then
     echo -e "${RED}✗${NC} $MISSING sub-plugin(s) missing from marketplace add output"

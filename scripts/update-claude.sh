@@ -1251,10 +1251,16 @@ fi
 # Keep survivors from pre-run state minus anything removed this run,
 # then append newly installed paths.
 FINAL_INSTALLED_CSV=""
+# Audit L6: when REMOVED_PATHS is empty, "${REMOVED_PATHS[@]:-}" expands to one
+# empty string passed to printf — `grep -Fxq ""` matches empty $rel as TRUE.
+# Length-guard the array so the skip-check only runs when there is anything to
+# skip. Same length-guard pattern used at update-claude.sh:497 (REMOVED_PATHS
+# producer side).
 while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
-    # skip if removed this run
-    if printf '%s\n' "${REMOVED_PATHS[@]:-}" | grep -Fxq "$rel"; then continue; fi
+    if [[ ${#REMOVED_PATHS[@]} -gt 0 ]]; then
+        if printf '%s\n' "${REMOVED_PATHS[@]}" | grep -Fxq "$rel"; then continue; fi
+    fi
     [[ -n "$FINAL_INSTALLED_CSV" ]] && FINAL_INSTALLED_CSV+=","
     FINAL_INSTALLED_CSV+="$CLAUDE_DIR/$rel"
 done < <(jq -r '.installed_files[].path' <<<"$STATE_JSON")
