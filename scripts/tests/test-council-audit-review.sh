@@ -332,6 +332,7 @@ cp "$FIXTURE_REPORT" "$PRE_REPORT"
 set +e
 (
     cd "$SCRATCH"
+    COUNCIL_ALLOW_STUBS=1 \
     COUNCIL_STUB_GEMINI="$FIXTURE_DIR/stub-gemini.sh" \
     COUNCIL_STUB_CHATGPT="$FIXTURE_DIR/stub-chatgpt.sh" \
     python3 "$BRAIN" --mode audit-review --report report.md \
@@ -447,6 +448,7 @@ cp "$FIXTURE_REPORT" "$SCRATCH/malformed-report.md"
 set +e
 (
     cd "$SCRATCH"
+    COUNCIL_ALLOW_STUBS=1 \
     COUNCIL_STUB_GEMINI="$FIXTURE_DIR/stub-malformed.sh" \
     COUNCIL_STUB_CHATGPT="$FIXTURE_DIR/stub-malformed.sh" \
     python3 "$BRAIN" --mode audit-review --report malformed-report.md \

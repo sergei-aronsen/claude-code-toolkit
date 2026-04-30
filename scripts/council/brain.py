@@ -444,13 +444,18 @@ def extract_verdict(text):
     """
     if not text:
         return "RETHINK"
-    upper = text.upper()
-    # First: look for explicit "VERDICT: <word>" pattern.
-    match = re.search(r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)", upper)
+    # Audit L-Council: skip the full text.upper() — for 100K+ char reviewer
+    # outputs that doubled the working set unnecessarily. Use re.IGNORECASE
+    # over the original string and uppercase only the matched group.
+    match = re.search(
+        r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)",
+        text,
+        re.IGNORECASE,
+    )
     if match:
-        return match.group(1)
+        return match.group(1).upper()
     # Fallback: scan only the last 500 chars (verdict line typically at end).
-    tail = upper[-500:]
+    tail = text[-500:].upper()
     for verdict in VERDICT_PRIORITY:
         if verdict in tail:
             return verdict
@@ -1029,10 +1034,24 @@ def get_todos():
 
     hits = []
     total = 0
+    # Audit M-Council: skip per-file pathologies. Minified bundles, lockfiles,
+    # and machine-generated SQL dumps can reach 10MB+ on a single line; running
+    # the TODO regex over them is O(N²) on backtracking-prone shapes and gobbles
+    # memory. 1MB cap and 5KB/line cap together bound worst-case work.
+    MAX_TODO_FILE_BYTES = 1 * 1024 * 1024
+    MAX_TODO_LINE_BYTES = 5 * 1024
     for path in files:
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if stat.st_size > MAX_TODO_FILE_BYTES:
+            continue
         try:
             with path.open("r", encoding="utf-8", errors="replace") as fh:
                 for lineno, line in enumerate(fh, start=1):
+                    if len(line) > MAX_TODO_LINE_BYTES:
+                        continue
                     if pattern.search(line):
                         rel = path.relative_to(root)
                         snippet = line.rstrip()[:200]
@@ -1704,10 +1723,14 @@ def ask_chatgpt_cli(prompt, model, reasoning_effort="high", system_prompt=None):
     Codex can produce.
 
     Honors COUNCIL_STUB_CHATGPT for test harnesses (mirrors dispatch helpers).
+    Stubs only fire when COUNCIL_ALLOW_STUBS=1 (audit M-Council opt-in) so a
+    stray COUNCIL_STUB_* env in the user's shell can never silently shadow a
+    real backend with canned data.
     """
-    stub = os.getenv("COUNCIL_STUB_CHATGPT")
-    if stub:
-        return run_command([stub], timeout=60)
+    if os.getenv("COUNCIL_ALLOW_STUBS") == "1":
+        stub = os.getenv("COUNCIL_STUB_CHATGPT")
+        if stub:
+            return run_command([stub], timeout=60)
 
     full_prompt = (
         f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
@@ -1738,9 +1761,13 @@ def ask_openrouter(prompt, api_key, models, system_prompt=None):
     eventually answered.
 
     Honors COUNCIL_STUB_OPENROUTER for test harnesses (mirror of the OpenAI /
-    Gemini stubs).
+    Gemini stubs). Stubs require COUNCIL_ALLOW_STUBS=1 (audit M-Council).
     """
-    stub = os.getenv("COUNCIL_STUB_OPENROUTER")
+    stub = (
+        os.getenv("COUNCIL_STUB_OPENROUTER")
+        if os.getenv("COUNCIL_ALLOW_STUBS") == "1"
+        else None
+    )
     if stub:
         result = run_command([stub], timeout=60)
         _set_last_usage(
@@ -1828,7 +1855,12 @@ def call_with_fallback(primary_callable, fallback_prompt, fallback_system, confi
     fb_cfg = (config.get("fallback", {}) or {}).get("openrouter", {}) or {}
     api_key = fb_cfg.get("api_key", "")
     models = fb_cfg.get("models", [])
-    if not (api_key or os.getenv("COUNCIL_STUB_OPENROUTER")) or not models:
+    stub_or = (
+        os.getenv("COUNCIL_STUB_OPENROUTER")
+        if os.getenv("COUNCIL_ALLOW_STUBS") == "1"
+        else None
+    )
+    if not (api_key or stub_or) or not models:
         _debug(f"fallback: {label} — primary failed, OpenRouter not configured")
         return text, False
 
@@ -1940,13 +1972,15 @@ def ask_chatgpt(prompt, config, system_prompt=None):
 def dispatch_audit_review_gemini(prompt, config, plan_hash=None):
     """Gemini dispatch for audit-review mode.
 
-    Honors COUNCIL_STUB_GEMINI env var (RESEARCH.md §5) — when set, the value
-    is treated as a path to an executable script that emits canned <verdict-table>
-    output on stdout. Used by scripts/tests/test-council-audit-review.sh.
+    Honors COUNCIL_STUB_GEMINI env var (RESEARCH.md §5) — when set AND
+    COUNCIL_ALLOW_STUBS=1 (audit M-Council opt-in), the value is treated as
+    a path to an executable script that emits canned <verdict-table> output
+    on stdout. Used by scripts/tests/test-council-audit-review.sh.
     """
-    stub = os.getenv("COUNCIL_STUB_GEMINI")
-    if stub:
-        return run_command([stub], timeout=30)
+    if os.getenv("COUNCIL_ALLOW_STUBS") == "1":
+        stub = os.getenv("COUNCIL_STUB_GEMINI")
+        if stub:
+            return run_command([stub], timeout=30)
     result = ask_gemini(prompt, config)
     record_usage("audit-review-skeptic", plan_hash=plan_hash)
     return result
@@ -1955,11 +1989,13 @@ def dispatch_audit_review_gemini(prompt, config, plan_hash=None):
 def dispatch_audit_review_chatgpt(prompt, config, plan_hash=None):
     """ChatGPT dispatch for audit-review mode.
 
-    Honors COUNCIL_STUB_CHATGPT env var (RESEARCH.md §5).
+    Honors COUNCIL_STUB_CHATGPT env var (RESEARCH.md §5). Stubs only fire
+    when COUNCIL_ALLOW_STUBS=1 (audit M-Council).
     """
-    stub = os.getenv("COUNCIL_STUB_CHATGPT")
-    if stub:
-        return run_command([stub], timeout=30)
+    if os.getenv("COUNCIL_ALLOW_STUBS") == "1":
+        stub = os.getenv("COUNCIL_STUB_CHATGPT")
+        if stub:
+            return run_command([stub], timeout=30)
     result = ask_chatgpt(prompt, config, system_prompt=load_prompt("audit-review-pragmatist"))
     record_usage("audit-review-pragmatist", plan_hash=plan_hash)
     return result
@@ -2000,7 +2036,24 @@ def run_audit_review(report_path_str, config):
         )
         return 1
 
-    prompt = prompt_template.replace("{REPORT_CONTENT}", report_content)
+    # Audit M-Council: wrap report content in sentinel markers so a hostile
+    # writer of the audit report (e.g. a contractor or compromised process
+    # with write access to .planning/audits/) cannot inject directives that
+    # mimic the surrounding prompt and flip a verdict. Strip any pre-existing
+    # sentinel markers from the user-supplied content first so an attacker
+    # can't pre-close the wrapper. The audit-review prompt template is
+    # updated to read from this sentinel-bracketed block.
+    safe_content = report_content.replace(
+        "<<<COUNCIL_REPORT_BEGIN>>>", "<<<stripped>>>"
+    ).replace(
+        "<<<COUNCIL_REPORT_END>>>", "<<<stripped>>>"
+    )
+    wrapped = (
+        "<<<COUNCIL_REPORT_BEGIN>>>\n"
+        f"{safe_content}\n"
+        "<<<COUNCIL_REPORT_END>>>"
+    )
+    prompt = prompt_template.replace("{REPORT_CONTENT}", wrapped)
     plan_hash = _hash_plan(report_content)
 
     # 3. Parallel dispatch (D-08, COUNCIL-06)
@@ -2650,7 +2703,7 @@ PLAN:
     print(skeptic_prompt)
     print("\n--- PRAGMATIST PROMPT ---\n")
     print(pragmatist_prompt)
-    print("\n=" * 1 + "=" * 59)
+    print("\n" + "=" * 60)
     print("Dry-run complete. Re-run without --dry-run to actually call providers.")
     return 0
 
@@ -2678,6 +2731,23 @@ def _run_retro(commit_sha, config):
         print("\n❌ retro mode requires --commit <sha>", file=sys.stderr)
         return 2
 
+    # Audit M-Council: validate commit_sha as a benign revspec BEFORE handing
+    # it to git. Without validation `--commit "--upload-pack=evil-server"`
+    # bypasses subprocess shell=False because git itself parses the leading
+    # `--flag`. Reject anything that looks like a flag, contains whitespace,
+    # or contains characters outside the conservative revspec alphabet, then
+    # round-trip via `git rev-parse --verify` to resolve to a canonical SHA.
+    if commit_sha.startswith("-") or not re.match(r"^[A-Za-z0-9_./~^@:-]+$", commit_sha):
+        print(f"\n❌ Invalid commit revspec: {commit_sha!r}", file=sys.stderr)
+        return 2
+    resolved_sha = run_command(
+        ["git", "rev-parse", "--verify", f"{commit_sha}^{{commit}}"], timeout=5
+    )
+    if not resolved_sha or resolved_sha.startswith("Error"):
+        print(f"\n❌ Could not resolve commit {commit_sha!r}: {resolved_sha}", file=sys.stderr)
+        return 2
+    commit_sha = resolved_sha.strip()
+
     # Pull commit body (message + diff) within MAX_GIT_DIFF cap.
     git_show = run_command(["git", "show", commit_sha], timeout=30)
     if not git_show or git_show.startswith("Error"):
@@ -2692,7 +2762,9 @@ def _run_retro(commit_sha, config):
     ) or ""
     if not prior_report or prior_report.startswith("Error"):
         report_path = Path.cwd() / ".claude" / "scratchpad" / "council-report.md"
-        prior_report = report_path.read_text(encoding="utf-8") if report_path.is_file() else ""
+        # Audit BRAIN-MEM-01: cap read so a huge scratchpad can't OOM the
+        # process (mirrors the _read_capped wave applied to other helpers).
+        prior_report = _read_capped(report_path, 30000) if report_path.is_file() else ""
     prior_report = _truncate(prior_report or "(no prior Council report on file)", 30000)
 
     pragmatist_system = compose_system_prompt("pragmatist", git_show)
