@@ -909,7 +909,10 @@ setup_council() {
 
         # Create empty config
         if [[ ! -f "$council_dir/config.json" ]]; then
-            cat > "$council_dir/config.json" << 'CONFIGEOF'
+            # Audit L2: restrictive umask BEFORE heredoc so file is born 0600.
+            (
+                umask 0177
+                cat > "$council_dir/config.json" << 'CONFIGEOF'
 {
   "gemini": {
     "mode": "cli",
@@ -937,6 +940,7 @@ setup_council() {
   }
 }
 CONFIGEOF
+            )
             chmod 600 "$council_dir/config.json"
         fi
         return
@@ -1051,7 +1055,11 @@ CONFIGEOF
         # shellcheck disable=SC2016
         openrouter_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openrouter_key")
 
-        cat > "$council_dir/config.json" << CONFIGEOF
+        # Audit L2: umask 0177 in subshell so config.json is created 0600 atomically.
+        # SIGINT between heredoc and chmod previously left API keys world-readable.
+        (
+            umask 0177
+            cat > "$council_dir/config.json" << CONFIGEOF
 {
   "gemini": {
     "mode": $gemini_mode_json,
@@ -1079,6 +1087,7 @@ CONFIGEOF
   }
 }
 CONFIGEOF
+        )
         chmod 600 "$council_dir/config.json"
         echo -e "  ${GREEN}✓${NC} config.json created"
     else

@@ -140,16 +140,29 @@ TOOLS = [
 
 def _capture_stdout(callable_):
     """Run a callable that prints to stdout and return the captured text.
+
     brain.py's _run_validate_plan / cmd_stats / run_audit_review write
-    to stdout, so MCP needs to redirect to a string.
+    success output to stdout AND status/error lines to stderr (e.g.
+    `print(..., file=sys.stderr)` for failed Council runs). MCP clients
+    only see the returned `text` payload, so capture both streams and
+    concatenate stderr into the response — otherwise a failed run looks
+    like an empty success to Claude Desktop.
+
+    Audit L7.
     """
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    buf_out = io.StringIO()
+    buf_err = io.StringIO()
+    with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
         try:
             rc = callable_()
         except SystemExit as exc:
             rc = exc.code
-    return rc, buf.getvalue()
+    text = buf_out.getvalue()
+    err_text = buf_err.getvalue().strip()
+    if err_text:
+        # Append stderr only if it's non-empty so the success path is unchanged.
+        text = (text.rstrip() + "\n\n[stderr]\n" + err_text).strip() + "\n"
+    return rc, text
 
 
 def tool_council_validate(args):

@@ -409,7 +409,14 @@ else
     # shellcheck disable=SC2016
     OPENROUTER_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENROUTER_KEY")
 
-    cat > "$CONFIG_FILE" << CONFIGEOF
+    # Audit L2: set restrictive umask BEFORE the heredoc so the file is created
+    # with mode 0600 atomically. Previously the file was created with the inherited
+    # umask (typically 0022 → 0644) and then chmod 600 was applied — a SIGINT
+    # between the heredoc and chmod would leave the API keys world-readable.
+    # `( subshell )` localizes the umask change so we don't affect the caller.
+    (
+        umask 0177
+        cat > "$CONFIG_FILE" << CONFIGEOF
 {
   "gemini": {
     "mode": $GEMINI_MODE_JSON,
@@ -437,6 +444,9 @@ else
   }
 }
 CONFIGEOF
+    )
+    # Defence in depth — chmod after the fact in case umask was overridden by inherited
+    # permissions on a pre-existing parent dir's setgid mode.
     chmod 600 "$CONFIG_FILE"
     echo -e "  ${GREEN}✓${NC} config.json created (permissions: owner-only)"
 fi
