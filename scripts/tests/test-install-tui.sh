@@ -192,6 +192,7 @@ run_s3_yes() {
     OUTPUT=$(
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$MOCK_SP" \
         TK_DISPATCH_OVERRIDE_GSD="$MOCK_GSD" \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
@@ -230,6 +231,7 @@ run_s4_dry_run() {
     OUTPUT=$(
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
         NO_COLOR=1 \
         bash "$REPO_ROOT/scripts/install.sh" --yes --dry-run 2>&1
@@ -273,6 +275,7 @@ run_s5_force() {
     OUTPUT=$(
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_GSD="$_NOOP_SCRIPT" \
@@ -313,6 +316,7 @@ run_s6_fail_fast() {
     OUTPUT=$(
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$MOCK_SP_FAIL" \
         TK_DISPATCH_OVERRIDE_GSD="$MOCK_GSD_LATER" \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$_NOOP_SCRIPT" \
@@ -358,6 +362,7 @@ run_s7_no_tty() {
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TUI_TTY_SRC=/dev/null \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
         NO_COLOR=1 \
         bash "$REPO_ROOT/scripts/install.sh" 2>&1
@@ -406,6 +411,7 @@ MOCK_EOF
     OUTPUT=$(
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_GSD="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK_FAIL" \
@@ -478,6 +484,7 @@ run_s9_no_tty_bootstrap_fork() {
         TK_BOOTSTRAP_TTY_SRC="$ANSWER_FILE" \
         TK_BOOTSTRAP_SP_CMD="$MOCK_SP_CMD" \
         TK_BOOTSTRAP_GSD_CMD="$MOCK_GSD_CMD" \
+        TK_TEST=1 \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
         TK_DISPATCH_OVERRIDE_SECURITY="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_RTK="$_NOOP_SCRIPT" \

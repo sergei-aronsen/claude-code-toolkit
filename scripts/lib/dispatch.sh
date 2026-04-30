@@ -109,7 +109,11 @@ dispatch_superpowers() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_SUPERPOWERS:-}" ]]; then
+    # Audit H6: TK_DISPATCH_OVERRIDE_* is a TEST SEAM. Honour it only
+    # when TK_TEST=1 — otherwise an attacker who sets the env var
+    # gets arbitrary script execution under the user's account.
+    # Same RCE class as the eval gate at lines 127-131.
+    if [[ -n "${TK_DISPATCH_OVERRIDE_SUPERPOWERS:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] superpowers (would run override: $TK_DISPATCH_OVERRIDE_SUPERPOWERS)"
             return 0
@@ -145,7 +149,8 @@ dispatch_gsd() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_GSD:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_GSD:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] gsd (would run override: $TK_DISPATCH_OVERRIDE_GSD)"
             return 0
@@ -181,7 +186,8 @@ dispatch_toolkit() {
     done
     : "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_TOOLKIT:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_TOOLKIT:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] toolkit (would run override: $TK_DISPATCH_OVERRIDE_TOOLKIT)"
             return 0
@@ -223,7 +229,8 @@ dispatch_security() {
     done
     : "$force"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_SECURITY:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_SECURITY:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] security (would run override: $TK_DISPATCH_OVERRIDE_SECURITY)"
             return 0
@@ -260,7 +267,8 @@ dispatch_rtk() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_RTK:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_RTK:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] rtk (would run override: $TK_DISPATCH_OVERRIDE_RTK)"
             return 0
@@ -296,7 +304,8 @@ dispatch_statusline() {
     done
     : "$force"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_STATUSLINE:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_STATUSLINE:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] statusline (would run override: $TK_DISPATCH_OVERRIDE_STATUSLINE)"
             return 0
