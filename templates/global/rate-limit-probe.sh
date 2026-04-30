@@ -5,6 +5,13 @@
 # Writes results to /tmp/claude-rate-limits.json
 # Uses claude-haiku-4-5 (cheapest model) with max_tokens=1 to minimize usage impact.
 
+# Audit M8: macOS-only by design — depends on `security` (Keychain) and
+# BSD `stat -f %m`. Exit cleanly on non-Darwin instead of looping with
+# bogus zero-mtime values.
+if [ "$(uname -s 2>/dev/null)" != "Darwin" ]; then
+    exit 0
+fi
+
 CACHE_FILE="${TMPDIR:-/tmp}/claude-rate-limits.json"
 LOCK_DIR="${TMPDIR:-/tmp}/claude-rate-limit-probe.lock"
 
