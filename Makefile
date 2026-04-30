@@ -162,6 +162,33 @@ test:
 	@echo "Test 34: H1 regression — install dispatch name-based lookup (DISPATCH-H1-01..06)"
 	@bash scripts/tests/test-install-dispatch-h1.sh
 	@echo ""
+	@echo "Test 35: backup-lib (BACKUP-LIB-01..10)"
+	@bash scripts/tests/test-backup-lib.sh
+	@echo ""
+	@echo "Test 36: backup-threshold (BACKUP-THRESHOLD-01..06)"
+	@bash scripts/tests/test-backup-threshold.sh
+	@echo ""
+	@echo "Test 37: --clean-backups flag suite (BACKUP-CLEAN-01..25, incl. S-HIGH-1 regression)"
+	@bash scripts/tests/test-clean-backups.sh
+	@echo ""
+	@echo "Test 38: detect-cli plugin liveness (DETECT-CLI-01..06)"
+	@bash scripts/tests/test-detect-cli.sh
+	@echo ""
+	@echo "Test 39: detect-skew plugin version drift (DETECT-SKEW-01..10)"
+	@bash scripts/tests/test-detect-skew.sh
+	@echo ""
+	@echo "Test 40: MCP secrets store (MCP-SEC-T01..11, incl. L1 regression)"
+	@bash scripts/tests/test-mcp-secrets.sh
+	@echo ""
+	@echo "Test 41: MCP wizard happy/error paths (MCP-WIZ-T01..14)"
+	@bash scripts/tests/test-mcp-wizard.sh
+	@echo ""
+	@echo "Test 42: migrate-to-complement.sh --dry-run (MIGRATE-DRY-01..09)"
+	@bash scripts/tests/test-migrate-dry-run.sh
+	@echo ""
+	@echo "Test 43: update-claude.sh --dry-run (UPDATE-DRY-01..11)"
+	@bash scripts/tests/test-update-dry-run.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
