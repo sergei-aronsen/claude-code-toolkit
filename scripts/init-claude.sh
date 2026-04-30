@@ -572,8 +572,12 @@ download_files() {
         skip=$(jq -r '.skip' <<< "$entry")
         reason=$(jq -r '.reason' <<< "$entry")
         if [[ "$skip" == "true" ]]; then
-            echo -e "  ${YELLOW}--${NC} $bucket/$path (skipped: conflicts_with:$reason)"
-            SKIPPED_PATHS+=("$bucket/$path:conflicts_with:$reason")
+            # Audit LOG-MED-2 (2026-04-30 deep): manifest paths already begin
+            # with the bucket as their first segment (e.g. "agents/code-reviewer.md").
+            # Concatenating $bucket/$path produced "agents/agents/code-reviewer.md".
+            # Display $path on its own.
+            echo -e "  ${YELLOW}--${NC} $path (skipped: conflicts_with:$reason)"
+            SKIPPED_PATHS+=("$path:conflicts_with:$reason")
             continue
         fi
         full_dest="$CLAUDE_DIR/$path"

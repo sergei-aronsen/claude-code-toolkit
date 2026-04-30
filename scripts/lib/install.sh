@@ -116,10 +116,14 @@ print_dry_run_grouped() {
         path=$(printf '%s'   "$line" | jq -r '.path')
         skip=$(printf '%s'   "$line" | jq -r '.skip')
         reason=$(printf '%s' "$line" | jq -r '.reason')
+        # Audit LOG-MED-2 (2026-04-30 deep): manifest paths already begin
+        # with the bucket as their first segment (e.g. "agents/code-reviewer.md").
+        # Concatenating ${bucket}/${path} produced "agents/agents/code-reviewer.md"
+        # in dry-run output. Display $path alone — disk install was always correct.
         if [ "$skip" = "true" ]; then
-            SKIP_PATHS+=("${bucket}/${path}  (conflicts_with:${reason})")
+            SKIP_PATHS+=("${path}  (conflicts_with:${reason})")
         else
-            INSTALL_PATHS+=("${bucket}/${path}")
+            INSTALL_PATHS+=("${path}")
         fi
     done < <(jq -c --argjson skip "$skip_json" '
         .files | to_entries[] |
