@@ -251,6 +251,16 @@ classify_file() {
         printf 'MISSING'  # unreadable → treat as missing (caller skips)
         return 0
     fi
+    # Audit M2: state.sh records sha256="" when the file existed but was
+    # unreadable at install time (Phase 3 install-still-in-progress race).
+    # Without this guard, `current != ""` always → verdict MODIFIED →
+    # user gets a [y/N/d] prompt for a file the toolkit owns and they
+    # never edited. Treat empty recorded-sha as REMOVE (toolkit-owned,
+    # safe to clean) so uninstall stays non-interactive for those rows.
+    if [[ -z "$recorded" ]]; then
+        printf 'REMOVE'
+        return 0
+    fi
     if [[ "$current" == "$recorded" ]]; then
         printf 'REMOVE'
     else
