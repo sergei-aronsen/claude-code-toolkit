@@ -112,6 +112,23 @@ done
 SKILLS_SRC="${TK_SKILLS_SRC:-$HOME/.claude/skills}"
 SKILLS_DEST="${TK_SKILLS_DEST:-${REPO_ROOT}/templates/skills-marketplace}"
 
+# Audit L4: defence-in-depth guard. The sync loop does `rm -rf "$dest"` where
+# $dest = "${SKILLS_DEST}/<name>". A maintainer (or CI misconfig) running with
+# TK_SKILLS_DEST=/ would expand to `rm -rf /<name>` for every catalog entry.
+# Refuse to operate unless SKILLS_DEST is a substring-anchored skills-marketplace
+# path. The guard is intentionally narrow — sync only ever writes there.
+if [[ "$SKILLS_DEST" != */skills-marketplace && "$SKILLS_DEST" != */skills-marketplace/* ]]; then
+    echo -e "${RED}✗${NC} TK_SKILLS_DEST does not contain '/skills-marketplace': '$SKILLS_DEST'" >&2
+    echo "  Refusing to run — destructive ops in this script require the canonical mirror path." >&2
+    exit 2
+fi
+# Defence against tar-bomb empties or `/`/empty values; even though the
+# substring check above already implies non-empty, be explicit.
+if [[ -z "${SKILLS_DEST//[[:space:]]/}" || "$SKILLS_DEST" == "/" ]]; then
+    echo -e "${RED}✗${NC} TK_SKILLS_DEST is empty or '/': '$SKILLS_DEST'" >&2
+    exit 2
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Build sync list
 # ─────────────────────────────────────────────────────────────────────────────

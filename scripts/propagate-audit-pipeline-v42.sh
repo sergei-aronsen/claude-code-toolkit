@@ -118,8 +118,14 @@ write_spliced_file() {
     # ── Build the 4 block files in a local temp dir ──
     local block_dir
     block_dir=$(mktemp -d "${TMPDIR:-/tmp}/v42splice.XXXXXX")
+    # Audit M6: previous trap used single-quoted '$block_dir' which fails when
+    # TMPDIR contains a literal `'` (broken trap registration → leaked tempdir
+    # on every function return). Use printf '%q' to produce a shell-safe
+    # representation regardless of $block_dir contents (matches uninstall.sh:312).
+    local _quoted_block_dir
+    _quoted_block_dir=$(printf '%q' "$block_dir")
     # shellcheck disable=SC2064
-    trap "rm -rf '$block_dir'" RETURN
+    trap "rm -rf $_quoted_block_dir" RETURN
 
     # Block 1: callout (D-05)
     {
