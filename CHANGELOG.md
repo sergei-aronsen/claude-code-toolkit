@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Audit Sweep 260430-go5 (PR #15) — 18 findings + dead-code
+
+Deep 4-agent audit (security, code-review, infra/CI, shell) on 2026-04-30.
+1 finding withdrawn as false positive (Read-tool render artifact). Cross-checked
+against parallel Gemini audit which caught 1 additional dead-code item.
+
+#### Fixed — High
+
+- **H1** — `install.sh` dispatch index mismatch installed wrong bridge under
+  Codex-only scenario (`IS_GEM=0 IS_COD=1`). Now uses name-based lookup with
+  `_local_label_to_dispatch_name()` helper. New regression test
+  `scripts/tests/test-install-dispatch-h1.sh` (6/6 PASS).
+- **H3** — `setup-security.sh` silently skipped RTK.md install under
+  `bash <(curl ...)` because `dirname $0` resolved to `/dev/fd`. Curl-pipe
+  detection added with download fallback.
+- **H4** — `init-claude.sh` echoed Gemini/OpenAI/OpenRouter API keys to terminal
+  scrollback (`read -r -p`). Switched 3 sites to `read -rs -p` matching the
+  hardened `setup-council.sh` pattern.
+- **H5** — Distribution chain hardcoded to mutable `main` ref. New
+  `TK_TOOLKIT_REF` env var (default `main`) on all 8 installers +
+  `lib/dispatch.sh`. Documented in `docs/INSTALL.md`. Optional
+  `TK_TOOLKIT_PIN_SHA256` checksum mode deferred.
+- **H6** — `TK_DISPATCH_OVERRIDE_*` env-bash without `TK_TEST=1` gate while
+  `eval` siblings already gated by audit C2. Gate parity restored across 6
+  dispatchers + 7 test blocks.
+
+#### Fixed — Medium
+
+- **M1** — `install.sh:837` called undefined `log_error` → exit 127 if
+  validator triggered. Inlined the error echo.
+- **M2** — `uninstall.sh` reclassified empty-installed-sha files from
+  `MODIFIED` to `REMOVE` so users no longer get spurious `[y/N/d]` prompts on
+  toolkit-owned files they never edited.
+- **M3** — Trap regression of audit M6 fix in `propagate-audit-pipeline-v42.sh`
+  (line 300) and `lib/bootstrap.sh` (line 67). Now uses `printf %q` quoting
+  matching the corrected pattern at `propagate-audit-pipeline-v42.sh:128`.
+- **M4** — `install.sh:917,920` empty-array expansion crashed under Bash 3.2
+  `set -u`. Switched to `${arr[@]+"${arr[@]}"}` form matching siblings 363/365.
+- **M5** — `setup-council.sh:512` `read /dev/tty` killed installer under
+  `set -e` with no TTY. Added `|| true` guard matching every other `read`
+  in the repo.
+- **M6** — `update-claude.sh:1129/1211/1212` bare `mktemp` calls leaked on
+  SIGINT — registered to EXIT trap.
+- **M7** — `.github/workflows/quality.yml` added `concurrency:`
+  cancel-in-progress group; force-push no longer spawns redundant 5-job runs.
+- **M8** — `templates/global/statusline.sh` and `rate-limit-probe.sh` now
+  early-exit on non-Darwin platforms (BSD-only `stat -f %m` was silently
+  misbehaving on Linux).
+
+#### Fixed — Low
+
+- **L1** — `mcp_secrets_load` validates key shape (`^[A-Z_][A-Z0-9_]*$`)
+  alongside values.
+- **L2** — `install.sh` removed component name from `/tmp` stderr templates
+  (3 sites — line 892 also leaked); now mktemp randomness only.
+- **L3** — `lib/skills.sh:147` `rm -rf` guarded against `/` and empty target.
+- **L4** — Browser `User-Agent` added to all `curl` invocations (project
+  global rule §2 violation). New `TK_USER_AGENT` constant in 3 libs +
+  inline `-A` injection across 13 scripts. 17 files touched.
+- **L5** — `scripts/council/brain.py` sanitizes ANSI/control chars from
+  reviewer output before writing to disk (3 sites including `missed_text`).
+  Pattern copied from `update-claude.sh:1005-1008`.
+
+#### Withdrawn — false positive
+
+- **H2** — `lib/mcp.sh:85` claimed empty join separator. `xxd` confirmed the
+  literal `\x1f` (ASCII 31 unit-separator) byte was already present; Read-tool
+  renderer displayed US byte as nothing, fooling the audit agent. Source code
+  was correct.
+
+#### Dead code
+
+- **T1** — Removed unused `sha256_any()` helper from
+  `scripts/tests/test-uninstall-prompt.sh:65-72` (caught by parallel Gemini
+  cross-audit).
+
 ## [4.8.0] - 2026-04-29
 
 ### Added — Multi-CLI Bridge

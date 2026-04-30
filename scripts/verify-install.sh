@@ -18,6 +18,10 @@ CYAN='\033[0;36m'
 DIM='\033[2m'
 NC='\033[0m'
 
+
+# Audit INF-LOW-1 (2026-04-30 deep): verify-install.sh is read-only — it
+# performs no curl calls. The TK_USER_AGENT constant copied here during
+# the L4 sweep was dead code. Removed.
 PASS=0
 FAIL=0
 WARN=0

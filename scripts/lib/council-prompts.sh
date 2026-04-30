@@ -37,6 +37,10 @@
 : "${YELLOW:=}"
 : "${NC:=}"
 
+# Audit L4 — global rules §2: outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+[[ -z "${TK_USER_AGENT:-}" ]] && TK_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+
 # Names of prompt files we ship.
 COUNCIL_SYSTEM_PROMPTS=(
     "skeptic-system"
@@ -55,7 +59,7 @@ _fetch_council_prompt() {
         cp "$TK_COUNCIL_PROMPTS_DIR/${name}.md" "$dest"
         return 0
     fi
-    if curl -sSLf "$REPO_URL/templates/council-prompts/${name}.md" -o "$dest" 2>/dev/null; then
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/council-prompts/${name}.md" -o "$dest" 2>/dev/null; then
         return 0
     fi
     rm -f "$dest"
@@ -77,7 +81,7 @@ install_council_pricing() {
         cp "$TK_COUNCIL_PROMPTS_DIR/../council-pricing.json" "$tmp_path"
     elif [[ -n "${TK_COUNCIL_PRICING_FILE:-}" && -f "$TK_COUNCIL_PRICING_FILE" ]]; then
         cp "$TK_COUNCIL_PRICING_FILE" "$tmp_path"
-    elif curl -sSLf "$REPO_URL/templates/council-pricing.json" -o "$tmp_path" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/council-pricing.json" -o "$tmp_path" 2>/dev/null; then
         :
     else
         rm -f "$tmp_path"
@@ -126,7 +130,7 @@ install_council_redaction_patterns() {
         cp "$TK_COUNCIL_PROMPTS_DIR/../council-redaction-patterns.txt" "$tmp_path"
     elif [[ -n "${TK_COUNCIL_PATTERNS_FILE:-}" && -f "$TK_COUNCIL_PATTERNS_FILE" ]]; then
         cp "$TK_COUNCIL_PATTERNS_FILE" "$tmp_path"
-    elif curl -sSLf "$REPO_URL/templates/council-redaction-patterns.txt" -o "$tmp_path" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/council-redaction-patterns.txt" -o "$tmp_path" 2>/dev/null; then
         :
     else
         rm -f "$tmp_path"
@@ -184,7 +188,7 @@ _fetch_council_persona() {
         cp "$TK_COUNCIL_PROMPTS_DIR/personas/${name}.md" "$dest"
         return 0
     fi
-    if curl -sSLf "$REPO_URL/templates/council-prompts/personas/${name}.md" -o "$dest" 2>/dev/null; then
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/council-prompts/personas/${name}.md" -o "$dest" 2>/dev/null; then
         return 0
     fi
     rm -f "$dest"
@@ -257,7 +261,7 @@ _fetch_council_ru_prompt() {
         cp "$TK_COUNCIL_PROMPTS_DIR/ru/${name}.md" "$dest"
         return 0
     fi
-    if curl -sSLf "$REPO_URL/templates/council-prompts/ru/${name}.md" -o "$dest" 2>/dev/null; then
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/council-prompts/ru/${name}.md" -o "$dest" 2>/dev/null; then
         return 0
     fi
     rm -f "$dest"

@@ -30,8 +30,26 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
+# Audit INF-MED-3 (2026-04-30 deep): export so child sub-installers spawned
+# via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
+# of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
+export TK_TOOLKIT_REF TK_USER_AGENT
 # Config
-TK_REPO_URL="${TK_REPO_URL:-https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main}"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
+# remains the highest-priority override (full URL with ref baked in).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
+# `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    exit 1
+fi
+TK_REPO_URL="${TK_REPO_URL:-https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}}"
 NO_BANNER=${NO_BANNER:-0}
 
 # Flags (defaults)
@@ -132,7 +150,7 @@ _is_curl_pipe() {
 # canonical `-sSLf` with --max-time / --connect-timeout / --retry. Errors out
 # on HTTP 4xx/5xx (-f) so we never source a 502 HTML body as shell code.
 _tk_curl_safe() {
-    curl -sSLf \
+    curl -sSLf -A "$TK_USER_AGENT" \
         --max-time 60 --connect-timeout 10 \
         --retry 2 --retry-delay 2 \
         "$@"
@@ -352,7 +370,9 @@ if [[ "$MCPS" -eq 1 ]]; then
         fi
 
         # Capture stderr to a per-MCP tmpfile (D-28).
-        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp-${local_name}-XXXXXX") || stderr_tmp=""
+        # Audit L2: do not embed the component name in the path so shared
+        # `/tmp` on Linux can't enumerate which MCPs the user installs.
+        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp.XXXXXX") || stderr_tmp=""
         [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
         local_flags=()
@@ -520,7 +540,8 @@ if [[ "$SKILLS" -eq 1 ]]; then
         fi
 
         # Capture stderr to a per-skill tmpfile (D-28).
-        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skill-${local_name}-XXXXXX") || stderr_tmp=""
+        # Audit L2: do not embed the component name in the path.
+        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skill.XXXXXX") || stderr_tmp=""
         [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
         local_skill_args=()
@@ -717,14 +738,14 @@ else
             _bootstrap_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-boot-XXXXXX") || _bootstrap_tmp=""
             if [[ -n "$_bootstrap_tmp" ]]; then
                 CLEANUP_PATHS+=("$_bootstrap_tmp")
-                if curl -sSLf "$TK_REPO_URL/scripts/lib/bootstrap.sh" -o "$_bootstrap_tmp" 2>/dev/null; then
+                if curl -sSLf -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/lib/bootstrap.sh" -o "$_bootstrap_tmp" 2>/dev/null; then
                     # Source SP/GSD canonical install commands first so
                     # bootstrap_base_plugins picks them up (TK_SP_INSTALL_CMD /
                     # TK_GSD_INSTALL_CMD from optional-plugins.sh).
                     _opt_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-opt-XXXXXX") || _opt_tmp=""
                     if [[ -n "$_opt_tmp" ]]; then
                         CLEANUP_PATHS+=("$_opt_tmp")
-                        if curl -sSLf "$TK_REPO_URL/scripts/lib/optional-plugins.sh" -o "$_opt_tmp" 2>/dev/null; then
+                        if curl -sSLf -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/lib/optional-plugins.sh" -o "$_opt_tmp" 2>/dev/null; then
                             # shellcheck source=/dev/null
                             source "$_opt_tmp"
                         fi
@@ -834,15 +855,37 @@ _disp_count=${#TUI_LABELS[@]}
 # metacharacters or starting with a dash.
 for _local_check_name in "${TK_DISPATCH_ORDER[@]}"; do
     if [[ ! "$_local_check_name" =~ ^[a-z][a-z0-9-]*$ ]]; then
-        log_error "TK_DISPATCH_ORDER contains invalid component name: ${_local_check_name@Q}"
+        echo -e "${RED}Error:${NC} TK_DISPATCH_ORDER contains invalid component name: ${_local_check_name@Q}" >&2
         exit 1
     fi
 done
 unset _local_check_name
 
+# Audit H1: previously this loop indexed both TK_DISPATCH_ORDER and
+# TUI_LABELS by the same $i — but TK_DISPATCH_ORDER is fixed-length 8
+# while TUI_LABELS is dynamic 6/7/8 entries (bridges are conditional).
+# With only Codex detected (IS_GEM=0, IS_COD=1), TUI_LABELS[6] was
+# "codex-bridge" while TK_DISPATCH_ORDER[6] was "gemini-bridge", so
+# the user got a Gemini bridge written despite no Gemini CLI and the
+# Codex bridge silently never installed. The same bug fired on
+# `--bridges codex` and any future label rearrangement.
+#
+# Fix: derive the dispatch name from the TUI label directly. Labels
+# already use kebab-case names that map 1:1 to dispatcher functions
+# after a single get-shit-done → gsd renaming step.
+_local_label_to_dispatch_name() {
+    case "$1" in
+        get-shit-done) echo "gsd" ;;
+        # Bridges keep their kebab-case label — the dispatch loop has a
+        # dedicated bridge branch (case "$local_name" in gemini-bridge|
+        # codex-bridge) that handles them without invoking dispatch_*.
+        *) echo "$1" ;;
+    esac
+}
+
 for ((i=0; i<_disp_count; i++)); do
-    local_name="${TK_DISPATCH_ORDER[$i]}"
     local_label="${TUI_LABELS[$i]}"
+    local_name="$(_local_label_to_dispatch_name "$local_label")"
     COMPONENT_NAMES+=("$local_label")
 
     if [[ "${TUI_RESULTS[$i]:-0}" -ne 1 ]]; then
@@ -889,7 +932,9 @@ for ((i=0; i<_disp_count; i++)); do
     # surface the last 5 lines under the failure row in the summary. Tmpfile
     # is added to CLEANUP_PATHS so the EXIT trap (set up at top of file)
     # removes it.
-    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install-${local_name}-XXXXXX") || stderr_tmp=""
+    # Audit L2: do not embed the component name — shared /tmp on Linux
+    # would otherwise leak which dispatchers the user is running.
+    stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-install.XXXXXX") || stderr_tmp=""
     [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
 
     # BRIDGE-UX-01 dispatch shim: bridge labels do not have a dispatch_<name> function;
@@ -913,11 +958,15 @@ for ((i=0; i<_disp_count; i++)); do
             # Use a subshell + 2>"$stderr_tmp" redirection (Bash 3.2 compatible —
             # avoids process substitution which is not portable across all callers).
             local_rc=0
+            # Audit M4: guard the local_flags expansion for Bash 3.2
+            # (macOS support floor) — `"${arr[@]}"` aborts under set -u
+            # when arr is empty. Match the safe form already used at
+            # lines 363/365/531/533.
             if [[ -n "$stderr_tmp" ]]; then
-                ( "dispatch_${local_name}" "${local_flags[@]}" ) 2>"$stderr_tmp" || local_rc=$?
+                ( "dispatch_${local_name}" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
             else
                 # mktemp failed (rare); fall back to no-capture path.
-                "dispatch_${local_name}" "${local_flags[@]}" || local_rc=$?
+                "dispatch_${local_name}" "${local_flags[@]+"${local_flags[@]}"}" || local_rc=$?
             fi
             ;;
     esac

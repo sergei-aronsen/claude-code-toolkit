@@ -30,6 +30,15 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
+# Audit L4 — global rules §2: every outgoing HTTP request must use a real
+# browser User-Agent so origin servers, CDNs and rate-limit shields don't
+# treat us as a default `curl/8.x` client (which several hosts now
+# silently drop or 403). Constant is shared by every script that sources
+# bootstrap.sh OR runs a fresh shell that re-sources it. Override with
+# the env var only if you really need to (e.g. tests, traffic-tagging).
+# shellcheck disable=SC2034  # exported for sourced consumers and inline curl callers
+[[ -z "${TK_USER_AGENT:-}" ]] && TK_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+
 # Local log helpers — defined here because lib/install.sh does NOT export log_*.
 # Shape mirrors scripts/uninstall.sh:71-74. Use these instead of raw echo for consistency.
 _bootstrap_log_info()    { echo -e "${BLUE}ℹ${NC} $1" >&2; }
@@ -63,9 +72,12 @@ _bootstrap_run_gsd_default() {
     if [[ -n "${TK_GSD_PIN_SHA256:-}" ]]; then
         local tmp
         tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX.sh")
+        # Audit M3: shell-safe trap registration (printf '%q' for paths with `'`).
+        local _quoted_tmp
+        _quoted_tmp=$(printf '%q' "$tmp")
         # shellcheck disable=SC2064
-        trap "rm -f '$tmp'" RETURN
-        if ! curl -sSLf --max-time 60 --connect-timeout 10 --retry 2 "$url" -o "$tmp"; then
+        trap "rm -f $_quoted_tmp" RETURN
+        if ! curl -sSLf -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 "$url" -o "$tmp"; then
             _bootstrap_log_warning "GSD installer download failed — aborting."
             return 1
         fi
@@ -89,7 +101,7 @@ _bootstrap_run_gsd_default() {
         bash "$tmp"
         return $?
     fi
-    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 "$url")
+    bash <(curl -sSL -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 "$url")
 }
 
 _bootstrap_prompt_and_run() {

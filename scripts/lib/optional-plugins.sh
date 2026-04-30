@@ -16,7 +16,11 @@
 # Canonical SP/GSD install commands — single source of truth (D-12).
 # Guards allow caller / test seam to override before sourcing.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
-[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+# Audit L4: outgoing curl gets a real browser UA (global rules §2). The
+# command runs in the caller's shell context where TK_USER_AGENT is
+# defined by lib/bootstrap.sh / lib/dispatch.sh — same pattern as
+# TK_REPO_URL.
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL -A "$TK_USER_AGENT" https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
 
 recommend_optional_plugins() {
     echo ""

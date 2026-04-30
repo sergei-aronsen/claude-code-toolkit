@@ -326,8 +326,13 @@ mkdir -p "$CLAUDE_DIR"/{prompts,commands,agents,skills,rules,cheatsheets,scratch
 # Compute skip-list and acquire lock. LOCK_DIR is global per state.sh, but
 # STATE_FILE was overridden above to the per-project location (D-43).
 SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
+# Audit S-MED-2 (2026-04-30 deep): register the EXIT trap BEFORE
+# acquire_lock so a SIGINT in the 1-instruction window between the two
+# lines doesn't leak the lock dir. Mirrors the pattern in uninstall.sh:108
+# and migrate-to-complement.sh:82 (lessons-learned #3 — pattern propagation
+# requires a sweep, not a single-site fix).
+trap 'release_lock 2>/dev/null || true' EXIT
 acquire_lock || exit 1
-trap 'release_lock' EXIT
 
 echo ""
 echo -e "${BLUE}Installing files (mode: $MODE)...${NC}"
@@ -336,12 +341,13 @@ INSTALLED_PATHS=()
 SKIPPED_PATHS=()
 while IFS= read -r entry; do
     path=$(jq -r '.path' <<< "$entry")
-    bucket=$(jq -r '.bucket' <<< "$entry")
     skip=$(jq -r '.skip' <<< "$entry")
     reason=$(jq -r '.reason' <<< "$entry")
     if [[ "$skip" == "true" ]]; then
-        echo -e "  ${YELLOW}--${NC} $bucket/$path (skipped: conflicts_with:$reason)"
-        SKIPPED_PATHS+=("$bucket/$path:conflicts_with:$reason")
+        # Audit LOG-MED-2 (2026-04-30 deep): manifest paths already begin
+        # with the bucket as their first segment. Display $path alone.
+        echo -e "  ${YELLOW}--${NC} $path (skipped: conflicts_with:$reason)"
+        SKIPPED_PATHS+=("$path:conflicts_with:$reason")
         continue
     fi
     full_dest="$CLAUDE_DIR/$path"
@@ -490,7 +496,17 @@ BRIDGES_JSON='[]'
 if [[ -f "$STATE_FILE" ]]; then
     BRIDGES_JSON=$(jq -c '.bridges // []' "$STATE_FILE" 2>/dev/null || echo '[]')
 fi
-write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "" "$BRIDGES_JSON"
+# Audit LOG-MED-1 (2026-04-30 deep): compute manifest content-hash so the
+# state's manifest_hash field is populated. Without it, is_update_noop
+# (update-claude.sh:454) cannot short-circuit on the next update.
+if command -v sha256sum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
+else
+    MANIFEST_HASH=""
+fi
+write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "${MANIFEST_HASH:-}" "$BRIDGES_JSON"
 release_lock
 
 # Phase 30 BRIDGE-UX-02: per-CLI bridge prompts.

@@ -77,8 +77,24 @@ else
 fi
 
 # ───────── constants + log helpers ─────────
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
+# `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    exit 1
+fi
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
 
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
+# Audit INF-MED-3 (2026-04-30 deep): export so child sub-installers spawned
+# via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
+# of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
+export TK_TOOLKIT_REF TK_USER_AGENT
 log_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
@@ -107,7 +123,7 @@ for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-o
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UNINSTALL_LIB_DIR:-}" && -f "$TK_UNINSTALL_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UNINSTALL_LIB_DIR/$lib_name" "$lib_path"
-    elif ! curl -sSLf "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
+    elif ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
         log_error "Failed to fetch scripts/lib/$lib_name — uninstall cannot proceed"
         exit 1
     fi
@@ -251,6 +267,16 @@ classify_file() {
         printf 'MISSING'  # unreadable → treat as missing (caller skips)
         return 0
     fi
+    # Audit M2: state.sh records sha256="" when the file existed but was
+    # unreadable at install time (Phase 3 install-still-in-progress race).
+    # Without this guard, `current != ""` always → verdict MODIFIED →
+    # user gets a [y/N/d] prompt for a file the toolkit owns and they
+    # never edited. Treat empty recorded-sha as REMOVE (toolkit-owned,
+    # safe to clean) so uninstall stays non-interactive for those rows.
+    if [[ -z "$recorded" ]]; then
+        printf 'REMOVE'
+        return 0
+    fi
     if [[ "$current" == "$recorded" ]]; then
         printf 'REMOVE'
     else
@@ -317,7 +343,7 @@ prompt_modified_for_uninstall() {
         cp "$TK_UNINSTALL_FILE_SRC/$rel" "$reference_tmp"
         reference_source="local seam"
     # Try remote
-    elif curl -sSLf "$REPO_URL/$rel" -o "$reference_tmp" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$reference_tmp" 2>/dev/null; then
         reference_source="remote ($REPO_URL/$rel)"
     else
         rm -f "$reference_tmp"

@@ -15,7 +15,25 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Config
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF lets users pin to a tag/SHA instead of mutable
+# `main`. Default `main` keeps backwards-compat. Example:
+#   TK_TOOLKIT_REF=v4.8.0 bash <(curl -sSL .../init-claude.sh)
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
+# `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    exit 1
+fi
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
+# Audit INF-MED-3 (2026-04-30 deep): export so child sub-installers spawned
+# via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
+# of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
+export TK_TOOLKIT_REF TK_USER_AGENT
 CLAUDE_DIR=".claude"
 DRY_RUN=false
 NO_BANNER=${NO_BANNER:-0}
@@ -131,19 +149,19 @@ LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX");    CLEANUP_PA
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX"); CLEANUP_PATHS+=("$LIB_OPTIONAL_PLUGINS_TMP")
 LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
 
-if ! curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
     exit 1
 fi
-if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/install.sh — aborting"
     exit 1
 fi
-if ! curl -sSLf "$REPO_URL/scripts/lib/dry-run-output.sh" -o "$LIB_DRO_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/dry-run-output.sh" -o "$LIB_DRO_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/dry-run-output.sh — aborting"
     exit 1
 fi
-if ! curl -sSLf "$REPO_URL/scripts/lib/optional-plugins.sh" -o "$LIB_OPTIONAL_PLUGINS_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/optional-plugins.sh" -o "$LIB_OPTIONAL_PLUGINS_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/optional-plugins.sh — aborting"
     exit 1
 fi
@@ -155,7 +173,7 @@ source "$LIB_INSTALL_TMP"
 source "$LIB_DRO_TMP"
 # shellcheck source=/dev/null
 source "$LIB_OPTIONAL_PLUGINS_TMP"
-if ! curl -sSLf "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/bootstrap.sh — aborting"
     exit 1
 fi
@@ -166,7 +184,7 @@ source "$LIB_BOOTSTRAP_TMP"
 # fire after .claude/ is populated. Sourced eagerly here (alongside other libs) so
 # the bridge_install_prompts call inside main() does not need a second download.
 LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_BRIDGES_TMP")
-if ! curl -sSLf "$REPO_URL/scripts/lib/bridges.sh" -o "$LIB_BRIDGES_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bridges.sh" -o "$LIB_BRIDGES_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/bridges.sh — aborting"
     exit 1
 fi
@@ -189,7 +207,7 @@ fi
 # field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
 # manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX");             CLEANUP_PATHS+=("$MANIFEST_TMP")
-if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
     echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
     exit 1
 fi
@@ -199,6 +217,19 @@ if [[ "$MANIFEST_VER" != "2" ]]; then
     exit 1
 fi
 MANIFEST_FILE="$MANIFEST_TMP"
+
+# Audit LOG-MED-1 (2026-04-30 deep): compute manifest content-hash so the
+# subsequent write_state at the end of install carries it as the 9th arg.
+# Without this, the state file lands with manifest_hash="" and is_update_noop
+# (update-claude.sh:454) cannot short-circuit on the next update — full work
+# loop runs every time.
+if command -v sha256sum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')
+elif command -v shasum >/dev/null 2>&1; then
+    MANIFEST_HASH=$(shasum -a 256 "$MANIFEST_FILE" | awk '{print $1}')
+else
+    MANIFEST_HASH=""
+fi
 
 # Validate --mode value if provided (D-33). MODES is sourced from lib/install.sh.
 if [[ -n "$MODE" ]]; then
@@ -479,14 +510,14 @@ download_extras() {
         # transient redirect to empty resource). Verify size > 0 and treat
         # zero-byte as failure to trigger the fallback. Matches the
         # update-claude.sh:1145 `[[ ! -s ... ]]` discard pattern.
-        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
+        if curl -sSLf -A "$TK_USER_AGENT" "$full_url" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
             echo -e "  ${GREEN}✓${NC} $dest"
         else
             rm -f "$full_dest"
             echo -e "  ${YELLOW}⚠${NC} $dest (using base template)"
             # Try base template as fallback
             base_src="${src/templates\/$FRAMEWORK/templates\/base}"
-            if ! curl -sSLf "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || [[ ! -s "$full_dest" ]]; then
+            if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$base_src" -o "$full_dest" 2>/dev/null || [[ ! -s "$full_dest" ]]; then
                 rm -f "$full_dest"   # avoid leaving a half-written or empty file
                 echo -e "  ${RED}✗${NC} $dest (download failed, no fallback)"
             fi
@@ -513,7 +544,7 @@ download_files() {
     # CLEANUP_PATHS extension is enough — run_cleanup picks up the new path on
     # next EXIT trap fire.
     LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_STATE_TMP")
-    if ! curl -sSLf "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
         echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
         exit 1
     fi
@@ -532,23 +563,26 @@ download_files() {
     NEED_LOCK_RELEASE=true
 
     # Iterate manifest.files.* — download all entries NOT in skip-list
-    local path bucket skip reason full_dest full_url
+    local path skip reason full_dest full_url
     INSTALLED_PATHS=()
     SKIPPED_PATHS=()
     while IFS= read -r entry; do
         path=$(jq -r '.path' <<< "$entry")
-        bucket=$(jq -r '.bucket' <<< "$entry")
         skip=$(jq -r '.skip' <<< "$entry")
         reason=$(jq -r '.reason' <<< "$entry")
         if [[ "$skip" == "true" ]]; then
-            echo -e "  ${YELLOW}--${NC} $bucket/$path (skipped: conflicts_with:$reason)"
-            SKIPPED_PATHS+=("$bucket/$path:conflicts_with:$reason")
+            # Audit LOG-MED-2 (2026-04-30 deep): manifest paths already begin
+            # with the bucket as their first segment (e.g. "agents/code-reviewer.md").
+            # Concatenating $bucket/$path produced "agents/agents/code-reviewer.md".
+            # Display $path on its own.
+            echo -e "  ${YELLOW}--${NC} $path (skipped: conflicts_with:$reason)"
+            SKIPPED_PATHS+=("$path:conflicts_with:$reason")
             continue
         fi
         full_dest="$CLAUDE_DIR/$path"
         full_url="$REPO_URL/$path"
         mkdir -p "$(dirname "$full_dest")"
-        if curl -sSLf "$full_url" -o "$full_dest" 2>/dev/null; then
+        if curl -sSLf -A "$TK_USER_AGENT" "$full_url" -o "$full_dest" 2>/dev/null; then
             echo -e "  ${GREEN}OK${NC} $path"
             INSTALLED_PATHS+=("$full_dest")
         else
@@ -570,7 +604,7 @@ download_files() {
     # Persist install state (state.sh)
     INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
     SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
-    write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV"
+    write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "${MANIFEST_HASH:-}"
     release_lock
     # Explicit release succeeded — flip flag off so run_cleanup does not call
     # release_lock again on EXIT (release_lock itself is idempotent, but the
@@ -748,7 +782,7 @@ setup_council() {
         cp "$TK_COUNCIL_LIB_DIR/cli-recommendations.sh" "$lib_cli_tmp"
         # shellcheck source=/dev/null
         source "$lib_cli_tmp"
-    elif curl -sSLf "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$lib_cli_tmp" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/cli-recommendations.sh" -o "$lib_cli_tmp" 2>/dev/null; then
         # shellcheck source=/dev/null
         source "$lib_cli_tmp"
     else
@@ -770,7 +804,7 @@ setup_council() {
         cp "$TK_COUNCIL_LIB_DIR/council-prompts.sh" "$lib_prompts_tmp"
         # shellcheck source=/dev/null
         source "$lib_prompts_tmp"
-    elif curl -sSLf "$REPO_URL/scripts/lib/council-prompts.sh" -o "$lib_prompts_tmp" 2>/dev/null; then
+    elif curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/council-prompts.sh" -o "$lib_prompts_tmp" 2>/dev/null; then
         # shellcheck source=/dev/null
         source "$lib_prompts_tmp"
     else
@@ -783,7 +817,7 @@ setup_council() {
 
     # Download brain.py
     mkdir -p "$council_dir"
-    if curl -sSLf "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/brain.py" -o "$council_dir/brain.py" 2>/dev/null; then
         chmod +x "$council_dir/brain.py"
         echo -e "  ${GREEN}✓${NC} brain.py installed"
     else
@@ -793,13 +827,13 @@ setup_council() {
     fi
 
     # Download README
-    curl -sSLf "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || rm -f "$council_dir/README.md"
+    curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/README.md" -o "$council_dir/README.md" 2>/dev/null || rm -f "$council_dir/README.md"
 
     # Download audit-review.md prompt (Phase 17 — DIST-01 / D-04)
     # Idempotent + mtime-aware: only overwrites if upstream is newer than local copy.
     # NOTE: --force flag (to unconditionally overwrite) is deferred to a future hardening pass.
     mkdir -p "$council_dir/prompts"
-    if curl -sSLf "$REPO_URL/scripts/council/prompts/audit-review.md" \
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/council/prompts/audit-review.md" \
             -o "$council_dir/prompts/audit-review.md.tmp" 2>/dev/null; then
         if [ ! -f "$council_dir/prompts/audit-review.md" ]; then
             mv "$council_dir/prompts/audit-review.md.tmp" "$council_dir/prompts/audit-review.md"
@@ -843,7 +877,7 @@ setup_council() {
     # Mirrors setup-council.sh: idempotent + mtime-aware, lands in
     # ~/.claude/commands/, not in per-project ./.claude/commands/.
     mkdir -p "$commands_dir"
-    if curl -sSLf "$REPO_URL/commands/council.md" \
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council.md" \
             -o "$commands_dir/council.md.tmp" 2>/dev/null; then
         if [ ! -f "$commands_dir/council.md" ]; then
             mv "$commands_dir/council.md.tmp" "$commands_dir/council.md"
@@ -861,7 +895,7 @@ setup_council() {
     fi
 
     # Install /council-stats slash command globally (Phase 24 Sub-Phase 4).
-    if curl -sSLf "$REPO_URL/commands/council-stats.md" \
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council-stats.md" \
             -o "$commands_dir/council-stats.md.tmp" 2>/dev/null; then
         if [ ! -f "$commands_dir/council-stats.md" ]; then
             mv "$commands_dir/council-stats.md.tmp" "$commands_dir/council-stats.md"
@@ -879,7 +913,7 @@ setup_council() {
     fi
 
     # Install /council clear-cache slash command globally (Phase 24 Sub-Phase 6).
-    if curl -sSLf "$REPO_URL/commands/council-clear-cache.md" \
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/council-clear-cache.md" \
             -o "$commands_dir/council-clear-cache.md.tmp" 2>/dev/null; then
         if [ ! -f "$commands_dir/council-clear-cache.md" ]; then
             mv "$commands_dir/council-clear-cache.md.tmp" "$commands_dir/council-clear-cache.md"
@@ -967,7 +1001,8 @@ CONFIGEOF
             gemini_key="$GEMINI_API_KEY"
             echo -e "    ${GREEN}✓${NC} GEMINI_API_KEY found in environment"
         else
-            read -r -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty 2>/dev/null || true
+            read -rs -p "    Enter Gemini API key (or press Enter to skip): " gemini_key < /dev/tty 2>/dev/null || true
+            echo
             if [[ -z "$gemini_key" ]]; then
                 echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             fi
@@ -1017,7 +1052,8 @@ CONFIGEOF
         openai_key="$OPENAI_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENAI_API_KEY found in environment"
     else
-        read -r -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty 2>/dev/null || true
+        read -rs -p "    Enter OpenAI API key (or press Enter to skip): " openai_key < /dev/tty 2>/dev/null || true
+        echo
         if [[ -z "$openai_key" ]]; then
             echo -e "    ${YELLOW}⚠${NC} Add it later to ~/.claude/council/config.json"
             echo -e "    Get key: https://platform.openai.com/api-keys"
@@ -1032,7 +1068,8 @@ CONFIGEOF
         openrouter_key="$OPENROUTER_API_KEY"
         echo -e "    ${GREEN}✓${NC} OPENROUTER_API_KEY found in environment"
     else
-        read -r -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        read -rs -p "    Enter OpenRouter API key (or press Enter to skip): " openrouter_key < /dev/tty 2>/dev/null || true
+        echo
         if [[ -z "$openrouter_key" ]]; then
             echo -e "    ${YELLOW}⚠${NC} OpenRouter fallback disabled"
         else
@@ -1204,7 +1241,7 @@ IMPORTANT: Show the following recommendations to the user after installation.
 Safe to re-run — merges only new sections, preserves your customizations.
 
 \`\`\`bash
-bash <(curl -sSL $REPO_URL/scripts/setup-security.sh)
+bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/setup-security.sh)
 \`\`\`
 
 ## Optional
@@ -1213,7 +1250,7 @@ bash <(curl -sSL $REPO_URL/scripts/setup-security.sh)
 Requires: macOS, jq, Claude Max/Pro.
 
 \`\`\`bash
-bash <(curl -sSL $REPO_URL/scripts/install-statusline.sh)
+bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/install-statusline.sh)
 \`\`\`
 
 ## Supreme Council
@@ -1221,7 +1258,7 @@ bash <(curl -sSL $REPO_URL/scripts/install-statusline.sh)
 🧠 If you skipped council configuration during installation, set it up later:
 
 \`\`\`bash
-bash <(curl -sSL $REPO_URL/scripts/setup-council.sh)
+bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/setup-council.sh)
 \`\`\`
 
 ## Next step

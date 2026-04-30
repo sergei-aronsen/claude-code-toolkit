@@ -52,7 +52,7 @@
 #    function runs — overrides are documented to go through the
 #    TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD path-to-script seam instead.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
-[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL -A "$TK_USER_AGENT" https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
 
 # Hardcoded default execution paths — strings live in code, never in env.
 _dispatch_run_sp_default() {
@@ -62,12 +62,32 @@ _dispatch_run_sp_default() {
 _dispatch_run_gsd_default() {
     # Process substitution stays inside the function body so there is no
     # untrusted string crossing the shell parser.
-    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 \
+    bash <(curl -sSL -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 \
         'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
 }
 
 # Default repo URL (overridable for testing or fork installs).
-[[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL='https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main'
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
+# remains the highest-priority override (full URL with ref baked in).
+[[ -z "${TK_TOOLKIT_REF:-}" ]] && TK_TOOLKIT_REF='main'
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset plus any
+# `..` traversal. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    return 1 2>/dev/null || exit 1
+fi
+[[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
+
+# Audit L4 — global rules §2: outgoing curl gets a real browser UA.
+# Default mirrors lib/bootstrap.sh; safe to redefine here for callers
+# that source dispatch.sh without also sourcing bootstrap.sh.
+# shellcheck disable=SC2034
+[[ -z "${TK_USER_AGENT:-}" ]] && TK_USER_AGENT='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+
+# Audit INF-MED-3 (2026-04-30 deep): export so children inherit pinned ref +
+# UA across `bash <(curl ...)` boundaries.
+export TK_TOOLKIT_REF TK_USER_AGENT
 
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
@@ -109,7 +129,11 @@ dispatch_superpowers() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_SUPERPOWERS:-}" ]]; then
+    # Audit H6: TK_DISPATCH_OVERRIDE_* is a TEST SEAM. Honour it only
+    # when TK_TEST=1 — otherwise an attacker who sets the env var
+    # gets arbitrary script execution under the user's account.
+    # Same RCE class as the eval gate at lines 127-131.
+    if [[ -n "${TK_DISPATCH_OVERRIDE_SUPERPOWERS:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] superpowers (would run override: $TK_DISPATCH_OVERRIDE_SUPERPOWERS)"
             return 0
@@ -145,7 +169,8 @@ dispatch_gsd() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_GSD:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_GSD:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] gsd (would run override: $TK_DISPATCH_OVERRIDE_GSD)"
             return 0
@@ -181,7 +206,8 @@ dispatch_toolkit() {
     done
     : "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_TOOLKIT:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_TOOLKIT:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] toolkit (would run override: $TK_DISPATCH_OVERRIDE_TOOLKIT)"
             return 0
@@ -196,7 +222,7 @@ dispatch_toolkit() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path init-claude.sh)"
@@ -223,7 +249,8 @@ dispatch_security() {
     done
     : "$force"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_SECURITY:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_SECURITY:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] security (would run override: $TK_DISPATCH_OVERRIDE_SECURITY)"
             return 0
@@ -238,7 +265,7 @@ dispatch_security() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/setup-security.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/setup-security.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path setup-security.sh)"
@@ -260,7 +287,8 @@ dispatch_rtk() {
     done
     : "$force" "$yes"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_RTK:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_RTK:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] rtk (would run override: $TK_DISPATCH_OVERRIDE_RTK)"
             return 0
@@ -296,7 +324,8 @@ dispatch_statusline() {
     done
     : "$force"
 
-    if [[ -n "${TK_DISPATCH_OVERRIDE_STATUSLINE:-}" ]]; then
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_STATUSLINE:-}" && "${TK_TEST:-0}" == "1" ]]; then
         if [[ "$dry_run" -eq 1 ]]; then
             echo "[+ INSTALL] statusline (would run override: $TK_DISPATCH_OVERRIDE_STATUSLINE)"
             return 0
@@ -311,7 +340,7 @@ dispatch_statusline() {
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL "$TK_REPO_URL/scripts/install-statusline.sh") ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install-statusline.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install-statusline.sh)"

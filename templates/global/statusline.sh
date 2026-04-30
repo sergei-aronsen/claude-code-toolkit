@@ -9,11 +9,20 @@
 
 input=$(cat)
 
+# Audit M8: this statusline depends on macOS Keychain (`security`) + BSD
+# `stat -f %m`. Short-circuit on non-Darwin to avoid silent misbehaviour
+# (Linux GNU `stat` rejects `-f %m`, the cache age math returns 0, and
+# the script keeps re-launching the probe in a tight loop).
+if [ "$(uname -s 2>/dev/null)" != "Darwin" ]; then
+    # stdin already drained by `input=$(cat)` above
+    printf '%s\n' "limits: macOS only"
+    exit 0
+fi
+
 # Read cached rate limits
 CACHE="${TMPDIR:-/tmp}/claude-rate-limits.json"
 
 # Trigger background probe if cache is stale (>60s) or missing
-# Note: stat -f %m is macOS-only; this script is designed for macOS
 if [ ! -f "$CACHE" ] || [ $(( $(date +%s) - $(stat -f %m "$CACHE" 2>/dev/null || echo 0) )) -gt 60 ]; then
     bash ~/.claude/rate-limit-probe.sh &>/dev/null &
 fi

@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Audit M7: cancel redundant runs on the same ref (e.g., PR force-pushes)
+# so we don't waste minutes on superseded commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   shellcheck:
     name: ShellCheck
@@ -16,10 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Run ShellCheck
+      - name: Run ShellCheck (scripts/)
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
         with:
           scandir: './scripts'
+          severity: warning
+
+      # Audit M-03 / INF-HIGH-2: templates/global/{rate-limit-probe,statusline}.sh
+      # ship to users via install-statusline.sh. Local make shellcheck covers
+      # this scope; CI must too so a regression blocks the PR.
+      - name: Run ShellCheck (templates/global/)
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
+        with:
+          scandir: './templates/global'
           severity: warning
 
   markdownlint:
@@ -122,6 +137,19 @@ jobs:
           bash scripts/tests/test-mcp-selector.sh
           bash scripts/tests/test-install-skills.sh
           bash scripts/tests/test-bridges.sh
+          bash scripts/tests/test-install-dispatch-h1.sh
+
+      - name: Tests 35-43 — orphan triage (audit INF-MED-1) — backup/detect/mcp/dry-run suites previously absent from CI
+        run: |
+          bash scripts/tests/test-backup-lib.sh
+          bash scripts/tests/test-backup-threshold.sh
+          bash scripts/tests/test-clean-backups.sh
+          bash scripts/tests/test-detect-cli.sh
+          bash scripts/tests/test-detect-skew.sh
+          bash scripts/tests/test-mcp-secrets.sh
+          bash scripts/tests/test-mcp-wizard.sh
+          bash scripts/tests/test-migrate-dry-run.sh
+          bash scripts/tests/test-update-dry-run.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands

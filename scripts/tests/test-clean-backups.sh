@@ -328,6 +328,59 @@ scenario_rm_scope() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Audit S-HIGH-1 (2026-04-30 deep): with TK_UPDATE_HOME unset, the path-safety
+# pattern previously evaluated `dirname ".claude"` → `.`, producing
+# `./.claude-backup-*` which never matched the absolute paths returned by
+# list_backup_dirs. Result: every legitimate backup hit "Refusing to remove
+# suspicious path" in production. Other scenarios masked this by always
+# setting TK_UPDATE_HOME (absolute). This scenario uses HOME-only.
+scenario_home_only_production_path() {
+    echo ""
+    echo "Scenario: HOME-only (production path — S-HIGH-1 regression)"
+    echo "---"
+    local SCR="${TMPDIR_ROOT}/home-only"
+    mkdir -p "$SCR/.claude"
+    mkdir -p "$SCR/.claude-backup-1713974400-1000"
+
+    local FIFO_DIR="${TMPDIR_ROOT}/fifo-home"
+    mkdir -p "$FIFO_DIR"
+    local FIFO="$FIFO_DIR/tty"
+    mkfifo "$FIFO"
+    (printf 'y\n' > "$FIFO") &
+    local BG_PID=$!
+
+    local OUT rc
+    # The whole point of this scenario is the production-path branch where
+    # TK_UPDATE_HOME is UNSET, so update-claude.sh keeps the relative literal
+    # CLAUDE_DIR=".claude". The path-safety pattern under audit S-HIGH-1
+    # falls back to $HOME via `${TK_UPDATE_HOME:-$HOME}`. We must cd into the
+    # sandbox so the relative `.claude` exists on disk (otherwise the early
+    # CLAUDE_DIR-not-found check exits before reaching the cleanup logic).
+    # TK_UPDATE_LIB_DIR / TK_UPDATE_MANIFEST_OVERRIDE remain set so the script
+    # does not try to curl-fetch its libs from the network (orthogonal to the
+    # bug under test).
+    OUT=$(cd "$SCR" && \
+          HOME="$SCR" \
+          TK_UPDATE_LIB_DIR="$LIB_DIR" \
+          TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
+          bash "$UPDATE_SH" --clean-backups 0<"$FIFO" 2>&1 || true)
+    rc=$?
+    wait "$BG_PID" 2>/dev/null || true
+
+    if echo "$OUT" | grep -q 'Refusing to remove suspicious path'; then
+        FAIL=$((FAIL + 1)); echo "  ✗ home-only: backup wrongly refused (S-HIGH-1 regression)"
+        echo "    output: ${OUT}" >&2
+    else
+        PASS=$((PASS + 1)); echo "  ✓ home-only: no spurious 'Refusing to remove' rejection"
+    fi
+    assert_dir_absent "$SCR/.claude-backup-1713974400-1000" \
+        "home-only: backup dir removed in production path"
+    assert_eq "0" "$rc" \
+        "home-only: exit code 0"
+    : "$OUT"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Run all scenarios
 scenario_empty_set
 scenario_dry_run
@@ -337,6 +390,7 @@ scenario_keep_n
 scenario_invalid_keep_negative
 scenario_invalid_keep_nonnumeric
 scenario_rm_scope
+scenario_home_only_production_path
 
 echo ""
 echo "======================================="

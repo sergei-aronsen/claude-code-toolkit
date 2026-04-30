@@ -144,8 +144,16 @@ scenario_d_stale_dead_pid() {
     # PID 99999 is reliably dead on any POSIX system (max valid PID on Linux ~ 4M;
     # Darwin reserves much lower values; 99999 never corresponds to an active process)
     echo "99999" > "$LOCK_DIR/pid"
-    # Touch the lock dir to be RECENT so only the PID-liveness branch fires
-    touch "$LOCK_DIR"
+    # I2 hardening (state.sh:199-212) requires BOTH `kill -0` failure AND lock
+    # age > 60s before reclaiming on the PID-liveness path — guards against
+    # recycled-PID hijack on a freshly-touched lock. Age the lock past 60s.
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local ts
+        ts=$(date -v-2M +%Y%m%d%H%M)
+        touch -t "$ts" "$LOCK_DIR"
+    else
+        touch -d '2 minutes ago' "$LOCK_DIR"
+    fi
 
     local out rc
     out=$(acquire_lock 2>&1) && rc=0 || rc=$?

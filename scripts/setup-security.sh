@@ -46,7 +46,23 @@ while [[ $# -gt 0 ]]; do
 done
 : "${YES}"  # silence shellcheck SC2034 — YES consumed by future read blocks
 
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
+# `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    exit 1
+fi
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
+# Audit INF-MED-3 (2026-04-30 deep): export so child sub-installers spawned
+# via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
+# of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
+export TK_TOOLKIT_REF TK_USER_AGENT
 CLAUDE_DIR="$HOME/.claude"
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SETTINGS_JSON="$CLAUDE_DIR/settings.json"
@@ -75,7 +91,7 @@ if [[ -f "$(dirname "$0")/lib/install.sh" ]]; then
 else
     LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
     trap 'rm -f "$LIB_INSTALL_TMP"' EXIT
-    if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
         echo -e "${RED}Failed to download lib/install.sh - aborting${NC}"
         exit 1
     fi
@@ -85,14 +101,14 @@ fi
 
 # Install RTK.md fallback notes to ~/.claude/RTK.md (guard: never clobber existing)
 install_rtk_notes() {
-    local src_rtk
-    src_rtk="$(dirname "$0")/../templates/global/RTK.md"
+    # Audit H3: under `bash <(curl ...)` $0 = `bash` or `/dev/fd/N`, so
+    # `dirname "$0"/../templates/global/RTK.md` resolves to a path that
+    # never exists. The previous code logged "offline / partial install"
+    # and returned 0, leaving every curl|bash user without RTK.md.
+    # Detect that case via $0 / $BASH_SOURCE and fall through to a
+    # network download from raw.githubusercontent.com — same pattern
+    # the rest of this script already uses for templates/global/CLAUDE.md.
     local dst_rtk="$HOME/.claude/RTK.md"
-
-    if [[ ! -f "$src_rtk" ]]; then
-        echo "ℹ Skipping RTK.md install — source file not found (offline / partial install)"
-        return 0
-    fi
 
     if [[ -f "$dst_rtk" ]]; then
         echo -e "  ℹ ~/.claude/RTK.md already exists (rtk init -g or prior TK install); leaving untouched."
@@ -100,8 +116,41 @@ install_rtk_notes() {
         return 0
     fi
 
-    cp "$src_rtk" "$dst_rtk"
-    echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (points to components/optional-plugins.md for rtk-ai/rtk#1276)"
+    local src_rtk
+    src_rtk="$(dirname "$0")/../templates/global/RTK.md"
+
+    # Local checkout path: $0 points at scripts/setup-security.sh and the
+    # sibling templates/ tree exists. Use cp if so.
+    if [[ -f "$src_rtk" ]]; then
+        cp "$src_rtk" "$dst_rtk"
+        echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (points to components/optional-plugins.md for rtk-ai/rtk#1276)"
+        return 0
+    fi
+
+    # curl|bash path (or any other case where the local file is absent):
+    # download via the same REPO_URL the rest of this script uses.
+    local rtk_tmp
+    rtk_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-rtk.XXXXXX") || {
+        echo "ℹ Skipping RTK.md install — mktemp failed"
+        return 0
+    }
+    # Audit M3: shell-safe trap registration so a TMPDIR with `'` works.
+    local _quoted_rtk_tmp
+    _quoted_rtk_tmp=$(printf '%q' "$rtk_tmp")
+    # shellcheck disable=SC2064
+    trap "rm -f $_quoted_rtk_tmp" RETURN
+
+    if ! curl -sSLf -A "$TK_USER_AGENT" --max-time 30 --connect-timeout 10 --retry 2 \
+            "$REPO_URL/templates/global/RTK.md" -o "$rtk_tmp" 2>/dev/null; then
+        echo "ℹ Skipping RTK.md install — could not fetch from $REPO_URL/templates/global/RTK.md (offline?)"
+        return 0
+    fi
+    if [[ ! -s "$rtk_tmp" ]]; then
+        echo "ℹ Skipping RTK.md install — empty response from $REPO_URL/templates/global/RTK.md"
+        return 0
+    fi
+    cp "$rtk_tmp" "$dst_rtk"
+    echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (downloaded; points to components/optional-plugins.md for rtk-ai/rtk#1276)"
 }
 
 echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
@@ -117,24 +166,36 @@ echo -e "${CYAN}Step 1: Global security rules (~/.claude/CLAUDE.md)${NC}"
 
 mkdir -p "$CLAUDE_DIR"
 
-# Download latest security rules
-SECURITY_CONTENT=$(curl -sSLf "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
+# Download latest security rules.
+# Audit S-LOW-4 (2026-04-30 deep): cap response size + add network safety
+# flags so a hostile or runaway server can't exhaust memory via the shell
+# variable buffer. 2MB ceiling is far beyond the current ~14KB template
+# while still providing back-pressure.
+SECURITY_CONTENT=$(curl -sSLf -A "$TK_USER_AGENT" \
+    --max-filesize 2097152 \
+    --max-time 60 --connect-timeout 10 --retry 2 --retry-delay 2 \
+    "$REPO_URL/templates/global/CLAUDE.md" 2>/dev/null)
 if [[ -z "$SECURITY_CONTENT" ]]; then
     echo -e "  ${RED}✗${NC} Failed to download security rules"
     echo -e "  Try manually: curl -sSL $REPO_URL/templates/global/CLAUDE.md >> ~/.claude/CLAUDE.md"
 else
     if [[ ! -f "$CLAUDE_MD" ]]; then
-        # No file — create from scratch
-        echo "$SECURITY_CONTENT" > "$CLAUDE_MD"
+        # No file — create from scratch.
+        # Audit S-MED-4 (2026-04-30 deep): use printf so a future template
+        # whose first line begins with `-e`/`-n`/`-E` cannot be parsed as
+        # echo flags. Bash builtin echo today is immune, but the script is
+        # `#!/bin/bash` and a sh-symlink invocation could pick up a different
+        # echo. printf '%s\n' is canonical and matches the heredoc pattern
+        # used elsewhere in this file.
+        printf '%s\n' "$SECURITY_CONTENT" > "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Created ~/.claude/CLAUDE.md with security rules"
     elif ! grep -q "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
-        # File exists but no security rules — append all
+        # File exists but no security rules — append all.
         echo -e "  ${YELLOW}⚠${NC} ~/.claude/CLAUDE.md exists but lacks security rules"
+        # Audit S-MED-4: same printf '%s\n' defense for the append path.
         {
-            echo ""
-            echo "---"
-            echo ""
-            echo "$SECURITY_CONTENT"
+            printf '\n---\n\n'
+            printf '%s\n' "$SECURITY_CONTENT"
         } >> "$CLAUDE_MD"
         echo -e "  ${GREEN}✓${NC} Security rules appended to existing CLAUDE.md"
     else

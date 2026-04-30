@@ -245,6 +245,38 @@ def main():
                 fail("drift: " + expected + " exists on disk but is not in manifest files.libs")
                 errors += 1
 
+    # Audit INF-MED-5 (2026-04-30 deep): same drift check for agents/, prompts/,
+    # rules/. Source dirs come from SOURCE_MAP. Without these, a new agent or
+    # prompt file added to templates/base/ without a manifest entry silently
+    # never reaches existing users via update-claude.sh.
+    for manifest_prefix, source_subdir in (
+        ("agents/", "agents"),
+        ("prompts/", "prompts"),
+        ("rules/", "rules"),
+    ):
+        src_dir = os.path.join(REPO_ROOT, "templates", "base", source_subdir)
+        if not os.path.isdir(src_dir):
+            continue
+        for root, _dirs, files in os.walk(src_dir):
+            for name in sorted(files):
+                if name.startswith(".") or name.endswith((".bak", ".swp", ".orig")):
+                    continue
+                if not name.endswith(".md"):
+                    continue
+                if name == "README.md":
+                    continue
+                full = os.path.join(root, name)
+                # Build manifest-relative path: <prefix><relative-from-src_dir>
+                rel = os.path.relpath(full, src_dir)
+                expected = manifest_prefix + rel
+                if expected not in manifest_paths:
+                    fail(
+                        "drift: " + expected
+                        + " exists on disk but is not in manifest files."
+                        + manifest_prefix.rstrip("/")
+                    )
+                    errors += 1
+
     if errors > 0:
         print(
             "manifest.json validation FAILED (" + str(errors) + " error(s))",

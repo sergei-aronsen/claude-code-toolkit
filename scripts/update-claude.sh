@@ -73,7 +73,23 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
+# Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
+# raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
+# `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
+if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
+    echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
+    exit 1
+fi
+REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/${TK_TOOLKIT_REF}"
+# Audit L4 — global rules §2: every outgoing curl gets a real browser UA.
+# shellcheck disable=SC2034
+TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36}"
+# Audit INF-MED-3 (2026-04-30 deep): export so child sub-installers spawned
+# via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
+# of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
+export TK_TOOLKIT_REF TK_USER_AGENT
 CLAUDE_DIR=".claude"
 # shellcheck disable=SC2034  # MANIFEST_URL kept as legacy reference; Plan 04-02 removes it
 MANIFEST_URL="$REPO_URL/manifest.json"
@@ -97,7 +113,7 @@ trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLU
 # the whole update flow forever; without -f a 502 / 404 HTML body would be
 # sourced as shell. _tk_curl_safe wraps the canonical pattern.
 _tk_curl_safe() {
-    curl -sSLf \
+    curl -sSLf -A "$TK_USER_AGENT" \
         --max-time 60 --connect-timeout 10 \
         --retry 2 --retry-delay 2 \
         "$@"
@@ -261,6 +277,18 @@ run_clean_backups() {
         fi
     fi
 
+    # Audit S-HIGH-1 (2026-04-30 deep): the path-safety pattern at the rm site
+    # below uses `"$(dirname "$CLAUDE_DIR")"/.claude-backup-*`. In production
+    # CLAUDE_DIR is the relative literal ".claude" (line 82), so dirname yields
+    # "." and the pattern becomes "./.claude-backup-*" which never matches the
+    # absolute paths returned by list_backup_dirs (rooted at $HOME /
+    # $TK_UPDATE_HOME). Result: every legitimate backup hits "Refusing to
+    # remove suspicious path". Tests passed only because they set
+    # TK_UPDATE_HOME=$SCR (absolute), masking the bug.
+    # Resolve the parent to an absolute path once, up-front.
+    local _backup_parent
+    _backup_parent="${TK_UPDATE_HOME:-$HOME}"
+
     # Enumerate backup dirs (newest-epoch-first from list_backup_dirs)
     local dirs=()
     while IFS= read -r d; do
@@ -335,7 +363,7 @@ run_clean_backups() {
                         # empty / "/" / paths outside the parent of CLAUDE_DIR
                         # before letting rm -rf go to work.
                         if [[ -z "$d" || "$d" == "/" \
-                              || "$d" != "$(dirname "$CLAUDE_DIR")"/.claude-backup-* ]]; then
+                              || "$d" != "$_backup_parent"/.claude-backup-* ]]; then
                             echo -e "${RED}✗${NC} Refusing to remove suspicious path: ${d}" >&2
                             rc=1
                         elif ! rm -rf "$d"; then
@@ -932,7 +960,14 @@ fi
 # Phase 4 Plan 04-03 — mutation lock + D-57 tree backup
 # Lock registered before backup; EXIT trap consolidates cleanup.
 # ─────────────────────────────────────────────────
-trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
+# Audit M6: include the late-mktemp paths (CLAUDE_MD_TMP, CMP_LOCAL_NORM,
+# CMP_REMOTE_NORM) in the trap. They are assigned later in the file, so
+# they're empty when this trap is registered — `rm -f ""` is a no-op.
+# A SIGINT mid-update would otherwise leak them.
+CLAUDE_MD_TMP=""
+CMP_LOCAL_NORM=""
+CMP_REMOTE_NORM=""
+trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP" "$CLAUDE_MD_TMP" "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"' EXIT
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
@@ -968,7 +1003,7 @@ while IFS= read -r rel; do
             install_status=1  # missing from seam dir = treat as download failure
         fi
     else
-        if curl -sSLf "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
+        if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$dest" 2>/dev/null; then
             install_status=0
         else
             install_status=1
@@ -1082,7 +1117,7 @@ prompt_modified_file() {
             return 0
         fi
     else
-        if ! curl -sSLf "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
+        if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$rel" -o "$remote_tmp" 2>/dev/null; then
             log_warning "Cannot fetch remote $rel for compare; skipping"
             SKIPPED_PATHS+=("$rel:remote_fetch_failed")
             return 0
@@ -1126,7 +1161,9 @@ echo ""
 
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 CLAUDE_MD_NEW_FILE="$CLAUDE_DIR/CLAUDE.md.new"
-CLAUDE_MD_TMP=$(mktemp)
+# Audit M6: explicit template + prefix so a leaked tempfile is
+# attributable. Already registered in the EXIT trap above.
+CLAUDE_MD_TMP=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
 
 # Test seam: TK_UPDATE_FILE_SRC short-circuits the network fetch for hermetic
 # tests. Same convention as the manifest-driven download loop above.
@@ -1142,8 +1179,8 @@ if [[ -n "${TK_UPDATE_FILE_SRC:-}" ]]; then
         log_warning "TK_UPDATE_FILE_SRC has no CLAUDE.md template — keeping existing file untouched"
         CLAUDE_MD_TMP=""
     fi
-elif ! curl -sSLf "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
-    if ! curl -sSLf "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+elif ! curl -sSLf -A "$TK_USER_AGENT" "$TEMPLATE_URL/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
+    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/templates/base/CLAUDE.md" -o "$CLAUDE_MD_TMP" 2>/dev/null; then
         rm -f "$CLAUDE_MD_TMP"
         log_warning "Failed to download CLAUDE.md template — keeping existing file untouched"
         CLAUDE_MD_TMP=""
@@ -1208,8 +1245,10 @@ if [[ -n "$CLAUDE_MD_TMP" ]]; then
     else
         # Compare normalized content so CRLF/BOM/trailing-newline drift doesn't
         # spam .new files on every update (Council pass A).
-        CMP_LOCAL_NORM=$(mktemp)
-        CMP_REMOTE_NORM=$(mktemp)
+        # Audit M6: explicit template + prefix; both registered in the
+        # EXIT trap above so SIGINT mid-update doesn't leak them.
+        CMP_LOCAL_NORM=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
+        CMP_REMOTE_NORM=$(mktemp "${TMPDIR:-/tmp}/tk-update.XXXXXX")
         if normalize_md "$CLAUDE_MD" "$CMP_LOCAL_NORM" 2>/dev/null \
            && normalize_md "$CLAUDE_MD_TMP" "$CMP_REMOTE_NORM" 2>/dev/null \
            && cmp -s "$CMP_LOCAL_NORM" "$CMP_REMOTE_NORM"; then
