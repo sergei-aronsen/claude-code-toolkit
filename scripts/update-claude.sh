@@ -266,6 +266,18 @@ run_clean_backups() {
         fi
     fi
 
+    # Audit S-HIGH-1 (2026-04-30 deep): the path-safety pattern at the rm site
+    # below uses `"$(dirname "$CLAUDE_DIR")"/.claude-backup-*`. In production
+    # CLAUDE_DIR is the relative literal ".claude" (line 82), so dirname yields
+    # "." and the pattern becomes "./.claude-backup-*" which never matches the
+    # absolute paths returned by list_backup_dirs (rooted at $HOME /
+    # $TK_UPDATE_HOME). Result: every legitimate backup hits "Refusing to
+    # remove suspicious path". Tests passed only because they set
+    # TK_UPDATE_HOME=$SCR (absolute), masking the bug.
+    # Resolve the parent to an absolute path once, up-front.
+    local _backup_parent
+    _backup_parent="${TK_UPDATE_HOME:-$HOME}"
+
     # Enumerate backup dirs (newest-epoch-first from list_backup_dirs)
     local dirs=()
     while IFS= read -r d; do
@@ -340,7 +352,7 @@ run_clean_backups() {
                         # empty / "/" / paths outside the parent of CLAUDE_DIR
                         # before letting rm -rf go to work.
                         if [[ -z "$d" || "$d" == "/" \
-                              || "$d" != "$(dirname "$CLAUDE_DIR")"/.claude-backup-* ]]; then
+                              || "$d" != "$_backup_parent"/.claude-backup-* ]]; then
                             echo -e "${RED}✗${NC} Refusing to remove suspicious path: ${d}" >&2
                             rc=1
                         elif ! rm -rf "$d"; then
