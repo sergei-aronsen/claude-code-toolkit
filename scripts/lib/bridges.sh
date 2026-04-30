@@ -142,10 +142,18 @@ _bridge_match() {
     local target="$1" list="$2"
     [[ -z "$list" ]] && return 1
     local saved_ifs="$IFS"
+    # Audit S-HIGH-2 (2026-04-30 deep): word-splitting on the unquoted
+    # comma-separated list inherits filename-glob expansion. A token like `g*`
+    # would expand to `gemini gnu` etc. matching files in PWD. Disable globbing
+    # for the split (saved in -f flag, restored after) and rely on IFS=, alone.
+    local glob_was_off=0
+    case $- in *f*) glob_was_off=1 ;; esac
+    set -f
     IFS=','
     # shellcheck disable=SC2206  # word-split on comma is the contract
     local tokens=($list)
     IFS="$saved_ifs"
+    [[ $glob_was_off -eq 0 ]] && set +f
     local tok
     for tok in "${tokens[@]+"${tokens[@]}"}"; do
         # trim leading/trailing whitespace (Bash 3.2 portable)
@@ -653,10 +661,16 @@ bridge_install_prompts() {
     if [[ -n "${BRIDGES_FORCE:-}" && "${FAIL_FAST:-false}" == "true" ]]; then
         local req_target
         local saved_ifs="$IFS"
+        # Audit S-HIGH-2: same defense as _bridge_match. Disable filename
+        # globbing across the unquoted comma-split.
+        local glob_was_off=0
+        case $- in *f*) glob_was_off=1 ;; esac
+        set -f
         IFS=','
         # shellcheck disable=SC2206
         local req_tokens=(${BRIDGES_FORCE})
         IFS="$saved_ifs"
+        [[ $glob_was_off -eq 0 ]] && set +f
         for req_target in "${req_tokens[@]+"${req_tokens[@]}"}"; do
             req_target="${req_target#"${req_target%%[![:space:]]*}"}"
             req_target="${req_target%"${req_target##*[![:space:]]}"}"
