@@ -35,6 +35,24 @@ done
 REPO_URL="https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main"
 CLAUDE_DIR="$HOME/.claude"
 
+# Audit M3: source lib/install.sh for backup_settings_once + atomic merge helpers.
+# Remote curl|bash callers download to mktemp; local callers source from sibling dir.
+LIB_INSTALL_TMP=""
+if [[ -f "$(dirname "$0")/lib/install.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "$(dirname "$0")/lib/install.sh"
+else
+    LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX")
+    trap 'rm -f "$LIB_INSTALL_TMP"' EXIT
+    if ! curl -sSLf "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP" 2>/dev/null; then
+        # Non-fatal: only the atomic-merge path needs it. Statusline can still install.
+        echo -e "${YELLOW}⚠${NC} Could not fetch lib/install.sh — settings.json merge will use fallback (non-atomic)"
+    else
+        # shellcheck source=/dev/null
+        source "$LIB_INSTALL_TMP"
+    fi
+fi
+
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║   Rate Limit Statusline — Installation     ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
@@ -91,21 +109,46 @@ mkdir -p "$CLAUDE_DIR"
 echo ""
 echo -e "${BLUE}Downloading scripts...${NC}"
 
-if curl -sSLf "$REPO_URL/templates/global/rate-limit-probe.sh" -o "$CLAUDE_DIR/rate-limit-probe.sh" 2>/dev/null; then
-    chmod +x "$CLAUDE_DIR/rate-limit-probe.sh"
-    echo -e "  ${GREEN}✓${NC} rate-limit-probe.sh"
-else
-    rm -f "$CLAUDE_DIR/rate-limit-probe.sh"
-    echo -e "  ${RED}✗${NC} Failed to download rate-limit-probe.sh"
+# Audit L1: don't silently overwrite user-edited probe/statusline. If the local
+# file exists and differs from the upstream version, write the upstream copy
+# to a sidecar `.upstream-new` and let the user reconcile by hand. This mirrors
+# the .new pattern used by setup-security.sh for ~/.claude/CLAUDE.md.
+download_with_sidecar() {
+    local rel_url="$1" dest="$2" label="$3"
+    local tmp
+    tmp=$(mktemp "${TMPDIR:-/tmp}/$(basename "$dest").XXXXXX")
+    if ! curl -sSLf "$REPO_URL/$rel_url" -o "$tmp" 2>/dev/null; then
+        rm -f "$tmp"
+        echo -e "  ${RED}✗${NC} Failed to download $label"
+        return 1
+    fi
+    if [ -f "$dest" ] && ! cmp -s "$dest" "$tmp"; then
+        # User has edited (or older toolkit version differs) — preserve theirs.
+        local sidecar="${dest}.upstream-new"
+        # Stamp prior reconciliation if user has not yet merged a previous run.
+        if [ -f "$sidecar" ] && ! cmp -s "$sidecar" "$tmp"; then
+            mv "$sidecar" "${sidecar}.$(date -u +%s)" 2>/dev/null || true
+        fi
+        mv "$tmp" "$sidecar"
+        chmod +x "$sidecar"
+        echo -e "  ${YELLOW}⚠${NC} $label differs from your local copy"
+        echo -e "       Upstream written to: $sidecar"
+        echo -e "       Diff:  diff -u \"$dest\" \"$sidecar\""
+        echo -e "       Apply: mv \"$sidecar\" \"$dest\""
+        return 0
+    fi
+    mv "$tmp" "$dest"
+    chmod +x "$dest"
+    echo -e "  ${GREEN}✓${NC} $label"
+}
+
+if ! download_with_sidecar "templates/global/rate-limit-probe.sh" \
+        "$CLAUDE_DIR/rate-limit-probe.sh" "rate-limit-probe.sh"; then
     exit 1
 fi
 
-if curl -sSLf "$REPO_URL/templates/global/statusline.sh" -o "$CLAUDE_DIR/statusline.sh" 2>/dev/null; then
-    chmod +x "$CLAUDE_DIR/statusline.sh"
-    echo -e "  ${GREEN}✓${NC} statusline.sh"
-else
-    rm -f "$CLAUDE_DIR/statusline.sh"
-    echo -e "  ${RED}✗${NC} Failed to download statusline.sh"
+if ! download_with_sidecar "templates/global/statusline.sh" \
+        "$CLAUDE_DIR/statusline.sh" "statusline.sh"; then
     exit 1
 fi
 
@@ -115,20 +158,79 @@ echo -e "${BLUE}Configuring statusLine in settings...${NC}"
 
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
+# Audit M3: atomic settings.json merge with one backup per run.
+# Previous code did `UPDATED=$(jq ...); echo "$UPDATED" > "$SETTINGS_FILE"` — a SIGINT
+# between the two could truncate settings.json to zero bytes, and no backup was taken
+# before overwrite. Now: backup_settings_once + python3 mkstemp+os.replace (POSIX atomic).
+merge_statusline_python() {
+    local settings_path="$1"
+    python3 - "$settings_path" <<'PYEOF'
+import json, os, sys, tempfile
+settings_path = sys.argv[1]
+if os.path.exists(settings_path):
+    with open(settings_path, 'r') as f:
+        try:
+            config = json.load(f)
+        except json.JSONDecodeError:
+            sys.exit(2)
+else:
+    config = {}
+config['statusLine'] = {'type': 'command', 'command': '~/.claude/statusline.sh'}
+out_dir = os.path.dirname(os.path.abspath(settings_path)) or '.'
+os.makedirs(out_dir, exist_ok=True)
+tmp_fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix='settings.', suffix='.tmp')
+try:
+    with os.fdopen(tmp_fd, 'w') as f:
+        json.dump(config, f, indent=2)
+        f.write('\n')
+    os.replace(tmp_path, settings_path)
+except Exception:
+    try:
+        os.unlink(tmp_path)
+    except FileNotFoundError:
+        pass
+    raise
+PYEOF
+}
+
 if [ -f "$SETTINGS_FILE" ]; then
-    # Merge statusLine into existing settings
-    UPDATED=$(jq '. + {"statusLine": {"type": "command", "command": "~/.claude/statusline.sh"}}' "$SETTINGS_FILE" 2>/dev/null)
-    if [ -n "$UPDATED" ]; then
-        echo "$UPDATED" > "$SETTINGS_FILE"
-        echo -e "  ${GREEN}✓${NC} Updated existing settings.json"
+    # backup_settings_once: one .bak.<epoch> per run (no-op if already taken).
+    if command -v backup_settings_once >/dev/null 2>&1; then
+        backup_settings_once "$SETTINGS_FILE"
     else
-        echo -e "  ${YELLOW}⚠${NC} Could not parse settings.json, creating backup"
-        cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak"
-        echo '{"statusLine": {"type": "command", "command": "~/.claude/statusline.sh"}}' > "$SETTINGS_FILE"
-        echo -e "  ${GREEN}✓${NC} Created new settings.json (backup: settings.json.bak)"
+        cp "$SETTINGS_FILE" "${SETTINGS_FILE}.bak.$(date +%s)"
+    fi
+
+    if command -v python3 &>/dev/null; then
+        if merge_statusline_python "$SETTINGS_FILE"; then
+            echo -e "  ${GREEN}✓${NC} Updated existing settings.json (atomic merge, backup retained)"
+        else
+            rc=$?
+            if [[ $rc -eq 2 ]]; then
+                echo -e "  ${YELLOW}⚠${NC} settings.json was not valid JSON — leaving original; backup at .bak.<epoch>"
+                exit 1
+            fi
+            echo -e "  ${RED}✗${NC} JSON merge failed — backup retained at ${SETTINGS_FILE}.bak.<epoch>"
+            exit 1
+        fi
+    else
+        # Fallback: jq-based merge using temp + atomic rename. No naked redirect.
+        TMP_OUT=$(mktemp "${SETTINGS_FILE}.tmp.XXXXXX")
+        if jq '. + {"statusLine": {"type": "command", "command": "~/.claude/statusline.sh"}}' "$SETTINGS_FILE" > "$TMP_OUT" 2>/dev/null \
+                && [ -s "$TMP_OUT" ]; then
+            mv "$TMP_OUT" "$SETTINGS_FILE"
+            echo -e "  ${GREEN}✓${NC} Updated existing settings.json (jq atomic, backup retained)"
+        else
+            rm -f "$TMP_OUT"
+            echo -e "  ${RED}✗${NC} Could not parse settings.json — original preserved (backup at .bak.<epoch>)"
+            exit 1
+        fi
     fi
 else
-    echo '{"statusLine": {"type": "command", "command": "~/.claude/statusline.sh"}}' > "$SETTINGS_FILE"
+    # Atomic create via tempfile + rename to avoid partial-file race on SIGINT.
+    TMP_NEW=$(mktemp "${SETTINGS_FILE}.tmp.XXXXXX")
+    printf '%s\n' '{"statusLine": {"type": "command", "command": "~/.claude/statusline.sh"}}' > "$TMP_NEW"
+    mv "$TMP_NEW" "$SETTINGS_FILE"
     echo -e "  ${GREEN}✓${NC} Created settings.json"
 fi
 

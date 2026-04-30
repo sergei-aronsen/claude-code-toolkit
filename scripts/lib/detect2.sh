@@ -65,19 +65,48 @@ is_toolkit_installed() {
 
 # DET-02: cc-safety-net hook AND wired into pre-bash.sh OR settings.json.
 # Fixes v4.4 regression where brew-installed cc-safety-net was missed.
-# Returns 0 only when binary exists AND a wiring grep succeeds — incomplete
+# Returns 0 only when binary exists AND a wiring check succeeds — incomplete
 # install (binary present, hook absent) returns 1.
+#
+# Audit M5: previously `grep -q "cc-safety-net"` matched inside string values,
+# Markdown comments, plugin metadata fields, or `_disabled_cc-safety-net` keys —
+# false-positive "installed". Hook file remains a grep (it's a shell script, not
+# JSON). settings.json now uses python3+json to walk hooks.PreToolUse[*].hooks[*]
+# .command and require the substring INSIDE an actual command field. Falls back
+# to grep only when python3 is absent (rare on macOS/Linux).
 is_security_installed() {
     if ! command -v cc-safety-net >/dev/null 2>&1; then
         return 1
     fi
     local hooks_file="$HOME/.claude/hooks/pre-bash.sh"
     local settings_file="$HOME/.claude/settings.json"
-    if grep -q "cc-safety-net" "$hooks_file" 2>/dev/null; then
+    # The combined hook script is owned by TK and is plain bash — grep is safe.
+    if [[ -f "$hooks_file" ]] && grep -q "cc-safety-net" "$hooks_file" 2>/dev/null; then
         return 0
     fi
-    if grep -q "cc-safety-net" "$settings_file" 2>/dev/null; then
-        return 0
+    if [[ -f "$settings_file" ]]; then
+        if command -v python3 >/dev/null 2>&1; then
+            python3 - "$settings_file" <<'PYEOF' 2>/dev/null && return 0
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        cfg = json.load(f)
+except Exception:
+    sys.exit(1)
+for entry in (cfg.get('hooks', {}).get('PreToolUse', []) or []):
+    for h in (entry.get('hooks', []) or []):
+        cmd = h.get('command', '')
+        if isinstance(cmd, str) and ('cc-safety-net' in cmd or 'pre-bash.sh' in cmd):
+            sys.exit(0)
+sys.exit(1)
+PYEOF
+        else
+            # Fallback: anchor inside a JSON `"command": "..."` field.
+            if grep -qE '"command"[[:space:]]*:[[:space:]]*"[^"]*(cc-safety-net|pre-bash\.sh)' \
+                    "$settings_file" 2>/dev/null; then
+                return 0
+            fi
+        fi
     fi
     return 1
 }

@@ -205,6 +205,10 @@ dispatch_toolkit() {
 }
 
 # dispatch_security — setup-security.sh.
+# Audit M1: --dry-run is honoured at the dispatcher level (prints "would run …"
+# and exits 0). It is NOT passed through to setup-security.sh because that
+# script fails-closed on unknown flags by design. If a future setup-security.sh
+# learns --dry-run, also add it to its pass_args here.
 dispatch_security() {
     local force=0 dry_run=0 yes=0
     local pass_args=()
