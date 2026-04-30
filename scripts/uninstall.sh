@@ -303,8 +303,13 @@ prompt_modified_for_uninstall() {
     # "reference unavailable" message if neither is available.
     local reference_tmp
     reference_tmp=$(mktemp "${TMPDIR:-/tmp}/uninstall-ref.XXXXXX")
-    # shellcheck disable=SC2064  # intentional: capture path at trap-registration time
-    trap "rm -f '$reference_tmp'" RETURN
+    # Audit U2 + I4: shell-quote via printf '%q' so a TMPDIR with single
+    # quotes doesn't break the trap; also note that this RETURN trap
+    # overrides any caller-installed RETURN trap (bash limitation — only
+    # one RETURN trap per scope). Callers that need their own RETURN
+    # cleanup must register an EXIT trap instead.
+    # shellcheck disable=SC2064
+    trap "rm -f $(printf '%q' "$reference_tmp")" RETURN
 
     local reference_source=""
     # Try test seam first
@@ -408,8 +413,9 @@ strip_sentinel_block() {
     #   skip_next_blank  — just exited an END line; drop the next blank if any
     local tmp
     tmp=$(mktemp "${TMPDIR:-/tmp}/sentinel-strip.XXXXXX")
-    # shellcheck disable=SC2064  # intentional: capture path at trap-registration time
-    trap "rm -f '$tmp'" RETURN
+    # Audit U2 + I4: %q-quoted path safe under any TMPDIR.
+    # shellcheck disable=SC2064
+    trap "rm -f $(printf '%q' "$tmp")" RETURN
 
     awk '
         # END marker: leave block, arm trailing-blank skip

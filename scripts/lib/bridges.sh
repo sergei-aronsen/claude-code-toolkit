@@ -513,8 +513,9 @@ bridge_prompt_drift() {
     # Build the would-be-rewritten content into a tempfile so 'd' can diff.
     local tmp_new
     tmp_new=$(mktemp "${TMPDIR:-/tmp}/bridge-drift.XXXXXX")
-    # shellcheck disable=SC2064  # capture path at trap-registration time
-    trap "rm -f '$tmp_new'" RETURN
+    # Audit U2 + I4: %q-quoted path tolerates TMPDIR with quotes.
+    # shellcheck disable=SC2064
+    trap "rm -f $(printf '%q' "$tmp_new")" RETURN
     if [[ -f "$source_path" ]]; then
         {
             cat <<'BANNER'
