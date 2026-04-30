@@ -92,11 +92,22 @@ LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
 trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
 
+# Audit I5: every curl fetch in the update path needs network-safety flags.
+# Without --max-time / --connect-timeout / --retry a hung TCP socket can pin
+# the whole update flow forever; without -f a 502 / 404 HTML body would be
+# sourced as shell. _tk_curl_safe wraps the canonical pattern.
+_tk_curl_safe() {
+    curl -sSLf \
+        --max-time 60 --connect-timeout 10 \
+        --retry 2 --retry-delay 2 \
+        "$@"
+}
+
 # detect.sh — still soft-fail (transient network tolerance); fallback sets HAS_SP/HAS_GSD=false
 # Honor pre-set env vars (test seam: tests export HAS_SP/HAS_GSD to bypass detect.sh).
 if [[ -n "${HAS_SP+x}" && -n "${HAS_GSD+x}" ]]; then
     : # env vars already set by caller (test seam or CI override) — skip detect.sh
-elif curl -sSLf "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
+elif _tk_curl_safe "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP" 2>/dev/null; then
     # shellcheck source=/dev/null
     source "$DETECT_TMP"
 else
@@ -117,7 +128,7 @@ for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optiona
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
-    elif ! curl -sSLf "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
+    elif ! _tk_curl_safe "$REPO_URL/scripts/lib/$lib_name" -o "$lib_path"; then
         echo -e "${RED}✗${NC} Failed to fetch scripts/lib/$lib_name — update cannot proceed"
         exit 1
     fi
@@ -130,7 +141,7 @@ MANIFEST_SRC="${TK_UPDATE_MANIFEST_OVERRIDE:-}"
 if [[ -n "$MANIFEST_SRC" && -f "$MANIFEST_SRC" ]]; then
     cp "$MANIFEST_SRC" "$MANIFEST_TMP"
 else
-    if ! curl -sSLf "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
+    if ! _tk_curl_safe "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
         echo -e "${RED}✗${NC} Failed to fetch manifest.json — update cannot proceed"
         exit 1
     fi
@@ -304,7 +315,15 @@ run_clean_backups() {
                 fi
                 case "${decision:-N}" in
                     y|Y)
-                        if ! rm -rf "$d"; then
+                        # Audit I3: belt-and-braces. $d comes from a glob over
+                        # `.claude-backup-*` paths, but defensively reject
+                        # empty / "/" / paths outside the parent of CLAUDE_DIR
+                        # before letting rm -rf go to work.
+                        if [[ -z "$d" || "$d" == "/" \
+                              || "$d" != "$(dirname "$CLAUDE_DIR")"/.claude-backup-* ]]; then
+                            echo -e "${RED}✗${NC} Refusing to remove suspicious path: ${d}" >&2
+                            rc=1
+                        elif ! rm -rf "$d"; then
                             echo -e "${RED}✗${NC} Failed to remove $d" >&2
                             rc=1
                         fi
@@ -892,7 +911,16 @@ trap 'release_lock; rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LI
 acquire_lock || exit 1
 
 BACKUP_DIR="$(dirname "$CLAUDE_DIR")/.claude-backup-$(date -u +%s)-$$"
-cp -R "$CLAUDE_DIR" "$BACKUP_DIR"
+# Audit I1: cp -R was unverified — a partial backup (permission denied on a
+# sub-tree, ENOSPC mid-copy, etc.) silently produced an unusable restore
+# point. Capture rc and abort BEFORE we start mutating $CLAUDE_DIR.
+cp_rc=0
+cp -R "$CLAUDE_DIR" "$BACKUP_DIR" || cp_rc=$?
+if [[ $cp_rc -ne 0 ]]; then
+    log_error "Backup failed (cp rc=$cp_rc): $BACKUP_DIR is incomplete; aborting update"
+    rm -rf "$BACKUP_DIR" 2>/dev/null || true
+    exit 1
+fi
 log_success "Backup created: $BACKUP_DIR"
 warn_if_too_many_backups
 
@@ -946,7 +974,13 @@ done < <(jq -r '.[]' <<<"$SKIPPED_BY_MODE_JSON")
 REMOVED_COUNT=$(jq length <<<"$REMOVED_FROM_MANIFEST")
 if [[ "$REMOVED_COUNT" -gt 0 ]]; then
     echo "The following files were removed from manifest.json since last install:"
-    jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST" | sed 's/^/  /'
+    # Audit I6: a hostile / corrupted manifest.json could embed ANSI escape
+    # sequences in path strings and rewrite the prompt that follows ([y/N]).
+    # Strip ESC + most C0 control characters before printing untrusted paths.
+    jq -r '.[]' <<<"$REMOVED_FROM_MANIFEST" \
+        | LC_ALL=C tr -d '\033\007\010' \
+        | LC_ALL=C tr -cd '[:print:]\n' \
+        | sed 's/^/  /'
     local_prune_decision="N"
     case "$PRUNE_MODE" in
         yes) local_prune_decision="y" ;;

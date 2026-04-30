@@ -127,13 +127,24 @@ _is_curl_pipe() {
     [[ "${BASH_SOURCE[0]:-}" == /dev/fd/* || "${0:-}" == bash ]]
 }
 
+# Audit I5: every curl in the install path needs network-safety flags so a
+# hung TCP socket can't pin the bootstrap forever. _tk_curl_safe wraps the
+# canonical `-sSLf` with --max-time / --connect-timeout / --retry. Errors out
+# on HTTP 4xx/5xx (-f) so we never source a 502 HTML body as shell code.
+_tk_curl_safe() {
+    curl -sSLf \
+        --max-time 60 --connect-timeout 10 \
+        --retry 2 --retry-delay 2 \
+        "$@"
+}
+
 _source_lib() {
     local lib_name="$1"
     if _is_curl_pipe; then
         local tmp
         tmp=$(mktemp "${TMPDIR:-/tmp}/${lib_name}-XXXXXX")
         CLEANUP_PATHS+=("$tmp")
-        if ! curl -sSLf "$TK_REPO_URL/scripts/lib/${lib_name}.sh" -o "$tmp"; then
+        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/${lib_name}.sh" -o "$tmp"; then
             echo -e "${RED}✗${NC} Failed to download lib/${lib_name}.sh — aborting"
             exit 1
         fi
@@ -152,7 +163,7 @@ _source_lib() {
 if _is_curl_pipe; then
     DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect-XXXXXX")
     CLEANUP_PATHS+=("$DETECT_TMP")
-    if ! curl -sSLf "$TK_REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
+    if ! _tk_curl_safe "$TK_REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
         echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
         exit 1
     fi
@@ -816,6 +827,19 @@ COMPONENT_NAMES=()
 COMPONENT_STDERR_TAIL=()
 
 _disp_count=${#TUI_LABELS[@]}
+# Audit M-Install: TK_DISPATCH_ORDER comes from dispatch.sh which we control,
+# but a future patch could pick the value up from env. Validate every entry
+# matches a strict alphanumeric/hyphen alphabet so the `dispatch_${name}`
+# expansion below cannot be coerced into invoking a function name with shell
+# metacharacters or starting with a dash.
+for _local_check_name in "${TK_DISPATCH_ORDER[@]}"; do
+    if [[ ! "$_local_check_name" =~ ^[a-z][a-z0-9-]*$ ]]; then
+        log_error "TK_DISPATCH_ORDER contains invalid component name: ${_local_check_name@Q}"
+        exit 1
+    fi
+done
+unset _local_check_name
+
 for ((i=0; i<_disp_count; i++)); do
     local_name="${TK_DISPATCH_ORDER[$i]}"
     local_label="${TUI_LABELS[$i]}"

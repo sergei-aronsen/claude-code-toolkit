@@ -175,7 +175,10 @@ acquire_lock() {
             sleep 0.1
             pid_wait=$((pid_wait + 1))
         done
-        old_pid=$(cat "$LOCK_DIR/pid" 2>/dev/null || echo "")
+        # Audit M-State: a hostile or corrupt pid file (e.g. multi-GB) would
+        # blow memory if read whole. Cap at 16 bytes — a 64-bit PID never
+        # exceeds 19 decimal digits.
+        old_pid=$(head -c 16 "$LOCK_DIR/pid" 2>/dev/null || echo "")
 
         # If the holder still hasn't written its pid, treat as a live race
         # and retry — never `rm -rf` a lock with no PID, that's how two
@@ -193,21 +196,41 @@ acquire_lock() {
         # Validate pid is integer before any further use (audit Sec-L3).
         [[ "$old_pid" =~ ^[0-9]+$ ]] || old_pid=""
 
-        # Signal 1: PID liveness (kill -0 sends no signal; returns 0 if process exists)
-        if [[ -n "$old_pid" ]] && ! kill -0 "$old_pid" 2>/dev/null; then
-            echo -e "${YELLOW}⚠${NC} Reclaimed stale lock from PID $old_pid (process no longer running)"
-            rm -rf "$LOCK_DIR"
-            continue
-        fi
-
-        # Signal 2: mtime age > 3600s
+        # Signal 1+2 combined (audit I2 fix): PID liveness alone is unsafe
+        # because the kernel recycles PIDs on busy machines — kill -0 returning
+        # non-zero could mean "the holder exited" OR "the holder's PID was
+        # reassigned to a wrapping live process and we're testing the wrong
+        # one". Require BOTH `kill -0` failure AND lock age > 60s before
+        # reclaiming. A genuinely dead lock will satisfy both within a
+        # minute; a freshly-PID-recycled lock will still pass age < 60s and
+        # we'll wait or fail the install.
         local lock_mtime now age
         lock_mtime=$(get_mtime "$LOCK_DIR")
         now=$(date +%s)
         age=$((now - lock_mtime))
+        if [[ -n "$old_pid" ]] && ! kill -0 "$old_pid" 2>/dev/null; then
+            if [[ $age -gt 60 ]]; then
+                echo -e "${YELLOW}⚠${NC} Reclaimed stale lock from PID $old_pid (process gone, age ${age}s)"
+                # rm -rf is intentional; LOCK_DIR is set at the top of state.sh
+                # to a known absolute path under ~/.claude — never empty.
+                [[ -n "$LOCK_DIR" && "$LOCK_DIR" != "/" ]] && rm -rf "$LOCK_DIR"
+                continue
+            fi
+            # PID gone but lock too young to trust the kill -0 result —
+            # treat as "still warming up", loop with a short sleep.
+            retries=$((retries + 1))
+            if [[ $retries -ge 5 ]]; then
+                echo -e "${RED}✗${NC} Lock holder PID $old_pid recently exited; refusing to race. Exiting." >&2
+                return 1
+            fi
+            sleep 1
+            continue
+        fi
+
+        # Hard ceiling: 3600s — assume nothing legitimate runs that long.
         if [[ $age -gt 3600 ]]; then
             echo -e "${YELLOW}⚠${NC} Reclaimed stale lock from PID ${old_pid:-unknown} (lock age: ${age}s)"
-            rm -rf "$LOCK_DIR"
+            [[ -n "$LOCK_DIR" && "$LOCK_DIR" != "/" ]] && rm -rf "$LOCK_DIR"
             continue
         fi
 

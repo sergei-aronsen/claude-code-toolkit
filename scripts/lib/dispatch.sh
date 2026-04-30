@@ -35,17 +35,36 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
-# Reuse canonical SP/GSD install commands from optional-plugins.sh (D-04).
+# Canonical SP/GSD install commands.
 #
-# SECURITY (WR-01): TK_SP_INSTALL_CMD and TK_GSD_INSTALL_CMD are TRUSTED installer
-# inputs — they are passed to `eval` to support shell-pipe constructs like
-# `bash <(curl ...)`. Authors MUST NOT populate these variables from untrusted
-# data (user form fields, untrusted env, network input). The default values are
-# safe literals; overrides are intended only for forks/mirrors and tests.
-# For test injection, prefer TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD which take
-# a path to a script (no eval, executed via `bash <path>`).
+# Audit C2: these used to be `eval "$TK_*_INSTALL_CMD"`, with the env-supplied
+# value substituted into eval. The "TRUSTED" comment was wrong — an attacker
+# who exports `TK_SP_INSTALL_CMD='rm -rf ~'` BEFORE the user runs `curl|bash`
+# turns the install pipeline into RCE under the user's account.
+#
+# Lockdown:
+#  - Default install commands are now baked into _dispatch_run_sp_default /
+#    _dispatch_run_gsd_default (functions, no eval).
+#  - The TK_SP_INSTALL_CMD / TK_GSD_INSTALL_CMD env vars STILL exist for
+#    dry-run display ("would run: ...") and for legitimate forks/mirrors,
+#    but they are only executed when TK_TEST=1 is also set. In production
+#    (TK_TEST unset / != "1") the env override is ignored and the hardcoded
+#    function runs — overrides are documented to go through the
+#    TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD path-to-script seam instead.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
 [[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+
+# Hardcoded default execution paths — strings live in code, never in env.
+_dispatch_run_sp_default() {
+    claude plugin install 'superpowers@claude-plugins-official'
+}
+
+_dispatch_run_gsd_default() {
+    # Process substitution stays inside the function body so there is no
+    # untrusted string crossing the shell parser.
+    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 \
+        'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
+}
 
 # Default repo URL (overridable for testing or fork installs).
 [[ -z "${TK_REPO_URL:-}" ]] && TK_REPO_URL='https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main'
@@ -103,7 +122,13 @@ dispatch_superpowers() {
         echo "[+ INSTALL] superpowers (would run: $TK_SP_INSTALL_CMD)"
         return 0
     fi
-    eval "$TK_SP_INSTALL_CMD"
+    # Audit C2: only honour the env override when explicitly in test mode.
+    # In production, run the hardcoded function — env vars cannot inject.
+    if [[ "${TK_TEST:-0}" == "1" ]]; then
+        eval "$TK_SP_INSTALL_CMD"
+    else
+        _dispatch_run_sp_default
+    fi
 }
 
 # dispatch_gsd — upstream curl install.
@@ -133,7 +158,12 @@ dispatch_gsd() {
         echo "[+ INSTALL] get-shit-done (would run: $TK_GSD_INSTALL_CMD)"
         return 0
     fi
-    eval "$TK_GSD_INSTALL_CMD"
+    # Audit C2: only honour the env override when explicitly in test mode.
+    if [[ "${TK_TEST:-0}" == "1" ]]; then
+        eval "$TK_GSD_INSTALL_CMD"
+    else
+        _dispatch_run_gsd_default
+    fi
 }
 
 # dispatch_toolkit — init-claude.sh (curl-pipe) or init-local.sh (local).

@@ -37,8 +37,22 @@ _bootstrap_log_warning() { echo -e "${YELLOW}⚠${NC} $1" >&2; }
 
 # _bootstrap_prompt_and_run <plugin_name> <prompt_text> <cmd_string>
 # Renders one [y/N] prompt; on y, evals $cmd; failure is non-fatal.
+# Audit C2: bootstrap previously eval'd $cmd from env. Same RCE shape as
+# dispatch.sh — an attacker who exports TK_BOOTSTRAP_SP_CMD before curl|bash
+# turned the install pipeline into shell injection. Now the runner takes a
+# function name (bash builtin / function — no shell parser involvement) and
+# only falls back to eval when TK_TEST=1.
+_bootstrap_run_sp_default() {
+    claude plugin install 'superpowers@claude-plugins-official'
+}
+
+_bootstrap_run_gsd_default() {
+    bash <(curl -sSL --max-time 60 --connect-timeout 10 --retry 2 \
+        'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
+}
+
 _bootstrap_prompt_and_run() {
-    local plugin_name="$1" prompt_text="$2" cmd="$3"
+    local plugin_name="$1" prompt_text="$2" runner="$3"
     local tty_target="/dev/tty"
     [[ -n "${TK_BOOTSTRAP_TTY_SRC:-}" ]] && tty_target="$TK_BOOTSTRAP_TTY_SRC"
 
@@ -51,8 +65,13 @@ _bootstrap_prompt_and_run() {
     case "${choice:-N}" in
         y|Y)
             local rc=0
-            # shellcheck disable=SC2294  # eval is intentional — test seam overrides production constant
-            eval "$cmd" || rc=$?
+            if [[ "${TK_TEST:-0}" == "1" && -n "${TK_BOOTSTRAP_OVERRIDE_CMD:-}" ]]; then
+                # Test seam: only when TK_TEST=1 AND an explicit override is set.
+                # shellcheck disable=SC2294
+                eval "$TK_BOOTSTRAP_OVERRIDE_CMD" || rc=$?
+            else
+                "$runner" || rc=$?
+            fi
             if [[ $rc -ne 0 ]]; then
                 _bootstrap_log_warning "${plugin_name} install failed (exit code ${rc}) — continuing toolkit install"
             fi
@@ -72,27 +91,26 @@ bootstrap_base_plugins() {
     local sp_dir="${HOME}/.claude/plugins/cache/claude-plugins-official/superpowers"
     local gsd_dir="${HOME}/.claude/get-shit-done"
 
-    local sp_cmd="${TK_BOOTSTRAP_SP_CMD:-${TK_SP_INSTALL_CMD:-}}"
-    local gsd_cmd="${TK_BOOTSTRAP_GSD_CMD:-${TK_GSD_INSTALL_CMD:-}}"
-
     # SP prompt block — idempotency, missing-CLI, then prompt.
     if [[ -d "$sp_dir" ]]; then
         _bootstrap_log_info "superpowers already installed — skipping."
     elif ! command -v claude >/dev/null 2>&1; then
         _bootstrap_log_warning "claude CLI not on PATH — superpowers bootstrap skipped (install Claude Code first)."
     else
-        _bootstrap_prompt_and_run "superpowers" \
-            "Install superpowers via plugin marketplace? [y/N] " \
-            "$sp_cmd"
+        TK_BOOTSTRAP_OVERRIDE_CMD="${TK_BOOTSTRAP_SP_CMD:-${TK_SP_INSTALL_CMD:-}}" \
+            _bootstrap_prompt_and_run "superpowers" \
+                "Install superpowers via plugin marketplace? [y/N] " \
+                _bootstrap_run_sp_default
     fi
 
     # GSD prompt block — independent of SP.
     if [[ -d "$gsd_dir" ]]; then
         _bootstrap_log_info "get-shit-done already installed — skipping."
     else
-        _bootstrap_prompt_and_run "get-shit-done" \
-            "Install get-shit-done via curl install script? [y/N] " \
-            "$gsd_cmd"
+        TK_BOOTSTRAP_OVERRIDE_CMD="${TK_BOOTSTRAP_GSD_CMD:-${TK_GSD_INSTALL_CMD:-}}" \
+            _bootstrap_prompt_and_run "get-shit-done" \
+                "Install get-shit-done via curl install script? [y/N] " \
+                _bootstrap_run_gsd_default
     fi
 
     return 0
