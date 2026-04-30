@@ -482,10 +482,16 @@ print_update_summary() {
         printf '  %s (%s)\n' "$rp" "$rr"
     done
     printf '%bREMOVED %d%b (backed up to %s)\n' "$_R" "$n_rem" "$_NC" "$backup_dir"
-    for p in "${REMOVED_PATHS[@]:-}"; do
-        [[ -z "$p" ]] && continue
-        printf '  %s\n' "$p"
-    done
+    # Audit L: `${REMOVED_PATHS[@]:-}` under set -u expands an empty array to
+    # a single empty string, which the for-loop then iterated. The
+    # `[[ -z "$p" ]] && continue` skipped the printf, but the iteration
+    # itself ran once unnecessarily. Length-guard before the expansion.
+    if [[ ${#REMOVED_PATHS[@]} -gt 0 ]]; then
+        for p in "${REMOVED_PATHS[@]}"; do
+            [[ -z "$p" ]] && continue
+            printf '  %s\n' "$p"
+        done
+    fi
 }
 
 # print_update_dry_run — UX-01 SC2 chezmoi-grade preview of update actions.
@@ -706,9 +712,13 @@ if [[ ! -f "$STATE_FILE" ]]; then
 fi
 if ! STATE_JSON=$(read_state); then
     log_error "toolkit-install.json unreadable at $STATE_FILE — re-synthesizing"
-    # Preserve corrupt file for debug (RESEARCH Pitfall 10)
+    # Preserve corrupt file for debug (RESEARCH Pitfall 10).
+    # Audit L: warn but do not abort if the preservation cp fails — the
+    # synthesis path below recovers regardless, and a noisy abort here on
+    # an already-broken state file would block the user from updating.
     if [[ -f "$STATE_FILE" ]]; then
-        cp "$STATE_FILE" "${STATE_FILE}.corrupt.$(date -u +%s)"
+        cp "$STATE_FILE" "${STATE_FILE}.corrupt.$(date -u +%s)" 2>/dev/null \
+            || log_warning "Could not preserve corrupt state file (continuing)"
     fi
     synthesize_v3_state "$MANIFEST_TMP"
     STATE_JSON=$(read_state) || { log_error "synthesis failed — abort"; exit 1; }

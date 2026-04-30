@@ -1277,6 +1277,19 @@ def redact_context(text, label="<unlabeled>"):
 import datetime
 import hashlib
 
+
+# Audit L-Council: previous code wrote
+#   datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+#       .strftime("%Y-%m-%dT%H:%M:%SZ")
+# in four call sites. The .replace(tzinfo=None) was vestigial — strftime
+# emits the literal "Z" via the format string, not from the tzinfo. Use
+# this helper instead so the call sites stay one-liners.
+def _utc_iso():
+    return datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
 USAGE_LOG_PATH = Path.home() / ".claude" / "council" / "usage.jsonl"
 PRICING_PATH = Path.home() / ".claude" / "council" / "pricing.json"
 
@@ -1388,7 +1401,7 @@ def record_usage(mode, verdict=None, plan_hash=None, fallback_used=False):
         snapshot["model"], snapshot["tokens_in"], snapshot["tokens_out"]
     )
     record = {
-        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ts": _utc_iso(),
         "mode": mode,
         "provider": snapshot["provider"],
         "model": snapshot["model"],
@@ -1425,7 +1438,7 @@ def log_cache_hit(plan_hash, verdict):
     if os.environ.get("COUNCIL_NO_USAGE_LOG") == "1":
         return
     record = {
-        "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ts": _utc_iso(),
         "mode": "validate-plan-cache-hit",
         "provider": "cache",
         "model": "cache",
@@ -2513,7 +2526,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
         # need the markdown block.
         if cache_key and not (skeptic_failed and pragmatist_failed):
             _set_cached(cache_key, {
-                "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "ts": _utc_iso(),
                 "plan_hash": plan_hash,
                 "git_head": git_head,
                 "skeptic_verdict": gemini_verdict,
@@ -2622,7 +2635,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     # ── Phase 24 SP6 — store cache snapshot for future identical calls ──
     if cache_key and not (skeptic_failed and pragmatist_failed):
         _set_cached(cache_key, {
-            "ts": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "ts": _utc_iso(),
             "plan_hash": plan_hash,
             "git_head": git_head,
             "skeptic_verdict": gemini_verdict,
