@@ -195,12 +195,21 @@ Carry-overs available for next milestone scoping:
 | Phase 30-install-time-ux P03 | 45 | 4 tasks | 4 files |
 | Phase 31 P02 | 5 | 2 tasks | 2 files |
 
+## Quick Tasks Completed
+
+| Task ID | Slug | Date | Status | Commits | Notes |
+|---------|------|------|--------|---------|-------|
+| 260430-go5 | fix-all-19-audit-findings | 2026-04-30 | complete | 21 | PR #15 — 18 audit findings closed + 1 Gemini dead-code; H2 withdrawn FP; new `test-install-dispatch-h1.sh`; `TK_TOOLKIT_REF` env var |
+
 ## Session Continuity
 
-Last session: 2026-04-29T21:22:54.671Z
-Stopped at: Completed 31-02-PLAN.md
-Resume file: None
+Last session: 2026-04-30T12:30:00Z
+Stopped at: Audit sweep 260430-go5 complete; PR #15 opened
+Resume file: `.planning/quick/260430-go5-fix-all-19-audit-findings-h1-h6-m1-m8-l1/SUMMARY.md`
 
 **Next steps:**
 
+- Wait for PR #15 CI to settle (6 jobs queued at push time)
+- After merge: tag follow-up issue for `TK_TOOLKIT_PIN_SHA256` (optional checksum mode for H5 extension)
+- After merge: tag follow-up issue for `test-bootstrap.sh` 18/26 fix (pre-existing, same TK_TEST gating shape as H6/T12 — documented in `.planning/quick/260430-go5-fix-all-19-audit-findings-h1-h6-m1-m8-l1/deferred-items.md`)
 - Phase 31 (Distribution + Tests + Docs) — closes v4.7 milestone with manifest 4.7.0 bump, test wiring to CI, docs/BRIDGES.md, CHANGELOG entry
