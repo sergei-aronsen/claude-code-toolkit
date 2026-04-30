@@ -8,11 +8,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [[ \"$f\" == *.py ]] && ruff format \"$f\" 2>/dev/null || true"
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [[ \"$f\" == *.py ]] && ruff format \"$f\" 2>/dev/null || true"
           },
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] Modified: $f\" >> .claude/activity.log"
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] Modified: $f\" >> .claude/activity.log"
           }
         ]
       }

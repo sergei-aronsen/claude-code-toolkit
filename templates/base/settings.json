@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] File modified: $f\" >> .claude/activity.log"
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && echo \"[$(date +%H:%M:%S)] File modified: $f\" >> .claude/activity.log"
           }
         ]
       }

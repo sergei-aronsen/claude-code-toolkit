@@ -242,6 +242,9 @@
         "path": "scripts/lib/cli-recommendations.sh"
       },
       {
+        "path": "scripts/lib/council-prompts.sh"
+      },
+      {
         "path": "scripts/lib/detect2.sh"
       },
       {

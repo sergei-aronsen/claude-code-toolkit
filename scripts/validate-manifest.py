@@ -227,6 +227,24 @@ def main():
                     fail("drift: " + expected + " exists on disk but is not in manifest files.skills")
                     errors += 1
 
+    # Audit M1: scripts/lib/ drift detection. update-claude.sh is
+    # manifest-driven; a new lib file added without a manifest entry would
+    # silently never propagate to existing users via update.
+    libs_dir = os.path.join(REPO_ROOT, "scripts", "lib")
+    if os.path.isdir(libs_dir):
+        for name in sorted(os.listdir(libs_dir)):
+            full = os.path.join(libs_dir, name)
+            if not os.path.isfile(full):
+                continue
+            if name.startswith(".") or name.endswith((".bak", ".swp", ".orig")):
+                continue
+            if not (name.endswith(".sh") or name.endswith(".json")):
+                continue
+            expected = "scripts/lib/" + name
+            if expected not in manifest_paths:
+                fail("drift: " + expected + " exists on disk but is not in manifest files.libs")
+                errors += 1
+
     if errors > 0:
         print(
             "manifest.json validation FAILED (" + str(errors) + " error(s))",
