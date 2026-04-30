@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
 
 # Default target
 help:
@@ -16,7 +16,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-skills-desktop validate-marketplace cell-parity
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-mdlint-config-sync validate-skills-desktop validate-marketplace cell-parity
 	@echo "All checks passed!"
 
 # Full local validation — `check` + bats install matrix. Run before push to catch
@@ -46,6 +46,26 @@ shellcheck:
 mdlint:
 	@echo "Running markdownlint..."
 	@markdownlint '**/*.md' --ignore-path .markdownlintignore && echo "✅ Markdownlint passed"
+
+# Audit INF-MED-4 (2026-04-30 deep): assert .markdownlint.json (cli v1, used by
+# `make mdlint` + .pre-commit-config.yaml) and .markdownlint-cli2.jsonc (cli v2,
+# used by quality.yml's DavidAnson/markdownlint-cli2-action) carry the same
+# rule set. Without this guard a contributor editing one file silently desyncs
+# CI from local. Compares the canonicalized rule object, not whitespace.
+validate-mdlint-config-sync:
+	@echo "Checking markdownlint config alignment (.markdownlint.json vs .markdownlint-cli2.jsonc)..."
+	@V1=$$(jq -S . .markdownlint.json); \
+	V2=$$(python3 -c 'import json,re,sys; \
+src=open(".markdownlint-cli2.jsonc").read(); \
+src=re.sub(r"//[^\n]*","",src); \
+print(json.dumps(json.loads(src)["config"], sort_keys=True, indent=2))'); \
+	if [ "$$V1" != "$$V2" ]; then \
+		echo "❌ markdownlint config drift between .markdownlint.json and .markdownlint-cli2.jsonc"; \
+		echo "--- .markdownlint.json"; echo "$$V1"; \
+		echo "--- .markdownlint-cli2.jsonc (.config)"; echo "$$V2"; \
+		exit 1; \
+	fi; \
+	echo "✅ markdownlint configs aligned"
 
 # Test init scripts
 test:
