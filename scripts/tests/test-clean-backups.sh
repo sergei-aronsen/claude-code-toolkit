@@ -350,8 +350,17 @@ scenario_home_only_production_path() {
     local BG_PID=$!
 
     local OUT rc
-    # No TK_UPDATE_HOME set — production path. HOME points at sandbox.
-    OUT=$(HOME="$SCR" \
+    # The whole point of this scenario is the production-path branch where
+    # TK_UPDATE_HOME is UNSET, so update-claude.sh keeps the relative literal
+    # CLAUDE_DIR=".claude". The path-safety pattern under audit S-HIGH-1
+    # falls back to $HOME via `${TK_UPDATE_HOME:-$HOME}`. We must cd into the
+    # sandbox so the relative `.claude` exists on disk (otherwise the early
+    # CLAUDE_DIR-not-found check exits before reaching the cleanup logic).
+    # TK_UPDATE_LIB_DIR / TK_UPDATE_MANIFEST_OVERRIDE remain set so the script
+    # does not try to curl-fetch its libs from the network (orthogonal to the
+    # bug under test).
+    OUT=$(cd "$SCR" && \
+          HOME="$SCR" \
           TK_UPDATE_LIB_DIR="$LIB_DIR" \
           TK_UPDATE_MANIFEST_OVERRIDE="$MANIFEST_FIXTURE" \
           bash "$UPDATE_SH" --clean-backups 0<"$FIFO" 2>&1 || true)
