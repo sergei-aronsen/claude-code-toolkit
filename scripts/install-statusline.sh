@@ -9,7 +9,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
 # DISPATCH-02 — accept --yes as no-op for symmetry with TUI dispatch contract.
@@ -69,9 +68,9 @@ else
     fi
 fi
 
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Rate Limit Statusline — Installation     ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║   Rate Limit Statusline — Installation     ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 
 # Check macOS
@@ -100,7 +99,7 @@ if ! command -v curl &>/dev/null; then
 fi
 
 # Check Claude Code OAuth token
-echo -e "${BLUE}Checking Claude Code credentials...${NC}"
+echo -e "${CYAN}Checking Claude Code credentials...${NC}"
 TOKEN=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null | jq -r '.claudeAiOauth.accessToken // empty' 2>/dev/null)
 
 if [ -z "$TOKEN" ]; then
@@ -123,7 +122,7 @@ mkdir -p "$CLAUDE_DIR"
 
 # Download scripts
 echo ""
-echo -e "${BLUE}Downloading scripts...${NC}"
+echo -e "${CYAN}Downloading scripts...${NC}"
 
 # Audit L1: don't silently overwrite user-edited probe/statusline. If the local
 # file exists and differs from the upstream version, write the upstream copy
@@ -170,7 +169,7 @@ fi
 
 # Configure settings.json
 echo ""
-echo -e "${BLUE}Configuring statusLine in settings...${NC}"
+echo -e "${CYAN}Configuring statusLine in settings...${NC}"
 
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 
@@ -252,7 +251,7 @@ fi
 
 # Run initial probe
 echo ""
-echo -e "${BLUE}Running initial rate limit check...${NC}"
+echo -e "${CYAN}Running initial rate limit check...${NC}"
 
 # Audit H3: probe + statusline use ${TMPDIR:-/tmp}; on macOS TMPDIR is per-user
 # (/var/folders/.../T/). Hardcoded /tmp here always missed the file the probe

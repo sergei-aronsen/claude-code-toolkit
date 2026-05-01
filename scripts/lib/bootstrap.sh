@@ -41,7 +41,7 @@
 
 # Local log helpers — defined here because lib/install.sh does NOT export log_*.
 # Shape mirrors scripts/uninstall.sh:71-74. Use these instead of raw echo for consistency.
-_bootstrap_log_info()    { echo -e "${BLUE}ℹ${NC} $1" >&2; }
+_bootstrap_log_info()    { echo -e "${CYAN}ℹ${NC} $1" >&2; }
 _bootstrap_log_warning() { echo -e "${YELLOW}⚠${NC} $1" >&2; }
 
 # _bootstrap_prompt_and_run <plugin_name> <prompt_text> <cmd_string>

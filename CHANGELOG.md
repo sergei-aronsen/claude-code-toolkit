@@ -7,6 +7,119 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.9.0] - 2026-05-02
+
+Major install UX overhaul on top of 4.8.x — focused on PR #28 install run on
+macOS and a series of user reports between 2026-05-01 and 2026-05-02.
+
+### Added — Back navigation in multi-step picker flow (UX-FLOW-02)
+
+Press `b` (or `B`) inside the skills or MCP sub-picker to return to the
+previous step. Skills picker → main TUI; MCP picker → skills picker (or
+main TUI if skills wasn't selected). Previously selected items are
+re-checked when re-entering a picker via Back. Gated on
+`TK_TUI_ALLOW_BACK=1`. Footer hint shows `· b back` only in multi-step mode.
+
+### Added — MCP secrets deferred (registered without API key during install)
+
+Mid-install API-key prompts caused users to abandon the flow. New
+`TK_MCP_DEFER_SECRETS=1` mode (default during dispatch): MCPs needing env
+keys are registered with `claude mcp add` *without* env vars (so they
+appear in `claude mcp list` with empty env binding), keys queued in
+`~/.claude/mcp-config.env` as empty stubs (mode 0600), and a one-time
+shell-rc auto-source line is appended to `~/.zshrc` / `~/.bash_profile` /
+`~/.bashrc` (idempotent via marker comment). User fills mcp-config.env,
+opens fresh terminal, launches claude — MCPs pick up keys at startup.
+No re-registration when keys change later.
+
+Status row reads `installed (needs API key)` (yellow). Post-summary
+follow-up block prints a 3-step recipe.
+
+### Added — Tooltip / banner colors switched to CYAN
+
+Sweep `${BLUE}` → `${CYAN}` across `init-claude.sh`, `install.sh`,
+`init-local.sh`, `update-claude.sh`. Dark-blue text was unreadable on
+macOS Terminal default dark theme.
+
+### Changed — Atomic TUI render eliminates flicker AND bleed-through
+
+`_tui_render` builds the entire frame as a single string and writes to
+the TTY in ONE printf. Solves both flicker (per-line printfs caused
+visible repaints between syscalls) and bleed-through (gap lines retained
+content from prior frames). Atomic write + `\e[H\e[J` at frame start.
+
+### Changed — Install order: skills BEFORE mcp-servers
+
+`TK_DISPATCH_ORDER` reordered so the MCP "needs API key" follow-up block
+ends the screen. Main TUI marketplace section + pre-collection sub-pickers
+also reordered.
+
+### Changed — Skills install summary uses soft-checkmark style
+
+Bright-green right-aligned `installed ✓` rows replaced with a leading
+`✓ name` row (matching `init-claude.sh`'s "📥 Framework extras..." style).
+Failures render `✗ name — reason` in red. Dry-run keeps the literal
+`would-install` token (tests parse it).
+
+### Changed — Consolidated install finale at top-level
+
+Sub-installers run with `TK_DISPATCHED=1` and suppress their standalone
+finale (recommend_security/statusline/optional_plugins, "Verify",
+"Restart Claude Code", POST_INSTALL note). Parent `install.sh` emits ONE
+consolidated finale AFTER all dispatchers complete.
+
+### Changed — Project-local skill stubs deduplicated against marketplace
+
+Removed `ai-models`, `tailwind`, `i18n` from every framework template
+(base + nodejs + go + python + laravel + rails + nextjs). Each
+`skill-rules.json` updated. ~4685 lines deleted. Marketplace versions
+(`ai-models`, `tailwind-design-system`, `i18n-localization`) cover the
+same ground. Kept project-local stubs unique to the toolkit:
+`api-design`, `council-integration`, `database`, `debugging`, `docker`,
+`llm-patterns`, `observability`, `testing`.
+
+### Fixed — Esc detection on macOS Terminal / iTerm2
+
+`tui_checklist` case match extended from `$'\e')` to
+`$'\e' | $'\e\e' | $'\e\e\e')`. macOS Terminal + iTerm2 "Send +Esc"
+config emits 2-3 bytes per Esc keypress; the read-ahead window catches
+them. Previous single-arm match dropped these into `*) ignore` and
+"Esc did nothing". Footer text changed `Esc cancel` → `Ctrl+C abort`.
+
+### Fixed — `claude mcp list` cached once per install
+
+`mcp_status_array` previously called `claude mcp list` 9 times (once per
+MCP catalog entry) for ~40 s on macOS. New `_mcp_list_cache_init`
+function memoizes once per shell. Visible "Loading MCP catalog..."
+banner added.
+
+### Fixed — Sub-pickers run in main process (no subshell)
+
+UX-FLOW-01 originally captured sub-picker output via subshell `$()`.
+On macOS the TUI library's stty/cursor-hide sequences plus captured-stdout
+fd combination left the post-Submit screen frozen. Sub-pickers now run
+in the main process with `_save_main_tui_state` / `_restore_main_tui_state`
+helpers.
+
+### Fixed — Mid-install banner suppressed in dispatch mode
+
+`init-claude.sh` invoked from `install.sh` dispatch loop printed its
+standalone "Installation Complete!" + recommendations block BEFORE
+skills/MCP dispatchers ran. `TK_DISPATCHED=1` suppresses it.
+
+### Fixed — `mcp-catalog.json` race-on-mktemp
+
+`--mcps` branch unconditionally re-`mktemp`'d a catalog file even when
+the parent UX-FLOW-01 block already exported `TK_MCP_CATALOG_PATH`.
+Under heavy `/tmp` churn BSD `mkstemp` gave up with `File exists`.
+Guard added.
+
+### Fixed — `gemini-bridge` symlink failure message
+
+Two-line message replaced with 5-line diagnostic naming the symlink
+target, explaining *why* we refuse (could clobber another tool's config),
+and printing the literal `rm <path>` command to fix it.
+
 ### Changed — Pre-collect all TUI selections before installing (UX-FLOW-01)
 
 Previously the install flow was: main TUI → Submit → run toolkit / security /
@@ -658,7 +771,7 @@ the same v4.5.0 heading as they ship.
 
 ### Fixed
 
-- _None — this is an additive feature release. See [4.1.1] for the prior patch._
+- *None — this is an additive feature release. See [4.1.1] for the prior patch.*
 
 ### Documentation
 

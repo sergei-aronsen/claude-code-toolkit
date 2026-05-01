@@ -95,7 +95,7 @@ TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleW
 # via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
 # of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
 export TK_TOOLKIT_REF TK_USER_AGENT
-log_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
+log_info()    { echo -e "${CYAN}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error()   { echo -e "${RED}✗${NC} $1"; }
@@ -481,9 +481,9 @@ strip_sentinel_block() {
 
 # ───────── MAIN ─────────
 
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║         Claude Code Toolkit — Uninstall                    ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║         Claude Code Toolkit — Uninstall                    ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 if [[ ! -f "$STATE_FILE" ]]; then
@@ -622,7 +622,7 @@ echo ""
 echo "Classification:"
 echo -e "  ${GREEN}REMOVE${NC}:    $n_remove"
 echo -e "  ${YELLOW}MODIFIED${NC}: $n_modified"
-echo -e "  ${BLUE}MISSING${NC}:   $n_missing"
+echo -e "  ${CYAN}MISSING${NC}:   $n_missing"
 echo -e "  ${RED}PROTECTED${NC}: $n_protected (excluded from any action)"
 
 # ───────── Mutation lock: prevent concurrent install/update/uninstall ─────────

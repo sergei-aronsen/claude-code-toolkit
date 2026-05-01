@@ -92,7 +92,7 @@ self_test() {
     TMP="$(mktemp -d -t tk-selftest.XXXXXX)"
     trap 'rm -rf "$TMP"' EXIT
 
-    echo "${BLUE}Running validate-release.sh self-test...${NC}"
+    echo "${CYAN}Running validate-release.sh self-test...${NC}"
     echo ""
 
     # assert_eq: pass path

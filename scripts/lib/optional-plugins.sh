@@ -42,5 +42,5 @@ recommend_optional_plugins() {
     echo -e "  ${YELLOW}get-shit-done${NC} (gsd-build) — phase-based workflow (TK complements)"
     echo -e "    Install: ${YELLOW}${TK_GSD_INSTALL_CMD}${NC}"
     echo ""
-    echo -e "  ${BLUE}Details:${NC} see components/optional-plugins.md in the TK repo"
+    echo -e "  ${CYAN}Details:${NC} see components/optional-plugins.md in the TK repo"
 }

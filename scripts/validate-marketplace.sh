@@ -15,7 +15,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
 if [ "${TK_HAS_CLAUDE_CLI:-0}" != "1" ]; then
@@ -41,7 +40,7 @@ if ! python3 -c "import json,sys; json.load(open('.claude-plugin/marketplace.jso
     exit 1
 fi
 
-echo -e "${BLUE}Validating marketplace via claude CLI...${NC}"
+echo -e "${CYAN}Validating marketplace via claude CLI...${NC}"
 echo ""
 
 # Audit L12: predictable /tmp/tk-marketplace-out.$$ is symlink-attackable on

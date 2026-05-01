@@ -25,7 +25,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 # shellcheck disable=SC2034
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 # shellcheck disable=SC2034
 CYAN='\033[0;36m'
 NC='\033[0m'
@@ -564,7 +563,7 @@ if [[ "$MCPS" -eq 1 ]]; then
         echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
         echo ""
         echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
-        while IFS=$'\t' read -r d_name d_keys d_args; do
+        while IFS=$'\t' read -r d_name d_keys _; do
             [[ -z "$d_name" ]] && continue
             _IFS_SAVED2="$IFS"
             IFS=','

@@ -101,7 +101,7 @@ if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
 fi
 
 # Internal log helpers — underscore prefix.
-_dispatch_log_info()    { echo -e "${BLUE}i${NC} $1" >&2; }
+_dispatch_log_info()    { echo -e "${CYAN}i${NC} $1" >&2; }
 _dispatch_log_warning() { echo -e "${YELLOW}!${NC} $1" >&2; }
 
 # Curl-pipe vs local invocation detection (D-24, RESEARCH §4).

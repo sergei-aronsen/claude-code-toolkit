@@ -35,7 +35,7 @@
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
 # Internal log helpers — underscore prefix avoids name collision with caller.
-_tui_log_info()    { echo -e "${BLUE}i${NC} $1" >&2; }
+_tui_log_info()    { echo -e "${CYAN}i${NC} $1" >&2; }
 _tui_log_warning() { echo -e "${YELLOW}!${NC} $1" >&2; }
 
 # Color gating per TUI-06 + RESEARCH.md §3:
