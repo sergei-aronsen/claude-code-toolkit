@@ -254,9 +254,11 @@ detect2_cache
 print_install_status() {
     local component="$1" state="$2"
     case "$state" in
+        # MCPs registered without env vars: render yellow so the row
+        # visually flags "still needs config" without looking like failure.
+        "installed (needs API key)") printf '  %b%-30s %s%b\n' "${_DRO_Y:-}" "$component" "$state" "${_DRO_NC:-}" ;;
         installed*)     printf '  %b%-30s %s%b\n' "${_DRO_G:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         would-install)  printf '  %b%-30s %s%b\n' "${_DRO_C:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
-        "needs API key"*) printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"  "$component" "$state" "${_DRO_NC:-}" ;;
         skipped)        printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         failed*)        printf '  %b%-30s %s%b\n' "${_DRO_R:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         *)              printf '  %-30s %s\n' "$component" "$state" ;;
@@ -473,8 +475,12 @@ if [[ "$MCPS" -eq 1 ]]; then
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
             3)
-                COMPONENT_STATUS+=("needs API key — see below")
-                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                # rc=3 — server registered with claude CLI but has no env
+                # binding yet (deferred-secrets path). Counted as installed
+                # so the summary doesn't read like a failure; the follow-up
+                # block tells the user how to add the key.
+                COMPONENT_STATUS+=("installed (needs API key)")
+                INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
             *)
@@ -521,22 +527,21 @@ if [[ "$MCPS" -eq 1 ]]; then
     printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
-    # Deferred-secrets follow-up block. Read the queue file populated by
-    # mcp_wizard_run when TK_MCP_DEFER_SECRETS=1 and emit ONE consolidated
-    # block (instead of repeating the "1. Add ..." / "2. Then run ..."
-    # template per server — user feedback 2026-05-01 it was too verbose).
+    # Follow-up block for MCPs registered without env vars. The servers are
+    # already in `claude mcp list` (registered with empty env binding); they
+    # just need API keys before they will work at runtime. Print ONE
+    # consolidated block instead of repeating per-server boilerplate.
     if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
         echo ""
-        echo -e "${YELLOW}MCPs needing API keys — finish setup later:${NC}"
+        echo -e "${YELLOW}Some MCPs registered without API keys — they need keys before they will work:${NC}"
         echo ""
-        echo "  1) Add API keys to ~/.claude/mcp-config.env (mode 0600):"
+        echo "  1) Add API keys to ~/.claude/mcp-config.env (already stubbed; mode 0600):"
         while IFS=$'\t' read -r d_name d_keys d_args; do
             [[ -z "$d_name" ]] && continue
-            # d_keys may contain "K1, K2" — split and emit one KEY=value line each.
             _IFS_SAVED2="$IFS"
             IFS=','
             for _k in $d_keys; do
-                _k="${_k# }"   # trim leading space (split artifact)
+                _k="${_k# }"
                 [[ -z "$_k" ]] && continue
                 printf '       %s=...\n' "$_k"
             done
@@ -544,11 +549,31 @@ if [[ "$MCPS" -eq 1 ]]; then
         done < "$TK_MCP_DEFERRED_QUEUE"
         unset _k _IFS_SAVED2
         echo ""
-        echo "  2) Then run:"
+        echo "  2) Re-register each server so claude.json gets the env binding:"
         while IFS=$'\t' read -r d_name d_keys d_args; do
             [[ -z "$d_name" ]] && continue
-            printf '       claude mcp add %s\n' "$d_args"
+            # Build the -e KEY=\$KEY flags from the comma-separated key list.
+            _e_flags=""
+            _IFS_SAVED2="$IFS"
+            IFS=','
+            for _k in $d_keys; do
+                _k="${_k# }"
+                [[ -z "$_k" ]] && continue
+                _e_flags="${_e_flags} -e ${_k}=\${${_k}}"
+            done
+            IFS="$_IFS_SAVED2"
+            # Strip leading "<name> --" from install_args so we can re-insert
+            # -e flags in the right slot: `claude mcp add <name> -e ... -- <cmd>`.
+            _name_only="${d_args%% *}"
+            _rest="${d_args#"$_name_only"}"
+            _rest="${_rest# }"   # trim space
+            printf '       claude mcp add --force %s%s %s\n' \
+                "$_name_only" "$_e_flags" "$_rest"
         done < "$TK_MCP_DEFERRED_QUEUE"
+        unset _k _IFS_SAVED2 _e_flags _name_only _rest
+        echo ""
+        echo "  Tip: source the file first to expand the variables:"
+        echo "       set -a; source ~/.claude/mcp-config.env; set +a"
     fi
 
     if [[ "${NO_BANNER:-0}" != "1" ]]; then

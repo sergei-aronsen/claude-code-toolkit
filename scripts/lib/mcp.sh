@@ -457,15 +457,54 @@ mcp_wizard_run() {
         # Defer mode (set by install.sh during dispatch). Don't block the
         # install on interactive secret prompts — user reported they "never
         # finish the install" if it hangs on key entry mid-flow (2026-05-01).
-        # Skip `claude mcp add` for this server. Append to the queue file;
-        # the parent prints ONE consolidated follow-up block after the
-        # summary (no per-server narration during dispatch).
+        # Strategy (refined 2026-05-01 per user feedback): DO register the
+        # MCP via `claude mcp add` so it shows up in `claude mcp list` and
+        # the entry exists in ~/.claude.json. Pass NO env vars — claude
+        # CLI registers the server with an empty env map. The MCP server
+        # will fail at first use until the user supplies the API key,
+        # but the registration itself completes during install. Queue
+        # the (name, keys, install_args) tuple for the parent to print
+        # follow-up instructions.
         local _deferred_keys="${env_keys_csv//;/, }"
         if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
             printf '%s\t%s\t%s\n' "$name" "$_deferred_keys" "${install_args[*]}" \
                 >> "$TK_MCP_DEFERRED_QUEUE" 2>/dev/null || true
         fi
-        # rc=3 = deferred-secrets (distinct from rc=2 = claude CLI absent).
+        # Pre-create empty stub entries in mcp-config.env so the user can
+        # `vi ~/.claude/mcp-config.env` and just fill values — no need to
+        # remember which keys belong where. mcp_secrets_set handles 0600
+        # + collision (existing entries are preserved).
+        local IFS_SAVED2="$IFS"
+        IFS=';'
+        # shellcheck disable=SC2206
+        local _stub_keys=( $env_keys_csv )
+        IFS="$IFS_SAVED2"
+        local _stub_key
+        for _stub_key in "${_stub_keys[@]}"; do
+            [[ -z "$_stub_key" ]] && continue
+            # Only stub if absent — never overwrite an existing value.
+            mcp_secrets_load
+            if ! _mcp_secrets_index "$_stub_key" >/dev/null 2>&1; then
+                # Append a placeholder entry directly (skip mcp_secrets_set's
+                # interactive collision prompt — guaranteed absent here).
+                local _env_path
+                _env_path="$(_mcp_config_path)"
+                mkdir -p "$(dirname "$_env_path")" 2>/dev/null || true
+                printf '%s=\n' "$_stub_key" >> "$_env_path" 2>/dev/null || true
+                chmod 0600 "$_env_path" 2>/dev/null || true
+            fi
+        done
+        # Run `claude mcp add` WITHOUT env vars — server registers but
+        # has no env binding in claude.json. User adds key via the
+        # follow-up command in the summary, then re-registers.
+        "$claude_bin" mcp add "${install_args[@]}"
+        local _add_rc=$?
+        if [[ "$_add_rc" -ne 0 ]]; then
+            return "$_add_rc"
+        fi
+        # rc=3 = registered-without-env (distinct from rc=0 = fully wired,
+        # rc=2 = claude CLI absent). Caller maps rc=3 to a "needs API key"
+        # status row, NOT a failure.
         return 3
     elif [[ -n "$env_keys_csv" ]]; then
         local IFS_SAVED2="$IFS"
