@@ -116,55 +116,56 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Filled by `gsd-roadmapper` during ROADMAP.md creation.
+Mapped by `gsd-roadmapper` 2026-05-02. All 36 v4.9 REQ-IDs assigned to exactly one of Phases 32-35.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAT-01 | TBD | Pending |
-| CAT-02 | TBD | Pending |
-| CAT-03 | TBD | Pending |
-| CAT-04 | TBD | Pending |
-| CLI-01 | TBD | Pending |
-| CLI-02 | TBD | Pending |
-| CLI-03 | TBD | Pending |
-| CLI-04 | TBD | Pending |
-| TUI-01 | TBD | Pending |
-| TUI-02 | TBD | Pending |
-| TUI-03 | TBD | Pending |
-| TUI-04 | TBD | Pending |
-| TUI-05 | TBD | Pending |
-| INT-01 | TBD | Pending |
-| INT-02 | TBD | Pending |
-| INT-03 | TBD | Pending |
-| INT-04 | TBD | Pending |
-| INT-05 | TBD | Pending |
-| INT-06 | TBD | Pending |
-| INT-07 | TBD | Pending |
-| INT-08 | TBD | Pending |
-| INT-09 | TBD | Pending |
-| INT-10 | TBD | Pending |
-| INT-11 | TBD | Pending |
-| INT-12 | TBD | Pending |
-| DROP-01 | TBD | Pending |
-| EXIST-01 | TBD | Pending |
-| DOCS-01 | TBD | Pending |
-| DOCS-02 | TBD | Pending |
-| DOCS-03 | TBD | Pending |
-| DOCS-04 | TBD | Pending |
-| DOCS-05 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| DIST-01 | TBD | Pending |
-| DIST-02 | TBD | Pending |
+| CAT-01 | Phase 32 | Pending |
+| CAT-02 | Phase 32 | Pending |
+| CAT-03 | Phase 32 | Pending |
+| CAT-04 | Phase 32 | Pending |
+| CLI-01 | Phase 32 | Pending |
+| CLI-02 | Phase 32 | Pending |
+| CLI-03 | Phase 32 | Pending |
+| CLI-04 | Phase 32 | Pending |
+| TUI-01 | Phase 34 | Pending |
+| TUI-02 | Phase 34 | Pending |
+| TUI-03 | Phase 34 | Pending |
+| TUI-04 | Phase 34 | Pending |
+| TUI-05 | Phase 34 | Pending |
+| INT-01 | Phase 33 | Pending |
+| INT-02 | Phase 33 | Pending |
+| INT-03 | Phase 33 | Pending |
+| INT-04 | Phase 33 | Pending |
+| INT-05 | Phase 33 | Pending |
+| INT-06 | Phase 33 | Pending |
+| INT-07 | Phase 33 | Pending |
+| INT-08 | Phase 33 | Pending |
+| INT-09 | Phase 33 | Pending |
+| INT-10 | Phase 33 | Pending |
+| INT-11 | Phase 33 | Pending |
+| INT-12 | Phase 33 | Pending |
+| DROP-01 | Phase 33 | Pending |
+| EXIST-01 | Phase 33 | Pending |
+| DOCS-01 | Phase 35 | Pending |
+| DOCS-02 | Phase 35 | Pending |
+| DOCS-03 | Phase 35 | Pending |
+| DOCS-04 | Phase 35 | Pending |
+| DOCS-05 | Phase 35 | Pending |
+| TEST-01 | Phase 35 | Pending |
+| TEST-02 | Phase 35 | Pending |
+| TEST-03 | Phase 35 | Pending |
+| TEST-04 | Phase 35 | Pending |
+| DIST-01 | Phase 35 | Pending |
+| DIST-02 | Phase 35 | Pending |
 
 **Coverage:**
 
 - v4.9 requirements: 36 total
-- Mapped to phases: 0 (pending roadmapper)
-- Unmapped: 36 — to be resolved by `gsd-roadmapper`
+- Mapped to phases: 36 ✓
+- Unmapped: 0
+- Phase distribution: Phase 32 (8), Phase 33 (14), Phase 34 (5), Phase 35 (11)
 
 ---
 *Requirements defined: 2026-05-02*
-*Last updated: 2026-05-02 — initial v4.9 milestone scoping*
+*Last updated: 2026-05-02 — Traceability mapped by `gsd-roadmapper`; 36/36 REQ-IDs assigned to Phases 32-35.*

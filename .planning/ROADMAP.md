@@ -9,10 +9,18 @@
 - ✅ **v4.4 Bootstrap & Polish** — Phases 21–23 (shipped 2026-04-27). See `.planning/milestones/v4.4-ROADMAP.md`.
 - ✅ **v4.6 Install Flow UX & Desktop Reach** — Phases 24–27 (shipped 2026-04-29). See `.planning/milestones/v4.6-ROADMAP.md`.
 - ✅ **v4.8 Multi-CLI Bridge** — Phases 28–31 (shipped 2026-04-29). See `.planning/milestones/v4.8-ROADMAP.md`.
+- 🚧 **v4.9 Integrations Catalog** — Phases 32–35 (active, started 2026-05-02).
 
 ## Active Milestone
 
-_None — ready for next milestone (`/gsd-new-milestone`)._
+**v4.9 Integrations Catalog** — unify the existing 9-MCP catalog into a 19-entry **Integrations** catalog combining MCP servers + companion CLIs (`wrangler`, `supabase`, `stripe`, `aws`, `nlm`) under one TUI page. Add 11 new entries, drop 1 (sequential-thinking), re-categorize existing 8. Cross-platform CLI installer with post-install hints. `unofficial` warning badges. Category grouping in TUI.
+
+### Phases
+
+- [ ] **Phase 32: Foundation — Schema Migration + CLI Installer Library** — `integrations-catalog.json` schema, validator, `cli-installer.sh` library, backward-compat `--mcps` alias.
+- [ ] **Phase 33: Catalog Population — 11 New Entries + Drop + Re-categorize** — supabase, cloudflare, stripe, aws-cost-explorer, aws-cloudwatch-logs, notebooklm, youtrack, linear, jira, figma, slack, telegram; drop sequential-thinking; tag 8 existing entries with category.
+- [ ] **Phase 34: TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags** — category headers, per-component status detection, `unofficial` `[y/N]` confirm, `--mcp-only`/`--cli-only` flags, summary table.
+- [ ] **Phase 35: Distribution + Tests + Docs** — manifest 4.9.0, version-align, 3 test suites (catalog, CLI installer, integrations TUI), `docs/INTEGRATIONS.md`, INSTALL.md flag rows, README, CHANGELOG `[4.9.0]`.
 
 <details>
 <summary>✅ v4.0 Complement Mode (Phases 1–7 + 6.1) — SHIPPED 2026-04-21</summary>
@@ -75,6 +83,16 @@ _None — ready for next milestone (`/gsd-new-milestone`)._
 - [x] Phase 25: MCP Selector (4/4 plans) — completed 2026-04-29
 - [x] Phase 26: Skills Selector (4/4 plans) — completed 2026-04-29
 - [x] Phase 27: Marketplace Publishing + Claude Desktop Reach (4/4 plans) — completed 2026-04-29
+
+</details>
+
+<details>
+<summary>✅ v4.8 Multi-CLI Bridge (Phases 28–31) — SHIPPED 2026-04-29</summary>
+
+- [x] Phase 28: Bridge Foundation (3/3 plans) — completed 2026-04-29
+- [x] Phase 29: Sync & Uninstall Integration (3/3 plans) — completed 2026-04-29
+- [x] Phase 30: Install-time UX (3/3 plans) — completed 2026-04-29
+- [x] Phase 31: Distribution + Tests + Docs (3/3 plans) — completed 2026-04-29
 
 </details>
 
@@ -147,6 +165,62 @@ _None — ready for next milestone (`/gsd-new-milestone`)._
 - [x] 31-02-PLAN.md — Aggregator test (`scripts/tests/test-bridges.sh` wrapping the 3 existing bridge suites = 50 assertions) + CI integration (`quality.yml` test-init-script append)
 - [x] 31-03-PLAN.md — `docs/BRIDGES.md` (NEW, 9 sections) + `docs/INSTALL.md` Installer Flags table extension (4 new flag rows + Multi-CLI Bridges sub-section) + README Killer Features grid row
 
+### Phase 32: Foundation — Schema Migration + CLI Installer Library
+
+**Goal**: Migrate `mcp-catalog.json` schema to `integrations-catalog.json` with per-entry `components: { mcp?, cli? }` blocks and `category` + `unofficial` fields; ship a cross-platform CLI installer library (`scripts/lib/cli-installer.sh`) that detects CLIs via `command -v`, dispatches install via `brew`/`apt`/shell installers without auto-elevation, and prints post-install hints to stderr. Backward-compat alias `--mcps` → `--integrations` with stderr deprecation note. This phase unblocks Phases 33 and 34 — every downstream entry depends on the schema being ready and the CLI installer being callable.
+**Depends on**: Nothing (entry phase). Builds on v4.6 Phase 25 foundation (`scripts/lib/mcp-catalog.json` + `mcp.sh`) and v4.6 Phase 24 lib foundation (`scripts/lib/{tui.sh, detect2.sh, dispatch.sh}`).
+**Requirements**: CAT-01, CAT-02, CAT-03, CAT-04, CLI-01, CLI-02, CLI-03, CLI-04
+**Success Criteria** (what must be TRUE):
+  1. `scripts/lib/integrations-catalog.json` exists at the new path with the 9 existing entries already populated (schema-only migration, content unchanged); `scripts/lib/mcp-catalog.json` is removed; `scripts/lib/mcp.sh` reads the new path and existing v4.6 `test-mcp-selector.sh` PASS=21 stays green.
+  2. Running `python3 scripts/validate-integrations-catalog.py` against the new file passes for valid entries and fails with explicit error messages on: unknown `category`, missing `mcp.install_args`, missing `cli.detect_cmd`, missing `cli.install.darwin` or `cli.install.linux`. `make check` invokes the validator and fails the build on schema violations.
+  3. Sourcing `scripts/lib/cli-installer.sh` and calling `cli_detect wrangler` returns 0 when `wrangler` is on PATH and 1 otherwise; calling `cli_install wrangler "npm i -g wrangler" "npm i -g wrangler"` on macOS dispatches to the darwin command, returns rc of `npm`, captures stderr to `mktemp` for diagnostics, and never invokes `sudo`.
+  4. On an unsupported platform (e.g., `uname` returns `MINGW64_NT`), `cli_install` exits non-zero with `Error: unsupported platform <name> — toolkit installs CLIs on darwin/linux only` to stderr; on macOS without `brew`, prints `brew not found — install via https://brew.sh first, then re-run` and returns non-zero (continue-on-error, not abort).
+  5. Running `bash scripts/install.sh --mcps` in v4.9 prints `Note: --mcps is deprecated, use --integrations (alias preserved through v5.0)` to stderr but otherwise behaves byte-identically to `--integrations` (BACKCOMPAT-01 invariant preserved).
+**Plans**: 3 plans
+**UI hint**: no
+
+### Phase 33: Catalog Population — 11 New Entries + Drop + Re-categorize
+
+**Goal**: Populate `integrations-catalog.json` to 19 final entries: add 12 new (`supabase`, `cloudflare`, `stripe`, `aws-cost-explorer`, `aws-cloudwatch-logs`, `notebooklm`, `youtrack`, `linear`, `jira`, `figma`, `slack`, `telegram`), drop 1 (`sequential-thinking`), tag the 8 surviving existing entries (context7, firecrawl, magic, notion, openrouter, playwright, resend, sentry) with their `category` field. CLI blocks added to `firecrawl`, `playwright`, `sentry` (existing entries with valuable CLIs) and to all new entries with companion CLIs (supabase, cloudflare, stripe, aws-cost-explorer + aws-cloudwatch-logs share `aws`, notebooklm).
+**Depends on**: Phase 32 (consumes the new schema with `components`, `category`, `unofficial` fields and the `cli-installer.sh` API).
+**Requirements**: INT-01, INT-02, INT-03, INT-04, INT-05, INT-06, INT-07, INT-08, INT-09, INT-10, INT-11, INT-12, DROP-01, EXIST-01
+**Success Criteria** (what must be TRUE):
+  1. `integrations-catalog.json` has exactly 19 entries; running `python3 scripts/validate-integrations-catalog.py` passes; `sequential-thinking` no longer appears in the catalog file.
+  2. Each of the 12 new entries (INT-01..12) has its declared `mcp` and/or `cli` block populated per REQUIREMENTS.md spec — including correct `install_args[]`, `env_var_keys[]`, `requires_oauth`, `cli.detect_cmd`, `cli.install.{darwin,linux}`, and `cli.post_install_hint` where applicable; `notebooklm` and `telegram` carry `unofficial: true`.
+  3. All 8 surviving existing entries carry a valid `category` from the canonical 10-list (`docs-research`, `backend`, `payments`, `email`, `workspace`, `project-management`, `communication`, `design`, `dev-tools`, `monitoring`); `firecrawl`, `playwright`, `sentry` gain optional `cli` blocks; the other 5 stay MCP-only.
+  4. AWS entries (`aws-cost-explorer`, `aws-cloudwatch-logs`) declare the same shared `aws` CLI block per spec — installer dedupes by `cli.detect_cmd` so the user is prompted once, not twice.
+  5. Running v4.6 `test-mcp-selector.sh` against the populated catalog still passes its 21 baseline assertions (no regression in MCP-only flow); category assignments lint-clean against the validator's category enum.
+**Plans**: 4 plans
+**UI hint**: no
+
+### Phase 34: TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags
+
+**Goal**: Render the 19-entry catalog as a category-grouped TUI page with per-component status detection, an `unofficial` confirm gate, and `--mcp-only` / `--cli-only` modifier flags. Closing summary table prints per-entry × per-component status. This is the user-facing payoff phase of v4.9 — it's where the schema and catalog show up as a polished install experience.
+**Depends on**: Phase 32 (CLI-installer + schema), Phase 33 (populated 19-entry catalog). Phases 33 and 34 cannot ship in parallel: TUI-02 status detection and TUI-05 summary table require the populated catalog.
+**Requirements**: TUI-01, TUI-02, TUI-03, TUI-04, TUI-05
+**Success Criteria** (what must be TRUE):
+  1. Running `scripts/install.sh --integrations` renders rows grouped by `category` with category headers (e.g., `── Backend ──`); category order matches the canonical 10-list in CAT-03; rows within a category are alphabetical; entries with `unofficial: true` carry a yellow `!` glyph next to the name.
+  2. Each TUI row displays per-component status detected at TUI launch: MCP column (`✓ installed` / `✗ not installed` / `⊘ already`) via `claude mcp list`; CLI column (`✓ installed` / `✗ not installed` / `⊘ already`) via `command -v` from `cli-installer.sh::cli_detect`; no cache file — re-detected every launch.
+  3. Selecting an `unofficial` entry (notebooklm or telegram) triggers a per-row `[y/N]` confirm prompt (`< /dev/tty`, fail-closed `N`, mirrors v4.3 UN-03 contract); rejecting drops the entry from the install queue without aborting.
+  4. `--mcp-only` installs only MCP components from selected rows, skipping every `cli` block; `--cli-only` does the inverse; using both flags together exits non-zero with `Error: --mcp-only and --cli-only are mutually exclusive` to stderr (mirrors v4.8 `--bridges`/`--no-bridges` mutex pattern).
+  5. After dispatch, the install summary prints a per-entry, per-component status table (entry × {MCP, CLI} matrix) — mirroring Phase 25 D-28 summary contract — with `✓ installed` / `⊘ already present` / `✗ failed: <reason>` per cell; idempotent re-runs are no-ops on already-present components.
+**Plans**: 3 plans
+**UI hint**: yes
+
+### Phase 35: Distribution + Tests + Docs
+
+**Goal**: Ship v4.9 end-to-end — `manifest.json` bumps to 4.9.0 and registers the new lib + script + JSON catalog, `init-claude.sh --version` / `init-local.sh --version` derive from manifest at runtime per v4.3 D-22, three new hermetic test suites lock the schema + CLI installer + integrations TUI contract, and users discover the feature through `docs/INTEGRATIONS.md` + INSTALL.md + README + CHANGELOG. Mirrors v4.8 Phase 31 close-pattern: tests-first, then manifest, then docs-last.
+**Depends on**: Phases 32 + 33 + 34 (schema, catalog, TUI must all be present before tests + docs can lock the contract).
+**Requirements**: DIST-01, DIST-02, TEST-01, TEST-02, TEST-03, TEST-04, DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05
+**Success Criteria** (what must be TRUE):
+  1. `manifest.json` version field shows `4.9.0`; `files.libs[]` registers `scripts/lib/cli-installer.sh`; the existing `mcp-catalog.json` registry entry is replaced with `scripts/lib/integrations-catalog.json`; `files.scripts[]` registers `scripts/validate-integrations-catalog.py`. `update-claude.sh` auto-discovers all three on a stale install via the existing v4.4 LIB-01 D-07 jq path with zero new code; `init-claude.sh --version` and `init-local.sh --version` both print `4.9.0` derived from manifest at runtime.
+  2. Three new hermetic test suites pass: `test-integrations-catalog.sh` (≥10 assertions covering 19 entries, valid categories, all `cli` blocks have `detect_cmd` + OS keys, all MCP blocks have `install_args`); `test-cli-installer.sh` (≥8 assertions covering success / already-present / brew-absent fallback / Windows-rejection / post-install-hint emission with mocked shims); `test-integrations-tui.sh` (≥15 new assertions on top of Phase 25 baseline, covering category headers, `unofficial` confirm, `--mcp-only` skip, `--cli-only` skip, summary table).
+  3. All 3 new test suites wired into `Makefile` as Tests 31, 32, 33 and into `.github/workflows/quality.yml` step `Tests 21-33`; CI green on PR; existing `test-mcp-selector.sh` PASS=21, `test-bootstrap.sh` PASS=26, `test-install-tui.sh` PASS=43 baselines unchanged (BACKCOMPAT-01 preserved).
+  4. `docs/INTEGRATIONS.md` exists and documents: 19-entry table grouped by category, `--mcp-only` / `--cli-only` flags, `unofficial` semantics + the Y/N confirm gate, OAuth setup links, troubleshooting (missing `brew`, post-install hint surface), and a dedicated **"Global vs per-project"** section stating that toolkit installs MCPs + CLIs globally on the dev machine and never touches per-project SDKs (DOCS-02 boundary).
+  5. `docs/INSTALL.md` `## Installer Flags` table gains rows for `--integrations`, `--mcp-only`, `--cli-only` plus `--mcps` deprecation note; `README.md` "Killer Features" grid gains a 1-line Integrations Catalog bullet; `CHANGELOG.md [4.9.0]` is a single consolidated entry (Added / Changed / Removed) per v4.4/v4.6/v4.8 convention; `make check` green; CI `validate-templates` green.
+**Plans**: 4 plans
+**UI hint**: no
+
 ---
 
 ## Historical Progress
@@ -159,13 +233,14 @@ _None — ready for next milestone (`/gsd-new-milestone`)._
 | v4.3 Uninstall | 18–20 | 10/10 | ✅ Shipped | 2026-04-26 |
 | v4.4 Bootstrap & Polish | 21–23 | 8/8 | ✅ Shipped | 2026-04-27 |
 | v4.6 Install Flow UX & Desktop Reach | 24–27 | 17/17 | ✅ Shipped | 2026-04-29 |
-| v4.8 Multi-CLI Bridge | 28–31 | 0/14 (planned) | 🚧 Active | TBD |
+| v4.8 Multi-CLI Bridge | 28–31 | 12/12 | ✅ Shipped | 2026-04-29 |
+| v4.9 Integrations Catalog | 32–35 | 0/14 (planned) | 🚧 Active | TBD |
 
-## v4.7 Progress
+## v4.9 Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 28. Bridge Foundation | 3/3 | Complete   | 2026-04-29 |
-| 29. Sync & Uninstall Integration | 3/3 | Complete   | 2026-04-29 |
-| 30. Install-time UX | 2/3 | In Progress|  |
-| 31. Distribution + Tests + Docs | 3/3 | Complete   | 2026-04-29 |
+| 32. Foundation — Schema Migration + CLI Installer Library | 0/3 | Not started | - |
+| 33. Catalog Population — 11 New Entries + Drop + Re-categorize | 0/4 | Not started | - |
+| 34. TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags | 0/3 | Not started | - |
+| 35. Distribution + Tests + Docs | 0/4 | Not started | - |

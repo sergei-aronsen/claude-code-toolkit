@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
-status: defining_requirements
-stopped_at: v4.9 milestone started — PROJECT.md updated, REQUIREMENTS.md next
+status: ready_to_plan
+stopped_at: v4.9 ROADMAP.md created — 4 phases (32-35), 36/36 REQ-IDs mapped; ready for /gsd-plan-phase 32
 last_updated: "2026-05-02T00:00:00.000Z"
 last_activity: 2026-05-02
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 14
   completed_plans: 0
   percent: 0
 ---
@@ -25,14 +25,23 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 32 (Not started — ready for `/gsd-plan-phase 32`)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-05-02 — Milestone v4.9 started
+Status: Ready to plan Phase 32
+Last activity: 2026-05-02 — ROADMAP.md created with 4-phase structure (32-35), 36/36 REQ-IDs mapped
 
 ## Plan Count Estimate
 
-_To be filled by gsd-roadmapper after REQUIREMENTS.md is approved._
+Total estimated plans across v4.9: **14 plans** distributed across 4 phases.
+
+| Phase | Plans | Rationale |
+|-------|-------|-----------|
+| 32. Foundation — Schema Migration + CLI Installer Library | 3 | (a) Schema rename + validator (`integrations-catalog.json` + `validate-integrations-catalog.py`, `mcp.sh` path swap, BACKCOMPAT alias `--mcps`); (b) `cli-installer.sh` library (`cli_detect`/`cli_install` + dispatch by `uname` + brew-absent fallback + continue-on-error + post-install hint stderr emit); (c) Hermetic smoke covering CAT-01..04 + CLI-01..04 surface contracts. Mirrors v4.8 Phase 28 (3-plan foundation) shape. |
+| 33. Catalog Population — 11 New + Drop + Re-categorize | 4 | (a) Backend cluster (supabase, cloudflare, aws-cost-explorer, aws-cloudwatch-logs sharing `aws` CLI — INT-01, INT-02, INT-04, INT-05); (b) Payments + Project-Mgmt + Design (stripe + youtrack + linear + jira + figma — INT-03, INT-07..10); (c) Communication + Research with `unofficial` flags (slack, telegram, notebooklm — INT-06, INT-11, INT-12); (d) Drop `sequential-thinking` + tag 8 existing entries with category + add CLI blocks to firecrawl/playwright/sentry (DROP-01 + EXIST-01). 4 plans isolate change risk and let each cluster ship + test independently before TUI work begins. |
+| 34. TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags | 3 | (a) Category-grouped rendering + per-component status detection (TUI-01, TUI-02 — extends `mcp.sh` rendering layer); (b) `unofficial` `[y/N]` confirm gate + `--mcp-only`/`--cli-only` flags with mutex (TUI-03, TUI-04 — reuses v4.3 UN-03 prompt + v4.8 mutex pattern); (c) Per-component summary table at dispatch close (TUI-05 — mirrors Phase 25 D-28 contract). Mirrors v4.8 Phase 30 (3-plan UX) shape. |
+| 35. Distribution + Tests + Docs | 4 | (a) Manifest + version-align (DIST-01, DIST-02 — manifest 4.9.0 bump + 3 plugin.json sync + version-align gate); (b) Three hermetic test suites (TEST-01 catalog schema, TEST-02 cli-installer, TEST-03 integrations-tui) + Makefile/CI wiring (TEST-04); (c) `docs/INTEGRATIONS.md` NEW + Global-vs-per-project boundary (DOCS-01, DOCS-02); (d) INSTALL.md flag rows + README Killer Features bullet + CHANGELOG `[4.9.0]` consolidated (DOCS-03, DOCS-04, DOCS-05). Mirrors v4.8 Phase 31 close-pattern (3+ plans) — split to 4 because v4.9 ships 3 test suites vs v4.8's 1 aggregator. |
+
+**Total: 14 plans.** Range matches "standard" granularity (5-8 phases recommended; 4 phases here is justified by tight foundation→population→UX→close dependency chain — same shape as v4.8 Multi-CLI Bridge which shipped 12 plans across 4 phases).
 
 ## Accumulated Context
 
@@ -46,6 +55,7 @@ Full log in PROJECT.md Key Decisions table. Recent highlights still relevant:
 - **v4.4 LIB-01 D-07 jq path** (`.files | to_entries[] | .value[] | .path`) auto-discovers any new `files.libs[]` entry — `cli-installer.sh` adds zero new code to `update-claude.sh` if registered there.
 - **v4.3 UN-03 `[y/N/d]` prompt contract:** read from `< /dev/tty`, fail-closed `N` on no-TTY. Reuse for `unofficial` MCP confirmation prompts (notebooklm, telegram).
 - **Phase 25 D-08 continue-on-error pattern:** per-MCP install failure does not abort the loop; reuse for CLI installs in v4.9.
+- **v4.8 Phase 30 mutex pattern:** `--bridges` / `--no-bridges` mutex contract. Reuse for `--mcp-only` / `--cli-only` mutex in TUI-04.
 - **Bash 3.2 compatibility:** no `declare -A`, no `read -N`, no float `-t`, no `declare -n`. Inherited.
 
 ### Key v4.9 Constraints
@@ -80,14 +90,15 @@ Full log in PROJECT.md Key Decisions table. Recent highlights still relevant:
 - 2026-04-27: v4.4 shipped
 - 2026-04-29: v4.6 + v4.7 + v4.8 all shipped
 - 2026-05-02: v4.9 milestone started — Integrations Catalog scope captured in PROJECT.md
+- 2026-05-02: v4.9 ROADMAP.md created — 4 phases (32-35), 14 plans, 36/36 REQ-IDs mapped
 
 ### Pending Todos
 
-None at requirements-defining stage. Roadmapper kicks off after REQUIREMENTS.md is approved.
+- Run `/gsd-plan-phase 32` to decompose Phase 32 (Foundation — Schema Migration + CLI Installer Library) into 3 atomic plans.
 
 ### Blockers/Concerns
 
-None. v4.6 Phase 25 foundation is solid — extension path is clear.
+None. v4.6 Phase 25 foundation is solid — extension path is clear. All 36 v4.9 REQ-IDs mapped to exactly one phase, no orphans.
 
 ### Quick Tasks Completed (recent)
 
@@ -104,13 +115,16 @@ Carry-overs available for next milestone scoping (unchanged from v4.8 close):
 |----------|------|--------|
 | Locked out | Docker-per-cell isolation | Permanently out (POSIX invariant) |
 | Locked out | Auto-cut `git tag` from phase execution | Permanently out (CLAUDE.md "never push main") |
-| Future | `--preset minimal\|full\|dev` | TUI-FUT-02 — no demand surfaced (revisit at 19-entry catalog?) |
-| Future | Grouped sections in TUI (Essentials / Optional) | **PROMOTED to v4.9 — categories are the answer** |
-| Future | MCP catalog auto-sync with upstream registry | MCP-FUT-02 |
-| Future | Marketplace signing/integrity | MKT-FUT-01 — no Anthropic spec yet |
+| Future | `--preset minimal\|full\|dev` | TUI-FUT-04 — revisit after 19-entry catalog in production |
+| Future | TUI search/filter input | TUI-FUT-05 — only useful at >30 entries |
+| Future | Catalog auto-sync with upstream MCP registry | CAT-FUT-01 — blocked on no upstream registry yet |
+| Future | User-extensible local catalog | CAT-FUT-02 — solo-dev rarely adds custom entries |
+| Future | Windows support via WSL/chocolatey | CLI-FUT-01 — out of scope per POSIX invariant |
+| Future | CLI version pinning | CLI-FUT-02 — KISS, vendors handle update channels |
+| Future | Mailgun MCP, Discord MCP, GitHub Issues MCP | INT-FUT-01/03/04 |
+| Future | Cursor `.cursorrules` / Aider `CONVENTIONS.md` | BRIDGE-FUT-03/04 (carry-over from v4.8) |
 | Deferred | Branding substitution layer for bridge files | BRIDGE-FUT-01 |
 | Deferred | Per-CLI tone overlay snippets | BRIDGE-FUT-02 |
-| Deferred | Cursor `.cursorrules` / Aider `CONVENTIONS.md` | BRIDGE-FUT-03/04 |
 | Deferred | `update-claude.sh --bridges-only` mode | BRIDGE-FUT-05 |
 | Parallel track | Council Rework | concurrent session |
 
@@ -118,10 +132,10 @@ Carry-overs available for next milestone scoping (unchanged from v4.8 close):
 
 Last session: 2026-05-02T00:00:00Z
 Started: v4.9 Integrations Catalog milestone
-Resume file: `.planning/PROJECT.md` (Current Milestone section)
+Resume file: `.planning/PROJECT.md` (Current Milestone section) + `.planning/ROADMAP.md` (Phase Details for 32-35)
 
 **Next steps:**
 
-1. Define REQUIREMENTS.md with REQ-IDs covering: catalog schema migration (CAT-*), CLI installer lib (CLI-*), TUI redesign with categories + status (TUI-*), 11 new entries (INT-*), drop sequential-thinking (DROP-*), docs (DOCS-*), tests (TEST-*).
-2. Spawn `gsd-roadmapper` to create phased plan (Phase 32 onward).
-3. Execute phases.
+1. ✅ Define REQUIREMENTS.md with REQ-IDs covering: catalog schema migration (CAT-*), CLI installer lib (CLI-*), TUI redesign with categories + status (TUI-*), 11 new entries (INT-*), drop sequential-thinking (DROP-*), docs (DOCS-*), tests (TEST-*).
+2. ✅ Create ROADMAP.md with 4-phase structure (32-35), 14 plans estimated, 36/36 REQ-IDs mapped.
+3. ▶ Run `/gsd-plan-phase 32` to begin executing the milestone.
