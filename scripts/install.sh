@@ -639,6 +639,12 @@ TUI_LABELS=("superpowers" "get-shit-done" "toolkit" "security" "rtk" "statusline
 # shellcheck disable=SC2034  # TUI_GROUPS consumed by tui_checklist in tui.sh (D-01)
 TUI_GROUPS=("Bootstrap"   "Bootstrap"      "Core"    "Optional" "Optional" "Optional")
 TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_SEC" "$IS_RTK" "$IS_SL")
+# TUI_REQUIRED: 1 = mandatory (always pre-checked, immutable, dim-rendered).
+# Toolkit is the whole reason install.sh exists — deselecting it would skip the
+# core install and leave a confused user. Mark required so the row reads as
+# "[required]" and Space is a no-op on it.
+# shellcheck disable=SC2034  # TUI_REQUIRED consumed by tui_checklist
+TUI_REQUIRED=("0" "0" "1" "0" "0" "0")
 # shellcheck disable=SC2034  # TUI_DESCS consumed by tui_checklist in tui.sh (D-20)
 TUI_DESCS=(
     "Skills + code-reviewer agent (claude plugin)"
@@ -656,6 +662,7 @@ IS_COUNCIL=0
 TUI_LABELS+=("council")
 TUI_GROUPS+=("Optional")
 TUI_INSTALLED+=("$IS_COUNCIL")
+TUI_REQUIRED+=("0")
 TUI_DESCS+=("Multi-AI plan review (Gemini + ChatGPT) — needs CLI or API keys")
 
 # BRIDGE-UX-01 (Phase 30): conditional bridge rows. ONLY appear when the corresponding CLI
@@ -669,6 +676,7 @@ if [[ "$NO_BRIDGES" != "true" ]]; then
         TUI_LABELS+=("gemini-bridge")
         TUI_GROUPS+=("Bridges")
         TUI_INSTALLED+=("0")
+        TUI_REQUIRED+=("0")
         TUI_DESCS+=("Gemini CLI bridge (CLAUDE.md -> GEMINI.md) [detected: gemini${_gem_suffix}]")
         unset _gem_ver _gem_suffix
     fi
@@ -678,6 +686,7 @@ if [[ "$NO_BRIDGES" != "true" ]]; then
         TUI_LABELS+=("codex-bridge")
         TUI_GROUPS+=("Bridges")
         TUI_INSTALLED+=("0")
+        TUI_REQUIRED+=("0")
         TUI_DESCS+=("OpenAI Codex CLI bridge (CLAUDE.md -> AGENTS.md) [detected: codex${_cod_suffix}]")
         unset _cod_ver _cod_suffix
     fi
@@ -715,7 +724,12 @@ if [[ "$YES" -eq 1 ]]; then
         fi
     done
 elif [[ -r "$_install_tty_src" ]]; then
-    # TUI mode — render checklist + confirmation.
+    # TUI mode — render checklist. Enter inside the checklist IS the confirmation
+    # (per the new "[ Install selected ]" Submit row + footer text). The previous
+    # secondary `tui_confirm_prompt "[y/N]"` step was dropped because the prompt
+    # was invisible after the now-tall TUI render (long inline descriptions push
+    # it off the bottom of the screen, leading to "I pressed Enter and nothing
+    # happened" reports).
     if ! tui_checklist; then
         # User cancelled (q/Ctrl-C/EOF). Fail-closed exit 0 per D-11.
         echo "Install cancelled."
@@ -723,17 +737,6 @@ elif [[ -r "$_install_tty_src" ]]; then
     fi
     # shellcheck disable=SC2034  # SELECTION_RC reserved for future use
     SELECTION_RC=$?
-    # Count selected.
-    local_selected=0
-    _tui_count=${#TUI_LABELS[@]}
-    for ((i=0; i<_tui_count; i++)); do
-        [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]] && local_selected=$((local_selected + 1))
-    done
-    # Confirmation prompt (TUI-05). Default N.
-    if ! tui_confirm_prompt "Install ${local_selected} component(s)? [y/N] "; then
-        echo "Install cancelled."
-        exit 0
-    fi
 else
     # ─────────────────────────────────────────────
     # D-05 + D-11: no /dev/tty AND no --yes.
