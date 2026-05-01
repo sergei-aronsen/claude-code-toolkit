@@ -533,8 +533,35 @@ if [[ "$MCPS" -eq 1 ]]; then
     # passes it through to MCP child processes — no re-registration needed
     # when keys change.
     if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
+        # Auto-install the source line into shell rc if absent. Idempotent —
+        # detects existing line via marker comment. User wanted "edit key,
+        # restart claude, done" — adding the source line manually was an
+        # extra friction step we can eliminate (2026-05-01).
+        _shell_rc=""
+        if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == *zsh* ]]; then
+            _shell_rc="$HOME/.zshrc"
+        elif [[ -n "${BASH_VERSION:-}" ]] || [[ "${SHELL:-}" == *bash* ]]; then
+            # macOS bash users typically rely on .bash_profile, Linux on .bashrc.
+            if [[ "$(uname -s)" == "Darwin" ]]; then
+                _shell_rc="$HOME/.bash_profile"
+            else
+                _shell_rc="$HOME/.bashrc"
+            fi
+        fi
+        _rc_added=0
+        _rc_marker="# claude-code-toolkit: source ~/.claude/mcp-config.env into shell env"
+        if [[ -n "$_shell_rc" ]]; then
+            if [[ -f "$_shell_rc" ]] && grep -qF "$_rc_marker" "$_shell_rc" 2>/dev/null; then
+                _rc_added=2   # already present
+            else
+                {
+                    printf '\n%s\n' "$_rc_marker"
+                    printf 'set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a\n'
+                } >> "$_shell_rc" 2>/dev/null && _rc_added=1
+            fi
+        fi
         echo ""
-        echo -e "${YELLOW}Some MCPs registered without API keys — finish setup once:${NC}"
+        echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
         echo ""
         echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
         while IFS=$'\t' read -r d_name d_keys d_args; do
@@ -550,11 +577,18 @@ if [[ "$MCPS" -eq 1 ]]; then
         done < "$TK_MCP_DEFERRED_QUEUE"
         unset _k _IFS_SAVED2
         echo ""
-        echo "  2) Add this ONE line to ~/.zshrc (or ~/.bashrc) so claude inherits the keys:"
-        echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a"
+        case "$_rc_added" in
+            1) echo "  2) Shell rc updated: auto-source line added to ${_shell_rc/#$HOME/~}." ;;
+            2) echo "  2) Shell rc already configured (auto-source line found in ${_shell_rc/#$HOME/~})." ;;
+            *) echo "  2) Could not detect/write to your shell rc. Add this ONE line to ~/.zshrc (or ~/.bashrc) manually:"
+               echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a" ;;
+        esac
         echo ""
-        echo "  3) Restart your shell + claude. MCPs pick up the keys at next launch — no"
-        echo "     re-registration needed when you change a key, just edit + restart claude."
+        echo "  3) Reload shell env (open a fresh terminal, or run: exec \$SHELL) and start claude."
+        echo ""
+        echo "     When you change a key later: edit mcp-config.env, re-open claude. No"
+        echo "     re-registration, no other commands — keys load at claude startup."
+        unset _shell_rc _rc_added _rc_marker
     fi
 
     if [[ "${NO_BANNER:-0}" != "1" ]]; then

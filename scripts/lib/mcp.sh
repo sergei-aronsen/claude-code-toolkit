@@ -494,9 +494,13 @@ mcp_wizard_run() {
                 chmod 0600 "$_env_path" 2>/dev/null || true
             fi
         done
-        # Run `claude mcp add` WITHOUT env vars — server registers but
-        # has no env binding in claude.json. User adds key via the
-        # follow-up command in the summary, then re-registers.
+        # Run `claude mcp add` WITHOUT env vars — server registers in
+        # claude.json with no env binding. claude CLI inherits shell env
+        # at launch and propagates it to MCP child processes, so once the
+        # user fills mcp-config.env (toolkit auto-installs the source
+        # line into ~/.zshrc / ~/.bashrc) and reloads their shell, MCPs
+        # pick up the keys at next claude startup. No re-registration
+        # needed when keys change later — edit + re-open claude.
         "$claude_bin" mcp add "${install_args[@]}"
         local _add_rc=$?
         if [[ "$_add_rc" -ne 0 ]]; then
