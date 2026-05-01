@@ -93,7 +93,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
 if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge)
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge mcp-servers skills)
 fi
 
 # Internal log helpers — underscore prefix.
@@ -388,5 +388,85 @@ dispatch_council() {
         local sibling
         sibling="$(_dispatch_sibling_path setup-council.sh)"
         bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+    fi
+}
+
+# dispatch_mcp_servers — re-invokes install.sh in --mcps mode so the user
+# sees the dedicated MCP catalog TUI (9 curated MCP servers). Spawning a
+# sub-install is cheaper than embedding the catalog into the main TUI
+# (would push the row count past 20 and crowd the screen).
+dispatch_mcp_servers() {
+    local force=0 dry_run=0 yes=0
+    local pass_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)   force=1   ; pass_args+=("--force") ;;
+            --dry-run) dry_run=1 ; pass_args+=("--dry-run") ;;
+            --yes)     yes=1     ; pass_args+=("--yes") ;;
+            *) ;;
+        esac
+        shift
+    done
+    : "$force"
+
+    if [[ -n "${TK_DISPATCH_OVERRIDE_MCP_SERVERS:-}" && "${TK_TEST:-0}" == "1" ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
+            echo "[+ INSTALL] mcp-servers (would run override: $TK_DISPATCH_OVERRIDE_MCP_SERVERS)"
+            return 0
+        fi
+        bash "$TK_DISPATCH_OVERRIDE_MCP_SERVERS" ${pass_args[@]+"${pass_args[@]}"}
+        return $?
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] mcp-servers (would run: bash <(curl -sSL $TK_REPO_URL/scripts/install.sh) --mcps${pass_args[*]:+ ${pass_args[*]}})"
+        return 0
+    fi
+
+    if _dispatch_is_curl_pipe; then
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --mcps ${pass_args[@]+"${pass_args[@]}"}
+    else
+        local sibling
+        sibling="$(_dispatch_sibling_path install.sh)"
+        bash "$sibling" --mcps ${pass_args[@]+"${pass_args[@]}"}
+    fi
+}
+
+# dispatch_skills — re-invokes install.sh in --skills mode so the user sees
+# the dedicated Skills catalog TUI. Same rationale as dispatch_mcp_servers.
+dispatch_skills() {
+    local force=0 dry_run=0 yes=0
+    local pass_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)   force=1   ; pass_args+=("--force") ;;
+            --dry-run) dry_run=1 ; pass_args+=("--dry-run") ;;
+            --yes)     yes=1     ; pass_args+=("--yes") ;;
+            *) ;;
+        esac
+        shift
+    done
+    : "$force"
+
+    if [[ -n "${TK_DISPATCH_OVERRIDE_SKILLS:-}" && "${TK_TEST:-0}" == "1" ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
+            echo "[+ INSTALL] skills (would run override: $TK_DISPATCH_OVERRIDE_SKILLS)"
+            return 0
+        fi
+        bash "$TK_DISPATCH_OVERRIDE_SKILLS" ${pass_args[@]+"${pass_args[@]}"}
+        return $?
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] skills (would run: bash <(curl -sSL $TK_REPO_URL/scripts/install.sh) --skills${pass_args[*]:+ ${pass_args[*]}})"
+        return 0
+    fi
+
+    if _dispatch_is_curl_pipe; then
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --skills ${pass_args[@]+"${pass_args[@]}"}
+    else
+        local sibling
+        sibling="$(_dispatch_sibling_path install.sh)"
+        bash "$sibling" --skills ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
