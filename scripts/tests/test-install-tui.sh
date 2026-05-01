@@ -180,13 +180,14 @@ run_s3_yes() {
     mkdir -p "$FAKE_BIN"
     # No installed components in clean sandbox.
 
-    # Mock all six dispatchers.
+    # Mock all seven dispatchers (council added in Phase v4.8.1 install-bug-fixes).
     local MOCK_SP="$SANDBOX/mock-sp.sh"      ; mk_mock "$MOCK_SP"      "mock-sp-ran"      0
     local MOCK_GSD="$SANDBOX/mock-gsd.sh"    ; mk_mock "$MOCK_GSD"     "mock-gsd-ran"     0
     local MOCK_TK="$SANDBOX/mock-tk.sh"      ; mk_mock "$MOCK_TK"      "mock-tk-ran"      0
     local MOCK_SEC="$SANDBOX/mock-sec.sh"    ; mk_mock "$MOCK_SEC"     "mock-sec-ran"     0
     local MOCK_RTK="$SANDBOX/mock-rtk.sh"    ; mk_mock "$MOCK_RTK"     "mock-rtk-ran"     0
     local MOCK_SL="$SANDBOX/mock-sl.sh"      ; mk_mock "$MOCK_SL"      "mock-sl-ran"      0
+    local MOCK_COUNCIL="$SANDBOX/mock-council.sh" ; mk_mock "$MOCK_COUNCIL" "mock-council-ran" 0
 
     RC=0
     OUTPUT=$(
@@ -199,6 +200,7 @@ run_s3_yes() {
         TK_DISPATCH_OVERRIDE_SECURITY="$MOCK_SEC" \
         TK_DISPATCH_OVERRIDE_RTK="$MOCK_RTK" \
         TK_DISPATCH_OVERRIDE_STATUSLINE="$MOCK_SL" \
+        TK_DISPATCH_OVERRIDE_COUNCIL="$MOCK_COUNCIL" \
         NO_COLOR=1 \
         bash "$REPO_ROOT/scripts/install.sh" --yes 2>&1
     ) || RC=$?
@@ -206,7 +208,8 @@ run_s3_yes() {
     assert_eq      "0" "$RC"          "S3_yes: install.sh exits 0 with --yes"
     assert_contains "mock-tk-ran"     "$OUTPUT" "S3_yes: toolkit dispatcher invoked"
     assert_contains "mock-sec-ran"    "$OUTPUT" "S3_yes: security dispatcher invoked"
-    assert_contains "Installed: 6"    "$OUTPUT" "S3_yes: summary shows 6 installed (DISPATCH-01 canonical order)"
+    assert_contains "mock-council-ran" "$OUTPUT" "S3_yes: council dispatcher invoked (v4.8.1 7th component)"
+    assert_contains "Installed: 7"    "$OUTPUT" "S3_yes: summary shows 7 installed (council added in v4.8.1)"
 }
 
 # ─────────────────────────────────────────────────
@@ -583,6 +586,47 @@ run_s10_desktop_auto_skills_only_routing() {
         "S10/A5: --skills-only mode banner present in explicit invocation"
 }
 
+# ─────────────────────────────────────────────────
+# S_render_format — _tui_render emits numbered rows + per-row dimmed
+# descriptions + the updated footer text. Locks the v4.8.1 render contract.
+# ─────────────────────────────────────────────────
+run_s_render_format() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-install-tui-render.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S_render_format: numbered rows + per-row description + new footer --"
+
+    local OUT="$SANDBOX/render.out"
+    : > "$OUT"
+
+    NO_COLOR=1 TERM=dumb \
+        TK_TUI_TTY_SRC="$OUT" \
+        bash -c "
+            set -u
+            source '$REPO_ROOT/scripts/lib/tui.sh'
+            TUI_LABELS=('alpha' 'beta')
+            TUI_GROUPS=('Bootstrap' 'Optional')
+            TUI_INSTALLED=(0 0)
+            TUI_RESULTS=(1 0)
+            TUI_DESCS=('first description' 'second description')
+            FOCUS_IDX=0
+            _tui_init_colors
+            _tui_render
+        " 2>/dev/null || true
+
+    local rendered
+    rendered=$(cat "$OUT" 2>/dev/null || echo "")
+
+    assert_contains "1. " "$rendered" "S_render_format: row 1 has numbered prefix"
+    assert_contains "2. " "$rendered" "S_render_format: row 2 has numbered prefix"
+    assert_contains "first description" "$rendered" "S_render_format: row 1 description rendered inline"
+    assert_contains "second description" "$rendered" "S_render_format: row 2 description rendered inline"
+    assert_contains "Enter to select" "$rendered" "S_render_format: new footer text present"
+    assert_contains "Esc cancel" "$rendered" "S_render_format: footer mentions Esc cancel"
+    assert_not_contains "↑↓ move · space toggle · enter confirm · q quit" "$rendered" "S_render_format: old footer removed"
+}
+
 run_s1_detect
 run_s2_detect
 run_s3_yes
@@ -593,6 +637,7 @@ run_s7_no_tty
 run_s8_stderr_tail
 run_s9_no_tty_bootstrap_fork
 run_s10_desktop_auto_skills_only_routing
+run_s_render_format
 
 echo ""
 echo "test-install-tui complete: PASS=$PASS FAIL=$FAIL"

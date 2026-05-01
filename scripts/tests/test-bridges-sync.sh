@@ -324,7 +324,7 @@ scenario_s10_backcompat() {
     out=$(bash "$REPO_ROOT/scripts/tests/test-bootstrap.sh" 2>&1 || true)
     assert_contains "PASS=26 FAIL=0" "$out" "S10a: test-bootstrap.sh PASS=26 FAIL=0 unchanged"
     out=$(bash "$REPO_ROOT/scripts/tests/test-install-tui.sh" 2>&1 || true)
-    assert_contains "PASS=43 FAIL=0" "$out" "S10b: test-install-tui.sh PASS=43 FAIL=0 unchanged"
+    assert_contains "PASS=51 FAIL=0" "$out" "S10b: test-install-tui.sh PASS=51 FAIL=0 unchanged"
     out=$(bash "$REPO_ROOT/scripts/tests/test-bridges-foundation.sh" 2>&1 || true)
     assert_contains "PASS=5 FAIL=0" "$out" "S10c: test-bridges-foundation.sh PASS=5 FAIL=0 unchanged"
 }

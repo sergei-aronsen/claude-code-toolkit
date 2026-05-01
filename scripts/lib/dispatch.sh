@@ -10,6 +10,7 @@
 #   dispatch_security     — invokes setup-security.sh [--yes] [--force]
 #   dispatch_rtk          — invokes brew install rtk && rtk init -g </dev/null
 #   dispatch_statusline   — invokes install-statusline.sh [--yes]
+#   dispatch_council      — invokes setup-council.sh [--yes] [--force]
 # Globals (read): BASH_SOURCE, 0, TK_REPO_URL, TK_SP_INSTALL_CMD,
 #                 TK_GSD_INSTALL_CMD, TK_DISPATCH_OVERRIDE_*
 # Globals (write): TK_DISPATCH_ORDER (only if unset)
@@ -92,7 +93,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
 if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline gemini-bridge codex-bridge)
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge)
 fi
 
 # Internal log helpers — underscore prefix.
@@ -344,6 +345,48 @@ dispatch_statusline() {
     else
         local sibling
         sibling="$(_dispatch_sibling_path install-statusline.sh)"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+    fi
+}
+
+# dispatch_council — setup-council.sh.
+# Audit M1 parity: --dry-run is honoured at the dispatcher level (prints
+# "would run …" and returns 0). NOT passed through because setup-council.sh
+# does not yet recognize it (fail-closed on unknown flags).
+dispatch_council() {
+    local force=0 dry_run=0 yes=0
+    local pass_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)   force=1   ; pass_args+=("--force") ;;
+            --dry-run) dry_run=1 ;;
+            --yes)     yes=1     ; pass_args+=("--yes") ;;
+            *) pass_args+=("$1") ;;
+        esac
+        shift
+    done
+    : "$force"
+
+    # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_COUNCIL:-}" && "${TK_TEST:-0}" == "1" ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
+            echo "[+ INSTALL] council (would run override: $TK_DISPATCH_OVERRIDE_COUNCIL)"
+            return 0
+        fi
+        bash "$TK_DISPATCH_OVERRIDE_COUNCIL" ${pass_args[@]+"${pass_args[@]}"}
+        return $?
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] council (would run: bash <(curl -sSL $TK_REPO_URL/scripts/setup-council.sh)${pass_args[*]:+ ${pass_args[*]}})"
+        return 0
+    fi
+
+    if _dispatch_is_curl_pipe; then
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/setup-council.sh") ${pass_args[@]+"${pass_args[@]}"}
+    else
+        local sibling
+        sibling="$(_dispatch_sibling_path setup-council.sh)"
         bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }

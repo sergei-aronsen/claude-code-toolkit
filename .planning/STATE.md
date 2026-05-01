@@ -34,7 +34,7 @@ Phase 28 [x] Phase 29 [x] Phase 30 [x] Phase 31 [ ]
 Phase: 30
 Plan: 03 complete (Phase 30 fully complete; Phase 31 Distribution+Tests+Docs next)
 Status: In progress — Phase 30 all plans complete
-Last activity: 2026-04-29
+Last activity: 2026-05-01 - Completed quick task 260501-lrq: install bug fixes + TUI redesign
 
 ## Plan Count Estimate
 
@@ -153,6 +153,12 @@ None at roadmap-ready stage. Phase planning kicks off via `/gsd-plan-phase 28`.
 ### Blockers/Concerns
 
 None. Phase 28 is unblocked — Phase 24 lib foundation already shipped in v4.6.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260501-lrq | Fix critical install bugs (init-claude.sh manifest paths + detect2 sourcing + council UX + failure banner) + Council in TUI dispatch + TUI render upgrade + README install URL switch + 2 hermetic test suites | 2026-05-01 | 81ba552 | [260501-lrq-fix-critical-install-bugs-in-scripts-ini](./quick/260501-lrq-fix-critical-install-bugs-in-scripts-ini/) |
 
 ## Deferred Items
 

@@ -644,6 +644,15 @@ TUI_DESCS=(
     "macOS rate-limit statusline (Keychain)"
 )
 
+# Council: optional Multi-AI plan review. Detect via brain.py existence (single
+# inline check — non-trivial probes live in detect2.sh, this one is one stat call).
+IS_COUNCIL=0
+[[ -f "$HOME/.claude/council/brain.py" ]] && IS_COUNCIL=1
+TUI_LABELS+=("council")
+TUI_GROUPS+=("Optional")
+TUI_INSTALLED+=("$IS_COUNCIL")
+TUI_DESCS+=("Multi-AI plan review (Gemini + ChatGPT) — needs CLI or API keys")
+
 # BRIDGE-UX-01 (Phase 30): conditional bridge rows. ONLY appear when the corresponding CLI
 # is detected; CLIs absent => row OMITTED entirely (no greyed-out [unavailable] line).
 # When NO_BRIDGES=true the rows are STILL omitted from arrays so default-set, TUI render,
@@ -911,6 +920,7 @@ for ((i=0; i<_disp_count; i++)); do
         security)    is_security_installed    && local_re_installed=1 || true ;;
         rtk)         is_rtk_installed         && local_re_installed=1 || true ;;
         statusline)  is_statusline_installed  && local_re_installed=1 || true ;;
+        council)     [[ -f "$HOME/.claude/council/brain.py" ]] && local_re_installed=1 || true ;;
         gemini-bridge) : ;;  # Bridges have no idempotency probe — always re-write (state SHA tracks drift).
         codex-bridge)  : ;;
     esac

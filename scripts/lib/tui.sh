@@ -54,7 +54,7 @@ _TUI_SAVED_STTY=""
 _tui_enter_raw() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
     _TUI_SAVED_STTY=$(stty -g <"$tty_target" 2>/dev/null || echo "")
-    printf '\e[?25l' > "$tty_target" 2>/dev/null || true   # hide cursor
+    printf '\e[?25l' >> "$tty_target" 2>/dev/null || true   # hide cursor
     stty -icanon -echo <"$tty_target" 2>/dev/null || true
 }
 
@@ -70,7 +70,7 @@ _tui_restore() {
     else
         stty sane <"$tty_target" 2>/dev/null || true
     fi
-    printf '\e[?25h' > "$tty_target" 2>/dev/null || true   # show cursor
+    printf '\e[?25h' >> "$tty_target" 2>/dev/null || true   # show cursor
     _TUI_SAVED_STTY=""
 }
 
@@ -108,7 +108,7 @@ _tui_render() {
 
     # Move cursor to top-left and erase to end-of-screen (RESEARCH.md §3 — no
     # alternate screen; simpler clear+redraw approach).
-    printf '\e[H\e[J' > "$tty_target" 2>/dev/null || true
+    printf '\e[H\e[J' >> "$tty_target" 2>/dev/null || true
 
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
@@ -119,13 +119,15 @@ _tui_render() {
         local grp="${TUI_GROUPS[$i]:-}"
         local installed="${TUI_INSTALLED[$i]:-0}"
         local checked="${TUI_RESULTS[$i]:-0}"
+        local desc="${TUI_DESCS[$i]:-}"
+        local row_num=$((i + 1))
 
-        # Section header on group change.
+        # Section header on group change — extra blank line above for clearer separation.
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '\n  \e[2m%s\e[0m\n' "$grp" > "$tty_target" 2>/dev/null || true
+                printf '\n  \e[1m%s\e[0m\n' "$grp" >> "$tty_target" 2>/dev/null || true
             else
-                printf '\n  %s\n' "$grp" > "$tty_target" 2>/dev/null || true
+                printf '\n  %s\n' "$grp" >> "$tty_target" 2>/dev/null || true
             fi
             prev_group="$grp"
         fi
@@ -144,26 +146,26 @@ _tui_render() {
             box="[x]"
         fi
 
-        printf '%s%s %s\n' "$arrow" "$box" "$label" > "$tty_target" 2>/dev/null || true
+        # Numbered prefix + label row.
+        printf '%s%d. %s %s\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+
+        # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
+        if [[ -n "$desc" ]]; then
+            if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
+                printf '       \e[2m%s\e[0m\n' "$desc" >> "$tty_target" 2>/dev/null || true
+            else
+                printf '       %s\n' "$desc" >> "$tty_target" 2>/dev/null || true
+            fi
+        fi
     done
 
-    # Help line (D-19: always shown for discoverability).
+    # Updated footer text.
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n  \e[2m↑↓ move · space toggle · enter confirm · q quit\e[0m\n' \
-            > "$tty_target" 2>/dev/null || true
+        printf '\n  \e[2mEnter to select · ↑↓ navigate · Space toggle · Esc cancel\e[0m\n' \
+            >> "$tty_target" 2>/dev/null || true
     else
-        printf '\n  ↑↓ move · space toggle · enter confirm · q quit\n' \
-            > "$tty_target" 2>/dev/null || true
-    fi
-
-    # Description line for focused item (D-20: single dimmed line).
-    local desc="${TUI_DESCS[${FOCUS_IDX:-0}]:-}"
-    if [[ -n "$desc" ]]; then
-        if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-            printf '  \e[2m%s\e[0m\n' "$desc" > "$tty_target" 2>/dev/null || true
-        else
-            printf '  %s\n' "$desc" > "$tty_target" 2>/dev/null || true
-        fi
+        printf '\n  Enter to select · ↑↓ navigate · Space toggle · Esc cancel\n' \
+            >> "$tty_target" 2>/dev/null || true
     fi
 }
 
