@@ -93,12 +93,13 @@ _tui_read_key() {
         return 1   # EOF — caller treats as cancel
     fi
     if [[ "$k" == $'\e' ]]; then
+        # Bare ESC vs arrow sequence (\e[A etc.) — without -t the read blocks
+        # forever waiting for 2 more bytes, so a bare Esc keypress hangs the TUI.
+        # Bash 3.2 (macOS floor) only accepts integer -t values; use 1s timeout.
+        # On timeout (bare ESC) read returns >128 and `extra` stays empty —
+        # caller's case matches "$'\e'" → cancel.
         local extra=""
-        # Read up to 2 more bytes for the arrow tail. read -rsn2 without -t blocks
-        # until exactly 2 bytes arrive. In standard terminals the [A or [B sequence
-        # arrives in one OS write so blocking is fine. The 2>/dev/null || true
-        # handles the case where only 1 extra byte was available (bare ESC).
-        IFS= read -rsn2 extra <"$tty_target" 2>/dev/null || true
+        IFS= read -rsn2 -t 1 extra <"$tty_target" 2>/dev/null || true
         k="${k}${extra}"
     fi
     printf '%s' "$k"
@@ -200,8 +201,10 @@ _tui_render() {
     done
 
     # Synthetic Submit row at FOCUS_IDX == total (one past last item). Always renderable;
-    # serves as a visible "button" the user can navigate to. Enter on any row confirms,
-    # but the explicit Submit row makes the action obvious without reading the footer.
+    # serves as a visible "button" the user must navigate to before pressing Enter.
+    # Enter from any other row jumps focus down to this row (intuitive shortcut)
+    # — only Enter ON this row confirms install (prevents accidental triggers
+    # while toggling checkboxes).
     local submit_arrow="  "
     if [[ "${FOCUS_IDX:-0}" -eq "$total" ]]; then
         submit_arrow="${TK_TUI_ARROW:-▶ }"
@@ -304,8 +307,21 @@ tui_checklist() {
                 fi
                 ;;
             ''|$'\n'|$'\r')
-                # Enter — confirm.
-                rc=0
+                # Enter — confirm only when focus is on the synthetic Submit row
+                # (FOCUS_IDX == total). On any other row it would be too easy to
+                # trigger install accidentally while navigating; instead, jump
+                # focus down to the Submit row so the next Enter confirms.
+                if [[ "$FOCUS_IDX" -eq "$total" ]]; then
+                    rc=0
+                    break
+                else
+                    FOCUS_IDX="$total"
+                fi
+                ;;
+            $'\e')
+                # Bare Esc — cancel. _tui_read_key uses `read -rsn2 -t 1` so a
+                # bare ESC press returns "$'\e'" without the [A/[B suffix.
+                rc=1
                 break
                 ;;
             q|Q)

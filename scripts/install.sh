@@ -345,15 +345,13 @@ if [[ "$MCPS" -eq 1 ]]; then
             echo "MCP install cancelled."
             exit 0
         fi
-        # Count selected.
+        # Submit row in tui_checklist IS the confirm — do not chain a y/N
+        # prompt after the screen-clear (it renders invisibly below the prior
+        # output, same regression PR #20 fixed for the main TUI).
         local_selected=0
         for ((i=0; i<${#TUI_RESULTS[@]}; i++)); do
             [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]] && local_selected=$((local_selected + 1))
         done
-        if ! tui_confirm_prompt "Install ${local_selected} MCP(s)? [y/N] "; then
-            echo "MCP install cancelled."
-            exit 0
-        fi
     fi
 
     # ─────────────────────────────────────────────
@@ -510,14 +508,13 @@ if [[ "$SKILLS" -eq 1 ]]; then
             echo "Skills install cancelled."
             exit 0
         fi
+        # Same rationale as MCP path: Submit row IS the confirm; the secondary
+        # y/N prompt rendered invisibly after clear-screen (PR #20 regression
+        # symmetry).
         local_selected=0
         for ((i=0; i<${#TUI_RESULTS[@]}; i++)); do
             [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]] && local_selected=$((local_selected + 1))
         done
-        if ! tui_confirm_prompt "Install ${local_selected} skill(s)? [y/N] "; then
-            echo "Skills install cancelled."
-            exit 0
-        fi
     fi
 
     # ─────────────────────────────────────────────
