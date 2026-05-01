@@ -47,6 +47,18 @@ _mcp_default_catalog_path() {
     echo "${d}/mcp-catalog.json"
 }
 
+# Lazy-source tui.sh so tui_tty_read is available for the wizard prompts. The
+# wizard runs under install.sh's `( … ) 2>"$stderr_tmp"` dispatch wrapper
+# (install.sh:401-405), so any `read -p "..."` would write the prompt to a
+# captured stderr stream and the user would see only a blinking cursor.
+if ! command -v tui_tty_read >/dev/null 2>&1; then
+    _MCP_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)"
+    if [[ -f "${_MCP_LIB_DIR}/tui.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "${_MCP_LIB_DIR}/tui.sh"
+    fi
+fi
+
 # mcp_catalog_load — parse mcp-catalog.json into six parallel arrays.
 # Populates MCP_NAMES MCP_DISPLAY MCP_ENV_KEYS MCP_INSTALL_ARGS MCP_DESCS MCP_OAUTH.
 # Returns 1 if catalog is missing or jq is absent.
@@ -258,7 +270,9 @@ mcp_secrets_set() {
         # Collision: key already present — prompt for confirmation.
         local tty_src="${TK_MCP_TTY_SRC:-/dev/tty}"
         local choice
-        if ! read -r -p "[y/N] Overwrite ${key}? " choice < "$tty_src" 2>/dev/null; then
+        # tui_tty_read writes prompt to TTY (not stderr) so it stays visible
+        # under the install.sh:401 `( mcp_wizard_run ) 2>"$stderr_tmp"` wrapper.
+        if ! tui_tty_read choice "[y/N] Overwrite ${key}? " 0 "$tty_src"; then
             choice="N"
         fi
         case "${choice:-N}" in
@@ -414,11 +428,14 @@ mcp_wizard_run() {
             local collected_value=""
             local attempts=0
             while [[ -z "$collected_value" && "$attempts" -lt 3 ]]; do
-                if ! read -rsp "${env_key}: " collected_value < "$tty_src" 2>/dev/null; then
+                # tui_tty_read writes prompt to TTY (not stderr) so it stays
+                # visible under install.sh's `( mcp_wizard_run ) 2>"$tmp"`
+                # wrapper. silent=1 suppresses echo of the secret value;
+                # tui_tty_read prints its own newline after silent reads, so
+                # the legacy `printf '\n' >&2` afterwards is dropped.
+                if ! tui_tty_read collected_value "${env_key}: " 1 "$tty_src"; then
                     collected_value=""
                 fi
-                # Print newline after hidden input so terminal cursor advances.
-                printf '\n' >&2
                 attempts=$((attempts + 1))
                 if [[ -z "$collected_value" ]]; then
                     echo -e "${YELLOW}!${NC} ${env_key} cannot be empty (attempt ${attempts}/3)" >&2

@@ -105,8 +105,13 @@ LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
 LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
+# tui.sh provides tui_tty_read — visible-prompt helper consumed by bridges.sh
+# (drift overwrite + install prompts) and the legacy tui_confirm_prompt. Must
+# load BEFORE bridges.sh so its lazy-source guard sees tui_tty_read defined
+# (BASH_SOURCE-relative fallback fails when bridges.sh sits in /tmp).
+LIB_TUI_TMP=$(mktemp "${TMPDIR:-/tmp}/tui.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$LIB_TUI_TMP" "$MANIFEST_TMP"' EXIT
 
 # Audit I5: every curl fetch in the update path needs network-safety flags.
 # Without --max-time / --connect-timeout / --retry a hung TCP socket can pin
@@ -140,7 +145,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "tui.sh:$LIB_TUI_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"

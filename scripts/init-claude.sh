@@ -176,6 +176,13 @@ LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX");       CLEANUP_PA
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX");    CLEANUP_PATHS+=("$LIB_DRO_TMP")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX"); CLEANUP_PATHS+=("$LIB_OPTIONAL_PLUGINS_TMP")
 LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
+# tui.sh ships the visible-prompt helper (tui_tty_read) consumed by
+# bootstrap.sh + bridges.sh + mcp.sh + the legacy tui_confirm_prompt.
+# Must be downloaded + sourced BEFORE those libs so their lazy-source guard
+# (`command -v tui_tty_read`) reports defined and skips the per-lib fallback
+# fetch (which fails under curl|bash because BASH_SOURCE resolves to /tmp/<lib>
+# with no sibling tui.sh).
+LIB_TUI_TMP=$(mktemp "${TMPDIR:-/tmp}/tui-lib.XXXXXX");               CLEANUP_PATHS+=("$LIB_TUI_TMP")
 
 if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
@@ -193,6 +200,13 @@ if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/optional-plugins.sh" 
     echo -e "${RED}✗${NC} Failed to download lib/optional-plugins.sh — aborting"
     exit 1
 fi
+# Download tui.sh BEFORE bootstrap.sh so bootstrap's lazy-source guard sees
+# tui_tty_read already defined (it cannot find tui.sh next to itself when
+# bootstrap.sh lives in /tmp under curl|bash).
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/tui.sh" -o "$LIB_TUI_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/tui.sh — aborting"
+    exit 1
+fi
 # shellcheck source=/dev/null
 source "$DETECT_TMP"
 # shellcheck source=/dev/null
@@ -201,6 +215,8 @@ source "$LIB_INSTALL_TMP"
 source "$LIB_DRO_TMP"
 # shellcheck source=/dev/null
 source "$LIB_OPTIONAL_PLUGINS_TMP"
+# shellcheck source=/dev/null
+source "$LIB_TUI_TMP"
 if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/bootstrap.sh — aborting"
     exit 1

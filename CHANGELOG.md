@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Invisible-prompt regression (TUI dispatch)
+
+After a user pressed Submit on the main TUI, `init-claude.sh` ran under
+`install.sh`'s D-28 stderr-capture wrapper (`( dispatch_toolkit ) 2>"$tmp"`).
+Bash's `read -p "prompt"` writes the prompt to **stderr**, so the bridge
+install prompt (`Gemini detected. Create GEMINI.md → CLAUDE.md bridge?
+[Y/n]:`) landed in the captured tmpfile and the user saw a bare blinking
+caret with no instruction.
+
+Two-layer fix:
+
+1. **Structural:** new `tui_tty_read` helper in `scripts/lib/tui.sh` writes
+   the prompt directly to the TTY device (not stderr), immune to parent
+   stderr capture. Refactored 5 call sites — `lib/tui.sh:tui_confirm_prompt`,
+   `lib/bridges.sh` × 2 (drift overwrite, install prompt),
+   `lib/bootstrap.sh:_bootstrap_prompt_and_run`, `lib/mcp.sh` × 2 (overwrite,
+   secret-key entry). Helper supports a `TK_TUI_PROMPT_SINK` regression-test
+   seam and char-device detection so legacy regular-file / process-
+   substitution test seams continue to work without truncating answers.
+2. **UX:** `install.sh` plumbs the TUI bridge selection (rows 8/9) into
+   `init-claude.sh` via `BRIDGES_FORCE` / `TK_NO_BRIDGES` env vars. When the
+   user selects bridges in the main TUI, `bridge_install_prompts` takes its
+   non-interactive force path (no second prompt). When the user leaves the
+   bridge rows unchecked, `TK_NO_BRIDGES=1` silences project-bridge prompts
+   entirely. Manual `--bridges <list>` / `--no-bridges` overrides still work
+   when invoked outside the TUI flow.
+
+`tui.sh` is now downloaded by `init-claude.sh` and `update-claude.sh` BEFORE
+`bridges.sh` / `bootstrap.sh` / `mcp.sh` so their lazy-source guard
+(`command -v tui_tty_read`) reports defined and the per-lib `BASH_SOURCE`
+fallback (which fails under curl|bash because libs live in `/tmp/<lib>`
+without sibling files) is skipped.
+
+New regression test `scripts/tests/test-invisible-prompt.sh` (14/14 PASS):
+asserts prompts never reach captured stderr, exercises both the helper unit
+and the real bridge / mcp paths under a stderr-capture wrapper. All existing
+suites still pass (test-bridges-sync 25/0, test-mcp-secrets 11/0,
+test-bridges-install-ux 20/0, test-bootstrap 26/0, test-install-tui 52/0).
+
 ### Audit Sweep 260430-go5 (PR #15) — 18 findings + dead-code
 
 Deep 4-agent audit (security, code-review, infra/CI, shell) on 2026-04-30.

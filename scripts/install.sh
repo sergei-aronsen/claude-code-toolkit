@@ -925,6 +925,61 @@ if [[ -n "$BRIDGES_FORCE" ]]; then
 fi
 
 # ─────────────────────────────────────────────────
+# BRIDGE-UX-05: TUI bridge selection → env propagation for the nested toolkit
+# dispatch. Without this, init-claude.sh's bridge_install_prompts re-prompts
+# the user under D-28 stderr capture — the prompt is written to stderr (Bash
+# `read -p` semantics), captured by `( dispatch_toolkit ) 2>"$tmp"`, and the
+# user sees a bare blinking caret.
+#
+# We honour the TUI checkbox state here so bridge_install_prompts inside
+# init-claude.sh uses its NON-interactive paths:
+#   row checked   → BRIDGES_FORCE=<target> (force-create path, no prompt)
+#   row unchecked → TK_NO_BRIDGES=1        (silent return 0, no prompt)
+# Only triggered when the TUI actually ran (TK_TUI_CONFIRMED=1) AND the bridge
+# row was rendered (CLI detected). Manual `--bridges`/env overrides still work
+# when invoked outside the TUI flow.
+# ─────────────────────────────────────────────────
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
+    _tui_bridge_force=""
+    _tui_bridge_seen_any=0
+    _tbf_count=${#TUI_LABELS[@]}
+    for ((_tbi=0; _tbi<_tbf_count; _tbi++)); do
+        case "${TUI_LABELS[$_tbi]}" in
+            gemini-bridge)
+                _tui_bridge_seen_any=1
+                if [[ "${TUI_RESULTS[$_tbi]:-0}" -eq 1 ]]; then
+                    _tui_bridge_force="${_tui_bridge_force}${_tui_bridge_force:+,}gemini"
+                fi
+                ;;
+            codex-bridge)
+                _tui_bridge_seen_any=1
+                if [[ "${TUI_RESULTS[$_tbi]:-0}" -eq 1 ]]; then
+                    _tui_bridge_force="${_tui_bridge_force}${_tui_bridge_force:+,}codex"
+                fi
+                ;;
+        esac
+    done
+    if [[ "$_tui_bridge_seen_any" -eq 1 ]]; then
+        if [[ -n "$_tui_bridge_force" ]]; then
+            # User explicitly opted in via TUI → propagate as force-list.
+            # Do NOT clobber an existing BRIDGES_FORCE: the caller may have
+            # added --bridges <list> on top of TUI selection (CI tooling).
+            if [[ -z "${BRIDGES_FORCE:-}" ]]; then
+                export BRIDGES_FORCE="$_tui_bridge_force"
+            fi
+        else
+            # User saw bridge rows + left them unchecked → silent skip.
+            # TK_NO_BRIDGES=1 is the env-var form bridge_install_prompts honours.
+            # NO_BRIDGES=true (the flag form) is also honoured but is an
+            # init-claude.sh-internal var; TK_NO_BRIDGES is the cross-process
+            # contract.
+            export TK_NO_BRIDGES=1
+        fi
+    fi
+    unset _tbf_count _tbi _tui_bridge_force _tui_bridge_seen_any
+fi
+
+# ─────────────────────────────────────────────────
 # Dispatch loop (D-08 continue-on-error, D-09 --fail-fast opt-in).
 # Per-component status accumulated in parallel arrays.
 # ─────────────────────────────────────────────────
