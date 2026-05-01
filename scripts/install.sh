@@ -1060,10 +1060,44 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
     done
     unset _ux_flow_count _ux_i
 
+    # IMPORTANT: sub-pickers run in the MAIN process (no `$( ... )` capture).
+    #
+    # Earlier draft used a subshell `_csv=$( … tui_checklist … printf … )` to
+    # isolate TUI globals, but that path hung visibly under curl|bash on macOS
+    # (zsh parent → `bash <(curl)` child → bash subshell `$()` for the picker).
+    # The TUI library writes its render to /dev/tty, but the subshell still
+    # owns a captured stdout pipe — and on at least one macOS terminal the
+    # stty/cursor-hide sequences plus the captured-stdout fd combination left
+    # the user looking at a frozen post-Submit screen with no second TUI ever
+    # appearing (user report 2026-05-01). Running in the main process avoids
+    # the stdout-pipe entirely and matches what tui_checklist was designed for.
+    #
+    # We save the main-TUI globals (TUI_LABELS/TUI_RESULTS/TUI_INSTALLED/
+    # TUI_GROUPS/TUI_DESCS/TUI_REQUIRED) before each sub-picker so the dispatch
+    # loop below still sees the original main-TUI selection state when it maps
+    # rows → dispatcher names.
+
+    _save_main_tui_state() {
+        _SAVE_TUI_LABELS=("${TUI_LABELS[@]+"${TUI_LABELS[@]}"}")
+        _SAVE_TUI_RESULTS=("${TUI_RESULTS[@]+"${TUI_RESULTS[@]}"}")
+        _SAVE_TUI_INSTALLED=("${TUI_INSTALLED[@]+"${TUI_INSTALLED[@]}"}")
+        _SAVE_TUI_GROUPS=("${TUI_GROUPS[@]+"${TUI_GROUPS[@]}"}")
+        _SAVE_TUI_DESCS=("${TUI_DESCS[@]+"${TUI_DESCS[@]}"}")
+        _SAVE_TUI_REQUIRED=("${TUI_REQUIRED[@]+"${TUI_REQUIRED[@]}"}")
+    }
+    _restore_main_tui_state() {
+        TUI_LABELS=("${_SAVE_TUI_LABELS[@]+"${_SAVE_TUI_LABELS[@]}"}")
+        TUI_RESULTS=("${_SAVE_TUI_RESULTS[@]+"${_SAVE_TUI_RESULTS[@]}"}")
+        TUI_INSTALLED=("${_SAVE_TUI_INSTALLED[@]+"${_SAVE_TUI_INSTALLED[@]}"}")
+        TUI_GROUPS=("${_SAVE_TUI_GROUPS[@]+"${_SAVE_TUI_GROUPS[@]}"}")
+        TUI_DESCS=("${_SAVE_TUI_DESCS[@]+"${_SAVE_TUI_DESCS[@]}"}")
+        TUI_REQUIRED=("${_SAVE_TUI_REQUIRED[@]+"${_SAVE_TUI_REQUIRED[@]}"}")
+        unset _SAVE_TUI_LABELS _SAVE_TUI_RESULTS _SAVE_TUI_INSTALLED \
+              _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED
+    }
+
     # ── MCP sub-picker (if needed) ──
     if [[ "$_need_mcp_pre" -eq 1 ]]; then
-        # Source mcp.sh — only the --mcps branch above pre-sources it; the
-        # main flow lands here without it. Idempotent (lib has its own guard).
         _source_lib mcp
         if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
             MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
@@ -1074,72 +1108,75 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
             fi
             export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
         fi
-        # Run sub-picker in a subshell so the main TUI globals (TUI_LABELS /
-        # TUI_RESULTS / TUI_INSTALLED) are not clobbered by the catalog render.
-        # The selected names come back via stdout as a comma-separated list;
-        # subshell exit 1 = user cancelled → propagate as full-install cancel.
-        _mcp_pre_csv=$(
-            mcp_catalog_load >/dev/null 2>&1 || exit 1
-            mcp_status_array
-            # Reuse main TUI globals inside this subshell only.
-            TUI_LABELS=("${MCP_NAMES[@]}")
-            TUI_GROUPS=()
-            TUI_DESCS=()
-            TUI_REQUIRED=()
-            for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
-                TUI_GROUPS+=("MCP")
-                TUI_DESCS+=("${MCP_DESCS[$i]:-}")
-                TUI_REQUIRED+=(0)
-            done
-            TUI_RESULTS=()
-            if ! tui_checklist; then exit 1; fi
-            _out=""
-            for ((i=0; i<${#TUI_LABELS[@]}; i++)); do
-                if [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]]; then
-                    _out="${_out}${_out:+,}${TUI_LABELS[$i]}"
-                fi
-            done
-            printf '%s' "$_out"
-        ) || {
+        _save_main_tui_state
+        if ! mcp_catalog_load >/dev/null 2>&1; then
+            echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
+            exit 1
+        fi
+        mcp_status_array
+        TUI_LABELS=("${MCP_NAMES[@]}")
+        TUI_GROUPS=()
+        TUI_DESCS=()
+        TUI_REQUIRED=()
+        for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
+            TUI_GROUPS+=("MCP")
+            TUI_DESCS+=("${MCP_DESCS[$_mcp_i]:-}")
+            TUI_REQUIRED+=(0)
+        done
+        unset _mcp_i
+        TUI_RESULTS=()
+        if ! tui_checklist; then
             echo "MCP selection cancelled — aborting install."
             exit 0
-        }
-        # Empty CSV ("") is intentional and exported as such — see header note.
+        fi
+        # Build CSV BEFORE restoring globals (TUI_RESULTS lives in the same
+        # array we just used to capture answers).
+        _mcp_pre_csv=""
+        for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+            if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
+                _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
+            fi
+        done
+        unset _mcp_i
+        # Empty CSV ("") is intentional and exported as such (= "install zero").
         export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
         unset _mcp_pre_csv
+        _restore_main_tui_state
     fi
 
     # ── Skills sub-picker (if needed) ──
     if [[ "$_need_skills_pre" -eq 1 ]]; then
         _source_lib skills
-        _skills_pre_csv=$(
-            skills_status_array
-            TUI_LABELS=("${SKILLS_CATALOG[@]}")
-            TUI_GROUPS=()
-            TUI_DESCS=()
-            TUI_REQUIRED=()
-            for ((i=0; i<${#SKILLS_CATALOG[@]}; i++)); do
-                TUI_GROUPS+=("Skills")
-                TUI_DESCS+=("Curated skill mirrored from upstream")
-                TUI_REQUIRED+=(0)
-            done
-            TUI_RESULTS=()
-            if ! tui_checklist; then exit 1; fi
-            _out=""
-            for ((i=0; i<${#TUI_LABELS[@]}; i++)); do
-                if [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]]; then
-                    _out="${_out}${_out:+,}${TUI_LABELS[$i]}"
-                fi
-            done
-            printf '%s' "$_out"
-        ) || {
+        _save_main_tui_state
+        skills_status_array
+        TUI_LABELS=("${SKILLS_CATALOG[@]}")
+        TUI_GROUPS=()
+        TUI_DESCS=()
+        TUI_REQUIRED=()
+        for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
+            TUI_GROUPS+=("Skills")
+            TUI_DESCS+=("Curated skill mirrored from upstream")
+            TUI_REQUIRED+=(0)
+        done
+        unset _sk_i
+        TUI_RESULTS=()
+        if ! tui_checklist; then
             echo "Skills selection cancelled — aborting install."
             exit 0
-        }
+        fi
+        _skills_pre_csv=""
+        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+            if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
+                _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+            fi
+        done
+        unset _sk_i
         export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
         unset _skills_pre_csv
+        _restore_main_tui_state
     fi
     unset _need_mcp_pre _need_skills_pre
+    unset -f _save_main_tui_state _restore_main_tui_state
 fi
 
 # ─────────────────────────────────────────────────
