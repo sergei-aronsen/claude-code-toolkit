@@ -177,6 +177,9 @@
   4. On an unsupported platform (e.g., `uname` returns `MINGW64_NT`), `cli_install` exits non-zero with `Error: unsupported platform <name> — toolkit installs CLIs on darwin/linux only` to stderr; on macOS without `brew`, prints `brew not found — install via https://brew.sh first, then re-run` and returns non-zero (continue-on-error, not abort).
   5. Running `bash scripts/install.sh --mcps` in v4.9 prints `Note: --mcps is deprecated, use --integrations (alias preserved through v5.0)` to stderr but otherwise behaves byte-identically to `--integrations` (BACKCOMPAT-01 invariant preserved).
 **Plans**: 3 plans
+- [ ] 32-01-PLAN.md — Schema migration + Python validator + `--mcps`/`--integrations` alias (CAT-01..04)
+- [ ] 32-02-PLAN.md — `scripts/lib/cli-installer.sh` library: cli_detect, cli_install, cli_post_install_hint (CLI-01..04)
+- [ ] 32-03-PLAN.md — Hermetic smoke `test-integrations-foundation.sh` covering all 8 REQ-IDs at contract level
 **UI hint**: no
 
 ### Phase 33: Catalog Population — 11 New Entries + Drop + Re-categorize
