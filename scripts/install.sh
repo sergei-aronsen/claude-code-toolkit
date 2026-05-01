@@ -957,6 +957,13 @@ elif [[ -r "$_install_tty_src" ]]; then
     # was invisible after the now-tall TUI render (long inline descriptions push
     # it off the bottom of the screen, leading to "I pressed Enter and nothing
     # happened" reports).
+    #
+    # Note: this is the main TUI only. Sub-pickers (skills, MCP) below run in
+    # the UX-FLOW-01 pre-collection block. When a sub-picker presses 'b'
+    # (Back), the pre-collection block jumps back here by setting
+    # TK_TUI_REDO_MAIN=1 and `continue`-ing its enclosing loop. We don't wrap
+    # this single-call site in a loop ourselves — the back-jump is handled
+    # by the outer pre-collection state machine.
     if ! tui_checklist; then
         # User cancelled (q/Ctrl-C/EOF). Fail-closed exit 0 per D-11.
         echo "Install cancelled."
@@ -1159,33 +1166,23 @@ fi
 # normal TUI semantics.
 # ─────────────────────────────────────────────────
 if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
-    _need_mcp_pre=0
-    _need_skills_pre=0
-    _ux_flow_count=${#TUI_LABELS[@]}
-    for ((_ux_i=0; _ux_i<_ux_flow_count; _ux_i++)); do
-        case "${TUI_LABELS[$_ux_i]}" in
-            mcp-servers) [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_mcp_pre=1 ;;
-            skills)      [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_skills_pre=1 ;;
-        esac
-    done
-    unset _ux_flow_count _ux_i
-
-    # IMPORTANT: sub-pickers run in the MAIN process (no `$( ... )` capture).
+    # ─────────────────────────────────────────────
+    # State machine with back-nav (UX-FLOW-02 — user feedback 2026-05-02:
+    # "can I press Back from skills/MCP picker to re-do the main TUI?").
     #
-    # Earlier draft used a subshell `_csv=$( … tui_checklist … printf … )` to
-    # isolate TUI globals, but that path hung visibly under curl|bash on macOS
-    # (zsh parent → `bash <(curl)` child → bash subshell `$()` for the picker).
-    # The TUI library writes its render to /dev/tty, but the subshell still
-    # owns a captured stdout pipe — and on at least one macOS terminal the
-    # stty/cursor-hide sequences plus the captured-stdout fd combination left
-    # the user looking at a frozen post-Submit screen with no second TUI ever
-    # appearing (user report 2026-05-01). Running in the main process avoids
-    # the stdout-pipe entirely and matches what tui_checklist was designed for.
+    # Steps:  main → skills → mcp → done
+    # Forward: rc=0 from sub-picker advances to next.
+    # Back:    rc=4 (TK_TUI_ALLOW_BACK=1) returns to previous step.
+    #          From skills back → main TUI re-renders with current selections.
+    #          From mcp    back → skills picker (or main TUI if skills not selected).
+    # Cancel:  rc=1 from any picker aborts the whole install.
     #
-    # We save the main-TUI globals (TUI_LABELS/TUI_RESULTS/TUI_INSTALLED/
-    # TUI_GROUPS/TUI_DESCS/TUI_REQUIRED) before each sub-picker so the dispatch
-    # loop below still sees the original main-TUI selection state when it maps
-    # rows → dispatcher names.
+    # Outer loop runs main TUI when _redo_main_tui=1; inner loop is the
+    # skills/mcp state machine. Bridge plumbing + _need_*_pre derivation
+    # repeats per outer iteration so a back-jump that toggles main-TUI
+    # checkboxes (e.g. unchecking the Bridges row) is reflected
+    # immediately in the next dispatch.
+    # ─────────────────────────────────────────────
 
     _save_main_tui_state() {
         _SAVE_TUI_LABELS=("${TUI_LABELS[@]+"${TUI_LABELS[@]}"}")
@@ -1206,100 +1203,199 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
               _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED
     }
 
-    # ── Skills sub-picker (if needed) — runs FIRST so MCP picker is closer
-    #    to the dispatch loop (mcp install is intentionally LAST in dispatch
-    #    so the "needs API key" follow-up block ends the screen). ──
-    if [[ "$_need_skills_pre" -eq 1 ]]; then
-        # Skills detection is a directory probe — no slow CLI call — but the
-        # _source_lib step still downloads under curl|bash, so a one-line
-        # banner keeps the user oriented through the brief gap.
-        echo ""
-        echo -e "${CYAN}Loading skills catalog...${NC}"
-        _source_lib skills
-        _save_main_tui_state
-        skills_status_array
-        TUI_LABELS=("${SKILLS_CATALOG[@]}")
-        TUI_GROUPS=()
-        TUI_DESCS=()
-        TUI_REQUIRED=()
-        for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
-            TUI_GROUPS+=("Skills")
-            TUI_DESCS+=("Curated skill mirrored from upstream")
-            TUI_REQUIRED+=(0)
-        done
-        unset _sk_i
-        TUI_RESULTS=()
-        if ! tui_checklist; then
-            echo "Skills selection cancelled — aborting install."
-            exit 0
-        fi
-        _skills_pre_csv=""
-        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
-            if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
-                _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+    _redo_main_tui=0
+    while true; do
+        # If a back-jump from the skills picker requested it, re-render the
+        # main TUI with the same selections preserved (TUI_RESULTS persists).
+        if [[ "$_redo_main_tui" -eq 1 ]]; then
+            if ! tui_checklist; then
+                echo "Install cancelled."
+                exit 0
             fi
-        done
-        unset _sk_i
-        export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
-        unset _skills_pre_csv
-        _restore_main_tui_state
-    fi
+            _redo_main_tui=0
+        fi
 
-    # ── MCP sub-picker (if needed) ──
-    if [[ "$_need_mcp_pre" -eq 1 ]]; then
-        # Visible feedback BEFORE the slow steps (download + claude mcp list)
-        # so the user knows the install isn't dead. Without this banner the
-        # screen sat on the post-Submit main-TUI render for ~40 s while
-        # mcp_status_array probed 9 MCPs (now batched via _mcp_list_cache_init,
-        # ~4 s) — long enough to look like a hang to most users.
-        echo ""
-        echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
-        _source_lib mcp
-        if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
-            MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
-            CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
-            if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
-                echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
-                exit 1
-            fi
-            export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
-        fi
-        _save_main_tui_state
-        if ! mcp_catalog_load >/dev/null 2>&1; then
-            echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
-            exit 1
-        fi
-        mcp_status_array
-        TUI_LABELS=("${MCP_NAMES[@]}")
-        TUI_GROUPS=()
-        TUI_DESCS=()
-        TUI_REQUIRED=()
-        for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
-            TUI_GROUPS+=("MCP")
-            TUI_DESCS+=("${MCP_DESCS[$_mcp_i]:-}")
-            TUI_REQUIRED+=(0)
+        # Re-derive sub-picker needs from current main-TUI state.
+        _need_mcp_pre=0
+        _need_skills_pre=0
+        _ux_flow_count=${#TUI_LABELS[@]}
+        for ((_ux_i=0; _ux_i<_ux_flow_count; _ux_i++)); do
+            case "${TUI_LABELS[$_ux_i]}" in
+                mcp-servers) [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_mcp_pre=1 ;;
+                skills)      [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_skills_pre=1 ;;
+            esac
         done
-        unset _mcp_i
-        TUI_RESULTS=()
-        if ! tui_checklist; then
-            echo "MCP selection cancelled — aborting install."
-            exit 0
+        unset _ux_flow_count _ux_i
+
+        # Inner state machine: skills → mcp → done. Back-jumps stay in this
+        # inner loop unless they need the main TUI (skills→main, or
+        # mcp→main when skills wasn't selected).
+        _pc_step="skills"
+        _pc_back_to_main=0
+        while true; do
+            case "$_pc_step" in
+                skills)
+                    if [[ "$_need_skills_pre" -ne 1 ]]; then
+                        _pc_step="mcp"
+                        continue
+                    fi
+                    echo ""
+                    echo -e "${CYAN}Loading skills catalog...${NC}"
+                    _source_lib skills
+                    _save_main_tui_state
+                    skills_status_array
+                    TUI_LABELS=("${SKILLS_CATALOG[@]}")
+                    TUI_GROUPS=()
+                    TUI_DESCS=()
+                    TUI_REQUIRED=()
+                    for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
+                        TUI_GROUPS+=("Skills")
+                        TUI_DESCS+=("Curated skill mirrored from upstream")
+                        TUI_REQUIRED+=(0)
+                    done
+                    unset _sk_i
+                    # Restore previous skills selection if user is returning
+                    # via Back from MCP picker — TK_SKILLS_PRE_SELECTED was
+                    # exported on the prior pass.
+                    TUI_RESULTS=()
+                    if [[ -n "${TK_SKILLS_PRE_SELECTED:-}" ]]; then
+                        _IFS_SAVED2="$IFS"
+                        IFS=','
+                        # shellcheck disable=SC2206
+                        _prev_sk=( ${TK_SKILLS_PRE_SELECTED} )
+                        IFS="$_IFS_SAVED2"
+                        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+                            TUI_RESULTS[$_sk_i]=0
+                            for _p in "${_prev_sk[@]+"${_prev_sk[@]}"}"; do
+                                if [[ "${TUI_LABELS[$_sk_i]}" == "$_p" ]]; then
+                                    TUI_RESULTS[$_sk_i]=1
+                                    break
+                                fi
+                            done
+                        done
+                        unset _sk_i _p _prev_sk _IFS_SAVED2
+                    fi
+                    _rc=0
+                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
+                    case "$_rc" in
+                        0)
+                            _skills_pre_csv=""
+                            for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+                                if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
+                                    _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+                                fi
+                            done
+                            unset _sk_i
+                            export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
+                            unset _skills_pre_csv
+                            _restore_main_tui_state
+                            _pc_step="mcp"
+                            ;;
+                        1)
+                            echo "Skills selection cancelled — aborting install."
+                            exit 0
+                            ;;
+                        4)
+                            # Back to main TUI.
+                            _restore_main_tui_state
+                            _pc_back_to_main=1
+                            break
+                            ;;
+                    esac
+                    ;;
+                mcp)
+                    if [[ "$_need_mcp_pre" -ne 1 ]]; then
+                        break
+                    fi
+                    echo ""
+                    echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
+                    _source_lib mcp
+                    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
+                        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+                        CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
+                        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
+                            echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+                            exit 1
+                        fi
+                        export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
+                    fi
+                    _save_main_tui_state
+                    if ! mcp_catalog_load >/dev/null 2>&1; then
+                        echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
+                        exit 1
+                    fi
+                    mcp_status_array
+                    TUI_LABELS=("${MCP_NAMES[@]}")
+                    TUI_GROUPS=()
+                    TUI_DESCS=()
+                    TUI_REQUIRED=()
+                    for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
+                        TUI_GROUPS+=("MCP")
+                        TUI_DESCS+=("${MCP_DESCS[$_mcp_i]:-}")
+                        TUI_REQUIRED+=(0)
+                    done
+                    unset _mcp_i
+                    # Restore prior MCP selection on Back-return (same pattern as skills).
+                    TUI_RESULTS=()
+                    if [[ -n "${TK_MCP_PRE_SELECTED:-}" ]]; then
+                        _IFS_SAVED2="$IFS"
+                        IFS=','
+                        # shellcheck disable=SC2206
+                        _prev_mcp=( ${TK_MCP_PRE_SELECTED} )
+                        IFS="$_IFS_SAVED2"
+                        for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+                            TUI_RESULTS[$_mcp_i]=0
+                            for _p in "${_prev_mcp[@]+"${_prev_mcp[@]}"}"; do
+                                if [[ "${TUI_LABELS[$_mcp_i]}" == "$_p" ]]; then
+                                    TUI_RESULTS[$_mcp_i]=1
+                                    break
+                                fi
+                            done
+                        done
+                        unset _mcp_i _p _prev_mcp _IFS_SAVED2
+                    fi
+                    _rc=0
+                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
+                    case "$_rc" in
+                        0)
+                            _mcp_pre_csv=""
+                            for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+                                if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
+                                    _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
+                                fi
+                            done
+                            unset _mcp_i
+                            export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
+                            unset _mcp_pre_csv
+                            _restore_main_tui_state
+                            break   # done with pre-collection
+                            ;;
+                        1)
+                            echo "MCP selection cancelled — aborting install."
+                            exit 0
+                            ;;
+                        4)
+                            _restore_main_tui_state
+                            if [[ "$_need_skills_pre" -eq 1 ]]; then
+                                _pc_step="skills"
+                            else
+                                _pc_back_to_main=1
+                                break
+                            fi
+                            ;;
+                    esac
+                    ;;
+            esac
+        done   # inner step loop
+
+        if [[ "$_pc_back_to_main" -eq 1 ]]; then
+            _redo_main_tui=1
+            continue   # outer loop → re-run main TUI, re-derive needs
         fi
-        # Build CSV BEFORE restoring globals (TUI_RESULTS lives in the same
-        # array we just used to capture answers).
-        _mcp_pre_csv=""
-        for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
-            if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
-                _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
-            fi
-        done
-        unset _mcp_i
-        # Empty CSV ("") is intentional and exported as such (= "install zero").
-        export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
-        unset _mcp_pre_csv
-        _restore_main_tui_state
-    fi
-    unset _need_mcp_pre _need_skills_pre
+        break   # all pre-collection done
+    done   # outer redo loop
+
+    unset _need_mcp_pre _need_skills_pre _redo_main_tui _pc_step _pc_back_to_main _rc
     unset -f _save_main_tui_state _restore_main_tui_state
 fi
 
