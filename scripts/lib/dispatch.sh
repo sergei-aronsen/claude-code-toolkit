@@ -212,7 +212,11 @@ dispatch_toolkit() {
         case "$1" in
             --force)   force=1   ; pass_args+=("--force") ;;
             --dry-run) dry_run=1 ; pass_args+=("--dry-run") ;;
-            --yes)     yes=1     ;;
+            # Forward --yes so init-claude.sh skips its select_framework /
+            # select_mode / Council interactive prompts (it learned --yes in
+            # the same patch that surfaced this bug — user pressed ↑/↓ on a
+            # raw `read` prompt and saw `^[[A^[[B` echo back).
+            --yes)     yes=1     ; pass_args+=("--yes") ;;
             *) pass_args+=("$1") ;;
         esac
         shift

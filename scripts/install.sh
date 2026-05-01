@@ -805,6 +805,14 @@ elif [[ -r "$_install_tty_src" ]]; then
     fi
     # shellcheck disable=SC2034  # SELECTION_RC reserved for future use
     SELECTION_RC=$?
+    # User already gave consent via the TUI Submit row. Promote to --yes for
+    # downstream dispatchers so legacy interactive prompts (init-claude.sh's
+    # "Select your stack [1-8]", select_mode, Council y/N, etc.) auto-detect
+    # instead of waiting for typed input. Without this, the prompts surface
+    # AFTER the TUI clears the screen — users instinctively press arrow keys
+    # (TUI muscle memory) and the terminal echoes raw `^[[A`/`^[[B` bytes
+    # (user report 2026-05-01).
+    YES=1
 else
     # ─────────────────────────────────────────────
     # D-05 + D-11: no /dev/tty AND no --yes.
