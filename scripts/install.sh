@@ -805,14 +805,15 @@ elif [[ -r "$_install_tty_src" ]]; then
     fi
     # shellcheck disable=SC2034  # SELECTION_RC reserved for future use
     SELECTION_RC=$?
-    # User already gave consent via the TUI Submit row. Promote to --yes for
-    # downstream dispatchers so legacy interactive prompts (init-claude.sh's
-    # "Select your stack [1-8]", select_mode, Council y/N, etc.) auto-detect
-    # instead of waiting for typed input. Without this, the prompts surface
-    # AFTER the TUI clears the screen — users instinctively press arrow keys
-    # (TUI muscle memory) and the terminal echoes raw `^[[A`/`^[[B` bytes
-    # (user report 2026-05-01).
-    YES=1
+    # User already gave consent via the TUI Submit row. Surface a "TUI ran"
+    # signal so init-claude.sh can suppress its legacy interactive prompts
+    # (Select your stack [1-8], select_mode, Council y/N) — those rendered
+    # after the TUI screen-clear and users instinctively pressed ↑/↓ on a
+    # canonical-mode `read`, leaking raw `^[[A`/`^[[B` bytes (user report
+    # 2026-05-01). Do NOT promote YES=1 globally — that would also force
+    # mcp-servers / skills sub-pickers to skip their TUI catalog (per the
+    # default-set logic at line ~782) and the user wants to PICK from those.
+    export TK_TUI_CONFIRMED=1
 else
     # ─────────────────────────────────────────────
     # D-05 + D-11: no /dev/tty AND no --yes.
