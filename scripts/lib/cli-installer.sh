@@ -72,3 +72,85 @@ cli_detect() {
     fi
     command -v "$name" >/dev/null 2>&1
 }
+
+# -----------------------------------------------------------------------------
+# Public: cli_install <name> <darwin_cmd> <linux_cmd>
+# -----------------------------------------------------------------------------
+
+# cli_install <name> <darwin_cmd> <linux_cmd>
+#   - Dispatches by uname -s (TK_CLI_UNAME seam).
+#   - Darwin: if <darwin_cmd> starts with 'brew ' AND brew is absent
+#     (TK_CLI_BREW_BIN seam OR `command -v brew` fallback), prints stderr hint
+#     and returns 3 — NEVER auto-installs Homebrew (D-18).
+#   - Linux: runs <linux_cmd> directly. No distro detection (D-19).
+#   - Other: stderr error + return 2.
+# Returns: rc of underlying installer (brew/apt/npm/curl/...) verbatim.
+# IMPORTANT: NO sudo auto-prefix (D-17). NO retries — vendor handles its own.
+# IMPORTANT: <darwin_cmd> and <linux_cmd> come from the curated, schema-
+#   validated integrations-catalog.json (not user input) — eval is safe in
+#   that trust boundary. Plan 32-01's validator enforces shape.
+cli_install() {
+    local name="${1:-}"
+    local darwin_cmd="${2:-}"
+    local linux_cmd="${3:-}"
+    if [[ -z "$name" || -z "$darwin_cmd" || -z "$linux_cmd" ]]; then
+        echo -e "${RED}✗${NC} cli_install: usage: cli_install <name> <darwin_cmd> <linux_cmd>" >&2
+        return 1
+    fi
+    local platform="${TK_CLI_UNAME:-$(uname -s)}"
+    case "$platform" in
+        Darwin)
+            # D-18: brew-absent fallback. If the command needs brew and brew
+            # isn't installed, surface a single-line hint and skip.
+            if [[ "$darwin_cmd" == brew\ * ]]; then
+                local brew_present=0
+                if [[ "${TK_CLI_BREW_BIN+x}" == "x" ]]; then
+                    # Test seam set: empty == absent, non-empty == present.
+                    [[ -n "${TK_CLI_BREW_BIN:-}" ]] && brew_present=1
+                else
+                    if command -v brew >/dev/null 2>&1; then
+                        brew_present=1
+                    fi
+                fi
+                if [[ "$brew_present" -ne 1 ]]; then
+                    echo "cli-installer: brew not found — install from https://brew.sh, then re-run" >&2
+                    return 3
+                fi
+            fi
+            # Trust boundary: $darwin_cmd is from the curated, schema-validated
+            # integrations-catalog.json (not user input). Plan 32-01's Python
+            # validator enforces shape; eval is safe inside this boundary.
+            eval "$darwin_cmd"
+            return $?
+            ;;
+        Linux)
+            # D-19: vendor-recommended install string runs as-is. No distro
+            # detection. No sudo auto-prefix (D-17). Trust boundary identical
+            # to Darwin branch above — catalog string is curated.
+            eval "$linux_cmd"
+            return $?
+            ;;
+        *)
+            echo "cli-installer: unsupported platform '$platform' for CLI '$name'" >&2
+            return 2
+            ;;
+    esac
+}
+
+# -----------------------------------------------------------------------------
+# Public: cli_post_install_hint <hint>
+# -----------------------------------------------------------------------------
+
+# cli_post_install_hint <hint> — print "-> Next: <hint>" to stderr only (D-21).
+# stdout stays parseable for downstream consumers; toolkit NEVER auto-runs
+# `<tool> login` — boundary is "config + hints", not "auth flows".
+# Empty <hint> is a no-op (returns 0 without writing).
+# ASCII '->' chosen over Unicode '→' for grep-portability (lessons-learned
+# 260430-go5: invisible bytes broke a regression test in MCP wizard).
+cli_post_install_hint() {
+    local hint="${1:-}"
+    if [[ -z "$hint" ]]; then
+        return 0
+    fi
+    echo "-> Next: $hint" >&2
+}

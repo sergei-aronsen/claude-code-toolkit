@@ -230,6 +230,9 @@
         "path": "scripts/lib/bridges.sh"
       },
       {
+        "path": "scripts/lib/cli-installer.sh"
+      },
+      {
         "path": "scripts/lib/cli-recommendations.sh"
       },
       {
