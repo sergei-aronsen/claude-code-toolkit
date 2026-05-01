@@ -62,28 +62,29 @@ Each framework template documents its required base plugins in `## Required Base
 e.g. [templates/base/CLAUDE.md](templates/base/CLAUDE.md). For the full 12-cell install matrix
 and step-by-step guidance, see [docs/INSTALL.md](docs/INSTALL.md).
 
-### Standalone install
+### Interactive install (recommended)
 
-You don't have `superpowers` or `get-shit-done` installed (or you've explicitly opted out).
-TK installs all 54 files — the full-fat default. Run in your regular terminal (not inside
-Claude Code!) in the project folder:
+The unified installer presents a TUI checklist with all components (Toolkit, Security, RTK,
+Statusline, Council, Bridges) and lets you opt in to each. Run in your regular terminal (not
+inside Claude Code!) in the project folder:
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
 Then start Claude Code in that project directory. For future updates use `/update-toolkit`.
 
 ### Complement install
 
-You have one or both of `superpowers` (obra) and `get-shit-done` (gsd-build) installed. TK
-auto-detects them and skips the 7 files that would duplicate SP functionality, keeping the ~47
-unique TK contributions (Council, framework CLAUDE.md templates, components library, cheatsheets,
-framework-specific skills). Use the same install command — TK auto-selects the `complement-*`
-mode. To override, pass `--mode standalone` (or any other mode name):
+You have one or both of `superpowers` (obra) and `get-shit-done` (gsd-build) installed. The
+installer auto-detects them and skips the 7 files that would duplicate SP functionality,
+keeping the ~47 unique TK contributions (Council, framework CLAUDE.md templates, components
+library, cheatsheets, framework-specific skills). Use the same install command — TK
+auto-selects the `complement-*` mode. To override, pass `--mode standalone` (or any other
+mode name):
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) --mode complement-full
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes --mode complement-full
 ```
 
 > **Mode behavior today.** `manifest.json` currently catalogues 7 SP overlaps and 0 GSD
@@ -91,6 +92,15 @@ bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-to
 > skips none — i.e. it is functionally equivalent to `standalone` until GSD-specific
 > conflicts are catalogued. The 4-mode UX is preserved so the manifest can mark GSD
 > overlaps incrementally without an installer rewrite.
+
+### Direct install (scripted / CI)
+
+For non-interactive contexts, `init-claude.sh` is still supported and runs the toolkit
+install only (no Security / Statusline / Council prompts):
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
+```
 
 ### Install via marketplace
 
