@@ -180,6 +180,27 @@ fi
 # shellcheck source=/dev/null
 source "$LIB_BOOTSTRAP_TMP"
 
+# Source lib/state.sh BEFORE bridges.sh — bridges.sh:46-50 sources state.sh
+# from its own directory if write_state is undefined. Under curl|bash, libs
+# are downloaded one at a time into /tmp; if state.sh is not yet present
+# next to bridges.sh in /tmp, the source fails with "No such file". Pre-load
+# state.sh here so the bridges.sh guard (`command -v write_state`) is true
+# and the inner source is skipped. The original late download/source at
+# the top of main() is no longer needed.
+LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_STATE_TMP")
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/state.sh — aborting"
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$LIB_STATE_TMP"
+# state.sh defaults STATE_FILE/LOCK_DIR to $HOME — re-assert per-project so
+# D-41/D-42 checks and acquire_lock target the project, not the user home.
+# shellcheck disable=SC2034
+STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
+# shellcheck disable=SC2034
+LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
+
 # Phase 30 BRIDGE-UX-02: download lib/bridges.sh so the post-install bridge prompts
 # fire after .claude/ is populated. Sourced eagerly here (alongside other libs) so
 # the bridge_install_prompts call inside main() does not need a second download.
@@ -540,21 +561,9 @@ download_files() {
         exit 0
     fi
 
-    # Source lib/state.sh into a temp file (needed for write_state / acquire_lock).
-    # CLEANUP_PATHS extension is enough — run_cleanup picks up the new path on
-    # next EXIT trap fire.
-    LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_STATE_TMP")
-    if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
-        echo -e "${RED}Failed to download lib/state.sh — aborting${NC}"
-        exit 1
-    fi
-    # shellcheck source=/dev/null
-    source "$LIB_STATE_TMP"
-    # Re-assert per-project STATE_FILE/LOCK_DIR — state.sh defaults to $HOME and
-    # `source` overwrites the top-of-file assignment. Without this, write_state
-    # below targets ~/.claude/toolkit-install.json while update-claude.sh reads
-    # ./.claude/toolkit-install.json — first update would never see the install
-    # state and would synthesize from filesystem on every run.
+    # state.sh sourced earlier (before lib/bridges.sh) so the bridges.sh guard
+    # finds write_state defined. Re-assert STATE_FILE/LOCK_DIR defensively in
+    # case any intervening source overwrote them; harmless if already correct.
     # shellcheck disable=SC2034  # STATE_FILE consumed by write_state in lib/state.sh
     STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
     # shellcheck disable=SC2034  # LOCK_DIR consumed by acquire_lock in lib/state.sh
