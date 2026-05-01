@@ -32,8 +32,18 @@
 # Source detect.sh — provides HAS_SP, HAS_GSD, SP_VERSION, GSD_VERSION.
 # detect.sh ends with `detect_superpowers || true` + `detect_gsd`, so sourcing
 # under set -e is safe (Risk 6 from RESEARCH.md §10).
+#
+# Idempotent guard: skip the re-source if the caller has already sourced
+# detect.sh into the current shell (signalled by the detect_superpowers
+# function being defined). This is the curl|bash path used by install.sh
+# and init-claude.sh — they download detect.sh to a tmpfile and source it
+# manually BEFORE sourcing this file, because BASH_SOURCE-relative paths
+# resolve to non-existent locations like `/tmp/../detect.sh` when this
+# file is itself sourced from a tmpfile under /tmp.
 # shellcheck source=/dev/null
-source "$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)/../detect.sh"
+if ! declare -F detect_superpowers >/dev/null 2>&1; then
+    source "$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)/../detect.sh"
+fi
 
 # DET-01: SP/GSD wrappers — DO NOT re-implement filesystem probes; reuse detect.sh exports.
 is_superpowers_installed() {
