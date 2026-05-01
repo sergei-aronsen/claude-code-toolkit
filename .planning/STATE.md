@@ -2,14 +2,13 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
-status: ready_to_plan
-stopped_at: v4.9 ROADMAP.md created — 4 phases (32-35), 36/36 REQ-IDs mapped; ready for /gsd-plan-phase 32
-last_updated: "2026-05-02T00:00:00.000Z"
-last_activity: 2026-05-02
+status: executing
+last_updated: "2026-05-01T23:33:01.970Z"
+last_activity: 2026-05-01 -- Phase 32 execution started
 progress:
-  total_phases: 4
+  total_phases: 8
   completed_phases: 0
-  total_plans: 14
+  total_plans: 3
   completed_plans: 0
   percent: 0
 ---
@@ -21,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.9 Integrations Catalog — unify MCPs + companion CLIs into one TUI page, expand catalog from 9 → 19 entries, drop `sequential-thinking`.
+**Current focus:** Phase 32 — foundation-schema-migration-cli-installer-library
 
 ## Current Position
 
-Phase: 32 (Not started — ready for `/gsd-plan-phase 32`)
-Plan: —
-Status: Ready to plan Phase 32
-Last activity: 2026-05-02 — ROADMAP.md created with 4-phase structure (32-35), 36/36 REQ-IDs mapped
+Phase: 32 (foundation-schema-migration-cli-installer-library) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 32
+Last activity: 2026-05-01 -- Phase 32 execution started
 
 ## Plan Count Estimate
 
