@@ -39,6 +39,12 @@ DRY_RUN=false
 NO_BANNER=${NO_BANNER:-0}
 FRAMEWORK=""
 
+# B5: globals so download_files() can populate them and main() can render a
+# failure-aware closing banner. Initialised here so the banner branch never
+# trips set -u when zero files failed.
+FAILED_COUNT=0
+FAILED_PATHS=()
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -200,6 +206,28 @@ source "$LIB_STATE_TMP"
 STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
 # shellcheck disable=SC2034
 LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
+
+# B3: bridges.sh calls is_gemini_installed / is_codex_installed (defined in
+# detect2.sh) at lines 626-627 + 690-691. Without detect2.sh sourced first,
+# those functions return 127 (command not found) and the caller's `|| continue`
+# silently skips both bridges. Mirrors the state.sh pre-source fix from commit 18a7039.
+#
+# detect2.sh internally `source`s ../detect.sh via BASH_SOURCE[0]. When run
+# from /tmp that resolves to /detect.sh which does not exist — failing under
+# set -e. detect.sh is already loaded above (line 169) into the current shell,
+# so we strip the inner source line before sourcing the patched file.
+LIB_DETECT2_TMP=$(mktemp "${TMPDIR:-/tmp}/detect2-lib.XXXXXX");      CLEANUP_PATHS+=("$LIB_DETECT2_TMP")
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/detect2.sh" -o "$LIB_DETECT2_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/detect2.sh — aborting"
+    exit 1
+fi
+# Comment out the inner `source ../detect.sh` line — detect.sh is already
+# loaded in this shell so we skip the broken-from-/tmp re-source.
+LIB_DETECT2_PATCHED=$(mktemp "${TMPDIR:-/tmp}/detect2-lib-patched.XXXXXX"); CLEANUP_PATHS+=("$LIB_DETECT2_PATCHED")
+sed -E 's|^source "\$\(cd .*detect\.sh"|# skipped: detect.sh already loaded by init-claude.sh (was: &)|' \
+    "$LIB_DETECT2_TMP" > "$LIB_DETECT2_PATCHED"
+# shellcheck source=/dev/null
+source "$LIB_DETECT2_PATCHED"
 
 # Phase 30 BRIDGE-UX-02: download lib/bridges.sh so the post-install bridge prompts
 # fire after .claude/ is populated. Sourced eagerly here (alongside other libs) so
@@ -571,11 +599,23 @@ download_files() {
     acquire_lock || exit 1
     NEED_LOCK_RELEASE=true
 
-    # Iterate manifest.files.* — download all entries NOT in skip-list
-    local path skip reason full_dest full_url
+    # Iterate manifest.files.* — download all entries NOT in skip-list.
+    #
+    # B1: manifest paths are bucket-relative (e.g. "agents/planner.md") and the
+    # real repo layout is templates/<framework>/<bucket>/<file> with templates/
+    # base/ as universal fallback. Try framework first, then base. Mirrors the
+    # download_extras pattern at line ~534-545. The `scripts` and `libs` buckets
+    # are exceptions — their paths already begin with "scripts/..." (repo-root,
+    # NOT under templates/).
+    #
+    # B2: skills_marketplace entries are DIRECTORIES (each contains SKILL.md +
+    # SKILL-LICENSE.md), not files — curl can't fetch a dir from raw.github.
+    # Filtered out at the jq stage; install.sh --skills handles them via cp -R.
+    local path bucket skip reason full_dest fw_url base_url
     INSTALLED_PATHS=()
     SKIPPED_PATHS=()
     while IFS= read -r entry; do
+        bucket=$(jq -r '.bucket' <<< "$entry")
         path=$(jq -r '.path' <<< "$entry")
         skip=$(jq -r '.skip' <<< "$entry")
         reason=$(jq -r '.reason' <<< "$entry")
@@ -589,17 +629,42 @@ download_files() {
             continue
         fi
         full_dest="$CLAUDE_DIR/$path"
-        full_url="$REPO_URL/$path"
         mkdir -p "$(dirname "$full_dest")"
-        if curl -sSLf -A "$TK_USER_AGENT" "$full_url" -o "$full_dest" 2>/dev/null; then
-            echo -e "  ${GREEN}OK${NC} $path"
-            INSTALLED_PATHS+=("$full_dest")
-        else
-            echo -e "  ${YELLOW}!!${NC} $path (download failed)"
-        fi
+        case "$bucket" in
+            scripts|libs)
+                # Repo-root paths — single attempt, no template fallback.
+                if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$path" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
+                    echo -e "  ${GREEN}OK${NC} $path"
+                    INSTALLED_PATHS+=("$full_dest")
+                else
+                    rm -f "$full_dest"
+                    echo -e "  ${YELLOW}!!${NC} $path (download failed)"
+                    FAILED_COUNT=$((FAILED_COUNT + 1))
+                    FAILED_PATHS+=("$path")
+                fi
+                ;;
+            *)
+                # Bucket-relative paths — framework-first → base-fallback.
+                fw_url="$REPO_URL/templates/$FRAMEWORK/$path"
+                base_url="$REPO_URL/templates/base/$path"
+                if curl -sSLf -A "$TK_USER_AGENT" "$fw_url" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
+                    echo -e "  ${GREEN}OK${NC} $path"
+                    INSTALLED_PATHS+=("$full_dest")
+                elif curl -sSLf -A "$TK_USER_AGENT" "$base_url" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
+                    echo -e "  ${GREEN}OK${NC} $path (base)"
+                    INSTALLED_PATHS+=("$full_dest")
+                else
+                    rm -f "$full_dest"
+                    echo -e "  ${YELLOW}!!${NC} $path (download failed)"
+                    FAILED_COUNT=$((FAILED_COUNT + 1))
+                    FAILED_PATHS+=("$path")
+                fi
+                ;;
+        esac
     done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '
         .files | to_entries[] |
         .key as $b | .value[] |
+        select($b != "skills_marketplace") |
         { bucket: $b, path: .path,
           skip: ([.path] | inside($skip)),
           reason: ((.conflicts_with // []) | join(",")) }
@@ -939,7 +1004,13 @@ setup_council() {
         echo -e "  ${YELLOW}⚠${NC} commands/council-clear-cache.md (not critical)"
     fi
 
-    # Ask to configure now (skip in non-interactive environments)
+    # B4: after 22+ lines of "✓ ... installed" output, the prompt was visually
+    # invisible — users thought the install hung. Add a horizontal rule + blank
+    # lines to clearly separate the spam from the actionable prompt.
+    echo ""
+    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
+    echo -e "${BLUE}  Supreme Council — interactive configuration${NC}"
+    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
     echo ""
     local configure
     if ! read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty 2>/dev/null; then
@@ -1186,10 +1257,28 @@ main() {
         exit 1
     }
 
+    # B5: previously this banner displayed unconditionally even when many files
+    # failed to download — false success. download_files now tracks
+    # FAILED_COUNT / FAILED_PATHS; surface real failures in the banner.
     echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+    if [[ "${FAILED_COUNT:-0}" -gt 0 ]]; then
+        echo -e "${YELLOW}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║  ⚠ Installation completed with ${FAILED_COUNT} failure(s) ${NC}"
+        echo -e "${YELLOW}╚════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "Failed files (review before commit):"
+        local fp
+        for fp in "${FAILED_PATHS[@]:-}"; do
+            [[ -n "$fp" ]] && echo -e "  ${RED}✗${NC} $fp"
+        done
+        echo ""
+        echo -e "Re-run with TK_TOOLKIT_REF=<tag> if you suspect a stale cache,"
+        echo -e "or open an issue: https://github.com/sergei-aronsen/claude-code-toolkit/issues"
+    else
+        echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+    fi
     echo ""
     echo -e "Next steps:"
     echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
