@@ -217,7 +217,13 @@ if [[ "$MCPS" -eq 1 ]]; then
     # _mcp_default_catalog_path to /tmp/mcp-catalog.json which doesn't exist
     # → "Failed to load MCP catalog" exit 1 (user report 2026-05-01). Download
     # the catalog to a tmpfile and point TK_MCP_CATALOG_PATH at it.
-    if _is_curl_pipe; then
+    #
+    # Skip when TK_MCP_CATALOG_PATH already exported by the parent flow's
+    # UX-FLOW-01 pre-collection block (install.sh top-level → dispatch_mcps
+    # → install.sh --mcps inherits the env). A second mktemp on the same
+    # template under heavy /tmp churn produced "mkstemp failed: File exists"
+    # (user report 2026-05-01) and the duplicate download is wasteful anyway.
+    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
         MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
         if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
@@ -1104,7 +1110,7 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
         # mcp_status_array probed 9 MCPs (now batched via _mcp_list_cache_init,
         # ~4 s) — long enough to look like a hang to most users.
         echo ""
-        echo -e "${BLUE}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
+        echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
         _source_lib mcp
         if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
             MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
@@ -1157,7 +1163,7 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
         # _source_lib step still downloads under curl|bash, so a one-line
         # banner keeps the user oriented through the brief gap.
         echo ""
-        echo -e "${BLUE}Loading skills catalog...${NC}"
+        echo -e "${CYAN}Loading skills catalog...${NC}"
         _source_lib skills
         _save_main_tui_state
         skills_status_array

@@ -114,9 +114,12 @@ _tui_read_key() {
 _tui_render() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
 
-    # Move cursor to top-left and erase to end-of-screen (RESEARCH.md §3 — no
-    # alternate screen; simpler clear+redraw approach).
-    printf '\e[H\e[J' >> "$tty_target" 2>/dev/null || true
+    # Move cursor to top-left only (no \e[J full-screen erase). Full-screen
+    # erase + per-keystroke redraw produced visible flicker on macOS Terminal
+    # (user report 2026-05-01). Each line below appends \e[K (erase-to-EOL)
+    # so stale content from longer prior frames is overwritten in place
+    # without a flash of blank screen between frames.
+    printf '\e[H' >> "$tty_target" 2>/dev/null || true
 
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
@@ -136,9 +139,9 @@ _tui_render() {
         # via parallel-array lookup so we stay Bash 3.2 compatible — no `declare -A`).
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '\n  \e[1m%s\e[0m\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                printf '\e[K\n  \e[1m%s\e[0m\e[K\n' "$grp" >> "$tty_target" 2>/dev/null || true
             else
-                printf '\n  %s\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                printf '\e[K\n  %s\e[K\n' "$grp" >> "$tty_target" 2>/dev/null || true
             fi
             # Lookup group description: TUI_GROUP_NAMES[k] == "$grp" → TUI_GROUP_DESCS[k].
             # `${TUI_GROUP_NAMES[@]+...}` expands to empty when the array is unset/empty,
@@ -158,9 +161,9 @@ _tui_render() {
             done
             if [[ -n "$_grp_desc" ]]; then
                 if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                    printf '  \e[2m%s\e[0m\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    printf '  \e[2m%s\e[0m\e[K\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
                 else
-                    printf '  %s\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    printf '  %s\e[K\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
                 fi
             fi
             prev_group="$grp"
@@ -185,17 +188,17 @@ _tui_render() {
         # Numbered prefix + label row. Immutable rows (installed/required) render dim
         # so they read as "disabled" — user knows space won't toggle them.
         if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
-            printf '%s\e[2m%d. %s %s\e[0m\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            printf '%s\e[2m%d. %s %s\e[0m\e[K\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
         else
-            printf '%s%d. %s %s\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            printf '%s%d. %s %s\e[K\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
         fi
 
         # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
         if [[ -n "$desc" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '       \e[2m%s\e[0m\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                printf '       \e[2m%s\e[0m\e[K\n' "$desc" >> "$tty_target" 2>/dev/null || true
             else
-                printf '       %s\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                printf '       %s\e[K\n' "$desc" >> "$tty_target" 2>/dev/null || true
             fi
         fi
     done
@@ -210,21 +213,29 @@ _tui_render() {
         submit_arrow="${TK_TUI_ARROW:-▶ }"
     fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n%s\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\n' \
+        printf '\e[K\n%s\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\e[K\n' \
             "$submit_arrow" >> "$tty_target" 2>/dev/null || true
     else
-        printf '\n%s[ Install selected ]  ← press Enter\n' \
+        printf '\e[K\n%s[ Install selected ]  ← press Enter\e[K\n' \
             "$submit_arrow" >> "$tty_target" 2>/dev/null || true
     fi
 
-    # Updated footer text.
+    # Footer hint. Esc detection is unreliable on some macOS terminal configs
+    # (Send +Esc / Esc-as-Meta), so the public hint advertises Ctrl+C — Esc is
+    # still wired in tui_checklist's case match for terminals where it does work.
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n  \e[2m↑↓ navigate · Space toggle · Enter install · Esc cancel\e[0m\n' \
+        printf '\n  \e[2m↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\e[0m\e[K\n' \
             >> "$tty_target" 2>/dev/null || true
     else
-        printf '\n  ↑↓ navigate · Space toggle · Enter install · Esc cancel\n' \
+        printf '\n  ↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\e[K\n' \
             >> "$tty_target" 2>/dev/null || true
     fi
+
+    # Erase any leftover lines from a prior taller frame (e.g. when a section
+    # collapses or when this frame has fewer rows than the last). Without this
+    # a dropped row would leave stale text below the footer until the next
+    # full-screen scroll.
+    printf '\e[J' >> "$tty_target" 2>/dev/null || true
 }
 
 # tui_checklist — render the checklist menu and capture user selection.

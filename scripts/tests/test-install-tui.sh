@@ -631,7 +631,7 @@ run_s_render_format() {
     assert_contains "second description" "$rendered" "S_render_format: row 2 description rendered inline"
     assert_contains "[ Install selected ]" "$rendered" "S_render_format: explicit Submit row rendered"
     assert_contains "Enter install" "$rendered" "S_render_format: footer mentions Enter install"
-    assert_contains "Esc cancel" "$rendered" "S_render_format: footer mentions Esc cancel"
+    assert_contains "Ctrl+C abort" "$rendered" "S_render_format: footer mentions Ctrl+C abort"
     assert_not_contains "↑↓ move · space toggle · enter confirm · q quit" "$rendered" "S_render_format: old footer removed"
 }
 
