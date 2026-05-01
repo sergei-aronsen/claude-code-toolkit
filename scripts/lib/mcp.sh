@@ -113,36 +113,71 @@ mcp_catalog_names() {
     jq -r 'keys | sort | .[]' "$catalog_path"
 }
 
+# _mcp_list_cache_init — invoke `claude mcp list` AT MOST ONCE per shell and
+# memoise the output. mcp_status_array probes 9 MCPs back-to-back; without
+# this cache each probe spawned a fresh `claude` process whose cold-start
+# cost is ~4 s on macOS. 9 × 4 s = 40 s wall-time after the user pressed
+# Submit on the main TUI, which looks identical to a hang (user report
+# 2026-05-01). Memoising the call drops it to a single ~4 s round-trip.
+#
+# State machine via _MCP_LIST_CACHED:
+#   ""               → cache cold (initial)
+#   "ok"             → list captured in _MCP_LIST_CACHE_OUT
+#   "__no_cli__"     → claude CLI absent on PATH and no override
+#   "__list_failed__"→ CLI present but `mcp list` returned non-zero
+#                      (auth missing, transient daemon error, etc.)
+#
+# The cache is shell-global. Tests that mock the CLI via TK_MCP_CLAUDE_BIN
+# already run each scenario in a fresh `bash -c` subshell, so the cache
+# resets naturally between scenarios. If a future test mutates
+# TK_MCP_CLAUDE_BIN inside a single shell, it must `unset _MCP_LIST_CACHED
+# _MCP_LIST_CACHE_OUT` to invalidate.
+_mcp_list_cache_init() {
+    [[ -n "${_MCP_LIST_CACHED:-}" ]] && return 0
+    local claude_bin="${TK_MCP_CLAUDE_BIN:-}"
+    if [[ -z "$claude_bin" ]] && command -v claude >/dev/null 2>&1; then
+        claude_bin="claude"
+    fi
+    if [[ -z "$claude_bin" ]]; then
+        _MCP_LIST_CACHED="__no_cli__"
+        _MCP_LIST_CACHE_OUT=""
+        return 0
+    fi
+    if _MCP_LIST_CACHE_OUT=$("$claude_bin" mcp list 2>/dev/null); then
+        _MCP_LIST_CACHED="ok"
+    else
+        _MCP_LIST_CACHED="__list_failed__"
+        _MCP_LIST_CACHE_OUT=""
+    fi
+    return 0
+}
+
 # is_mcp_installed <name> — three-state return (MCP-02 fail-soft contract):
 #   0 = MCP is installed (found in `claude mcp list` output)
 #   1 = MCP is NOT installed (CLI present but name absent)
 #   2 = claude CLI absent OR `claude mcp list` failed (unknown state)
 # When CLI absent, prints exactly ONE warning to stderr (global guard _MCP_CLI_WARNED).
+# Backed by _mcp_list_cache_init to keep wall-time linear per shell, not per probe.
 is_mcp_installed() {
     local name="${1:-}"
     if [[ -z "$name" ]]; then
         echo -e "${RED}✗${NC} is_mcp_installed: missing argument" >&2
         return 1
     fi
-    local claude_bin="${TK_MCP_CLAUDE_BIN:-}"
-    if [[ -z "$claude_bin" ]]; then
-        if command -v claude >/dev/null 2>&1; then
-            claude_bin="claude"
-        fi
-    fi
-    if [[ -z "$claude_bin" ]]; then
-        # MCP-02 fail-soft: warn once (global guard) then return 2 — caller distinguishes from 1.
-        if [[ -z "${_MCP_CLI_WARNED:-}" ]]; then
-            echo -e "${YELLOW}!${NC} claude CLI not found — MCP detection unavailable" >&2
-            _MCP_CLI_WARNED=1
-        fi
-        return 2
-    fi
-    local list_out
-    if ! list_out=$("$claude_bin" mcp list 2>/dev/null); then
-        # CLI present but list failed (e.g., not authenticated). Treat as state 2 (unknown).
-        return 2
-    fi
+    _mcp_list_cache_init
+    case "${_MCP_LIST_CACHED:-}" in
+        __no_cli__)
+            # MCP-02 fail-soft: warn once (global guard) then return 2.
+            if [[ -z "${_MCP_CLI_WARNED:-}" ]]; then
+                echo -e "${YELLOW}!${NC} claude CLI not found — MCP detection unavailable" >&2
+                _MCP_CLI_WARNED=1
+            fi
+            return 2
+            ;;
+        __list_failed__)
+            return 2
+            ;;
+    esac
     # Match a row that begins with "<name>" followed by whitespace OR end-of-line.
     # `claude mcp list` rows look like "context7    sse    https://..."
     # Audit M-MCP: $name was interpolated into the regex without escaping. An
@@ -150,7 +185,7 @@ is_mcp_installed() {
     # match unrelated rows. Escape regex metacharacters before substitution.
     local _name_escaped
     _name_escaped=$(printf '%s' "$name" | sed -e 's/[][\\.^$*+?(){}|]/\\&/g')
-    if printf '%s\n' "$list_out" | grep -E "^${_name_escaped}([[:space:]]|\$)" >/dev/null 2>&1; then
+    if printf '%s\n' "${_MCP_LIST_CACHE_OUT:-}" | grep -E "^${_name_escaped}([[:space:]]|\$)" >/dev/null 2>&1; then
         return 0
     fi
     return 1

@@ -1098,6 +1098,13 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
 
     # ── MCP sub-picker (if needed) ──
     if [[ "$_need_mcp_pre" -eq 1 ]]; then
+        # Visible feedback BEFORE the slow steps (download + claude mcp list)
+        # so the user knows the install isn't dead. Without this banner the
+        # screen sat on the post-Submit main-TUI render for ~40 s while
+        # mcp_status_array probed 9 MCPs (now batched via _mcp_list_cache_init,
+        # ~4 s) — long enough to look like a hang to most users.
+        echo ""
+        echo -e "${BLUE}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
         _source_lib mcp
         if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
             MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
@@ -1146,6 +1153,11 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
 
     # ── Skills sub-picker (if needed) ──
     if [[ "$_need_skills_pre" -eq 1 ]]; then
+        # Skills detection is a directory probe — no slow CLI call — but the
+        # _source_lib step still downloads under curl|bash, so a one-line
+        # banner keeps the user oriented through the brief gap.
+        echo ""
+        echo -e "${BLUE}Loading skills catalog...${NC}"
         _source_lib skills
         _save_main_tui_state
         skills_status_array
