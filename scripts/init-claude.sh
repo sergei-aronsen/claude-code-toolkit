@@ -104,6 +104,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 YES="${YES:-false}"
+# install.sh sets TK_TUI_CONFIRMED=1 after the user clicks Submit on the main
+# TUI — that's the same consent semantics as --yes and unblocks the legacy
+# interactive prompts (which otherwise leak ↑/↓ as `^[[A`/`^[[B` bytes).
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
+    YES=true
+fi
 if [[ "$YES" == "true" ]]; then
     # --yes implies --no-council (Council install belongs to install.sh's
     # dispatch_council step, not the toolkit init).
@@ -650,8 +656,13 @@ download_files() {
         full_dest="$CLAUDE_DIR/$path"
         mkdir -p "$(dirname "$full_dest")"
         case "$bucket" in
-            scripts|libs)
-                # Repo-root paths — single attempt, no template fallback.
+            scripts|libs|commands)
+                # Repo-root paths — commands/, scripts/, lib/ all live at repo
+                # root (NOT under templates/). Single attempt, no template
+                # fallback. Without this, ~30 commands like commands/api.md
+                # showed "download failed" because download_files tried
+                # templates/$FW/commands/api.md → templates/base/commands/api.md
+                # → both ENOENT (user report 2026-05-01).
                 if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$path" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
                     echo -e "  ${GREEN}OK${NC} $path"
                     INSTALLED_PATHS+=("$full_dest")
