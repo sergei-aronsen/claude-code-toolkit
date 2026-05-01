@@ -81,6 +81,15 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --no-banner) NO_BANNER=1; shift ;;
+        --yes|-y)
+            # Auto-pick: detected framework + recommended mode, skip Council
+            # prompt. Used when called from install.sh after the user already
+            # gave consent via the main TUI Submit row — surfacing legacy
+            # interactive prompts after the TUI screen-clear leaks raw arrow-
+            # key bytes when users instinctively reach for ↑/↓.
+            YES=true
+            shift
+            ;;
         laravel|nextjs|nodejs|python|go|rails|base)
             FRAMEWORK="$1"
             shift
@@ -88,11 +97,18 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner"
+            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
             exit 1
             ;;
     esac
 done
+
+YES="${YES:-false}"
+if [[ "$YES" == "true" ]]; then
+    # --yes implies --no-council (Council install belongs to install.sh's
+    # dispatch_council step, not the toolkit init).
+    SKIP_COUNCIL=true
+fi
 
 SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
 MODE="${MODE:-}"
@@ -426,19 +442,22 @@ warn_mode_mismatch() {
     fi
 }
 
-# Select framework: CLI arg > interactive menu > auto-detect fallback
+# Select framework: CLI arg > --yes auto-detect > interactive menu > auto-detect fallback.
 if [[ -z "$FRAMEWORK" ]]; then
-    if [[ -e /dev/tty ]]; then
+    if [[ "$YES" == "true" ]]; then
+        FRAMEWORK=$(detect_framework)
+    elif [[ -e /dev/tty ]]; then
         select_framework
     else
         FRAMEWORK=$(detect_framework)
     fi
 fi
 
-# Mode selection: --mode flag wins; otherwise interactive prompt; under curl|bash
-# without /dev/tty, recommend_mode is used (the read inside select_mode fails -> default).
+# Mode selection: --mode > --yes recommend > interactive > recommend fallback.
 if [[ -z "$MODE" ]]; then
-    if [[ -e /dev/tty ]] && [[ "$DRY_RUN" != "true" ]]; then
+    if [[ "$YES" == "true" ]]; then
+        MODE=$(recommend_mode)
+    elif [[ -e /dev/tty ]] && [[ "$DRY_RUN" != "true" ]]; then
         select_mode
     else
         MODE=$(recommend_mode)
