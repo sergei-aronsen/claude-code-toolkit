@@ -638,6 +638,23 @@ fi
 TUI_LABELS=("superpowers" "get-shit-done" "toolkit" "security" "rtk" "statusline")
 # shellcheck disable=SC2034  # TUI_GROUPS consumed by tui_checklist in tui.sh (D-01)
 TUI_GROUPS=("Bootstrap"   "Bootstrap"      "Core"    "Optional" "Optional" "Optional")
+# Per-section dim subtitle. Parallel pair (Bash 3.2 has no associative arrays).
+# TUI_GROUP_NAMES[k] is the section name; TUI_GROUP_DESCS[k] is the matching
+# subtitle rendered in dim under the section header.
+# shellcheck disable=SC2034
+TUI_GROUP_NAMES=(
+    "Bootstrap"
+    "Core"
+    "Optional"
+    "Bridges"
+)
+# shellcheck disable=SC2034
+TUI_GROUP_DESCS=(
+    "Foundation plugins this toolkit complements (skills + workflow). Skip if you don't want them."
+    "The toolkit itself — commands, agents, prompts, skills, rules for the project. Required."
+    "Add-ons: security rules, token saver, statusline, multi-AI council. Pick what you want."
+    "Sync project CLAUDE.md → GEMINI.md / AGENTS.md so other AI CLIs read the same context."
+)
 TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_SEC" "$IS_RTK" "$IS_SL")
 # TUI_REQUIRED: 1 = mandatory (always pre-checked, immutable, dim-rendered).
 # Toolkit is the whole reason install.sh exists — deselecting it would skip the

@@ -4,7 +4,10 @@
 # Source this file. Do NOT execute it directly.
 # Exposes: tui_checklist, tui_confirm_prompt
 # Globals (read):  TK_TUI_TTY_SRC, NO_COLOR, TERM, TUI_LABELS, TUI_GROUPS,
-#                  TUI_INSTALLED, TUI_DESCS, TUI_REQUIRED (optional)
+#                  TUI_INSTALLED, TUI_DESCS, TUI_REQUIRED (optional),
+#                  TUI_GROUP_NAMES + TUI_GROUP_DESCS (optional, parallel pair
+#                  for per-section dim subtitles — Bash 3.2 compat substitute
+#                  for an associative array)
 # Globals (write): TUI_RESULTS[], _TUI_COLOR, _TUI_SAVED_STTY (internal)
 #
 # TUI_REQUIRED[i]=1 marks a row as mandatory: pre-checked, immutable
@@ -128,11 +131,34 @@ _tui_render() {
         local row_num=$((i + 1))
 
         # Section header on group change — extra blank line above for clearer separation.
+        # Optional dim subtitle from TUI_GROUP_DESCS (associative-style: matched by name
+        # via parallel-array lookup so we stay Bash 3.2 compatible — no `declare -A`).
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
                 printf '\n  \e[1m%s\e[0m\n' "$grp" >> "$tty_target" 2>/dev/null || true
             else
                 printf '\n  %s\n' "$grp" >> "$tty_target" 2>/dev/null || true
+            fi
+            # Lookup group description: TUI_GROUP_NAMES[k] == "$grp" → TUI_GROUP_DESCS[k].
+            # `${TUI_GROUP_NAMES[@]+...}` expands to empty when the array is unset/empty,
+            # so the loop is a no-op when callers omit the optional pair (Bash 3.2 has no
+            # `${#var[@]:-0}` syntax — that form is rejected as invalid substitution).
+            local _grp_desc="" _grp_count=0 _gk
+            if [[ -n "${TUI_GROUP_NAMES[@]+x}" ]]; then
+                _grp_count="${#TUI_GROUP_NAMES[@]}"
+            fi
+            for (( _gk=0; _gk<_grp_count; _gk++ )); do
+                if [[ "${TUI_GROUP_NAMES[$_gk]:-}" == "$grp" ]]; then
+                    _grp_desc="${TUI_GROUP_DESCS[$_gk]:-}"
+                    break
+                fi
+            done
+            if [[ -n "$_grp_desc" ]]; then
+                if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
+                    printf '  \e[2m%s\e[0m\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                else
+                    printf '  %s\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                fi
             fi
             prev_group="$grp"
         fi
