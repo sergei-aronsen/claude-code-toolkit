@@ -114,12 +114,23 @@ _tui_read_key() {
 _tui_render() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
 
-    # Move cursor to top-left only (no \e[J full-screen erase). Full-screen
-    # erase + per-keystroke redraw produced visible flicker on macOS Terminal
-    # (user report 2026-05-01). Each line below appends \e[K (erase-to-EOL)
-    # so stale content from longer prior frames is overwritten in place
-    # without a flash of blank screen between frames.
-    printf '\e[H' >> "$tty_target" 2>/dev/null || true
+    # Atomic frame composition: build the entire frame in a single string,
+    # then write it to the tty in ONE printf. Per-line printfs (the previous
+    # design) caused two problems:
+    #   1. Visible flicker on macOS Terminal — each printf was a separate
+    #      tty syscall, terminal repainted between them.
+    #   2. Bleed-through of prior content (user report 2026-05-01: leftover
+    #      "stripe-best-practices installed ✓" line peeking through the gap
+    #      before the footer in the main components TUI). Per-line erase-to-
+    #      EOL (\e[K) only cleared lines we wrote on; lines we *skipped over*
+    #      with \n retained their prior content from a taller previous frame
+    #      or from non-TUI output that happened to land in the viewport.
+    # Single-write means the terminal sees one screen update — no flicker —
+    # AND we start the frame with \e[H\e[J (home + clear-to-end-of-screen)
+    # again, which is safe under atomic write because the user never sees
+    # the cleared intermediate state.
+    local _frame=""
+    _frame+=$'\e[H\e[J'
 
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
@@ -139,9 +150,9 @@ _tui_render() {
         # via parallel-array lookup so we stay Bash 3.2 compatible — no `declare -A`).
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '\e[K\n  \e[1m%s\e[0m\e[K\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'\n  \e[1m'"$grp"$'\e[0m\n'
             else
-                printf '\e[K\n  %s\e[K\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'\n  '"$grp"$'\n'
             fi
             # Lookup group description: TUI_GROUP_NAMES[k] == "$grp" → TUI_GROUP_DESCS[k].
             # `${TUI_GROUP_NAMES[@]+...}` expands to empty when the array is unset/empty,
@@ -161,9 +172,9 @@ _tui_render() {
             done
             if [[ -n "$_grp_desc" ]]; then
                 if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                    printf '  \e[2m%s\e[0m\e[K\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    _frame+=$'  \e[2m'"$_grp_desc"$'\e[0m\n'
                 else
-                    printf '  %s\e[K\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    _frame+="  $_grp_desc"$'\n'
                 fi
             fi
             prev_group="$grp"
@@ -188,17 +199,17 @@ _tui_render() {
         # Numbered prefix + label row. Immutable rows (installed/required) render dim
         # so they read as "disabled" — user knows space won't toggle them.
         if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
-            printf '%s\e[2m%d. %s %s\e[0m\e[K\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            _frame+="$arrow"$'\e[2m'"${row_num}. ${box} ${label}"$'\e[0m\n'
         else
-            printf '%s%d. %s %s\e[K\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            _frame+="${arrow}${row_num}. ${box} ${label}"$'\n'
         fi
 
         # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
         if [[ -n "$desc" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '       \e[2m%s\e[0m\e[K\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'       \e[2m'"$desc"$'\e[0m\n'
             else
-                printf '       %s\e[K\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                _frame+="       $desc"$'\n'
             fi
         fi
     done
@@ -213,29 +224,22 @@ _tui_render() {
         submit_arrow="${TK_TUI_ARROW:-▶ }"
     fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\e[K\n%s\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\e[K\n' \
-            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n'"$submit_arrow"$'\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\n'
     else
-        printf '\e[K\n%s[ Install selected ]  ← press Enter\e[K\n' \
-            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n'"${submit_arrow}[ Install selected ]  ← press Enter"$'\n'
     fi
 
     # Footer hint. Esc detection is unreliable on some macOS terminal configs
     # (Send +Esc / Esc-as-Meta), so the public hint advertises Ctrl+C — Esc is
     # still wired in tui_checklist's case match for terminals where it does work.
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n  \e[2m↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\e[0m\e[K\n' \
-            >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\e[0m\n'
     else
-        printf '\n  ↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\e[K\n' \
-            >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install · Ctrl+C abort\n'
     fi
 
-    # Erase any leftover lines from a prior taller frame (e.g. when a section
-    # collapses or when this frame has fewer rows than the last). Without this
-    # a dropped row would leave stale text below the footer until the next
-    # full-screen scroll.
-    printf '\e[J' >> "$tty_target" 2>/dev/null || true
+    # Single atomic write — terminal renders one frame, no flicker, no bleed.
+    printf '%s' "$_frame" >> "$tty_target" 2>/dev/null || true
 }
 
 # tui_checklist — render the checklist menu and capture user selection.

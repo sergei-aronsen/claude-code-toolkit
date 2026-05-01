@@ -451,6 +451,24 @@ mcp_wizard_run() {
     local exported_env=()
     if [[ "$oauth" -eq 1 ]]; then
         echo "OAuth flow handled by claude mcp add — follow CLI prompts."
+    elif [[ -n "$env_keys_csv" && "${TK_MCP_DEFER_SECRETS:-0}" == "1" ]]; then
+        # Defer mode (set by install.sh during dispatch). Don't block the
+        # install on interactive secret prompts — user reported they "never
+        # finish the install" if it hangs on key entry mid-flow (2026-05-01).
+        # Skip `claude mcp add` for this server, print a clear follow-up
+        # command, and tell the parent we deferred so it can summarize.
+        local _deferred_keys="${env_keys_csv//;/, }"
+        echo "${name} deferred — needs: ${_deferred_keys}"
+        echo "  finish later: ${claude_bin} mcp add ${install_args[*]}"
+        # Append to a deferred-queue file the parent reads to write a
+        # consolidated post-install note. TK_MCP_DEFERRED_QUEUE is the
+        # path; install.sh sets it next to mcp-catalog.json.
+        if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
+            printf '%s\t%s\t%s\n' "$name" "$_deferred_keys" "${install_args[*]}" \
+                >> "$TK_MCP_DEFERRED_QUEUE" 2>/dev/null || true
+        fi
+        # rc=3 = deferred-secrets (distinct from rc=2 = claude CLI absent).
+        return 3
     elif [[ -n "$env_keys_csv" ]]; then
         local IFS_SAVED2="$IFS"
         IFS=';'

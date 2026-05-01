@@ -390,7 +390,7 @@ select_framework() {
     local detected
     detected=$(detect_framework)
 
-    echo -e "${BLUE}Select your stack:${NC}"
+    echo -e "${CYAN}Select your stack:${NC}"
     echo -e "  ${GREEN}1)${NC} Auto-detect (Recommended) — detected: ${GREEN}$detected${NC}"
     echo -e "  2) Laravel"
     echo -e "  3) Ruby on Rails"
@@ -427,7 +427,7 @@ select_framework() {
 select_mode() {
     local recommended
     recommended=$(recommend_mode)
-    echo -e "${BLUE}Detected plugins:${NC}"
+    echo -e "${CYAN}Detected plugins:${NC}"
     if [[ "$HAS_SP" == "true" ]]; then
         echo -e "  ${GREEN}OK${NC} superpowers (${SP_VERSION:-unknown})"
     else
@@ -488,9 +488,9 @@ else
     warn_mode_mismatch
 fi
 
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Claude Code Toolkit — Initialization     ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║   Claude Code Toolkit — Initialization     ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "📁 Framework detected: ${GREEN}$FRAMEWORK${NC}"
 echo -e "📂 Target directory: ${GREEN}$CLAUDE_DIR${NC}"
@@ -556,7 +556,7 @@ fi
 
 # Create directory structure
 create_structure() {
-    echo -e "${BLUE}📁 Creating directory structure...${NC}"
+    echo -e "${CYAN}📁 Creating directory structure...${NC}"
 
     local dirs=(
         "$CLAUDE_DIR"
@@ -619,7 +619,7 @@ download_extras() {
 # When --dry-run, prints grouped [INSTALL]/[SKIP] output and exits before any write.
 download_files() {
     echo ""
-    echo -e "${BLUE}📥 Downloading files...${NC}"
+    echo -e "${CYAN}📥 Downloading files...${NC}"
 
     # Compute skip-list (returns JSON array of paths to SKIP)
     SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
@@ -718,7 +718,7 @@ download_files() {
 
     # Download framework-specific extras (CLAUDE.md, settings.json, cheatsheets, experts)
     echo ""
-    echo -e "${BLUE}📥 Framework extras...${NC}"
+    echo -e "${CYAN}📥 Framework extras...${NC}"
     download_extras
 
     # Persist install state (state.sh)
@@ -735,7 +735,7 @@ download_files() {
 # Create .gitignore
 create_gitignore() {
     echo ""
-    echo -e "${BLUE}📝 Creating .gitignore...${NC}"
+    echo -e "${CYAN}📝 Creating .gitignore...${NC}"
 
     local gitignore="$CLAUDE_DIR/.gitignore"
 
@@ -757,7 +757,7 @@ GITIGNORE
 # Create initial scratchpad
 create_scratchpad() {
     echo ""
-    echo -e "${BLUE}📋 Creating scratchpad template...${NC}"
+    echo -e "${CYAN}📋 Creating scratchpad template...${NC}"
 
     local scratchpad="$CLAUDE_DIR/scratchpad/current-task.md"
 
@@ -794,7 +794,7 @@ create_lessons_learned() {
     fi
 
     echo ""
-    echo -e "${BLUE}📝 Creating lessons-learned seed file...${NC}"
+    echo -e "${CYAN}📝 Creating lessons-learned seed file...${NC}"
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $lessons_file"
@@ -820,7 +820,7 @@ create_audit_exceptions() {
     fi
 
     echo ""
-    echo -e "${BLUE}📝 Creating audit-exceptions seed file...${NC}"
+    echo -e "${CYAN}📝 Creating audit-exceptions seed file...${NC}"
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $exceptions_file"
@@ -868,7 +868,7 @@ recommend_security() {
 # Show rate limit statusline recommendation
 recommend_statusline() {
     echo ""
-    echo -e "${BLUE}📊 Rate Limit Statusline (optional):${NC}"
+    echo -e "${CYAN}📊 Rate Limit Statusline (optional):${NC}"
     echo -e "  See session/weekly usage in the status bar."
     echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-statusline.sh)${NC}"
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
@@ -880,10 +880,10 @@ setup_council() {
     local commands_dir="$HOME/.claude/commands"
 
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   Supreme Council Setup                    ║${NC}"
-    echo -e "${BLUE}║   Multi-AI Review (Gemini + ChatGPT)       ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║   Supreme Council Setup                    ║${NC}"
+    echo -e "${CYAN}║   Multi-AI Review (Gemini + ChatGPT)       ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
     echo ""
 
     # Check Python
@@ -911,7 +911,7 @@ setup_council() {
     fi
     rm -f "$lib_cli_tmp"
 
-    echo -e "  ${BLUE}Provider CLI availability:${NC}"
+    echo -e "  ${CYAN}Provider CLI availability:${NC}"
     recommend_clis
     echo ""
 
@@ -1054,9 +1054,9 @@ setup_council() {
     # invisible — users thought the install hung. Add a horizontal rule + blank
     # lines to clearly separate the spam from the actionable prompt.
     echo ""
-    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
-    echo -e "${BLUE}  Supreme Council — interactive configuration${NC}"
-    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}─────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}  Supreme Council — interactive configuration${NC}"
+    echo -e "${CYAN}─────────────────────────────────────────────${NC}"
     echo ""
     local configure
     if ! read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty 2>/dev/null; then
@@ -1108,7 +1108,7 @@ CONFIGEOF
 
     # Gemini setup
     echo ""
-    echo -e "  ${BLUE}Gemini configuration:${NC}"
+    echo -e "  ${CYAN}Gemini configuration:${NC}"
     echo -e "    ${GREEN}1)${NC} Gemini CLI — free with Google subscription (recommended)"
     echo -e "    ${YELLOW}2)${NC} Gemini API — requires API key from AI Studio"
     echo ""
@@ -1134,7 +1134,7 @@ CONFIGEOF
             fi
         fi
     else
-        echo -e "    ${BLUE}→${NC} Gemini CLI selected"
+        echo -e "    ${CYAN}→${NC} Gemini CLI selected"
         if ! command -v gemini &>/dev/null; then
             echo -e "    ${YELLOW}⚠${NC} Gemini CLI not found. Install:"
             echo -e "      npm install -g @google/gemini-cli"
@@ -1146,7 +1146,7 @@ CONFIGEOF
 
     # OpenAI setup (Phase 24 SP5 — adds Codex CLI option)
     echo ""
-    echo -e "  ${BLUE}OpenAI (ChatGPT) configuration:${NC}"
+    echo -e "  ${CYAN}OpenAI (ChatGPT) configuration:${NC}"
     echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
     echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
     echo ""
@@ -1188,7 +1188,7 @@ CONFIGEOF
 
     # OpenRouter fallback (optional)
     echo ""
-    echo -e "  ${BLUE}OpenRouter free-tier fallback (optional):${NC}"
+    echo -e "  ${CYAN}OpenRouter free-tier fallback (optional):${NC}"
     local openrouter_key=""
     if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
         openrouter_key="$OPENROUTER_API_KEY"
@@ -1337,8 +1337,8 @@ main() {
         fi
         echo ""
         echo -e "Next steps:"
-        echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
-        echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
+        echo -e "  1. Review and customize ${CYAN}$CLAUDE_DIR/CLAUDE.md${NC}"
+        echo -e "  2. Commit the ${CYAN}$CLAUDE_DIR${NC} directory"
         echo -e ""
         echo -e "Installed:"
         echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
@@ -1359,7 +1359,7 @@ main() {
         fi
 
         echo ""
-        echo -e "${BLUE}🔍 Verify installation:${NC}"
+        echo -e "${CYAN}🔍 Verify installation:${NC}"
         echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
         echo ""
         echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"

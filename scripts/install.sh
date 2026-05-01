@@ -308,7 +308,7 @@ if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         echo ""
     else
         echo ""
-        echo -e "${BLUE}i${NC} --skills-only mode: skills install to ~/.claude/plugins/tk-skills/"
+        echo -e "${CYAN}i${NC} --skills-only mode: skills install to ~/.claude/plugins/tk-skills/"
         echo ""
     fi
 fi
@@ -404,8 +404,19 @@ if [[ "$MCPS" -eq 1 ]]; then
     # ─────────────────────────────────────────────
     # MCP dispatch loop (mirrors Phase 24 D-08 continue-on-error pattern).
     # ─────────────────────────────────────────────
+    # Defer interactive secret prompts during install — user reported that
+    # mid-install API-key prompts cause them to "never finish" the run
+    # (2026-05-01). MCPs requiring env keys are skipped here and queued in
+    # TK_MCP_DEFERRED_QUEUE for the post-install summary, which prints
+    # exact `claude mcp add` commands to finish setup later.
+    export TK_MCP_DEFER_SECRETS="${TK_MCP_DEFER_SECRETS:-1}"
+    if [[ -z "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
+        TK_MCP_DEFERRED_QUEUE=$(mktemp "${TMPDIR:-/tmp}/tk-mcp-deferred.XXXXXX") || TK_MCP_DEFERRED_QUEUE=""
+        [[ -n "$TK_MCP_DEFERRED_QUEUE" ]] && CLEANUP_PATHS+=("$TK_MCP_DEFERRED_QUEUE")
+        export TK_MCP_DEFERRED_QUEUE
+    fi
     echo ""
-    echo -e "${BLUE}Installing selected MCP(s)...${NC}"
+    echo -e "${CYAN}Installing selected MCP(s)...${NC}"
     echo ""
     INSTALLED_COUNT=0
     SKIPPED_COUNT=0
@@ -460,6 +471,11 @@ if [[ "$MCPS" -eq 1 ]]; then
                 SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
+            3)
+                COMPONENT_STATUS+=("deferred: needs secrets")
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                COMPONENT_STDERR_TAIL+=("")
+                ;;
             *)
                 COMPONENT_STATUS+=("failed (exit $local_rc)")
                 FAILED_COUNT=$((FAILED_COUNT + 1))
@@ -483,7 +499,7 @@ if [[ "$MCPS" -eq 1 ]]; then
 
     # Print MCP install summary.
     echo ""
-    echo -e "${BLUE}MCP install summary:${NC}"
+    echo -e "${CYAN}MCP install summary:${NC}"
     echo ""
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
@@ -503,6 +519,23 @@ if [[ "$MCPS" -eq 1 ]]; then
     echo ""
     printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+
+    # Deferred-secrets follow-up block. Read the queue file populated by
+    # mcp_wizard_run when TK_MCP_DEFER_SECRETS=1 and emit a finish-later
+    # block per server. The parent install.sh's consolidated finale also
+    # appends this to POST_INSTALL.md so the instructions persist.
+    if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
+        echo ""
+        echo -e "${YELLOW}MCPs requiring secrets — finish setup later:${NC}"
+        while IFS=$'\t' read -r d_name d_keys d_args; do
+            [[ -z "$d_name" ]] && continue
+            echo ""
+            echo "  ${d_name} — needs: ${d_keys}"
+            echo "    1. Add the value(s) to ~/.claude/mcp-config.env"
+            echo "    2. Then run: claude mcp add ${d_args}"
+        done < "$TK_MCP_DEFERRED_QUEUE"
+    fi
+
     if [[ "${NO_BANNER:-0}" != "1" ]]; then
         echo ""
         echo "To remove an MCP: claude mcp remove <name>"
@@ -589,7 +622,7 @@ if [[ "$SKILLS" -eq 1 ]]; then
     # Skills dispatch loop (mirrors Phase 25 D-08 continue-on-error pattern).
     # ─────────────────────────────────────────────
     echo ""
-    echo -e "${BLUE}Installing selected skill(s)...${NC}"
+    echo -e "${CYAN}Installing selected skill(s)...${NC}"
     echo ""
     INSTALLED_COUNT=0
     SKIPPED_COUNT=0
@@ -668,7 +701,7 @@ if [[ "$SKILLS" -eq 1 ]]; then
 
     # Print skills install summary.
     echo ""
-    echo -e "${BLUE}Skills install summary:${NC}"
+    echo -e "${CYAN}Skills install summary:${NC}"
     echo ""
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
@@ -1202,7 +1235,7 @@ fi
 # Per-component status accumulated in parallel arrays.
 # ─────────────────────────────────────────────────
 echo ""
-echo -e "${BLUE}Installing selected components...${NC}"
+echo -e "${CYAN}Installing selected components...${NC}"
 echo ""
 
 INSTALLED_COUNT=0
@@ -1385,7 +1418,7 @@ done
 # Post-install summary (D-27, D-28).
 # ─────────────────────────────────────────────────
 echo ""
-echo -e "${BLUE}Install summary:${NC}"
+echo -e "${CYAN}Install summary:${NC}"
 echo ""
 _sum_count=${#TUI_LABELS[@]}
 for ((i=0; i<_sum_count; i++)); do

@@ -195,7 +195,7 @@ LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
 # HELPER FUNCTIONS
 # ============================================================================
 
-log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
+log_info() { echo -e "${CYAN}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
@@ -725,9 +725,9 @@ sync_bridges() {
 # ============================================================================
 
 if [[ $NO_BANNER -eq 0 ]]; then
-    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║         Claude Code Toolkit — Smart Update                 ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║         Claude Code Toolkit — Smart Update                 ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 fi
 
@@ -1352,7 +1352,7 @@ sync_bridges
 EXCEPTIONS_FILE="$CLAUDE_DIR/rules/audit-exceptions.md"
 if [[ ! -f "$EXCEPTIONS_FILE" ]]; then
     if [[ $DRY_RUN -eq 1 ]]; then
-        echo -e "${BLUE}Would seed:${NC} $EXCEPTIONS_FILE"
+        echo -e "${CYAN}Would seed:${NC} $EXCEPTIONS_FILE"
     else
         mkdir -p "$CLAUDE_DIR/rules"
         cat > "$EXCEPTIONS_FILE" << 'EXCEPTIONS'
