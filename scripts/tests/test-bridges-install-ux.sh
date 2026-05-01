@@ -14,7 +14,7 @@
 #   S10 bridge_install_prompts unit + TK_NO_BRIDGES=1: silent skip
 #   S11 bridge_install_prompts unit + BRIDGES_FORCE=gemini + FAIL_FAST=true (gemini absent): return 1
 #   S12 bridge_install_prompts unit + BRIDGES_FORCE=gemini (gemini absent, FAIL_FAST=false): return 0 (warn-and-continue)
-#   S13 BACKCOMPAT-01: re-run all 4 baselines (test-bootstrap=26, test-install-tui=51,
+#   S13 BACKCOMPAT-01: re-run all 4 baselines (test-bootstrap=26, test-install-tui=52,
 #       test-bridges-foundation=5, test-bridges-sync=25) — each must report unchanged PASS.
 #
 # Test seams:
@@ -253,7 +253,7 @@ assert_eq "0" "$rc" "S12.1 BRIDGES_FORCE absent CLI without FAIL_FAST returns 0 
 echo "=== S13: BACKCOMPAT-01 — all 4 baselines unchanged ==="
 for spec in \
     "test-bootstrap.sh:PASS=26 FAIL=0" \
-    "test-install-tui.sh:PASS=51 FAIL=0" \
+    "test-install-tui.sh:PASS=52 FAIL=0" \
     "test-bridges-foundation.sh:PASS=5 FAIL=0" \
     "test-bridges-sync.sh:PASS=25 FAIL=0"
 do

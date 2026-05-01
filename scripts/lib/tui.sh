@@ -4,8 +4,12 @@
 # Source this file. Do NOT execute it directly.
 # Exposes: tui_checklist, tui_confirm_prompt
 # Globals (read):  TK_TUI_TTY_SRC, NO_COLOR, TERM, TUI_LABELS, TUI_GROUPS,
-#                  TUI_INSTALLED, TUI_DESCS
+#                  TUI_INSTALLED, TUI_DESCS, TUI_REQUIRED (optional)
 # Globals (write): TUI_RESULTS[], _TUI_COLOR, _TUI_SAVED_STTY (internal)
+#
+# TUI_REQUIRED[i]=1 marks a row as mandatory: pre-checked, immutable
+# (space is no-op), rendered as `[required]`. Used for toolkit (the
+# whole reason the user is running install.sh).
 #
 # Bash 3.2 compatibility:
 #   - read -rsn1 + read -rsn2 two-pass arrow detection (no capital-N flag, which is 4.2+)
@@ -118,6 +122,7 @@ _tui_render() {
         local label="${TUI_LABELS[$i]:-}"
         local grp="${TUI_GROUPS[$i]:-}"
         local installed="${TUI_INSTALLED[$i]:-0}"
+        local required="${TUI_REQUIRED[$i]:-0}"
         local checked="${TUI_RESULTS[$i]:-0}"
         local desc="${TUI_DESCS[$i]:-}"
         local row_num=$((i + 1))
@@ -138,16 +143,23 @@ _tui_render() {
             arrow="${TK_TUI_ARROW:-▶ }"
         fi
 
-        # Checkbox glyph (D-17).
+        # Checkbox glyph (D-17). Priority: required > installed > checked > unchecked.
         local box="[ ]"
-        if [[ "$installed" -eq 1 ]]; then
+        if [[ "$required" -eq 1 ]]; then
+            box="[required]"
+        elif [[ "$installed" -eq 1 ]]; then
             box="[installed ✓]"
         elif [[ "$checked" -eq 1 ]]; then
             box="[x]"
         fi
 
-        # Numbered prefix + label row.
-        printf '%s%d. %s %s\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+        # Numbered prefix + label row. Immutable rows (installed/required) render dim
+        # so they read as "disabled" — user knows space won't toggle them.
+        if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
+            printf '%s\e[2m%d. %s %s\e[0m\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+        else
+            printf '%s%d. %s %s\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+        fi
 
         # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
         if [[ -n "$desc" ]]; then
@@ -159,12 +171,27 @@ _tui_render() {
         fi
     done
 
+    # Synthetic Submit row at FOCUS_IDX == total (one past last item). Always renderable;
+    # serves as a visible "button" the user can navigate to. Enter on any row confirms,
+    # but the explicit Submit row makes the action obvious without reading the footer.
+    local submit_arrow="  "
+    if [[ "${FOCUS_IDX:-0}" -eq "$total" ]]; then
+        submit_arrow="${TK_TUI_ARROW:-▶ }"
+    fi
+    if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
+        printf '\n%s\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\n' \
+            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+    else
+        printf '\n%s[ Install selected ]  ← press Enter\n' \
+            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+    fi
+
     # Updated footer text.
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n  \e[2mEnter to select · ↑↓ navigate · Space toggle · Esc cancel\e[0m\n' \
+        printf '\n  \e[2m↑↓ navigate · Space toggle · Enter install · Esc cancel\e[0m\n' \
             >> "$tty_target" 2>/dev/null || true
     else
-        printf '\n  Enter to select · ↑↓ navigate · Space toggle · Esc cancel\n' \
+        printf '\n  ↑↓ navigate · Space toggle · Enter install · Esc cancel\n' \
             >> "$tty_target" 2>/dev/null || true
     fi
 }
@@ -183,10 +210,13 @@ tui_checklist() {
     _tui_init_colors
 
     # Pre-selection per D-12: pre-check uninstalled items, leave installed unchecked.
+    # Required items always pre-checked (immutable, can't be deselected).
     TUI_RESULTS=()
     local i
     for (( i=0; i<total; i++ )); do
-        if [[ "${TUI_INSTALLED[$i]:-0}" -eq 1 ]]; then
+        if [[ "${TUI_REQUIRED[$i]:-0}" -eq 1 ]]; then
+            TUI_RESULTS[$i]=1
+        elif [[ "${TUI_INSTALLED[$i]:-0}" -eq 1 ]]; then
             TUI_RESULTS[$i]=0
         else
             TUI_RESULTS[$i]=1
@@ -227,14 +257,17 @@ tui_checklist() {
                 fi
                 ;;
             $'\e[B')
-                # Down
-                if [[ "$FOCUS_IDX" -lt $((total - 1)) ]]; then
+                # Down. FOCUS_IDX can extend to `total` (the synthetic Submit row).
+                if [[ "$FOCUS_IDX" -lt "$total" ]]; then
                     FOCUS_IDX=$((FOCUS_IDX + 1))
                 fi
                 ;;
             ' ')
-                # Space — toggle, but installed items are immutable (D-13).
-                if [[ "${TUI_INSTALLED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
+                # Space — toggle, but installed AND required items are immutable.
+                # Submit row (FOCUS_IDX == total) also no-op for space.
+                if [[ "$FOCUS_IDX" -lt "$total" ]] \
+                   && [[ "${TUI_INSTALLED[$FOCUS_IDX]:-0}" -ne 1 ]] \
+                   && [[ "${TUI_REQUIRED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
                     if [[ "${TUI_RESULTS[$FOCUS_IDX]:-0}" -eq 1 ]]; then
                         TUI_RESULTS[$FOCUS_IDX]=0
                     else
