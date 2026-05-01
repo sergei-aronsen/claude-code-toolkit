@@ -193,6 +193,11 @@ _source_lib dry-run-output
 _source_lib detect2
 _source_lib tui
 _source_lib dispatch
+# state MUST source BEFORE bridges — bridges.sh:46-53 has a sibling-source
+# fallback that relative-resolves state.sh from BASH_SOURCE; under curl|bash
+# that path becomes /tmp/state.sh which doesn't exist and aborts under set -e.
+# Mirrors commit 18a7039 (same class of bug fixed for init-claude.sh).
+_source_lib state
 _source_lib bridges
 
 # MCPS=1 path needs the MCP catalog + wizard library.
