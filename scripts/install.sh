@@ -213,6 +213,19 @@ _source_lib bridges
 # MCPS=1 path needs the MCP catalog + wizard library.
 if [[ "$MCPS" -eq 1 ]]; then
     _source_lib mcp
+    # Under curl|bash, mcp.sh sourced from /tmp/mcp-XXX resolves
+    # _mcp_default_catalog_path to /tmp/mcp-catalog.json which doesn't exist
+    # → "Failed to load MCP catalog" exit 1 (user report 2026-05-01). Download
+    # the catalog to a tmpfile and point TK_MCP_CATALOG_PATH at it.
+    if _is_curl_pipe; then
+        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+        CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
+        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
+            echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+            exit 1
+        fi
+        export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
+    fi
 fi
 
 # SKILLS=1 path needs the skills catalog + cp-R installer.

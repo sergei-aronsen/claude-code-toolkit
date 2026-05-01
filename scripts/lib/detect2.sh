@@ -69,23 +69,14 @@ is_gsd_installed() {
 }
 
 # DET-05: toolkit install state file (single source of truth).
-# init-claude.sh writes it project-local at $PWD/.claude/toolkit-install.json.
-# The probe used to check $HOME/.claude/toolkit-install.json — but install.sh
-# dispatches toolkit at PROJECT scope (init-claude.sh writes to $PWD/.claude),
-# so a user who `rm -rf .claude`'d their project would see "toolkit: skipped"
-# whenever an unrelated global file existed. Probe project-local first; the
-# global path is preserved as a soft fallback for legacy global installs.
+# init-claude.sh writes $PWD/.claude/toolkit-install.json — toolkit is
+# strictly project-scoped. Earlier versions checked $HOME/.claude as a soft
+# fallback, but that masked fresh project installs whenever any unrelated
+# global file existed (user report 2026-05-01: ran install.sh in a project
+# with empty/no .claude/, saw "toolkit: skipped" because ~/.claude/
+# toolkit-install.json existed from a prior run elsewhere). Probe local-only.
 is_toolkit_installed() {
-    if [[ -f "./.claude/toolkit-install.json" ]]; then
-        return 0
-    fi
-    # Legacy global install (~/.claude written by older init-claude.sh runs).
-    # Only honour it when PWD has no .claude directory at all — otherwise the
-    # local context is the source of truth and may be empty by user intent.
-    if [[ ! -d "./.claude" ]] && [[ -f "$HOME/.claude/toolkit-install.json" ]]; then
-        return 0
-    fi
-    return 1
+    [[ -f "./.claude/toolkit-install.json" ]]
 }
 
 # DET-02: cc-safety-net hook AND wired into pre-bash.sh OR settings.json.
