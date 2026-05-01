@@ -14,10 +14,10 @@
 
 ### CLI Installer Library (CLI)
 
-- [ ] **CLI-01**: `scripts/lib/cli-installer.sh` exposes `cli_detect <name>` (returns 0 if `command -v` succeeds, 1 otherwise) and `cli_install <name> <darwin_cmd> <linux_cmd>` (dispatches by `uname`, returns rc of underlying installer).
-- [ ] **CLI-02**: `cli_install` fails fast on Windows / unsupported `uname` with explicit error to stderr; never auto-elevates with `sudo`. If `brew` is absent on macOS, prints fallback instruction and returns non-zero (skipped, not aborted at top level).
-- [ ] **CLI-03**: `cli_install` uses continue-on-error semantics in the dispatch loop (mirroring Phase 25 D-08). Per-CLI stderr captured to `mktemp` for diagnostics; aggregate summary printed at end with `✓ installed` / `⊘ already present` / `✗ failed: <reason>` per row.
-- [ ] **CLI-04**: Post-install hints printed to stderr verbatim from catalog `cli.post_install_hint`. Toolkit never executes `<tool> login` automatically — users run it themselves.
+- [x] **CLI-01**: `scripts/lib/cli-installer.sh` exposes `cli_detect <name>` (returns 0 if `command -v` succeeds, 1 otherwise) and `cli_install <name> <darwin_cmd> <linux_cmd>` (dispatches by `uname`, returns rc of underlying installer).
+- [x] **CLI-02**: `cli_install` fails fast on Windows / unsupported `uname` with explicit error to stderr; never auto-elevates with `sudo`. If `brew` is absent on macOS, prints fallback instruction and returns non-zero (skipped, not aborted at top level).
+- [x] **CLI-03**: `cli_install` uses continue-on-error semantics in the dispatch loop (mirroring Phase 25 D-08). Per-CLI stderr captured to `mktemp` for diagnostics; aggregate summary printed at end with `✓ installed` / `⊘ already present` / `✗ failed: <reason>` per row.
+- [x] **CLI-04**: Post-install hints printed to stderr verbatim from catalog `cli.post_install_hint`. Toolkit never executes `<tool> login` automatically — users run it themselves.
 
 ### TUI Redesign (TUI)
 
@@ -124,10 +124,10 @@ Mapped by `gsd-roadmapper` 2026-05-02. All 36 v4.9 REQ-IDs assigned to exactly o
 | CAT-02 | Phase 32 | Pending |
 | CAT-03 | Phase 32 | Pending |
 | CAT-04 | Phase 32 | Pending |
-| CLI-01 | Phase 32 | Pending |
-| CLI-02 | Phase 32 | Pending |
-| CLI-03 | Phase 32 | Pending |
-| CLI-04 | Phase 32 | Pending |
+| CLI-01 | Phase 32 | Complete |
+| CLI-02 | Phase 32 | Complete |
+| CLI-03 | Phase 32 | Complete |
+| CLI-04 | Phase 32 | Complete |
 | TUI-01 | Phase 34 | Pending |
 | TUI-02 | Phase 34 | Pending |
 | TUI-03 | Phase 34 | Pending |

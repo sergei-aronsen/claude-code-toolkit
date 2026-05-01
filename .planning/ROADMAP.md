@@ -178,7 +178,7 @@
   5. Running `bash scripts/install.sh --mcps` in v4.9 prints `Note: --mcps is deprecated, use --integrations (alias preserved through v5.0)` to stderr but otherwise behaves byte-identically to `--integrations` (BACKCOMPAT-01 invariant preserved).
 **Plans**: 3 plans
 - [ ] 32-01-PLAN.md — Schema migration + Python validator + `--mcps`/`--integrations` alias (CAT-01..04)
-- [ ] 32-02-PLAN.md — `scripts/lib/cli-installer.sh` library: cli_detect, cli_install, cli_post_install_hint (CLI-01..04)
+- [x] 32-02-PLAN.md — `scripts/lib/cli-installer.sh` library: cli_detect, cli_install, cli_post_install_hint (CLI-01..04)
 - [ ] 32-03-PLAN.md — Hermetic smoke `test-integrations-foundation.sh` covering all 8 REQ-IDs at contract level
 **UI hint**: no
 
@@ -243,7 +243,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 32. Foundation — Schema Migration + CLI Installer Library | 0/3 | Not started | - |
+| 32. Foundation — Schema Migration + CLI Installer Library | 1/3 | In Progress|  |
 | 33. Catalog Population — 11 New Entries + Drop + Re-categorize | 0/4 | Not started | - |
 | 34. TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags | 0/3 | Not started | - |
 | 35. Distribution + Tests + Docs | 0/4 | Not started | - |

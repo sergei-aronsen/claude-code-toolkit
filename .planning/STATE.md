@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
+current_plan: 2
 status: executing
-last_updated: "2026-05-01T23:33:01.970Z"
-last_activity: 2026-05-01 -- Phase 32 execution started
+last_updated: "2026-05-02T00:00:00.000Z"
+last_activity: 2026-05-02 — Wave 1 complete (Plans 32-01 + 32-02 merged to main); ready for Wave 2 (32-03 smoke test)
 progress:
-  total_phases: 8
+  total_phases: 4
   completed_phases: 0
-  total_plans: 3
-  completed_plans: 0
-  percent: 0
+  total_plans: 14
+  completed_plans: 2
+  percent: 14
 ---
 
 # Project State
@@ -25,9 +26,10 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 ## Current Position
 
 Phase: 32 (foundation-schema-migration-cli-installer-library) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 32
-Last activity: 2026-05-01 -- Phase 32 execution started
+Plans done: 32-01 ✓ (CAT-01..04), 32-02 ✓ (CLI-01..04)
+Plan: 32-03 (Hermetic smoke test) — Wave 2, queued
+Status: Wave 1 complete (parallel worktrees merged); ready for Wave 2
+Last activity: 2026-05-02 — 32-01 + 32-02 cherry-picked to main
 
 ## Plan Count Estimate
 
@@ -129,9 +131,9 @@ Carry-overs available for next milestone scoping (unchanged from v4.8 close):
 
 ## Session Continuity
 
-Last session: 2026-05-02T00:00:00Z
+Last session: 2026-05-01T23:51:08.129Z
 Started: v4.9 Integrations Catalog milestone
-Resume file: `.planning/PROJECT.md` (Current Milestone section) + `.planning/ROADMAP.md` (Phase Details for 32-35)
+Resume file: None
 
 **Next steps:**
 
