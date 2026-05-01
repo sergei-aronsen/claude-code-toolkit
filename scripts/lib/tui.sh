@@ -318,9 +318,17 @@ tui_checklist() {
                     FOCUS_IDX="$total"
                 fi
                 ;;
-            $'\e')
-                # Bare Esc — cancel. _tui_read_key uses `read -rsn2 -t 1` so a
-                # bare ESC press returns "$'\e'" without the [A/[B suffix.
+            $'\e' | $'\e\e' | $'\e\e\e')
+                # Bare Esc (or double/triple Esc) — cancel.
+                # _tui_read_key uses `read -rsn2 -t 1` so a bare Esc press
+                # normally returns "$'\e'" without the [A/[B suffix. But on
+                # macOS Terminal.app + some iTerm2 configs (notably "Esc+ as
+                # Meta" / "Send +Esc"), the Esc key emits two or three bytes
+                # in quick succession (\e\e or \e\e\e) — fast enough that
+                # _tui_read_key's read-ahead window catches them before the
+                # 1-second timeout. Without the extra glob arms, those bytes
+                # fell through to the `*) ignore` branch and the user reported
+                # "Esc does nothing, only Ctrl-C cancels" (2026-05-01).
                 rc=1
                 break
                 ;;
