@@ -144,7 +144,9 @@ _tui_render() {
             # so the loop is a no-op when callers omit the optional pair (Bash 3.2 has no
             # `${#var[@]:-0}` syntax — that form is rejected as invalid substitution).
             local _grp_desc="" _grp_count=0 _gk
-            if [[ -n "${TUI_GROUP_NAMES[@]+x}" ]]; then
+            # SC2199: use [*]+x (string concat) — [@]+x triggers shellcheck and is
+            # semantically the same for the existence-check we want here.
+            if [[ -n "${TUI_GROUP_NAMES[*]+x}" ]]; then
                 _grp_count="${#TUI_GROUP_NAMES[@]}"
             fi
             for (( _gk=0; _gk<_grp_count; _gk++ )); do

@@ -647,6 +647,7 @@ TUI_GROUP_NAMES=(
     "Core"
     "Optional"
     "Bridges"
+    "Marketplace"
 )
 # shellcheck disable=SC2034
 TUI_GROUP_DESCS=(
@@ -654,6 +655,7 @@ TUI_GROUP_DESCS=(
     "The toolkit itself — commands, agents, prompts, skills, rules for the project. Required."
     "Add-ons: security rules, token saver, statusline, multi-AI council. Pick what you want."
     "Sync project CLAUDE.md → GEMINI.md / AGENTS.md so other AI CLIs read the same context."
+    "Curated catalogs — pick MCP servers and skills to install. Opens a sub-picker on Submit."
 )
 TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_SEC" "$IS_RTK" "$IS_SL")
 # TUI_REQUIRED: 1 = mandatory (always pre-checked, immutable, dim-rendered).
@@ -709,6 +711,23 @@ if [[ "$NO_BRIDGES" != "true" ]]; then
     fi
 fi
 
+# Marketplace pickers — entry rows for the MCP catalog and Skills catalog.
+# Checking these and pressing Submit re-invokes install.sh in --mcps / --skills
+# mode so the user sees the dedicated sub-TUI for that catalog. Embedding the
+# 9-MCP + 22-skill rows directly in the main TUI would push the row count past
+# 30 and crowd the screen — sub-pages are the cleaner UX.
+TUI_LABELS+=("mcp-servers")
+TUI_GROUPS+=("Marketplace")
+TUI_INSTALLED+=("0")
+TUI_REQUIRED+=("0")
+TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
+
+TUI_LABELS+=("skills")
+TUI_GROUPS+=("Marketplace")
+TUI_INSTALLED+=("0")
+TUI_REQUIRED+=("0")
+TUI_DESCS+=("Pick skills (22 in catalog: firecrawl, notebooklm, shadcn, ...). Sub-picker opens after main install.")
+
 # Dispatch name maps 1:1 to TK_DISPATCH_ORDER.
 
 # ─────────────────────────────────────────────────
@@ -732,8 +751,20 @@ _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
 if [[ "$YES" -eq 1 ]]; then
     # --yes default-set per D-12: all uninstalled in canonical order.
     # Already-installed: skip (D-13) — unless --force.
+    # Marketplace pickers (mcp-servers, skills) are EXCLUDED from --yes auto-select:
+    # they re-invoke install.sh in --mcps / --skills mode which itself uses an
+    # interactive sub-TUI. --yes implies non-interactive, so these would either
+    # spawn a TUI inside CI (fails) or default-install everything in the catalog
+    # (surprising). User can opt-in explicitly via `bash install.sh --mcps` or
+    # `bash install.sh --skills` after the main install.
     _tui_count=${#TUI_LABELS[@]}
     for ((i=0; i<_tui_count; i++)); do
+        case "${TUI_LABELS[$i]}" in
+            mcp-servers|skills)
+                TUI_RESULTS[$i]=0
+                continue
+                ;;
+        esac
         if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
             TUI_RESULTS[$i]=0
         else
@@ -910,6 +941,9 @@ unset _local_check_name
 _local_label_to_dispatch_name() {
     case "$1" in
         get-shit-done) echo "gsd" ;;
+        # Marketplace pickers — kebab-to-snake for the dispatch_ function name
+        # (Bash function names cannot contain hyphens).
+        mcp-servers)   echo "mcp_servers" ;;
         # Bridges keep their kebab-case label — the dispatch loop has a
         # dedicated bridge branch (case "$local_name" in gemini-bridge|
         # codex-bridge) that handles them without invoking dispatch_*.
@@ -948,6 +982,8 @@ for ((i=0; i<_disp_count; i++)); do
         council)     [[ -f "$HOME/.claude/council/brain.py" ]] && local_re_installed=1 || true ;;
         gemini-bridge) : ;;  # Bridges have no idempotency probe — always re-write (state SHA tracks drift).
         codex-bridge)  : ;;
+        mcp_servers) : ;;    # Marketplace pickers always run when checked — the sub-TUI handles its own idempotency.
+        skills)        : ;;
     esac
 
     if [[ $local_re_installed -eq 1 && "$FORCE" -ne 1 ]]; then
