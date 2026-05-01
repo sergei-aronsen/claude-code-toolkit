@@ -68,9 +68,24 @@ is_gsd_installed() {
     [[ "${HAS_GSD:-false}" == "true" ]]
 }
 
-# DET-05: toolkit install state file (single source of truth, written by init-claude.sh).
+# DET-05: toolkit install state file (single source of truth).
+# init-claude.sh writes it project-local at $PWD/.claude/toolkit-install.json.
+# The probe used to check $HOME/.claude/toolkit-install.json — but install.sh
+# dispatches toolkit at PROJECT scope (init-claude.sh writes to $PWD/.claude),
+# so a user who `rm -rf .claude`'d their project would see "toolkit: skipped"
+# whenever an unrelated global file existed. Probe project-local first; the
+# global path is preserved as a soft fallback for legacy global installs.
 is_toolkit_installed() {
-    [[ -f "$HOME/.claude/toolkit-install.json" ]]
+    if [[ -f "./.claude/toolkit-install.json" ]]; then
+        return 0
+    fi
+    # Legacy global install (~/.claude written by older init-claude.sh runs).
+    # Only honour it when PWD has no .claude directory at all — otherwise the
+    # local context is the source of truth and may be empty by user intent.
+    if [[ ! -d "./.claude" ]] && [[ -f "$HOME/.claude/toolkit-install.json" ]]; then
+        return 0
+    fi
+    return 1
 }
 
 # DET-02: cc-safety-net hook AND wired into pre-bash.sh OR settings.json.

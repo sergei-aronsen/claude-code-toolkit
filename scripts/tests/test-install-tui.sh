@@ -88,6 +88,7 @@ run_s1_detect() {
     SP=0; GSD=0; TK=0; SEC=0; RTK=0; SL=0
     HOME="$SANDBOX" PATH="$FAKE_BIN:/usr/bin:/bin" \
         bash -c "
+            cd '$SANDBOX' || exit 1
             source '$REPO_ROOT/scripts/lib/detect2.sh'
             is_superpowers_installed && echo SP=1 || echo SP=0
             is_gsd_installed         && echo GSD=1 || echo GSD=0
@@ -147,6 +148,7 @@ run_s2_detect() {
     TK=0; SEC=0; RTK=0; SL=0
     HOME="$SANDBOX" PATH="$FAKE_BIN:/usr/bin:/bin" \
         bash -c "
+            cd '$SANDBOX' || exit 1
             source '$REPO_ROOT/scripts/lib/detect2.sh'
             is_toolkit_installed     && echo TK=1 || echo TK=0
             is_security_installed    && echo SEC=1 || echo SEC=0
@@ -191,6 +193,7 @@ run_s3_yes() {
 
     RC=0
     OUTPUT=$(
+        cd "$SANDBOX" || exit 1
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TEST=1 \
@@ -232,6 +235,7 @@ run_s4_dry_run() {
 
     RC=0
     OUTPUT=$(
+        cd "$SANDBOX" || exit 1
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TEST=1 \
@@ -276,6 +280,7 @@ run_s5_force() {
 
     RC=0
     OUTPUT=$(
+        cd "$SANDBOX" || exit 1
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TEST=1 \
@@ -317,6 +322,7 @@ run_s6_fail_fast() {
 
     RC=0
     OUTPUT=$(
+        cd "$SANDBOX" || exit 1
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TEST=1 \
@@ -412,6 +418,7 @@ MOCK_EOF
 
     RC=0
     OUTPUT=$(
+        cd "$SANDBOX" || exit 1
         HOME="$SANDBOX" \
         PATH="$FAKE_BIN:/usr/bin:/bin" \
         TK_TEST=1 \

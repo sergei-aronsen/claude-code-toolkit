@@ -101,7 +101,19 @@ _dispatch_log_info()    { echo -e "${BLUE}i${NC} $1" >&2; }
 _dispatch_log_warning() { echo -e "${YELLOW}!${NC} $1" >&2; }
 
 # Curl-pipe vs local invocation detection (D-24, RESEARCH §4).
+# install.sh exports TK_CURL_PIPE=1 when it detected curl|bash mode at boot.
+# That env var is the authoritative signal — a lib sourced from /tmp/<lib>-XXX
+# sees its own BASH_SOURCE[0] as the tmpfile path (NOT /dev/fd/*), so the local
+# BASH_SOURCE/$0 heuristic returns false and the sibling fallback resolves to
+# "/tmp/../X" (ENOENT, exit 127). Honour TK_CURL_PIPE first; fall back to the
+# heuristic for callers that source dispatch.sh directly without install.sh.
 _dispatch_is_curl_pipe() {
+    if [[ "${TK_CURL_PIPE:-}" == "1" ]]; then
+        return 0
+    fi
+    if [[ "${TK_CURL_PIPE:-}" == "0" ]]; then
+        return 1
+    fi
     if [[ "${BASH_SOURCE[0]:-}" == /dev/fd/* || "${0:-}" == bash ]]; then
         return 0
     fi
