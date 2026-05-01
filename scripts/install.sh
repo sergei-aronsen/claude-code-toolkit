@@ -528,14 +528,15 @@ if [[ "$MCPS" -eq 1 ]]; then
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
     # Follow-up block for MCPs registered without env vars. The servers are
-    # already in `claude mcp list` (registered with empty env binding); they
-    # just need API keys before they will work at runtime. Print ONE
-    # consolidated block instead of repeating per-server boilerplate.
+    # already in `claude mcp list`; they just need API keys exported in the
+    # shell that launches claude. claude CLI inherits the shell env and
+    # passes it through to MCP child processes — no re-registration needed
+    # when keys change.
     if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
         echo ""
-        echo -e "${YELLOW}Some MCPs registered without API keys — they need keys before they will work:${NC}"
+        echo -e "${YELLOW}Some MCPs registered without API keys — finish setup once:${NC}"
         echo ""
-        echo "  1) Add API keys to ~/.claude/mcp-config.env (already stubbed; mode 0600):"
+        echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
         while IFS=$'\t' read -r d_name d_keys d_args; do
             [[ -z "$d_name" ]] && continue
             _IFS_SAVED2="$IFS"
@@ -543,37 +544,17 @@ if [[ "$MCPS" -eq 1 ]]; then
             for _k in $d_keys; do
                 _k="${_k# }"
                 [[ -z "$_k" ]] && continue
-                printf '       %s=...\n' "$_k"
+                printf '       %s=<your-key>\n' "$_k"
             done
             IFS="$_IFS_SAVED2"
         done < "$TK_MCP_DEFERRED_QUEUE"
         unset _k _IFS_SAVED2
         echo ""
-        echo "  2) Re-register each server so claude.json gets the env binding:"
-        while IFS=$'\t' read -r d_name d_keys d_args; do
-            [[ -z "$d_name" ]] && continue
-            # Build the -e KEY=\$KEY flags from the comma-separated key list.
-            _e_flags=""
-            _IFS_SAVED2="$IFS"
-            IFS=','
-            for _k in $d_keys; do
-                _k="${_k# }"
-                [[ -z "$_k" ]] && continue
-                _e_flags="${_e_flags} -e ${_k}=\${${_k}}"
-            done
-            IFS="$_IFS_SAVED2"
-            # Strip leading "<name> --" from install_args so we can re-insert
-            # -e flags in the right slot: `claude mcp add <name> -e ... -- <cmd>`.
-            _name_only="${d_args%% *}"
-            _rest="${d_args#"$_name_only"}"
-            _rest="${_rest# }"   # trim space
-            printf '       claude mcp add --force %s%s %s\n' \
-                "$_name_only" "$_e_flags" "$_rest"
-        done < "$TK_MCP_DEFERRED_QUEUE"
-        unset _k _IFS_SAVED2 _e_flags _name_only _rest
+        echo "  2) Add this ONE line to ~/.zshrc (or ~/.bashrc) so claude inherits the keys:"
+        echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a"
         echo ""
-        echo "  Tip: source the file first to expand the variables:"
-        echo "       set -a; source ~/.claude/mcp-config.env; set +a"
+        echo "  3) Restart your shell + claude. MCPs pick up the keys at next launch — no"
+        echo "     re-registration needed when you change a key, just edit + restart claude."
     fi
 
     if [[ "${NO_BANNER:-0}" != "1" ]]; then
