@@ -52,7 +52,7 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
-CATALOG_PATH = os.path.join(REPO_ROOT, "scripts", "lib", "integrations-catalog.json")
+DEFAULT_CATALOG_PATH = os.path.join(REPO_ROOT, "scripts", "lib", "integrations-catalog.json")
 
 EXPECTED_SCHEMA_VERSION = 2
 
@@ -78,12 +78,18 @@ def fail(message):
 def main():
     errors = 0
 
+    # Optional path argument lets future per-project overrides reuse the same
+    # validator (PATTERNS § 4 step 3 — "specifics §82").  Plan 32-03 hermetic
+    # smoke test (test-integrations-foundation.sh) relies on this seam to
+    # validate in-sandbox fixtures without mutating the shipped catalog.
+    catalog_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CATALOG_PATH
+
     # Load catalog
     try:
-        with open(CATALOG_PATH, "r", encoding="utf-8") as fh:
+        with open(catalog_path, "r", encoding="utf-8") as fh:
             catalog = json.load(fh)
     except FileNotFoundError:
-        fail("integrations-catalog.json not found at: " + CATALOG_PATH)
+        fail("integrations-catalog.json not found at: " + catalog_path)
         sys.exit(1)
     except json.JSONDecodeError as exc:
         fail("integrations-catalog.json is not valid JSON: " + str(exc))
