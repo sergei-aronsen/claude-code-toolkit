@@ -154,6 +154,9 @@ jobs:
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands
 
+      - name: CAT-03 — validate integrations-catalog.json schema v2
+        run: make validate-catalog
+
       - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
         run: make validate-skills-desktop
 

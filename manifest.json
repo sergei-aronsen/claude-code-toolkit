@@ -248,7 +248,7 @@
         "path": "scripts/lib/install.sh"
       },
       {
-        "path": "scripts/lib/mcp-catalog.json"
+        "path": "scripts/lib/integrations-catalog.json"
       },
       {
         "path": "scripts/lib/mcp.sh"

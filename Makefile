@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
 
 # Default target
 help:
@@ -16,7 +16,7 @@ help:
 	@echo ""
 
 # Run all checks (documented in CLAUDE.md as primary quality gate)
-check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-mdlint-config-sync validate-skills-desktop validate-marketplace cell-parity
+check: lint validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync validate-skills-desktop validate-marketplace cell-parity
 	@echo "All checks passed!"
 
 # Full local validation — `check` + bats install matrix. Run before push to catch
@@ -381,6 +381,12 @@ agent-collision-static:
 validate-commands:
 	@echo "Validating commands/*.md for required headings (HARDEN-A-01)..."
 	@python3 scripts/validate-commands.py
+
+# Validate scripts/lib/integrations-catalog.json schema v2 (Phase 32-01 / CAT-03).
+# Replaces the implicit shape contract that previously lived only in mcp.sh's jq queries.
+validate-catalog:
+	@echo "Validating integrations-catalog.json schema (CAT-03)..."
+	@python3 scripts/validate-integrations-catalog.py
 
 # DESK-02 + DESK-04: skills Desktop-safety heuristic gate (>= 4 PASS required).
 validate-skills-desktop:

@@ -78,7 +78,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             BRIDGES_FORCE="$2"; shift 2 ;;
-        --mcps)        MCPS=1;                shift ;;
+        --mcps)
+            # Phase 32-01 (CAT-04): --mcps remains a working alias for --integrations
+            # but emits a one-line deprecation note to stderr (non-blocking).
+            # The flag will be removed in v6.0; --integrations is the canonical form.
+            MCPS=1
+            echo -e "${YELLOW}⚠${NC} --mcps is deprecated; use --integrations (alias retained until v6.0)" >&2
+            shift ;;
+        --integrations) MCPS=1;               shift ;;
         --skills)      SKILLS=1;              shift ;;
         --skills-only) SKILLS_ONLY=1; SKILLS=1; shift ;;
         -h|--help)
@@ -95,7 +102,8 @@ Flags:
   --no-banner   Suppress closing removal banner
   --no-bridges  Skip Gemini/Codex bridge prompts unconditionally (env: TK_NO_BRIDGES=1)
   --bridges LIST  Force-create bridges for comma-listed CLIs (e.g. gemini,codex)
-  --mcps        Install curated MCP servers via TUI catalog (Phase 25)
+  --integrations  Install curated integrations (MCPs, etc.) via TUI catalog
+  --mcps          Deprecated alias for --integrations (removed in v6.0)
   --skills      Install curated skills via TUI catalog (Phase 26)
   --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
                 auto-activates when 'claude' CLI is absent on PATH (DESK-03)
@@ -223,10 +231,11 @@ if [[ "$MCPS" -eq 1 ]]; then
     # template under heavy /tmp churn produced "mkstemp failed: File exists"
     # (user report 2026-05-01) and the duplicate download is wasteful anyway.
     if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
-        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/integrations-catalog-XXXXXX.json")
         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
-        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
-            echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+        # Phase 32-01 (CAT-01): catalog renamed mcp-catalog.json → integrations-catalog.json.
+        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/integrations-catalog.json" -o "$MCP_CATALOG_TMP"; then
+            echo -e "${RED}✗${NC} Failed to download integrations-catalog.json — aborting" >&2
             exit 1
         fi
         export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"

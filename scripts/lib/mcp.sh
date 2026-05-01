@@ -40,11 +40,15 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
-# Internal helper — resolves sibling mcp-catalog.json path from BASH_SOURCE.
+# Internal helper — resolves sibling integrations-catalog.json path from BASH_SOURCE.
+# Phase 32-01 (CAT-01): catalog renamed mcp-catalog.json → integrations-catalog.json
+# to make room for non-MCP component types (skills, plugins, statuslines) under
+# components.<type>.<name>. Public function names (mcp_catalog_load, etc.) are
+# unchanged — only the on-disk filename and internal jq paths moved.
 _mcp_default_catalog_path() {
     local d
     d="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || pwd)"
-    echo "${d}/mcp-catalog.json"
+    echo "${d}/integrations-catalog.json"
 }
 
 # Lazy-source tui.sh so tui_tty_read is available for the wizard prompts. The
@@ -65,7 +69,7 @@ fi
 mcp_catalog_load() {
     local catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path)}"
     if [[ ! -f "$catalog_path" ]]; then
-        echo -e "${RED}✗${NC} mcp-catalog.json not found at $catalog_path" >&2
+        echo -e "${RED}✗${NC} integrations-catalog.json not found at $catalog_path" >&2
         return 1
     fi
     if ! command -v jq >/dev/null 2>&1; then
@@ -89,28 +93,28 @@ mcp_catalog_load() {
         # shellcheck disable=SC2034
         MCP_NAMES+=("$name")
         # shellcheck disable=SC2034
-        MCP_DISPLAY+=("$(jq -r --arg n "$name" '.[$n].display_name' "$catalog_path")")
+        MCP_DISPLAY+=("$(jq -r --arg n "$name" '.components.mcp[$n].display_name' "$catalog_path")")
         # shellcheck disable=SC2034
-        MCP_ENV_KEYS+=("$(jq -r --arg n "$name" '.[$n].env_var_keys | join(";")' "$catalog_path")")
+        MCP_ENV_KEYS+=("$(jq -r --arg n "$name" '.components.mcp[$n].env_var_keys | join(";")' "$catalog_path")")
         # Use $'\037' (unit separator, ASCII 31) to join install_args[] — survives spaces in args.
         # shellcheck disable=SC2034
-        MCP_INSTALL_ARGS+=("$(jq -r --arg n "$name" '[.[$n].install_args[] ] | join("")' "$catalog_path")")
+        MCP_INSTALL_ARGS+=("$(jq -r --arg n "$name" '[.components.mcp[$n].install_args[] ] | join("")' "$catalog_path")")
         # shellcheck disable=SC2034
-        MCP_DESCS+=("$(jq -r --arg n "$name" '.[$n].description' "$catalog_path")")
-        if [[ "$(jq -r --arg n "$name" '.[$n].requires_oauth' "$catalog_path")" == "true" ]]; then
+        MCP_DESCS+=("$(jq -r --arg n "$name" '.components.mcp[$n].description' "$catalog_path")")
+        if [[ "$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth' "$catalog_path")" == "true" ]]; then
             # shellcheck disable=SC2034
             MCP_OAUTH+=(1)
         else
             # shellcheck disable=SC2034
             MCP_OAUTH+=(0)
         fi
-    done < <(jq -r 'keys | sort | .[]' "$catalog_path")
+    done < <(jq -r '.components.mcp | keys | sort | .[]' "$catalog_path")
 }
 
 # mcp_catalog_names — print all 9 catalog names, one per line, alphabetically sorted.
 mcp_catalog_names() {
     local catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path)}"
-    jq -r 'keys | sort | .[]' "$catalog_path"
+    jq -r '.components.mcp | keys | sort | .[]' "$catalog_path"
 }
 
 # _mcp_list_cache_init — invoke `claude mcp list` AT MOST ONCE per shell and
