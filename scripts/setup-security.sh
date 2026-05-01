@@ -19,7 +19,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -153,9 +152,9 @@ install_rtk_notes() {
     echo -e "  ${GREEN}✓${NC} Installed fallback ~/.claude/RTK.md (downloaded; points to components/optional-plugins.md for rtk-ai/rtk#1276)"
 }
 
-echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Claude Code Security Setup                ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔═══════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║     Claude Code Security Setup                ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════╝${NC}"
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -645,7 +644,7 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}What was installed:${NC}"
+echo -e "${CYAN}What was installed:${NC}"
 echo -e "  1. ${GREEN}Global security rules${NC} — ~/.claude/CLAUDE.md"
 echo -e "     14 sections: forbidden patterns, required patterns, doubt protocol,"
 echo -e "     self-review checklist, anti-pattern learning, prompt injection defense,"
@@ -666,7 +665,7 @@ echo -e "     commit-commands: /commit, /commit-push-pr, /clean_gone"
 echo -e "     security-guidance: PreToolUse warnings for security patterns"
 echo -e "     frontend-design: auto-activates for frontend work"
 echo ""
-echo -e "${BLUE}Recommended next steps:${NC}"
+echo -e "${CYAN}Recommended next steps:${NC}"
 echo -e "  1. Add ${CYAN}claude-code-security-review${NC} GitHub Action to your repos"
 echo -e "     https://github.com/anthropics/claude-code-security-review"
 echo -e "  2. Add ${CYAN}Semgrep${NC} to your CI pipeline for SAST analysis"

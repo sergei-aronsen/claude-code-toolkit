@@ -7,6 +7,186 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.9.0] - 2026-05-02
+
+Major install UX overhaul on top of 4.8.x — focused on PR #28 install run on
+macOS and a series of user reports between 2026-05-01 and 2026-05-02.
+
+### Added — Back navigation in multi-step picker flow (UX-FLOW-02)
+
+Press `b` (or `B`) inside the skills or MCP sub-picker to return to the
+previous step. Skills picker → main TUI; MCP picker → skills picker (or
+main TUI if skills wasn't selected). Previously selected items are
+re-checked when re-entering a picker via Back. Gated on
+`TK_TUI_ALLOW_BACK=1`. Footer hint shows `· b back` only in multi-step mode.
+
+### Added — MCP secrets deferred (registered without API key during install)
+
+Mid-install API-key prompts caused users to abandon the flow. New
+`TK_MCP_DEFER_SECRETS=1` mode (default during dispatch): MCPs needing env
+keys are registered with `claude mcp add` *without* env vars (so they
+appear in `claude mcp list` with empty env binding), keys queued in
+`~/.claude/mcp-config.env` as empty stubs (mode 0600), and a one-time
+shell-rc auto-source line is appended to `~/.zshrc` / `~/.bash_profile` /
+`~/.bashrc` (idempotent via marker comment). User fills mcp-config.env,
+opens fresh terminal, launches claude — MCPs pick up keys at startup.
+No re-registration when keys change later.
+
+Status row reads `installed (needs API key)` (yellow). Post-summary
+follow-up block prints a 3-step recipe.
+
+### Added — Tooltip / banner colors switched to CYAN
+
+Sweep `${BLUE}` → `${CYAN}` across `init-claude.sh`, `install.sh`,
+`init-local.sh`, `update-claude.sh`. Dark-blue text was unreadable on
+macOS Terminal default dark theme.
+
+### Changed — Atomic TUI render eliminates flicker AND bleed-through
+
+`_tui_render` builds the entire frame as a single string and writes to
+the TTY in ONE printf. Solves both flicker (per-line printfs caused
+visible repaints between syscalls) and bleed-through (gap lines retained
+content from prior frames). Atomic write + `\e[H\e[J` at frame start.
+
+### Changed — Install order: skills BEFORE mcp-servers
+
+`TK_DISPATCH_ORDER` reordered so the MCP "needs API key" follow-up block
+ends the screen. Main TUI marketplace section + pre-collection sub-pickers
+also reordered.
+
+### Changed — Skills install summary uses soft-checkmark style
+
+Bright-green right-aligned `installed ✓` rows replaced with a leading
+`✓ name` row (matching `init-claude.sh`'s "📥 Framework extras..." style).
+Failures render `✗ name — reason` in red. Dry-run keeps the literal
+`would-install` token (tests parse it).
+
+### Changed — Consolidated install finale at top-level
+
+Sub-installers run with `TK_DISPATCHED=1` and suppress their standalone
+finale (recommend_security/statusline/optional_plugins, "Verify",
+"Restart Claude Code", POST_INSTALL note). Parent `install.sh` emits ONE
+consolidated finale AFTER all dispatchers complete.
+
+### Changed — Project-local skill stubs deduplicated against marketplace
+
+Removed `ai-models`, `tailwind`, `i18n` from every framework template
+(base + nodejs + go + python + laravel + rails + nextjs). Each
+`skill-rules.json` updated. ~4685 lines deleted. Marketplace versions
+(`ai-models`, `tailwind-design-system`, `i18n-localization`) cover the
+same ground. Kept project-local stubs unique to the toolkit:
+`api-design`, `council-integration`, `database`, `debugging`, `docker`,
+`llm-patterns`, `observability`, `testing`.
+
+### Fixed — Esc detection on macOS Terminal / iTerm2
+
+`tui_checklist` case match extended from `$'\e')` to
+`$'\e' | $'\e\e' | $'\e\e\e')`. macOS Terminal + iTerm2 "Send +Esc"
+config emits 2-3 bytes per Esc keypress; the read-ahead window catches
+them. Previous single-arm match dropped these into `*) ignore` and
+"Esc did nothing". Footer text changed `Esc cancel` → `Ctrl+C abort`.
+
+### Fixed — `claude mcp list` cached once per install
+
+`mcp_status_array` previously called `claude mcp list` 9 times (once per
+MCP catalog entry) for ~40 s on macOS. New `_mcp_list_cache_init`
+function memoizes once per shell. Visible "Loading MCP catalog..."
+banner added.
+
+### Fixed — Sub-pickers run in main process (no subshell)
+
+UX-FLOW-01 originally captured sub-picker output via subshell `$()`.
+On macOS the TUI library's stty/cursor-hide sequences plus captured-stdout
+fd combination left the post-Submit screen frozen. Sub-pickers now run
+in the main process with `_save_main_tui_state` / `_restore_main_tui_state`
+helpers.
+
+### Fixed — Mid-install banner suppressed in dispatch mode
+
+`init-claude.sh` invoked from `install.sh` dispatch loop printed its
+standalone "Installation Complete!" + recommendations block BEFORE
+skills/MCP dispatchers ran. `TK_DISPATCHED=1` suppresses it.
+
+### Fixed — `mcp-catalog.json` race-on-mktemp
+
+`--mcps` branch unconditionally re-`mktemp`'d a catalog file even when
+the parent UX-FLOW-01 block already exported `TK_MCP_CATALOG_PATH`.
+Under heavy `/tmp` churn BSD `mkstemp` gave up with `File exists`.
+Guard added.
+
+### Fixed — `gemini-bridge` symlink failure message
+
+Two-line message replaced with 5-line diagnostic naming the symlink
+target, explaining *why* we refuse (could clobber another tool's config),
+and printing the literal `rm <path>` command to fix it.
+
+### Changed — Pre-collect all TUI selections before installing (UX-FLOW-01)
+
+Previously the install flow was: main TUI → Submit → run toolkit / security /
+etc. → 20 s pause → MCP sub-picker → Submit → install MCPs → skills sub-picker
+→ Submit → install skills. The mid-install sub-pickers felt like a hang and
+broke the user's mental model of "answer questions, then watch the install".
+
+New flow: main TUI → Submit → MCP sub-picker (if `mcp-servers` row checked)
+→ Submit → skills sub-picker (if `skills` row checked) → Submit → THEN the
+dispatch loop runs end-to-end with no further prompts.
+
+Implementation: `install.sh` collects MCP / skills selections in subshells
+(so the main TUI globals aren't clobbered) right after the bridge plumbing
+block. Selections are exported as `TK_MCP_PRE_SELECTED` / `TK_SKILLS_PRE_SELECTED`
+comma-separated lists. The `--mcps` and `--skills` branches honour these
+env vars: when set (even empty), they skip their own TUI render and build
+`TUI_RESULTS` directly from the pre-collected list. Empty value (`TK_MCP_PRE_SELECTED=""`)
+is meaningful — "user opened the picker, picked nothing, hit Submit" — and
+results in a headless install of zero items rather than falling back to a
+TUI that would reopen mid-install.
+
+Cancel semantics preserved: pressing Esc / Ctrl-C in the MCP or skills sub-
+picker aborts the entire install (no partial component install).
+
+New regression test `scripts/tests/test-flow-prequestions.sh` (8/8 PASS):
+asserts pre-selected env produces exactly the named items, empty env produces
+zero items, and unset env falls back to the legacy `--yes` default-set path.
+
+### Fixed — Invisible-prompt regression (TUI dispatch)
+
+After a user pressed Submit on the main TUI, `init-claude.sh` ran under
+`install.sh`'s D-28 stderr-capture wrapper (`( dispatch_toolkit ) 2>"$tmp"`).
+Bash's `read -p "prompt"` writes the prompt to **stderr**, so the bridge
+install prompt (`Gemini detected. Create GEMINI.md → CLAUDE.md bridge?
+[Y/n]:`) landed in the captured tmpfile and the user saw a bare blinking
+caret with no instruction.
+
+Two-layer fix:
+
+1. **Structural:** new `tui_tty_read` helper in `scripts/lib/tui.sh` writes
+   the prompt directly to the TTY device (not stderr), immune to parent
+   stderr capture. Refactored 5 call sites — `lib/tui.sh:tui_confirm_prompt`,
+   `lib/bridges.sh` × 2 (drift overwrite, install prompt),
+   `lib/bootstrap.sh:_bootstrap_prompt_and_run`, `lib/mcp.sh` × 2 (overwrite,
+   secret-key entry). Helper supports a `TK_TUI_PROMPT_SINK` regression-test
+   seam and char-device detection so legacy regular-file / process-
+   substitution test seams continue to work without truncating answers.
+2. **UX:** `install.sh` plumbs the TUI bridge selection (rows 8/9) into
+   `init-claude.sh` via `BRIDGES_FORCE` / `TK_NO_BRIDGES` env vars. When the
+   user selects bridges in the main TUI, `bridge_install_prompts` takes its
+   non-interactive force path (no second prompt). When the user leaves the
+   bridge rows unchecked, `TK_NO_BRIDGES=1` silences project-bridge prompts
+   entirely. Manual `--bridges <list>` / `--no-bridges` overrides still work
+   when invoked outside the TUI flow.
+
+`tui.sh` is now downloaded by `init-claude.sh` and `update-claude.sh` BEFORE
+`bridges.sh` / `bootstrap.sh` / `mcp.sh` so their lazy-source guard
+(`command -v tui_tty_read`) reports defined and the per-lib `BASH_SOURCE`
+fallback (which fails under curl|bash because libs live in `/tmp/<lib>`
+without sibling files) is skipped.
+
+New regression test `scripts/tests/test-invisible-prompt.sh` (14/14 PASS):
+asserts prompts never reach captured stderr, exercises both the helper unit
+and the real bridge / mcp paths under a stderr-capture wrapper. All existing
+suites still pass (test-bridges-sync 25/0, test-mcp-secrets 11/0,
+test-bridges-install-ux 20/0, test-bootstrap 26/0, test-install-tui 52/0).
+
 ### Audit Sweep 260430-go5 (PR #15) — 18 findings + dead-code
 
 Deep 4-agent audit (security, code-review, infra/CI, shell) on 2026-04-30.
@@ -591,7 +771,7 @@ the same v4.5.0 heading as they ship.
 
 ### Fixed
 
-- _None — this is an additive feature release. See [4.1.1] for the prior patch._
+- *None — this is an additive feature release. See [4.1.1] for the prior patch.*
 
 ### Documentation
 

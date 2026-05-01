@@ -74,7 +74,7 @@ TK_USER_AGENT="${TK_USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleW
 # via `bash <(curl -sSL $REPO_URL/...)` inherit the pinned ref + UA instead
 # of silently falling back to defaults (e.g., TK_TOOLKIT_REF=main).
 export TK_TOOLKIT_REF TK_USER_AGENT
-log_info()    { echo -e "${BLUE}ℹ${NC} $1"; }
+log_info()    { echo -e "${CYAN}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error()   { echo -e "${RED}✗${NC} $1"; }
@@ -271,9 +271,9 @@ cleanup_stale_council_command() {
 
 [[ ! -d "$CLAUDE_DIR" ]] && { log_error "$CLAUDE_DIR not found. Nothing to migrate."; exit 1; }
 
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Claude Code Toolkit — Migrate to Complement Mode       ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║     Claude Code Toolkit — Migrate to Complement Mode       ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 RECOMMENDED=$(recommend_mode)

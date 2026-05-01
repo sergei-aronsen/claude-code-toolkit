@@ -93,11 +93,15 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
 if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge mcp-servers skills)
+    # Skills BEFORE mcp-servers so the MCP "needs API key" follow-up block
+    # is the LAST thing on screen — that block contains action items the
+    # user must execute, so keeping it terminal-final maximises its
+    # visibility (user feedback 2026-05-01).
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge skills mcp-servers)
 fi
 
 # Internal log helpers — underscore prefix.
-_dispatch_log_info()    { echo -e "${BLUE}i${NC} $1" >&2; }
+_dispatch_log_info()    { echo -e "${CYAN}i${NC} $1" >&2; }
 _dispatch_log_warning() { echo -e "${YELLOW}!${NC} $1" >&2; }
 
 # Curl-pipe vs local invocation detection (D-24, RESEARCH §4).
@@ -238,12 +242,17 @@ dispatch_toolkit() {
         return 0
     fi
 
+    # TK_DISPATCHED=1 tells init-claude.sh it is a sub-installer; it suppresses
+    # its standalone finale ("Installation Complete!", recommend_*, "Verify",
+    # "Restart Claude Code", "To remove", "Read POST_INSTALL.md") so the parent
+    # install.sh can emit its own consolidated summary AFTER all dispatchers
+    # finish (user report 2026-05-01: standalone finale appeared mid-flow).
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
+        TK_DISPATCHED=1 bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path init-claude.sh)"
-        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+        TK_DISPATCHED=1 bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 

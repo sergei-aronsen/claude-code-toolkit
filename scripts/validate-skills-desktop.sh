@@ -15,7 +15,7 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 THRESHOLD=4
@@ -76,7 +76,7 @@ done < <(find "$MIRROR_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
     done
 } > "$ARTIFACT"
 
-echo -e "${BLUE}Skills Desktop-safety audit${NC}"
+echo -e "${CYAN}Skills Desktop-safety audit${NC}"
 echo ""
 echo -e "${GREEN}PASS ($PASS_COUNT)${NC}:"
 for n in "${PASS_NAMES[@]+"${PASS_NAMES[@]}"}"; do

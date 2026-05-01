@@ -12,7 +12,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -77,10 +76,10 @@ else
     install_council_ru_prompts() { :; }
 fi
 
-echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Supreme Council Setup                     ║${NC}"
-echo -e "${BLUE}║     Multi-AI Code Review (Gemini + ChatGPT)   ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔═══════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║     Supreme Council Setup                     ║${NC}"
+echo -e "${CYAN}║     Multi-AI Code Review (Gemini + ChatGPT)   ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════╝${NC}"
 echo ""
 
 # ─────────────────────────────────────────────────
@@ -175,7 +174,7 @@ if [[ "$GEMINI_CHOICE" == "2" ]]; then
         fi
     fi
 else
-    echo -e "  ${BLUE}→${NC} Gemini CLI selected"
+    echo -e "  ${CYAN}→${NC} Gemini CLI selected"
     if ! command -v gemini &>/dev/null; then
         echo -e "  ${YELLOW}⚠${NC} Gemini CLI not found. Install:"
         echo -e "    npm install -g @google/gemini-cli"
@@ -519,9 +518,9 @@ elif [[ -z "$DESKTOP_CFG" ]]; then
     echo -e "  ${YELLOW}⚠${NC} Unrecognized platform — skipping Claude Desktop registration"
 else
     if [[ -f "$DESKTOP_CFG" ]]; then
-        echo -e "  Detected Claude Desktop config: ${BLUE}$DESKTOP_CFG${NC}"
+        echo -e "  Detected Claude Desktop config: ${CYAN}$DESKTOP_CFG${NC}"
     else
-        echo -e "  Claude Desktop config not found at ${BLUE}$DESKTOP_CFG${NC}"
+        echo -e "  Claude Desktop config not found at ${CYAN}$DESKTOP_CFG${NC}"
         echo -e "  (Skip if you do not use Claude Desktop.)"
     fi
     printf "  Register Council as MCP server in Claude Desktop? [y/N]: "
@@ -639,7 +638,7 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}What was installed:${NC}"
+echo -e "${CYAN}What was installed:${NC}"
 echo -e "  1. ${GREEN}Orchestrator${NC}  — ~/.claude/council/brain.py"
 echo -e "  2. ${GREEN}Configuration${NC} — ~/.claude/council/config.json"
 echo -e "  3. ${GREEN}Slash command${NC} — ~/.claude/commands/council.md (global)"
@@ -668,7 +667,7 @@ if [[ "$NEEDS_SETUP" == true ]]; then
     echo ""
 fi
 
-echo -e "${BLUE}Usage:${NC}"
+echo -e "${CYAN}Usage:${NC}"
 echo -e "  ${YELLOW}brain \"add OAuth login with Google\"${NC}"
 echo -e "  Or in Claude Code: ${YELLOW}/council add OAuth login with Google${NC}"
 echo ""

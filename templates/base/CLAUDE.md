@@ -295,10 +295,20 @@ After UI changes, test with Playwright MCP: navigate, check errors, interact, sc
 
 | Skill | When to load |
 | ----- | --------------- |
-| `ai-models` | When working with AI API (Anthropic, Google) |
-| `i18n` | When adding multilanguage support, translations, localization |
+| `api-design` | When designing REST APIs, endpoints, OpenAPI |
+| `database` | When writing migrations, indexes, ORM queries |
+| `docker` | When writing Dockerfiles or compose configs |
+| `testing` | When writing tests (TDD, mocking, e2e) |
+| `observability` | When adding logging, metrics, tracing |
+| `llm-patterns` | When integrating LLMs (RAG, streaming, tool use) |
+| `council-integration` | When using `/council` plan validation |
+| `debugging` | When hunting bugs (root-cause analysis) |
 
-Load: `Read .claude/skills/{skill-name}/SKILL.md`
+Marketplace skills (`firecrawl`, `shadcn`, `tailwind-design-system`,
+`i18n-localization`, `ai-models`, …) live in `~/.claude/skills/` and load
+globally — these project-local skills are toolkit-specific stubs.
+
+Load a project skill: `Read .claude/skills/{skill-name}/SKILL.md`
 
 ---
 

@@ -51,7 +51,6 @@ if [ -t 1 ]; then
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
-    BLUE='\033[0;34m'
     CYAN='\033[0;36m'
     NC='\033[0m'
 else
@@ -59,7 +58,6 @@ else
     RED=''
     GREEN=''
     YELLOW=''
-    BLUE=''
     CYAN=''
     NC=''
 fi
@@ -199,7 +197,6 @@ if [[ "${NO_BOOTSTRAP:-false}" != "true" && "${TK_NO_BOOTSTRAP:-}" != "1" ]]; th
         RED=$'\033[0;31m'
         GREEN=$'\033[0;32m'
         YELLOW=$'\033[1;33m'
-        BLUE=$'\033[0;34m'
         CYAN=$'\033[0;36m'
         NC=$'\033[0m'
     else
@@ -207,7 +204,6 @@ if [[ "${NO_BOOTSTRAP:-false}" != "true" && "${TK_NO_BOOTSTRAP:-}" != "1" ]]; th
         RED=''
         GREEN=''
         YELLOW=''
-        BLUE=''
         CYAN=''
         NC=''
     fi
@@ -246,7 +242,7 @@ if [[ "$FORCE" == "true" ]] && [[ -n "$MODE" ]] && [[ -f ".claude/toolkit-instal
     fi
 fi
 
-echo -e "${BLUE}Claude Code Toolkit — Local Install v$VERSION${NC}"
+echo -e "${CYAN}Claude Code Toolkit — Local Install v$VERSION${NC}"
 echo "======================================================"
 echo -e "Source: ${YELLOW}$GUIDES_DIR${NC}"
 echo ""
@@ -335,7 +331,7 @@ trap 'release_lock 2>/dev/null || true' EXIT
 acquire_lock || exit 1
 
 echo ""
-echo -e "${BLUE}Installing files (mode: $MODE)...${NC}"
+echo -e "${CYAN}Installing files (mode: $MODE)...${NC}"
 
 INSTALLED_PATHS=()
 SKIPPED_PATHS=()
@@ -377,7 +373,7 @@ done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '
 # CHEATSHEETS (not in manifest — always installed)
 # ============================================================================
 echo ""
-echo -e "${BLUE}Copying cheatsheets...${NC}"
+echo -e "${CYAN}Copying cheatsheets...${NC}"
 for cs in "$GUIDES_DIR/cheatsheets"/*.md; do
     if [ -f "$cs" ]; then
         filename=$(basename "$cs")
@@ -454,7 +450,7 @@ fi
 # ============================================================================
 if [ ! -f "$CLAUDE_DIR/CLAUDE.md" ] && [ ! -f "CLAUDE.md" ]; then
     echo ""
-    echo -e "${BLUE}Creating CLAUDE.md...${NC}"
+    echo -e "${CYAN}Creating CLAUDE.md...${NC}"
     if [ -f "$TEMPLATE_PATH/CLAUDE.md" ]; then
         cp "$TEMPLATE_PATH/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
     else
@@ -541,7 +537,7 @@ echo "1. Edit .claude/CLAUDE.md — add project-specific info"
 echo "2. Edit .claude/rules/project-context.md — add architecture facts"
 echo "3. Restart Claude Code to apply changes"
 echo ""
-echo -e "${BLUE}Security setup (recommended):${NC}"
+echo -e "${CYAN}Security setup (recommended):${NC}"
 echo "  $GUIDES_DIR/scripts/setup-security.sh"
 echo ""
 if [[ $NO_BANNER -eq 0 ]]; then

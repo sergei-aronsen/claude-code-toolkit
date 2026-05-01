@@ -153,11 +153,31 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Next Milestone Goals (v4.9 — TBD)
+## Current Milestone: v4.9 Integrations Catalog
 
-_v4.7 Council Rework SP2-11 + v4.8 Multi-CLI Bridge both shipped. Next milestone scoping pending — run `/gsd-new-milestone` to define goals._
+**Goal:** Transform the existing 9-MCP catalog into a unified **Integrations** catalog combining MCP servers + companion CLIs (e.g., `wrangler`, `supabase`, `stripe`, `aws`, `nlm`) under one TUI page, drop the redundant `sequential-thinking` MCP, expand coverage to backends (Supabase, Cloudflare, AWS), payments (Stripe), project management (YouTrack, Linear, Jira), communication (Slack, Telegram), design (Figma), and research (NotebookLM), with category grouping, status detection, post-install hints, and `unofficial`/`community` warning badges.
 
-v4.6 archive: `.planning/milestones/v4.6-{ROADMAP,REQUIREMENTS}.md`. v4.7 archive: shipped via PR #13 on main. v4.8 archive: `.planning/milestones/v4.8-{ROADMAP,REQUIREMENTS}.md`.
+**Target features:**
+
+- Unified `--integrations` TUI page (alias: `--mcps`) listing 19 entries grouped by category (Docs/Research, Backend, Payments, Email, Workspace, Project Management, Communication, Design, Dev Tools, Monitoring)
+- Catalog schema migration: `mcp-catalog.json` → `integrations-catalog.json` with per-entry `components: { mcp, cli }` blocks, optional `cli.detect_cmd` + `cli.install.{darwin,linux}` + `cli.post_install_hint`, `unofficial: true` flag for community/browser-automation entries
+- Cross-platform CLI installer library (`scripts/lib/cli-installer.sh`): `cli_detect`, `cli_install_darwin` (brew preferred, fall-back shell installer), `cli_install_linux` (apt/snap/shell installer), continue-on-error per the Phase 24 D-08 pattern
+- 11 new entries added: supabase (MCP+CLI), cloudflare (MCP+wrangler), stripe (MCP+CLI), aws-cost-explorer (MCP), aws-cloudwatch-logs (MCP) + `aws` CLI, notebooklm (MCP+nlm CLI, `unofficial`), youtrack (MCP), linear (MCP), jira (MCP), figma (MCP), slack (MCP), telegram (MCP, `unofficial`)
+- 1 entry dropped: sequential-thinking (native Claude extended thinking covers it)
+- Per-row status (`✓ installed` / `✗ not installed` / `⊘ already present`) detected via `claude mcp list` for MCPs and `command -v` for CLIs; idempotent re-runs skip already-installed components
+- Post-install hint surface (e.g., `→ Next: run \`wrangler login\`` after Cloudflare CLI install) prints to stderr with no auto-execution
+- `--integrations` / `--mcps` accept new modifier flags `--mcp-only` / `--cli-only` to scope the install to one component type
+
+**Key context:**
+
+- Existing 9-MCP catalog at `scripts/lib/mcp-catalog.json` + `mcp.sh` library (Phase 25 v4.6) is the foundation — extend, don't rewrite. Backward-compat alias keeps `--mcps` working.
+- CLI tools install **globally on the dev machine** (`brew install`, `npm i -g`, official shell installers) — they are NOT per-project SDKs. Toolkit never installs SDKs into user projects. Documented in new `docs/INTEGRATIONS.md` with explicit "global vs per-project" split.
+- Browser-based authentication flows (`wrangler login`, `supabase login`, `stripe login`, `nlm login`) are **never automated** — toolkit only prints the hint. Same posture as MCP OAuth (notion).
+- `unofficial` badge in TUI (yellow `!` glyph) requires explicit confirmation prompt for notebooklm + telegram before install. Reason: browser automation / community implementations break on upstream UI/API changes — must be opt-in with eyes open.
+- Category grouping replaces the flat 9-row alphabetical list — visual scanability matters at 19 entries.
+- AWS gets **2 narrow MCPs** (Cost Explorer, CloudWatch Logs) instead of the full AWS Labs MCP set — toolkit catalog is curated, not a gateway. Users wanting more AWS MCPs install them manually.
+
+
 
 **Pending HUMAN-UAT from prior milestones** (run when convenient — not blocking):
 
@@ -220,4 +240,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-29 — **v4.8 Multi-CLI Bridge** shipped via `/gsd-autonomous` — 4 phases (28–31), 11 plans, 22+ tasks, 18/18 BRIDGE-* REQ-IDs. Bridges CLAUDE.md → GEMINI.md / AGENTS.md (Codex) with SHA256 drift tracking + `[y/N/d]` prompt on update. Previous: **v4.7 Council Rework SP2-11** shipped on `feature/v4.8-council-rework-sp2-11` (PR #13). Phase 24 sub-phases 2 through 11 closed: 28 atomic commits, manifest 4.6.0 → 4.7.0, audit-review test 81/81, `make check` zero failures. Earlier: **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6` — 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs.*
+*Last updated: 2026-05-02 — **v4.9 Integrations Catalog** started via `/gsd-new-milestone`. Goal: unify the 9-MCP catalog with companion CLIs into one Integrations TUI, expand to 19 entries across 10 categories (backend, payments, project mgmt, communication, design, etc.), drop `sequential-thinking`, add cross-platform CLI installer with post-install hints. Previous: **v4.8 Multi-CLI Bridge** shipped 2026-04-29 — 4 phases (28–31), 11 plans, 22+ tasks, 18/18 BRIDGE-* REQ-IDs. **v4.7 Council Rework SP2-11** shipped on `feature/v4.8-council-rework-sp2-11` (PR #13). **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6` — 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs.*

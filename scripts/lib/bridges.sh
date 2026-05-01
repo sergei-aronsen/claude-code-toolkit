@@ -52,6 +52,17 @@ if ! command -v write_state >/dev/null 2>&1; then
     source "${_BRIDGES_LIB_DIR}/dry-run-output.sh"
 fi
 
+# tui.sh provides tui_tty_read — visible-prompt helper used by the drift and
+# install-time prompts below. Sourced lazily so bridges.sh keeps working when
+# only state.sh+dry-run-output.sh have been pre-sourced (update-claude.sh path).
+if ! command -v tui_tty_read >/dev/null 2>&1; then
+    _BRIDGES_LIB_DIR="${_BRIDGES_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)}"
+    if [[ -f "${_BRIDGES_LIB_DIR}/tui.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "${_BRIDGES_LIB_DIR}/tui.sh"
+    fi
+fi
+
 # ──────────────────────────────────────────────────────────────────────────
 # Internal helpers (prefixed with _bridge_, not part of public API)
 # ──────────────────────────────────────────────────────────────────────────
@@ -183,8 +194,18 @@ _bridge_write_file() {
         return 2
     fi
     if [[ -L "$target_path" ]]; then
-        echo "bridge: refusing — target is a symlink: $target_path" >&2
-        echo "bridge: remove or replace it with a regular file, then re-run" >&2
+        # User-friendly diagnostic: explain WHY the bridge skipped, what the
+        # current symlink points at, and the exact one-line fix. Previous
+        # 2-line message ("refusing — target is a symlink" + "remove or replace
+        # ... then re-run") left users guessing what command to run
+        # (2026-05-01 user feedback).
+        local _link_dest=""
+        _link_dest="$(readlink "$target_path" 2>/dev/null || echo '?')"
+        echo "bridge: skipped — $target_path is a symlink to $_link_dest" >&2
+        echo "bridge:   the toolkit refuses to overwrite symlinks (could clobber another tool's config)." >&2
+        echo "bridge:   to install this bridge, remove the symlink first:" >&2
+        echo "bridge:     rm $target_path" >&2
+        echo "bridge:   then re-run the install command." >&2
         return 2
     fi
     if ! mkdir -p "$target_dir" 2>/dev/null; then
@@ -582,7 +603,11 @@ BANNER
     local _read_fail=0
     while :; do
         local choice=""
-        if ! read -r -p "Bridge ${bridge_path} modified locally. Overwrite? [y/N/d]: " choice < "$tty_target" 2>/dev/null; then
+        # tui_tty_read writes the prompt directly to TTY (not stderr), so the
+        # drift prompt stays visible even when the caller wraps the dispatcher
+        # in `( … ) 2>"$tmp"` (install.sh:1066 D-28 stderr capture). Falls back
+        # to choice="N" on TTY-unreachable, mirroring the legacy fail-closed.
+        if ! tui_tty_read choice "Bridge ${bridge_path} modified locally. Overwrite? [y/N/d]: " 0 "$tty_target"; then
             choice="N"
             _read_fail=$((_read_fail + 1))
             if [[ $_read_fail -ge 5 ]]; then
@@ -669,8 +694,11 @@ bridge_install_prompts() {
         prompt_text="${label} detected. Create ${filename} → CLAUDE.md bridge? [Y/n]: "
 
         choice=""
-        if ! read -r -p "$prompt_text" choice < "$tty_target" 2>/dev/null; then
-            # Fail-closed N on no-TTY (BACKCOMPAT-01: curl|bash never auto-creates).
+        # tui_tty_read writes the prompt directly to TTY (not stderr), so the
+        # prompt is visible even when the caller wraps init-claude.sh in
+        # `( dispatch_toolkit ) 2>"$tmp"` (install.sh:1066 D-28). Falls back
+        # to choice="N" on TTY-unreachable, mirroring BACKCOMPAT-01 fail-closed.
+        if ! tui_tty_read choice "$prompt_text" 0 "$tty_target"; then
             choice="N"
         fi
 

@@ -69,7 +69,6 @@ done
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
@@ -105,8 +104,13 @@ LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
 LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
+# tui.sh provides tui_tty_read — visible-prompt helper consumed by bridges.sh
+# (drift overwrite + install prompts) and the legacy tui_confirm_prompt. Must
+# load BEFORE bridges.sh so its lazy-source guard sees tui_tty_read defined
+# (BASH_SOURCE-relative fallback fails when bridges.sh sits in /tmp).
+LIB_TUI_TMP=$(mktemp "${TMPDIR:-/tmp}/tui.XXXXXX")
 MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX")
-trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$MANIFEST_TMP"' EXIT
+trap 'rm -f "$DETECT_TMP" "$LIB_INSTALL_TMP" "$LIB_STATE_TMP" "$LIB_OPTIONAL_PLUGINS_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$LIB_TUI_TMP" "$MANIFEST_TMP"' EXIT
 
 # Audit I5: every curl fetch in the update path needs network-safety flags.
 # Without --max-time / --connect-timeout / --retry a hung TCP socket can pin
@@ -140,7 +144,7 @@ fi
 
 # lib/install.sh + lib/state.sh — HARD-fail (Phase 4 update flow cannot proceed without them)
 # TK_UPDATE_LIB_DIR: test seam — when set, sources libs from local path instead of remote curl
-for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
+for lib_pair in "install.sh:$LIB_INSTALL_TMP" "state.sh:$LIB_STATE_TMP" "optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "tui.sh:$LIB_TUI_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UPDATE_LIB_DIR:-}" && -f "$TK_UPDATE_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UPDATE_LIB_DIR/$lib_name" "$lib_path"
@@ -190,7 +194,7 @@ LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
 # HELPER FUNCTIONS
 # ============================================================================
 
-log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
+log_info() { echo -e "${CYAN}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_warning() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
@@ -720,9 +724,9 @@ sync_bridges() {
 # ============================================================================
 
 if [[ $NO_BANNER -eq 0 ]]; then
-    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║         Claude Code Toolkit — Smart Update                 ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║         Claude Code Toolkit — Smart Update                 ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 fi
 
@@ -1347,7 +1351,7 @@ sync_bridges
 EXCEPTIONS_FILE="$CLAUDE_DIR/rules/audit-exceptions.md"
 if [[ ! -f "$EXCEPTIONS_FILE" ]]; then
     if [[ $DRY_RUN -eq 1 ]]; then
-        echo -e "${BLUE}Would seed:${NC} $EXCEPTIONS_FILE"
+        echo -e "${CYAN}Would seed:${NC} $EXCEPTIONS_FILE"
     else
         mkdir -p "$CLAUDE_DIR/rules"
         cat > "$EXCEPTIONS_FILE" << 'EXCEPTIONS'

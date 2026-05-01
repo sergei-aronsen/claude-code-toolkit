@@ -27,14 +27,12 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
 if [[ -n "${NO_COLOR+x}" ]] || ! [ -t 1 ]; then
     RED=''
     GREEN=''
     YELLOW=''
-    BLUE=''
     NC=''
 fi
 
@@ -159,7 +157,7 @@ fi
 SYNCED=0
 MISSING=0
 
-echo -e "${BLUE}Skills Mirror Sync${NC}"
+echo -e "${CYAN}Skills Mirror Sync${NC}"
 echo "  Source : ${SKILLS_SRC}"
 echo "  Dest   : ${SKILLS_DEST}"
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -176,7 +174,7 @@ for name in "${sync_list[@]}"; do
         continue
     fi
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo -e "${BLUE}~${NC} would sync: ${src} → ${dest}"
+        echo -e "${CYAN}~${NC} would sync: ${src} → ${dest}"
         continue
     fi
     if [[ -d "$dest" ]]; then

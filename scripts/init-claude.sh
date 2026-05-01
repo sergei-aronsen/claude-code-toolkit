@@ -11,7 +11,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Config
@@ -176,6 +175,13 @@ LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX");       CLEANUP_PA
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX");    CLEANUP_PATHS+=("$LIB_DRO_TMP")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX"); CLEANUP_PATHS+=("$LIB_OPTIONAL_PLUGINS_TMP")
 LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
+# tui.sh ships the visible-prompt helper (tui_tty_read) consumed by
+# bootstrap.sh + bridges.sh + mcp.sh + the legacy tui_confirm_prompt.
+# Must be downloaded + sourced BEFORE those libs so their lazy-source guard
+# (`command -v tui_tty_read`) reports defined and skips the per-lib fallback
+# fetch (which fails under curl|bash because BASH_SOURCE resolves to /tmp/<lib>
+# with no sibling tui.sh).
+LIB_TUI_TMP=$(mktemp "${TMPDIR:-/tmp}/tui-lib.XXXXXX");               CLEANUP_PATHS+=("$LIB_TUI_TMP")
 
 if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
     echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
@@ -193,6 +199,13 @@ if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/optional-plugins.sh" 
     echo -e "${RED}✗${NC} Failed to download lib/optional-plugins.sh — aborting"
     exit 1
 fi
+# Download tui.sh BEFORE bootstrap.sh so bootstrap's lazy-source guard sees
+# tui_tty_read already defined (it cannot find tui.sh next to itself when
+# bootstrap.sh lives in /tmp under curl|bash).
+if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/tui.sh" -o "$LIB_TUI_TMP"; then
+    echo -e "${RED}✗${NC} Failed to download lib/tui.sh — aborting"
+    exit 1
+fi
 # shellcheck source=/dev/null
 source "$DETECT_TMP"
 # shellcheck source=/dev/null
@@ -201,6 +214,8 @@ source "$LIB_INSTALL_TMP"
 source "$LIB_DRO_TMP"
 # shellcheck source=/dev/null
 source "$LIB_OPTIONAL_PLUGINS_TMP"
+# shellcheck source=/dev/null
+source "$LIB_TUI_TMP"
 if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
     echo -e "${RED}✗${NC} Failed to download lib/bootstrap.sh — aborting"
     exit 1
@@ -374,7 +389,7 @@ select_framework() {
     local detected
     detected=$(detect_framework)
 
-    echo -e "${BLUE}Select your stack:${NC}"
+    echo -e "${CYAN}Select your stack:${NC}"
     echo -e "  ${GREEN}1)${NC} Auto-detect (Recommended) — detected: ${GREEN}$detected${NC}"
     echo -e "  2) Laravel"
     echo -e "  3) Ruby on Rails"
@@ -411,7 +426,7 @@ select_framework() {
 select_mode() {
     local recommended
     recommended=$(recommend_mode)
-    echo -e "${BLUE}Detected plugins:${NC}"
+    echo -e "${CYAN}Detected plugins:${NC}"
     if [[ "$HAS_SP" == "true" ]]; then
         echo -e "  ${GREEN}OK${NC} superpowers (${SP_VERSION:-unknown})"
     else
@@ -472,9 +487,9 @@ else
     warn_mode_mismatch
 fi
 
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Claude Code Toolkit — Initialization     ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║   Claude Code Toolkit — Initialization     ║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "📁 Framework detected: ${GREEN}$FRAMEWORK${NC}"
 echo -e "📂 Target directory: ${GREEN}$CLAUDE_DIR${NC}"
@@ -540,7 +555,7 @@ fi
 
 # Create directory structure
 create_structure() {
-    echo -e "${BLUE}📁 Creating directory structure...${NC}"
+    echo -e "${CYAN}📁 Creating directory structure...${NC}"
 
     local dirs=(
         "$CLAUDE_DIR"
@@ -603,7 +618,10 @@ download_extras() {
 # When --dry-run, prints grouped [INSTALL]/[SKIP] output and exits before any write.
 download_files() {
     echo ""
-    echo -e "${BLUE}📥 Downloading files...${NC}"
+    echo -e "${CYAN}📥 Downloading toolkit files into project (.claude/)...${NC}"
+    echo -e "  Includes commands, agents, prompts, scripts/lib, and project-local"
+    echo -e "  skill stubs (.claude/skills/*) — distinct from the global marketplace"
+    echo -e "  skills installed later to ~/.claude/skills/."
 
     # Compute skip-list (returns JSON array of paths to SKIP)
     SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")
@@ -702,7 +720,7 @@ download_files() {
 
     # Download framework-specific extras (CLAUDE.md, settings.json, cheatsheets, experts)
     echo ""
-    echo -e "${BLUE}📥 Framework extras...${NC}"
+    echo -e "${CYAN}📥 Framework extras...${NC}"
     download_extras
 
     # Persist install state (state.sh)
@@ -719,7 +737,7 @@ download_files() {
 # Create .gitignore
 create_gitignore() {
     echo ""
-    echo -e "${BLUE}📝 Creating .gitignore...${NC}"
+    echo -e "${CYAN}📝 Creating .gitignore...${NC}"
 
     local gitignore="$CLAUDE_DIR/.gitignore"
 
@@ -741,7 +759,7 @@ GITIGNORE
 # Create initial scratchpad
 create_scratchpad() {
     echo ""
-    echo -e "${BLUE}📋 Creating scratchpad template...${NC}"
+    echo -e "${CYAN}📋 Creating scratchpad template...${NC}"
 
     local scratchpad="$CLAUDE_DIR/scratchpad/current-task.md"
 
@@ -778,7 +796,7 @@ create_lessons_learned() {
     fi
 
     echo ""
-    echo -e "${BLUE}📝 Creating lessons-learned seed file...${NC}"
+    echo -e "${CYAN}📝 Creating lessons-learned seed file...${NC}"
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $lessons_file"
@@ -804,7 +822,7 @@ create_audit_exceptions() {
     fi
 
     echo ""
-    echo -e "${BLUE}📝 Creating audit-exceptions seed file...${NC}"
+    echo -e "${CYAN}📝 Creating audit-exceptions seed file...${NC}"
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "  Would create: $exceptions_file"
@@ -852,7 +870,7 @@ recommend_security() {
 # Show rate limit statusline recommendation
 recommend_statusline() {
     echo ""
-    echo -e "${BLUE}📊 Rate Limit Statusline (optional):${NC}"
+    echo -e "${CYAN}📊 Rate Limit Statusline (optional):${NC}"
     echo -e "  See session/weekly usage in the status bar."
     echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-statusline.sh)${NC}"
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
@@ -864,10 +882,10 @@ setup_council() {
     local commands_dir="$HOME/.claude/commands"
 
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   Supreme Council Setup                    ║${NC}"
-    echo -e "${BLUE}║   Multi-AI Review (Gemini + ChatGPT)       ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+    echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║   Supreme Council Setup                    ║${NC}"
+    echo -e "${CYAN}║   Multi-AI Review (Gemini + ChatGPT)       ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
     echo ""
 
     # Check Python
@@ -895,7 +913,7 @@ setup_council() {
     fi
     rm -f "$lib_cli_tmp"
 
-    echo -e "  ${BLUE}Provider CLI availability:${NC}"
+    echo -e "  ${CYAN}Provider CLI availability:${NC}"
     recommend_clis
     echo ""
 
@@ -1038,9 +1056,9 @@ setup_council() {
     # invisible — users thought the install hung. Add a horizontal rule + blank
     # lines to clearly separate the spam from the actionable prompt.
     echo ""
-    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
-    echo -e "${BLUE}  Supreme Council — interactive configuration${NC}"
-    echo -e "${BLUE}─────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}─────────────────────────────────────────────${NC}"
+    echo -e "${CYAN}  Supreme Council — interactive configuration${NC}"
+    echo -e "${CYAN}─────────────────────────────────────────────${NC}"
     echo ""
     local configure
     if ! read -r -p "  Configure Supreme Council now? [Y/n]: " configure < /dev/tty 2>/dev/null; then
@@ -1092,7 +1110,7 @@ CONFIGEOF
 
     # Gemini setup
     echo ""
-    echo -e "  ${BLUE}Gemini configuration:${NC}"
+    echo -e "  ${CYAN}Gemini configuration:${NC}"
     echo -e "    ${GREEN}1)${NC} Gemini CLI — free with Google subscription (recommended)"
     echo -e "    ${YELLOW}2)${NC} Gemini API — requires API key from AI Studio"
     echo ""
@@ -1118,7 +1136,7 @@ CONFIGEOF
             fi
         fi
     else
-        echo -e "    ${BLUE}→${NC} Gemini CLI selected"
+        echo -e "    ${CYAN}→${NC} Gemini CLI selected"
         if ! command -v gemini &>/dev/null; then
             echo -e "    ${YELLOW}⚠${NC} Gemini CLI not found. Install:"
             echo -e "      npm install -g @google/gemini-cli"
@@ -1130,7 +1148,7 @@ CONFIGEOF
 
     # OpenAI setup (Phase 24 SP5 — adds Codex CLI option)
     echo ""
-    echo -e "  ${BLUE}OpenAI (ChatGPT) configuration:${NC}"
+    echo -e "  ${CYAN}OpenAI (ChatGPT) configuration:${NC}"
     echo -e "    ${GREEN}1)${NC} Codex CLI — free with ChatGPT Plus/Pro subscription (recommended)"
     echo -e "    ${YELLOW}2)${NC} OpenAI API — requires API key from platform.openai.com"
     echo ""
@@ -1172,7 +1190,7 @@ CONFIGEOF
 
     # OpenRouter fallback (optional)
     echo ""
-    echo -e "  ${BLUE}OpenRouter free-tier fallback (optional):${NC}"
+    echo -e "  ${CYAN}OpenRouter free-tier fallback (optional):${NC}"
     local openrouter_key=""
     if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
         openrouter_key="$OPENROUTER_API_KEY"
@@ -1293,7 +1311,7 @@ main() {
     echo ""
     if [[ "${FAILED_COUNT:-0}" -gt 0 ]]; then
         echo -e "${YELLOW}╔════════════════════════════════════════════╗${NC}"
-        echo -e "${YELLOW}║  ⚠ Installation completed with ${FAILED_COUNT} failure(s) ${NC}"
+        echo -e "${YELLOW}║  ⚠ Toolkit content installed with ${FAILED_COUNT} failure(s) ${NC}"
         echo -e "${YELLOW}╚════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "Failed files (review before commit):"
@@ -1304,40 +1322,51 @@ main() {
         echo ""
         echo -e "Re-run with TK_TOOLKIT_REF=<tag> if you suspect a stale cache,"
         echo -e "or open an issue: https://github.com/sergei-aronsen/claude-code-toolkit/issues"
-    else
-        echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
-        echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
-    fi
-    echo ""
-    echo -e "Next steps:"
-    echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
-    echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
-    echo -e ""
-    echo -e "Installed:"
-    echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
-    echo ""
-    echo -e "Available commands:"
-    echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
-    echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
-    echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
-    echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
-
-    recommend_security
-    recommend_statusline
-    recommend_optional_plugins
-
-    # Supreme Council setup (integrated)
-    if [[ "$SKIP_COUNCIL" != true ]]; then
-        setup_council
     fi
 
-    echo ""
-    echo -e "${BLUE}🔍 Verify installation:${NC}"
-    echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
-    echo ""
-    echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
-    echo ""
+    # When TK_DISPATCHED=1, init-claude.sh runs as a sub-installer of install.sh.
+    # The parent prints its own consolidated finale (Install summary + recommendations
+    # gated on user TUI selections) AFTER all dispatchers complete, so we suppress
+    # the standalone finale here to avoid a mid-flow "Installation Complete!" banner
+    # followed by more dispatcher output (user report 2026-05-01). Bridge prompts
+    # and create_post_install still run because they write artifacts the parent
+    # finale references (POST_INSTALL.md is read by Claude after all dispatchers).
+    if [[ "${TK_DISPATCHED:-0}" != "1" ]]; then
+        if [[ "${FAILED_COUNT:-0}" -eq 0 ]]; then
+            echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+            echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+            echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+        fi
+        echo ""
+        echo -e "Next steps:"
+        echo -e "  1. Review and customize ${CYAN}$CLAUDE_DIR/CLAUDE.md${NC}"
+        echo -e "  2. Commit the ${CYAN}$CLAUDE_DIR${NC} directory"
+        echo -e ""
+        echo -e "Installed:"
+        echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
+        echo ""
+        echo -e "Available commands:"
+        echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
+        echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
+        echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
+        echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
+
+        recommend_security
+        recommend_statusline
+        recommend_optional_plugins
+
+        # Supreme Council setup (integrated)
+        if [[ "$SKIP_COUNCIL" != true ]]; then
+            setup_council
+        fi
+
+        echo ""
+        echo -e "${CYAN}🔍 Verify installation:${NC}"
+        echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
+        echo ""
+        echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
+        echo ""
+    fi
 
     # Create POST_INSTALL.md for Claude to read and relay to user
     create_post_install
@@ -1397,9 +1426,15 @@ POSTINSTALL
 
 main
 
-echo ""
-if [[ $NO_BANNER -eq 0 ]]; then
-    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+# Skip the "To remove" + "Read POST_INSTALL.md" trailers when running as a
+# sub-installer of install.sh (TK_DISPATCHED=1). The parent emits its own
+# consolidated finale after all dispatchers complete; emitting these here
+# would interleave with later dispatcher output (user report 2026-05-01).
+if [[ "${TK_DISPATCHED:-0}" != "1" ]]; then
+    echo ""
+    if [[ $NO_BANNER -eq 0 ]]; then
+        echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+    fi
+    echo ""
+    echo "Read .claude/POST_INSTALL.md and show its contents to the user."
 fi
-echo ""
-echo "Read .claude/POST_INSTALL.md and show its contents to the user."

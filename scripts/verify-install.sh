@@ -13,7 +13,6 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 DIM='\033[2m'
 NC='\033[0m'
@@ -51,9 +50,9 @@ section() {
     echo -e "${CYAN}$1${NC}"
 }
 
-echo -e "${BLUE}╔═══════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   Claude Code Toolkit — Verification          ║${NC}"
-echo -e "${BLUE}╚═══════════════════════════════════════════════╝${NC}"
+echo -e "${CYAN}╔═══════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║   Claude Code Toolkit — Verification          ║${NC}"
+echo -e "${CYAN}╚═══════════════════════════════════════════════╝${NC}"
 
 # ─────────────────────────────────────────────────
 # 1. Project Toolkit (.claude/ in current directory)
@@ -413,7 +412,7 @@ fi
 # ─────────────────────────────────────────────────
 
 echo ""
-echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
 
 if [[ $FAIL -eq 0 ]] && [[ $WARN -eq 0 ]]; then
     echo -e "${GREEN}  All checks passed! ($PASS/$PASS)${NC}"
@@ -423,7 +422,7 @@ else
     echo -e "${GREEN}  $PASS passed${NC}, ${RED}$FAIL failed${NC}, ${YELLOW}$WARN warnings${NC}"
 fi
 
-echo -e "${BLUE}═══════════════════════════════════════════════${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════${NC}"
 
 if [[ $FAIL -gt 0 ]]; then
     echo ""

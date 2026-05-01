@@ -2,7 +2,7 @@
 
 # Claude Code Toolkit — TUI Checklist Library (v4.5+)
 # Source this file. Do NOT execute it directly.
-# Exposes: tui_checklist, tui_confirm_prompt
+# Exposes: tui_checklist, tui_confirm_prompt, tui_tty_read
 # Globals (read):  TK_TUI_TTY_SRC, NO_COLOR, TERM, TUI_LABELS, TUI_GROUPS,
 #                  TUI_INSTALLED, TUI_DESCS, TUI_REQUIRED (optional),
 #                  TUI_GROUP_NAMES + TUI_GROUP_DESCS (optional, parallel pair
@@ -35,7 +35,7 @@
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
 # Internal log helpers — underscore prefix avoids name collision with caller.
-_tui_log_info()    { echo -e "${BLUE}i${NC} $1" >&2; }
+_tui_log_info()    { echo -e "${CYAN}i${NC} $1" >&2; }
 _tui_log_warning() { echo -e "${YELLOW}!${NC} $1" >&2; }
 
 # Color gating per TUI-06 + RESEARCH.md §3:
@@ -114,9 +114,23 @@ _tui_read_key() {
 _tui_render() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
 
-    # Move cursor to top-left and erase to end-of-screen (RESEARCH.md §3 — no
-    # alternate screen; simpler clear+redraw approach).
-    printf '\e[H\e[J' >> "$tty_target" 2>/dev/null || true
+    # Atomic frame composition: build the entire frame in a single string,
+    # then write it to the tty in ONE printf. Per-line printfs (the previous
+    # design) caused two problems:
+    #   1. Visible flicker on macOS Terminal — each printf was a separate
+    #      tty syscall, terminal repainted between them.
+    #   2. Bleed-through of prior content (user report 2026-05-01: leftover
+    #      "stripe-best-practices installed ✓" line peeking through the gap
+    #      before the footer in the main components TUI). Per-line erase-to-
+    #      EOL (\e[K) only cleared lines we wrote on; lines we *skipped over*
+    #      with \n retained their prior content from a taller previous frame
+    #      or from non-TUI output that happened to land in the viewport.
+    # Single-write means the terminal sees one screen update — no flicker —
+    # AND we start the frame with \e[H\e[J (home + clear-to-end-of-screen)
+    # again, which is safe under atomic write because the user never sees
+    # the cleared intermediate state.
+    local _frame=""
+    _frame+=$'\e[H\e[J'
 
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
@@ -136,9 +150,9 @@ _tui_render() {
         # via parallel-array lookup so we stay Bash 3.2 compatible — no `declare -A`).
         if [[ "$grp" != "$prev_group" && -n "$grp" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '\n  \e[1m%s\e[0m\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'\n  \e[1m'"$grp"$'\e[0m\n'
             else
-                printf '\n  %s\n' "$grp" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'\n  '"$grp"$'\n'
             fi
             # Lookup group description: TUI_GROUP_NAMES[k] == "$grp" → TUI_GROUP_DESCS[k].
             # `${TUI_GROUP_NAMES[@]+...}` expands to empty when the array is unset/empty,
@@ -158,9 +172,9 @@ _tui_render() {
             done
             if [[ -n "$_grp_desc" ]]; then
                 if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                    printf '  \e[2m%s\e[0m\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    _frame+=$'  \e[2m'"$_grp_desc"$'\e[0m\n'
                 else
-                    printf '  %s\n' "$_grp_desc" >> "$tty_target" 2>/dev/null || true
+                    _frame+="  $_grp_desc"$'\n'
                 fi
             fi
             prev_group="$grp"
@@ -185,17 +199,17 @@ _tui_render() {
         # Numbered prefix + label row. Immutable rows (installed/required) render dim
         # so they read as "disabled" — user knows space won't toggle them.
         if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
-            printf '%s\e[2m%d. %s %s\e[0m\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            _frame+="$arrow"$'\e[2m'"${row_num}. ${box} ${label}"$'\e[0m\n'
         else
-            printf '%s%d. %s %s\n' "$arrow" "$row_num" "$box" "$label" >> "$tty_target" 2>/dev/null || true
+            _frame+="${arrow}${row_num}. ${box} ${label}"$'\n'
         fi
 
         # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
         if [[ -n "$desc" ]]; then
             if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                printf '       \e[2m%s\e[0m\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                _frame+=$'       \e[2m'"$desc"$'\e[0m\n'
             else
-                printf '       %s\n' "$desc" >> "$tty_target" 2>/dev/null || true
+                _frame+="       $desc"$'\n'
             fi
         fi
     done
@@ -210,21 +224,27 @@ _tui_render() {
         submit_arrow="${TK_TUI_ARROW:-▶ }"
     fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n%s\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\n' \
-            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n'"$submit_arrow"$'\e[1;32m[ Install selected ]\e[0m  \e[2m← press Enter\e[0m\n'
     else
-        printf '\n%s[ Install selected ]  ← press Enter\n' \
-            "$submit_arrow" >> "$tty_target" 2>/dev/null || true
+        _frame+=$'\n'"${submit_arrow}[ Install selected ]  ← press Enter"$'\n'
     fi
 
-    # Updated footer text.
-    if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        printf '\n  \e[2m↑↓ navigate · Space toggle · Enter install · Esc cancel\e[0m\n' \
-            >> "$tty_target" 2>/dev/null || true
-    else
-        printf '\n  ↑↓ navigate · Space toggle · Enter install · Esc cancel\n' \
-            >> "$tty_target" 2>/dev/null || true
+    # Footer hint. Esc detection is unreliable on some macOS terminal configs
+    # (Send +Esc / Esc-as-Meta), so the public hint advertises Ctrl+C — Esc is
+    # still wired in tui_checklist's case match for terminals where it does work.
+    # When TK_TUI_ALLOW_BACK=1 (multi-step flows), advertise the `b` key.
+    local _back_hint=""
+    if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
+        _back_hint=" · b back"
     fi
+    if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
+        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_back_hint}"$' · Ctrl+C abort\e[0m\n'
+    else
+        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_back_hint}"$' · Ctrl+C abort\n'
+    fi
+
+    # Single atomic write — terminal renders one frame, no flicker, no bleed.
+    printf '%s' "$_frame" >> "$tty_target" 2>/dev/null || true
 }
 
 # tui_checklist — render the checklist menu and capture user selection.
@@ -318,9 +338,17 @@ tui_checklist() {
                     FOCUS_IDX="$total"
                 fi
                 ;;
-            $'\e')
-                # Bare Esc — cancel. _tui_read_key uses `read -rsn2 -t 1` so a
-                # bare ESC press returns "$'\e'" without the [A/[B suffix.
+            $'\e' | $'\e\e' | $'\e\e\e')
+                # Bare Esc (or double/triple Esc) — cancel.
+                # _tui_read_key uses `read -rsn2 -t 1` so a bare Esc press
+                # normally returns "$'\e'" without the [A/[B suffix. But on
+                # macOS Terminal.app + some iTerm2 configs (notably "Esc+ as
+                # Meta" / "Send +Esc"), the Esc key emits two or three bytes
+                # in quick succession (\e\e or \e\e\e) — fast enough that
+                # _tui_read_key's read-ahead window catches them before the
+                # 1-second timeout. Without the extra glob arms, those bytes
+                # fell through to the `*) ignore` branch and the user reported
+                # "Esc does nothing, only Ctrl-C cancels" (2026-05-01).
                 rc=1
                 break
                 ;;
@@ -328,6 +356,20 @@ tui_checklist() {
                 # Quit — cancel.
                 rc=1
                 break
+                ;;
+            b|B)
+                # Back — return to previous step in a multi-step flow.
+                # Caller (install.sh pre-collection loop) interprets rc=4
+                # as "user wants to re-do the previous picker"; standalone
+                # tui_checklist callers can ignore rc=4 (treat as cancel).
+                # Only enabled when TK_TUI_ALLOW_BACK=1 — otherwise b/B
+                # behaves like any unknown key (ignored). Gating prevents
+                # surprises in single-step TUI invocations where Back has
+                # no defined target.
+                if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
+                    rc=4
+                    break
+                fi
                 ;;
             *)
                 # Unrecognized — ignore and re-render.
@@ -349,15 +391,110 @@ tui_checklist() {
     return "$rc"
 }
 
+# tui_tty_read — visible prompt + read into named variable, immune to caller's
+# stderr capture (e.g., install.sh dispatch loop's `( … ) 2>"$stderr_tmp"` D-28).
+#
+# Why this exists: Bash `read -p "prompt"` writes the prompt string to STDERR
+# (not the controlling terminal). When a parent runner redirects stderr to a
+# tmpfile to harvest the failure tail (D-28 in install.sh:1066), the prompt
+# disappears and the user sees a bare blinking caret with no clue what to
+# type. tui_tty_read writes the prompt directly to the TTY device with
+# `printf … > "$tty"` so the prompt is visible regardless of how the parent
+# wires stderr.
+#
+# Args:
+#   $1 — variable name to assign the answer into (must be a valid Bash
+#        identifier; do not pass user-controlled input).
+#   $2 — prompt text. Caller is responsible for trailing space (e.g. "Foo? [y/N]: ").
+#   $3 — silent flag: "1" = no echo (passwords/API keys), default "0".
+#   $4 — TTY override (optional). When non-empty, reads/writes against this path
+#        instead of the default. Used by sibling libs that publish their own
+#        test seam (e.g. bridges.sh exports TK_BRIDGE_TTY_SRC). Empty/unset
+#        falls through to TK_TUI_TTY_SRC, then /dev/tty.
+# Return:
+#   0 — answer captured (may be empty string if user pressed Enter).
+#   1 — TTY unreachable / EOF; caller should treat as fail-closed default.
+#       The named variable is left empty in that case.
+tui_tty_read() {
+    local _varname="$1"
+    local _prompt="$2"
+    local _silent="${3:-0}"
+    local _tty="${4:-${TK_TUI_TTY_SRC:-/dev/tty}}"
+
+    # Defensive: reject non-identifier var names so we cannot get coerced into
+    # writing into something like `PATH` if a future caller passes a literal.
+    if [[ ! "$_varname" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        return 1
+    fi
+
+    # Initialise the target variable to empty so a no-TTY return path leaves a
+    # consistent empty string (callers `${var:-default}` it).
+    printf -v "$_varname" '%s' ''
+
+    # Resolve where to write the prompt:
+    #   1. TK_TUI_PROMPT_SINK (regression-test seam) — write prompt there,
+    #      keeping the read path untouched. Lets tests assert prompt visibility
+    #      independently of input feeding.
+    #   2. Char devices (/dev/tty, /dev/ttyN, /dev/pts/N) — bidirectional;
+    #      write prompt to the same path the read consumes.
+    #   3. Regular files OR pipes (test seams: TK_BRIDGE_TTY_SRC=tmpfile pre-
+    #      loaded with answer; or process substitution `<(printf 'y\n')` which
+    #      yields a one-way pipe FD readable only by the consumer) — skip the
+    #      prompt write entirely so the answer is neither truncated nor blocked
+    #      on a write to a read-only pipe end. Mirrors the v4.7-era semantics
+    #      where `read -p` wrote prompts to stderr (not to the path).
+    local _prompt_sink="${TK_TUI_PROMPT_SINK:-}"
+    if [[ -n "$_prompt_sink" ]]; then
+        # `>>` because the sink may accumulate multiple prompts across one test.
+        printf '%s' "$_prompt" >> "$_prompt_sink" 2>/dev/null || return 1
+    elif [[ -c "$_tty" ]]; then
+        printf '%s' "$_prompt" > "$_tty" 2>/dev/null || return 1
+    fi
+    # Regular file / pipe w/o sink: prompt write deliberately omitted — see above.
+
+    # Indirect read-into-named-variable: `read VAR` reads INTO $VAR; we expand
+    # $_varname to get the real var name and bash reads into it. Shellcheck
+    # SC2229 flags this as suspicious (it cannot tell the difference between
+    # "read into the value of $_varname" and "read into a var named _varname"),
+    # so we silence it explicitly. The defensive identifier-regex check at the
+    # top of the function bounds the value to a safe Bash name.
+    if [[ "$_silent" -eq 1 ]]; then
+        # `read -s` echoes nothing; print a newline ourselves for layout parity
+        # with the non-silent path (matches the legacy `read -rs` user feel).
+        # shellcheck disable=SC2229
+        if ! read -rs "$_varname" < "$_tty" 2>/dev/null; then
+            # Newline goes to the same destination the prompt did, so test sinks
+            # capture the trailing \n too.
+            if [[ -n "$_prompt_sink" ]]; then
+                printf '\n' >> "$_prompt_sink" 2>/dev/null || true
+            elif [[ -c "$_tty" ]]; then
+                printf '\n' > "$_tty" 2>/dev/null || true
+            fi
+            return 1
+        fi
+        if [[ -n "$_prompt_sink" ]]; then
+            printf '\n' >> "$_prompt_sink" 2>/dev/null || true
+        elif [[ -c "$_tty" ]]; then
+            printf '\n' > "$_tty" 2>/dev/null || true
+        fi
+    else
+        # shellcheck disable=SC2229
+        if ! read -r "$_varname" < "$_tty" 2>/dev/null; then
+            return 1
+        fi
+    fi
+    return 0
+}
+
 # tui_confirm_prompt — render a single line [y/N] prompt.
 # $1 = prompt text (e.g. "Install 4 component(s)? [y/N] ")
 # Return: 0 if user typed y/Y; 1 otherwise (default N, EOF, q/Q).
 # Reads from < "${TK_TUI_TTY_SRC:-/dev/tty}" — same seam as the main checklist.
 tui_confirm_prompt() {
     local prompt_text="${1:-Confirm? [y/N] }"
-    local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
     local choice=""
-    if ! read -r -p "$prompt_text" choice < "$tty_target" 2>/dev/null; then
+    # Use tui_tty_read so the prompt survives parent stderr capture.
+    if ! tui_tty_read choice "$prompt_text"; then
         # No TTY — fail-closed N per TUI-02 / D-11.
         return 1
     fi

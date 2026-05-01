@@ -41,7 +41,7 @@
 
 # Local log helpers — defined here because lib/install.sh does NOT export log_*.
 # Shape mirrors scripts/uninstall.sh:71-74. Use these instead of raw echo for consistency.
-_bootstrap_log_info()    { echo -e "${BLUE}ℹ${NC} $1" >&2; }
+_bootstrap_log_info()    { echo -e "${CYAN}ℹ${NC} $1" >&2; }
 _bootstrap_log_warning() { echo -e "${YELLOW}⚠${NC} $1" >&2; }
 
 # _bootstrap_prompt_and_run <plugin_name> <prompt_text> <cmd_string>
@@ -109,10 +109,34 @@ _bootstrap_prompt_and_run() {
     local tty_target="/dev/tty"
     [[ -n "${TK_BOOTSTRAP_TTY_SRC:-}" ]] && tty_target="$TK_BOOTSTRAP_TTY_SRC"
 
+    # Lazy-source tui.sh so tui_tty_read is available when bootstrap.sh is
+    # sourced standalone (e.g. install.sh's no-TTY-no-yes branch fetches
+    # bootstrap.sh from a tmpfile under curl|bash and tui.sh may not have been
+    # sourced yet on that path).
+    if ! command -v tui_tty_read >/dev/null 2>&1; then
+        local _bootstrap_lib_dir
+        _bootstrap_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)"
+        if [[ -f "${_bootstrap_lib_dir}/tui.sh" ]]; then
+            # shellcheck source=/dev/null
+            source "${_bootstrap_lib_dir}/tui.sh"
+        fi
+    fi
+
     local choice=""
-    if ! read -r -p "$prompt_text" choice < "$tty_target" 2>/dev/null; then
-        _bootstrap_log_info "bootstrap skipped — no TTY"
-        return 0
+    # Visible-prompt helper writes prompt to TTY (not stderr) so it survives
+    # `( … ) 2>"$tmp"` parent capture. Falls back to bare `read -p` if tui.sh
+    # is genuinely unavailable (defensive — should never happen in shipped
+    # paths because lazy-source above always succeeds when files are present).
+    if command -v tui_tty_read >/dev/null 2>&1; then
+        if ! tui_tty_read choice "$prompt_text" 0 "$tty_target"; then
+            _bootstrap_log_info "bootstrap skipped — no TTY"
+            return 0
+        fi
+    else
+        if ! read -r -p "$prompt_text" choice < "$tty_target" 2>/dev/null; then
+            _bootstrap_log_info "bootstrap skipped — no TTY"
+            return 0
+        fi
     fi
 
     case "${choice:-N}" in

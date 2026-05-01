@@ -25,7 +25,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 # shellcheck disable=SC2034
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 # shellcheck disable=SC2034
 CYAN='\033[0;36m'
 NC='\033[0m'
@@ -217,7 +216,13 @@ if [[ "$MCPS" -eq 1 ]]; then
     # _mcp_default_catalog_path to /tmp/mcp-catalog.json which doesn't exist
     # → "Failed to load MCP catalog" exit 1 (user report 2026-05-01). Download
     # the catalog to a tmpfile and point TK_MCP_CATALOG_PATH at it.
-    if _is_curl_pipe; then
+    #
+    # Skip when TK_MCP_CATALOG_PATH already exported by the parent flow's
+    # UX-FLOW-01 pre-collection block (install.sh top-level → dispatch_mcps
+    # → install.sh --mcps inherits the env). A second mktemp on the same
+    # template under heavy /tmp churn produced "mkstemp failed: File exists"
+    # (user report 2026-05-01) and the duplicate download is wasteful anyway.
+    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
         MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
         if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
@@ -248,6 +253,9 @@ detect2_cache
 print_install_status() {
     local component="$1" state="$2"
     case "$state" in
+        # MCPs registered without env vars: render yellow so the row
+        # visually flags "still needs config" without looking like failure.
+        "installed (needs API key)") printf '  %b%-30s %s%b\n' "${_DRO_Y:-}" "$component" "$state" "${_DRO_NC:-}" ;;
         installed*)     printf '  %b%-30s %s%b\n' "${_DRO_G:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         would-install)  printf '  %b%-30s %s%b\n' "${_DRO_C:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         skipped)        printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
@@ -302,7 +310,7 @@ if [[ "$SKILLS_ONLY" -eq 1 ]]; then
         echo ""
     else
         echo ""
-        echo -e "${BLUE}i${NC} --skills-only mode: skills install to ~/.claude/plugins/tk-skills/"
+        echo -e "${CYAN}i${NC} --skills-only mode: skills install to ~/.claude/plugins/tk-skills/"
         echo ""
     fi
 fi
@@ -330,12 +338,40 @@ if [[ "$MCPS" -eq 1 ]]; then
         echo ""
     fi
 
-    # Selection: --yes default-set OR TUI page.
+    # Selection precedence (UX-FLOW-01 + earlier policy):
+    #   1. TK_MCP_PRE_SELECTED env  — pre-collected by the parent install.sh
+    #      flow (the user picked these in an MCP sub-picker BEFORE any
+    #      installation began). Empty value is meaningful: install zero MCPs.
+    #      Set ⇒ skip TUI entirely (headless install).
+    #   2. --yes / YES=1            — default-set (everything not installed,
+    #      OAuth-only excluded unless --force).
+    #   3. interactive TUI page     — render the catalog and let the user pick.
     TUI_RESULTS=()
-    if [[ "$YES" -eq 1 ]]; then
+    local_count=${#MCP_NAMES[@]}
+    if [[ -n "${TK_MCP_PRE_SELECTED+x}" ]]; then
+        # Headless. Comma-separated names → 0/1 per row by exact match against MCP_NAMES.
+        # NOTE: this is top-level shell context (install.sh is a script body),
+        # NOT a function, so `local` is illegal. Use plain assignments + an
+        # underscore prefix to avoid clobbering the surrounding flow.
+        _pre_csv="${TK_MCP_PRE_SELECTED:-}"
+        _IFS_SAVE="$IFS"
+        IFS=','
+        # shellcheck disable=SC2206  # intentional word-split on ','
+        _pre_arr=( $_pre_csv )
+        IFS="$_IFS_SAVE"
+        for ((i=0; i<local_count; i++)); do
+            TUI_RESULTS[$i]=0
+            for _pname in "${_pre_arr[@]+"${_pre_arr[@]}"}"; do
+                if [[ "$_pname" == "${MCP_NAMES[$i]}" ]]; then
+                    TUI_RESULTS[$i]=1
+                    break
+                fi
+            done
+        done
+        unset _pre_csv _IFS_SAVE _pre_arr _pname
+    elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; skip OAuth-only unless --force
         # (OAuth needs interactive browser flow — incompatible with --yes).
-        local_count=${#MCP_NAMES[@]}
         for ((i=0; i<local_count; i++)); do
             if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
                 TUI_RESULTS[$i]=0
@@ -370,8 +406,19 @@ if [[ "$MCPS" -eq 1 ]]; then
     # ─────────────────────────────────────────────
     # MCP dispatch loop (mirrors Phase 24 D-08 continue-on-error pattern).
     # ─────────────────────────────────────────────
+    # Defer interactive secret prompts during install — user reported that
+    # mid-install API-key prompts cause them to "never finish" the run
+    # (2026-05-01). MCPs requiring env keys are skipped here and queued in
+    # TK_MCP_DEFERRED_QUEUE for the post-install summary, which prints
+    # exact `claude mcp add` commands to finish setup later.
+    export TK_MCP_DEFER_SECRETS="${TK_MCP_DEFER_SECRETS:-1}"
+    if [[ -z "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
+        TK_MCP_DEFERRED_QUEUE=$(mktemp "${TMPDIR:-/tmp}/tk-mcp-deferred.XXXXXX") || TK_MCP_DEFERRED_QUEUE=""
+        [[ -n "$TK_MCP_DEFERRED_QUEUE" ]] && CLEANUP_PATHS+=("$TK_MCP_DEFERRED_QUEUE")
+        export TK_MCP_DEFERRED_QUEUE
+    fi
     echo ""
-    echo -e "${BLUE}Installing selected MCP(s)...${NC}"
+    echo -e "${CYAN}Installing selected MCP(s)...${NC}"
     echo ""
     INSTALLED_COUNT=0
     SKIPPED_COUNT=0
@@ -426,6 +473,15 @@ if [[ "$MCPS" -eq 1 ]]; then
                 SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
+            3)
+                # rc=3 — server registered with claude CLI but has no env
+                # binding yet (deferred-secrets path). Counted as installed
+                # so the summary doesn't read like a failure; the follow-up
+                # block tells the user how to add the key.
+                COMPONENT_STATUS+=("installed (needs API key)")
+                INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+                COMPONENT_STDERR_TAIL+=("")
+                ;;
             *)
                 COMPONENT_STATUS+=("failed (exit $local_rc)")
                 FAILED_COUNT=$((FAILED_COUNT + 1))
@@ -449,7 +505,7 @@ if [[ "$MCPS" -eq 1 ]]; then
 
     # Print MCP install summary.
     echo ""
-    echo -e "${BLUE}MCP install summary:${NC}"
+    echo -e "${CYAN}MCP install summary:${NC}"
     echo ""
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
@@ -469,6 +525,71 @@ if [[ "$MCPS" -eq 1 ]]; then
     echo ""
     printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+
+    # Follow-up block for MCPs registered without env vars. The servers are
+    # already in `claude mcp list`; they just need API keys exported in the
+    # shell that launches claude. claude CLI inherits the shell env and
+    # passes it through to MCP child processes — no re-registration needed
+    # when keys change.
+    if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
+        # Auto-install the source line into shell rc if absent. Idempotent —
+        # detects existing line via marker comment. User wanted "edit key,
+        # restart claude, done" — adding the source line manually was an
+        # extra friction step we can eliminate (2026-05-01).
+        _shell_rc=""
+        if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == *zsh* ]]; then
+            _shell_rc="$HOME/.zshrc"
+        elif [[ -n "${BASH_VERSION:-}" ]] || [[ "${SHELL:-}" == *bash* ]]; then
+            # macOS bash users typically rely on .bash_profile, Linux on .bashrc.
+            if [[ "$(uname -s)" == "Darwin" ]]; then
+                _shell_rc="$HOME/.bash_profile"
+            else
+                _shell_rc="$HOME/.bashrc"
+            fi
+        fi
+        _rc_added=0
+        _rc_marker="# claude-code-toolkit: source ~/.claude/mcp-config.env into shell env"
+        if [[ -n "$_shell_rc" ]]; then
+            if [[ -f "$_shell_rc" ]] && grep -qF "$_rc_marker" "$_shell_rc" 2>/dev/null; then
+                _rc_added=2   # already present
+            else
+                {
+                    printf '\n%s\n' "$_rc_marker"
+                    printf 'set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a\n'
+                } >> "$_shell_rc" 2>/dev/null && _rc_added=1
+            fi
+        fi
+        echo ""
+        echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
+        echo ""
+        echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
+        while IFS=$'\t' read -r d_name d_keys _; do
+            [[ -z "$d_name" ]] && continue
+            _IFS_SAVED2="$IFS"
+            IFS=','
+            for _k in $d_keys; do
+                _k="${_k# }"
+                [[ -z "$_k" ]] && continue
+                printf '       %s=<your-key>\n' "$_k"
+            done
+            IFS="$_IFS_SAVED2"
+        done < "$TK_MCP_DEFERRED_QUEUE"
+        unset _k _IFS_SAVED2
+        echo ""
+        case "$_rc_added" in
+            1) echo "  2) Shell rc updated: auto-source line added to ${_shell_rc/#$HOME/~}." ;;
+            2) echo "  2) Shell rc already configured (auto-source line found in ${_shell_rc/#$HOME/~})." ;;
+            *) echo "  2) Could not detect/write to your shell rc. Add this ONE line to ~/.zshrc (or ~/.bashrc) manually:"
+               echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a" ;;
+        esac
+        echo ""
+        echo "  3) Reload shell env (open a fresh terminal, or run: exec \$SHELL) and start claude."
+        echo ""
+        echo "     When you change a key later: edit mcp-config.env, re-open claude. No"
+        echo "     re-registration, no other commands — keys load at claude startup."
+        unset _shell_rc _rc_added _rc_marker
+    fi
+
     if [[ "${NO_BANNER:-0}" != "1" ]]; then
         echo ""
         echo "To remove an MCP: claude mcp remove <name>"
@@ -499,9 +620,30 @@ if [[ "$SKILLS" -eq 1 ]]; then
         TUI_DESCS+=("Curated skill mirrored from upstream")
     done
 
-    # Selection: --yes default-set OR TUI page.
+    # Selection precedence (UX-FLOW-01 mirror of the MCP branch above):
+    #   1. TK_SKILLS_PRE_SELECTED env (headless, pre-collected by parent flow)
+    #   2. --yes default-set
+    #   3. interactive TUI page
     TUI_RESULTS=()
-    if [[ "$YES" -eq 1 ]]; then
+    if [[ -n "${TK_SKILLS_PRE_SELECTED+x}" ]]; then
+        # Top-level (install.sh script body) — `local` is illegal here.
+        _pre_csv="${TK_SKILLS_PRE_SELECTED:-}"
+        _IFS_SAVE="$IFS"
+        IFS=','
+        # shellcheck disable=SC2206  # intentional word-split on ','
+        _pre_arr=( $_pre_csv )
+        IFS="$_IFS_SAVE"
+        for ((i=0; i<local_total; i++)); do
+            TUI_RESULTS[$i]=0
+            for _pname in "${_pre_arr[@]+"${_pre_arr[@]}"}"; do
+                if [[ "$_pname" == "${SKILLS_CATALOG[$i]}" ]]; then
+                    TUI_RESULTS[$i]=1
+                    break
+                fi
+            done
+        done
+        unset _pre_csv _IFS_SAVE _pre_arr _pname
+    elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; --force re-runs already-installed.
         for ((i=0; i<local_total; i++)); do
             if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
@@ -534,7 +676,8 @@ if [[ "$SKILLS" -eq 1 ]]; then
     # Skills dispatch loop (mirrors Phase 25 D-08 continue-on-error pattern).
     # ─────────────────────────────────────────────
     echo ""
-    echo -e "${BLUE}Installing selected skill(s)...${NC}"
+    echo -e "${CYAN}Installing marketplace skills (global → ~/.claude/skills/)...${NC}"
+    echo -e "  Distinct from project-local toolkit skill stubs in <project>/.claude/skills/"
     echo ""
     INSTALLED_COUNT=0
     SKIPPED_COUNT=0
@@ -611,22 +754,37 @@ if [[ "$SKILLS" -eq 1 ]]; then
         esac
     done
 
-    # Print skills install summary.
+    # Print skills install summary using the soft-checkmark style of
+    # init-claude.sh's "📥 Framework extras..." block — user feedback
+    # 2026-05-01: bright green right-aligned "installed ✓" rows were
+    # too loud for a 22-row catalog. Compact left-aligned format with
+    # subtle green checkmark reads as a list, not a billboard.
     echo ""
-    echo -e "${BLUE}Skills install summary:${NC}"
-    echo ""
+    echo -e "${CYAN}Marketplace skills install summary (~/.claude/skills/):${NC}"
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
         local_state="${COMPONENT_STATUS[$i]:-unknown}"
-        print_install_status "$local_name" "$local_state"
         case "$local_state" in
+            "installed ✓"|installed)
+                printf '  %b✓%b %s\n' "${GREEN}" "${NC}" "$local_name"
+                ;;
+            "would-install")
+                # Keep the literal "would-install" token in dry-run output —
+                # tests + downstream tooling parse it. Soft-checkmark style
+                # only applies to the live install path.
+                printf '  %b·%b %-30s would-install\n' "${CYAN}" "${NC}" "$local_name"
+                ;;
             failed*)
+                printf '  %b✗%b %s — %s\n' "${RED}" "${NC}" "$local_name" "$local_state"
                 local_tail="${COMPONENT_STDERR_TAIL[$i]:-}"
                 if [[ -n "$local_tail" ]]; then
                     while IFS= read -r tail_line; do
                         printf '      %s\n' "$tail_line"
                     done <<< "$local_tail"
                 fi
+                ;;
+            *)
+                printf '  %b·%b %s — %s\n' "${YELLOW}" "${NC}" "$local_name" "$local_state"
                 ;;
         esac
     done
@@ -736,17 +894,17 @@ fi
 # mode so the user sees the dedicated sub-TUI for that catalog. Embedding the
 # 9-MCP + 22-skill rows directly in the main TUI would push the row count past
 # 30 and crowd the screen — sub-pages are the cleaner UX.
-TUI_LABELS+=("mcp-servers")
-TUI_GROUPS+=("Marketplace")
-TUI_INSTALLED+=("0")
-TUI_REQUIRED+=("0")
-TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
-
 TUI_LABELS+=("skills")
 TUI_GROUPS+=("Marketplace")
 TUI_INSTALLED+=("0")
 TUI_REQUIRED+=("0")
 TUI_DESCS+=("Pick skills (22 in catalog: firecrawl, notebooklm, shadcn, ...). Sub-picker opens after main install.")
+
+TUI_LABELS+=("mcp-servers")
+TUI_GROUPS+=("Marketplace")
+TUI_INSTALLED+=("0")
+TUI_REQUIRED+=("0")
+TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
 
 # Dispatch name maps 1:1 to TK_DISPATCH_ORDER.
 
@@ -798,6 +956,13 @@ elif [[ -r "$_install_tty_src" ]]; then
     # was invisible after the now-tall TUI render (long inline descriptions push
     # it off the bottom of the screen, leading to "I pressed Enter and nothing
     # happened" reports).
+    #
+    # Note: this is the main TUI only. Sub-pickers (skills, MCP) below run in
+    # the UX-FLOW-01 pre-collection block. When a sub-picker presses 'b'
+    # (Back), the pre-collection block jumps back here by setting
+    # TK_TUI_REDO_MAIN=1 and `continue`-ing its enclosing loop. We don't wrap
+    # this single-call site in a loop ourselves — the back-jump is handled
+    # by the outer pre-collection state machine.
     if ! tui_checklist; then
         # User cancelled (q/Ctrl-C/EOF). Fail-closed exit 0 per D-11.
         echo "Install cancelled."
@@ -925,11 +1090,320 @@ if [[ -n "$BRIDGES_FORCE" ]]; then
 fi
 
 # ─────────────────────────────────────────────────
+# BRIDGE-UX-05: TUI bridge selection → env propagation for the nested toolkit
+# dispatch. Without this, init-claude.sh's bridge_install_prompts re-prompts
+# the user under D-28 stderr capture — the prompt is written to stderr (Bash
+# `read -p` semantics), captured by `( dispatch_toolkit ) 2>"$tmp"`, and the
+# user sees a bare blinking caret.
+#
+# We honour the TUI checkbox state here so bridge_install_prompts inside
+# init-claude.sh uses its NON-interactive paths:
+#   row checked   → BRIDGES_FORCE=<target> (force-create path, no prompt)
+#   row unchecked → TK_NO_BRIDGES=1        (silent return 0, no prompt)
+# Only triggered when the TUI actually ran (TK_TUI_CONFIRMED=1) AND the bridge
+# row was rendered (CLI detected). Manual `--bridges`/env overrides still work
+# when invoked outside the TUI flow.
+# ─────────────────────────────────────────────────
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
+    _tui_bridge_force=""
+    _tui_bridge_seen_any=0
+    _tbf_count=${#TUI_LABELS[@]}
+    for ((_tbi=0; _tbi<_tbf_count; _tbi++)); do
+        case "${TUI_LABELS[$_tbi]}" in
+            gemini-bridge)
+                _tui_bridge_seen_any=1
+                if [[ "${TUI_RESULTS[$_tbi]:-0}" -eq 1 ]]; then
+                    _tui_bridge_force="${_tui_bridge_force}${_tui_bridge_force:+,}gemini"
+                fi
+                ;;
+            codex-bridge)
+                _tui_bridge_seen_any=1
+                if [[ "${TUI_RESULTS[$_tbi]:-0}" -eq 1 ]]; then
+                    _tui_bridge_force="${_tui_bridge_force}${_tui_bridge_force:+,}codex"
+                fi
+                ;;
+        esac
+    done
+    if [[ "$_tui_bridge_seen_any" -eq 1 ]]; then
+        if [[ -n "$_tui_bridge_force" ]]; then
+            # User explicitly opted in via TUI → propagate as force-list.
+            # Do NOT clobber an existing BRIDGES_FORCE: the caller may have
+            # added --bridges <list> on top of TUI selection (CI tooling).
+            if [[ -z "${BRIDGES_FORCE:-}" ]]; then
+                export BRIDGES_FORCE="$_tui_bridge_force"
+            fi
+        else
+            # User saw bridge rows + left them unchecked → silent skip.
+            # TK_NO_BRIDGES=1 is the env-var form bridge_install_prompts honours.
+            # NO_BRIDGES=true (the flag form) is also honoured but is an
+            # init-claude.sh-internal var; TK_NO_BRIDGES is the cross-process
+            # contract.
+            export TK_NO_BRIDGES=1
+        fi
+    fi
+    unset _tbf_count _tbi _tui_bridge_force _tui_bridge_seen_any
+fi
+
+# ─────────────────────────────────────────────────
+# UX-FLOW-01: pre-collect MCP / skills sub-picker selections.
+#
+# Old flow: main TUI Submit → dispatch loop → toolkit/security/etc. install →
+# (later) mcp-servers dispatcher re-spawns install.sh --mcps which opens its
+# OWN TUI mid-install → user gets a sub-picker AFTER 20+ seconds of silent
+# install work, which feels like a hang.
+#
+# New flow: main TUI Submit → MCP sub-picker (if mcp-servers row checked) →
+# Skills sub-picker (if skills row checked) → THEN the dispatch loop runs
+# end-to-end. The user answers every question up front. The mcp-servers /
+# skills dispatchers reuse the pre-collected selections via the
+# TK_MCP_PRE_SELECTED / TK_SKILLS_PRE_SELECTED env contract that the --mcps
+# and --skills branches above honour (skip their own TUI when set).
+#
+# Empty value (`TK_MCP_PRE_SELECTED=""`) is meaningful: "user opened the
+# sub-picker, picked nothing, hit Submit." Headless install of zero MCPs.
+# Cancel (Esc / Ctrl-C in the sub-picker) aborts the whole install per
+# normal TUI semantics.
+# ─────────────────────────────────────────────────
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
+    # ─────────────────────────────────────────────
+    # State machine with back-nav (UX-FLOW-02 — user feedback 2026-05-02:
+    # "can I press Back from skills/MCP picker to re-do the main TUI?").
+    #
+    # Steps:  main → skills → mcp → done
+    # Forward: rc=0 from sub-picker advances to next.
+    # Back:    rc=4 (TK_TUI_ALLOW_BACK=1) returns to previous step.
+    #          From skills back → main TUI re-renders with current selections.
+    #          From mcp    back → skills picker (or main TUI if skills not selected).
+    # Cancel:  rc=1 from any picker aborts the whole install.
+    #
+    # Outer loop runs main TUI when _redo_main_tui=1; inner loop is the
+    # skills/mcp state machine. Bridge plumbing + _need_*_pre derivation
+    # repeats per outer iteration so a back-jump that toggles main-TUI
+    # checkboxes (e.g. unchecking the Bridges row) is reflected
+    # immediately in the next dispatch.
+    # ─────────────────────────────────────────────
+
+    _save_main_tui_state() {
+        _SAVE_TUI_LABELS=("${TUI_LABELS[@]+"${TUI_LABELS[@]}"}")
+        _SAVE_TUI_RESULTS=("${TUI_RESULTS[@]+"${TUI_RESULTS[@]}"}")
+        _SAVE_TUI_INSTALLED=("${TUI_INSTALLED[@]+"${TUI_INSTALLED[@]}"}")
+        _SAVE_TUI_GROUPS=("${TUI_GROUPS[@]+"${TUI_GROUPS[@]}"}")
+        _SAVE_TUI_DESCS=("${TUI_DESCS[@]+"${TUI_DESCS[@]}"}")
+        _SAVE_TUI_REQUIRED=("${TUI_REQUIRED[@]+"${TUI_REQUIRED[@]}"}")
+    }
+    _restore_main_tui_state() {
+        TUI_LABELS=("${_SAVE_TUI_LABELS[@]+"${_SAVE_TUI_LABELS[@]}"}")
+        TUI_RESULTS=("${_SAVE_TUI_RESULTS[@]+"${_SAVE_TUI_RESULTS[@]}"}")
+        TUI_INSTALLED=("${_SAVE_TUI_INSTALLED[@]+"${_SAVE_TUI_INSTALLED[@]}"}")
+        TUI_GROUPS=("${_SAVE_TUI_GROUPS[@]+"${_SAVE_TUI_GROUPS[@]}"}")
+        TUI_DESCS=("${_SAVE_TUI_DESCS[@]+"${_SAVE_TUI_DESCS[@]}"}")
+        TUI_REQUIRED=("${_SAVE_TUI_REQUIRED[@]+"${_SAVE_TUI_REQUIRED[@]}"}")
+        unset _SAVE_TUI_LABELS _SAVE_TUI_RESULTS _SAVE_TUI_INSTALLED \
+              _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED
+    }
+
+    _redo_main_tui=0
+    while true; do
+        # If a back-jump from the skills picker requested it, re-render the
+        # main TUI with the same selections preserved (TUI_RESULTS persists).
+        if [[ "$_redo_main_tui" -eq 1 ]]; then
+            if ! tui_checklist; then
+                echo "Install cancelled."
+                exit 0
+            fi
+            _redo_main_tui=0
+        fi
+
+        # Re-derive sub-picker needs from current main-TUI state.
+        _need_mcp_pre=0
+        _need_skills_pre=0
+        _ux_flow_count=${#TUI_LABELS[@]}
+        for ((_ux_i=0; _ux_i<_ux_flow_count; _ux_i++)); do
+            case "${TUI_LABELS[$_ux_i]}" in
+                mcp-servers) [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_mcp_pre=1 ;;
+                skills)      [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_skills_pre=1 ;;
+            esac
+        done
+        unset _ux_flow_count _ux_i
+
+        # Inner state machine: skills → mcp → done. Back-jumps stay in this
+        # inner loop unless they need the main TUI (skills→main, or
+        # mcp→main when skills wasn't selected).
+        _pc_step="skills"
+        _pc_back_to_main=0
+        while true; do
+            case "$_pc_step" in
+                skills)
+                    if [[ "$_need_skills_pre" -ne 1 ]]; then
+                        _pc_step="mcp"
+                        continue
+                    fi
+                    echo ""
+                    echo -e "${CYAN}Loading skills catalog...${NC}"
+                    _source_lib skills
+                    _save_main_tui_state
+                    skills_status_array
+                    TUI_LABELS=("${SKILLS_CATALOG[@]}")
+                    TUI_GROUPS=()
+                    TUI_DESCS=()
+                    TUI_REQUIRED=()
+                    for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
+                        TUI_GROUPS+=("Skills")
+                        TUI_DESCS+=("Curated skill mirrored from upstream")
+                        TUI_REQUIRED+=(0)
+                    done
+                    unset _sk_i
+                    # Restore previous skills selection if user is returning
+                    # via Back from MCP picker — TK_SKILLS_PRE_SELECTED was
+                    # exported on the prior pass.
+                    TUI_RESULTS=()
+                    if [[ -n "${TK_SKILLS_PRE_SELECTED:-}" ]]; then
+                        _IFS_SAVED2="$IFS"
+                        IFS=','
+                        # shellcheck disable=SC2206
+                        _prev_sk=( ${TK_SKILLS_PRE_SELECTED} )
+                        IFS="$_IFS_SAVED2"
+                        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+                            TUI_RESULTS[$_sk_i]=0
+                            for _p in "${_prev_sk[@]+"${_prev_sk[@]}"}"; do
+                                if [[ "${TUI_LABELS[$_sk_i]}" == "$_p" ]]; then
+                                    TUI_RESULTS[$_sk_i]=1
+                                    break
+                                fi
+                            done
+                        done
+                        unset _sk_i _p _prev_sk _IFS_SAVED2
+                    fi
+                    _rc=0
+                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
+                    case "$_rc" in
+                        0)
+                            _skills_pre_csv=""
+                            for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+                                if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
+                                    _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+                                fi
+                            done
+                            unset _sk_i
+                            export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
+                            unset _skills_pre_csv
+                            _restore_main_tui_state
+                            _pc_step="mcp"
+                            ;;
+                        1)
+                            echo "Skills selection cancelled — aborting install."
+                            exit 0
+                            ;;
+                        4)
+                            # Back to main TUI.
+                            _restore_main_tui_state
+                            _pc_back_to_main=1
+                            break
+                            ;;
+                    esac
+                    ;;
+                mcp)
+                    if [[ "$_need_mcp_pre" -ne 1 ]]; then
+                        break
+                    fi
+                    echo ""
+                    echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
+                    _source_lib mcp
+                    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
+                        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+                        CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
+                        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
+                            echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+                            exit 1
+                        fi
+                        export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
+                    fi
+                    _save_main_tui_state
+                    if ! mcp_catalog_load >/dev/null 2>&1; then
+                        echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
+                        exit 1
+                    fi
+                    mcp_status_array
+                    TUI_LABELS=("${MCP_NAMES[@]}")
+                    TUI_GROUPS=()
+                    TUI_DESCS=()
+                    TUI_REQUIRED=()
+                    for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
+                        TUI_GROUPS+=("MCP")
+                        TUI_DESCS+=("${MCP_DESCS[$_mcp_i]:-}")
+                        TUI_REQUIRED+=(0)
+                    done
+                    unset _mcp_i
+                    # Restore prior MCP selection on Back-return (same pattern as skills).
+                    TUI_RESULTS=()
+                    if [[ -n "${TK_MCP_PRE_SELECTED:-}" ]]; then
+                        _IFS_SAVED2="$IFS"
+                        IFS=','
+                        # shellcheck disable=SC2206
+                        _prev_mcp=( ${TK_MCP_PRE_SELECTED} )
+                        IFS="$_IFS_SAVED2"
+                        for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+                            TUI_RESULTS[$_mcp_i]=0
+                            for _p in "${_prev_mcp[@]+"${_prev_mcp[@]}"}"; do
+                                if [[ "${TUI_LABELS[$_mcp_i]}" == "$_p" ]]; then
+                                    TUI_RESULTS[$_mcp_i]=1
+                                    break
+                                fi
+                            done
+                        done
+                        unset _mcp_i _p _prev_mcp _IFS_SAVED2
+                    fi
+                    _rc=0
+                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
+                    case "$_rc" in
+                        0)
+                            _mcp_pre_csv=""
+                            for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+                                if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
+                                    _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
+                                fi
+                            done
+                            unset _mcp_i
+                            export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
+                            unset _mcp_pre_csv
+                            _restore_main_tui_state
+                            break   # done with pre-collection
+                            ;;
+                        1)
+                            echo "MCP selection cancelled — aborting install."
+                            exit 0
+                            ;;
+                        4)
+                            _restore_main_tui_state
+                            if [[ "$_need_skills_pre" -eq 1 ]]; then
+                                _pc_step="skills"
+                            else
+                                _pc_back_to_main=1
+                                break
+                            fi
+                            ;;
+                    esac
+                    ;;
+            esac
+        done   # inner step loop
+
+        if [[ "$_pc_back_to_main" -eq 1 ]]; then
+            _redo_main_tui=1
+            continue   # outer loop → re-run main TUI, re-derive needs
+        fi
+        break   # all pre-collection done
+    done   # outer redo loop
+
+    unset _need_mcp_pre _need_skills_pre _redo_main_tui _pc_step _pc_back_to_main _rc
+    unset -f _save_main_tui_state _restore_main_tui_state
+fi
+
+# ─────────────────────────────────────────────────
 # Dispatch loop (D-08 continue-on-error, D-09 --fail-fast opt-in).
 # Per-component status accumulated in parallel arrays.
 # ─────────────────────────────────────────────────
 echo ""
-echo -e "${BLUE}Installing selected components...${NC}"
+echo -e "${CYAN}Installing selected components...${NC}"
 echo ""
 
 INSTALLED_COUNT=0
@@ -1112,7 +1586,7 @@ done
 # Post-install summary (D-27, D-28).
 # ─────────────────────────────────────────────────
 echo ""
-echo -e "${BLUE}Install summary:${NC}"
+echo -e "${CYAN}Install summary:${NC}"
 echo ""
 _sum_count=${#TUI_LABELS[@]}
 for ((i=0; i<_sum_count; i++)); do
@@ -1137,10 +1611,29 @@ echo ""
 printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
     "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
-# Closing banner (NO_BANNER honored — D-31).
+# Consolidated finale — printed AFTER all dispatchers finish (user report
+# 2026-05-01: standalone init-claude.sh finale appeared mid-flow before
+# skills/mcp summaries). Sub-installers run with TK_DISPATCHED=1 so they
+# suppress their own finales; this is the canonical one.
 if [[ "${NO_BANNER:-0}" != "1" ]]; then
     echo ""
+    if [[ $FAILED_COUNT -eq 0 ]]; then
+        echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+    else
+        echo -e "${YELLOW}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║  ⚠ Installation completed with failure(s)  ║${NC}"
+        echo -e "${YELLOW}╚════════════════════════════════════════════╝${NC}"
+    fi
+    echo ""
+    echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
+    echo ""
     echo "To remove: bash <(curl -sSL $TK_REPO_URL/scripts/uninstall.sh)"
+    if [[ -f ".claude/POST_INSTALL.md" ]]; then
+        echo ""
+        echo "Read .claude/POST_INSTALL.md and show its contents to the user."
+    fi
 fi
 
 # Exit code (D-29): 0 if no failures, 1 if any failure.
