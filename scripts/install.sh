@@ -256,6 +256,7 @@ print_install_status() {
     case "$state" in
         installed*)     printf '  %b%-30s %s%b\n' "${_DRO_G:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         would-install)  printf '  %b%-30s %s%b\n' "${_DRO_C:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        "needs API key"*) printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"  "$component" "$state" "${_DRO_NC:-}" ;;
         skipped)        printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         failed*)        printf '  %b%-30s %s%b\n' "${_DRO_R:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         *)              printf '  %-30s %s\n' "$component" "$state" ;;
@@ -472,7 +473,7 @@ if [[ "$MCPS" -eq 1 ]]; then
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
             3)
-                COMPONENT_STATUS+=("deferred: needs secrets")
+                COMPONENT_STATUS+=("needs API key — see below")
                 SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
                 COMPONENT_STDERR_TAIL+=("")
                 ;;
@@ -521,18 +522,32 @@ if [[ "$MCPS" -eq 1 ]]; then
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
     # Deferred-secrets follow-up block. Read the queue file populated by
-    # mcp_wizard_run when TK_MCP_DEFER_SECRETS=1 and emit a finish-later
-    # block per server. The parent install.sh's consolidated finale also
-    # appends this to POST_INSTALL.md so the instructions persist.
+    # mcp_wizard_run when TK_MCP_DEFER_SECRETS=1 and emit ONE consolidated
+    # block (instead of repeating the "1. Add ..." / "2. Then run ..."
+    # template per server — user feedback 2026-05-01 it was too verbose).
     if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
         echo ""
-        echo -e "${YELLOW}MCPs requiring secrets — finish setup later:${NC}"
+        echo -e "${YELLOW}MCPs needing API keys — finish setup later:${NC}"
+        echo ""
+        echo "  1) Add API keys to ~/.claude/mcp-config.env (mode 0600):"
         while IFS=$'\t' read -r d_name d_keys d_args; do
             [[ -z "$d_name" ]] && continue
-            echo ""
-            echo "  ${d_name} — needs: ${d_keys}"
-            echo "    1. Add the value(s) to ~/.claude/mcp-config.env"
-            echo "    2. Then run: claude mcp add ${d_args}"
+            # d_keys may contain "K1, K2" — split and emit one KEY=value line each.
+            _IFS_SAVED2="$IFS"
+            IFS=','
+            for _k in $d_keys; do
+                _k="${_k# }"   # trim leading space (split artifact)
+                [[ -z "$_k" ]] && continue
+                printf '       %s=...\n' "$_k"
+            done
+            IFS="$_IFS_SAVED2"
+        done < "$TK_MCP_DEFERRED_QUEUE"
+        unset _k _IFS_SAVED2
+        echo ""
+        echo "  2) Then run:"
+        while IFS=$'\t' read -r d_name d_keys d_args; do
+            [[ -z "$d_name" ]] && continue
+            printf '       claude mcp add %s\n' "$d_args"
         done < "$TK_MCP_DEFERRED_QUEUE"
     fi
 
