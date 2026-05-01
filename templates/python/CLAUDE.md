@@ -331,9 +331,7 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
 
 | Skill | When to load |
 | ----- | --------------- |
-| `ai-models` | When working with AI API (Anthropic, Google) |
 | `python` | Async patterns, Pydantic v2, testing |
-| `i18n` | When adding multilanguage support, translations, localization |
 
 Load: `Read .claude/skills/{skill-name}/SKILL.md`
 

@@ -240,8 +240,6 @@ After UI changes, test with Playwright MCP: navigate, check errors, interact, sc
 | Skill | When to load |
 | ----- | --------------- |
 | `rails` | Rails conventions, ActiveRecord, Hotwire |
-| `ai-models` | When working with AI API (Anthropic, Google) |
-| `i18n` | When adding multilanguage support, translations, localization |
 
 Load: `Read .claude/skills/{skill-name}/SKILL.md`
 

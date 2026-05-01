@@ -2,30 +2,6 @@
   "version": "1.0",
   "description": "Skill activation rules — Claude suggests relevant skills based on triggers",
   "skills": {
-    "ai-models": {
-      "path": ".claude/skills/ai-models/SKILL.md",
-      "description": "Current AI model versions (Claude, Gemini)",
-      "triggers": {
-        "keywords": [
-          "anthropic",
-          "claude api",
-          "gemini",
-          "openai",
-          "llm",
-          "ai model"
-        ],
-        "intentPatterns": [
-          "add.*model",
-          "integrate.*api",
-          "connect.*claude"
-        ],
-        "filePatterns": [
-          "**/ai/**",
-          "**/llm/**",
-          "**/chat/**"
-        ]
-      }
-    },
     "python": {
       "path": ".claude/skills/python/SKILL.md",
       "description": "Python patterns: FastAPI, Django, Pydantic v2, SQLAlchemy 2.0",
@@ -51,29 +27,6 @@
           "api/**/*.py",
           "**/models/*.py",
           "**/schemas/*.py"
-        ]
-      }
-    },
-    "tailwind": {
-      "path": ".claude/skills/tailwind/SKILL.md",
-      "description": "Tailwind CSS: utility classes, responsive, dark mode (for Jinja2/Django templates)",
-      "triggers": {
-        "keywords": [
-          "tailwind",
-          "css",
-          "styling",
-          "dark mode",
-          "responsive"
-        ],
-        "intentPatterns": [
-          "style.*",
-          "add.*styles",
-          "make.*responsive"
-        ],
-        "filePatterns": [
-          "**/templates/**/*.html",
-          "**/static/**/*.css",
-          "tailwind.config.*"
         ]
       }
     },
@@ -219,34 +172,6 @@
           "**/llm/**",
           "**/rag/**",
           "**/embeddings/**"
-        ]
-      }
-    },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": [
-          "i18n",
-          "l10n",
-          "translation",
-          "localization",
-          "multilanguage",
-          "locale",
-          "internationalization"
-        ],
-        "intentPatterns": [
-          "add.*language",
-          "translate.*",
-          "multilingual.*",
-          "localize.*",
-          "support.*languages"
-        ],
-        "filePatterns": [
-          "**/lang/**",
-          "**/locales/**",
-          "**/i18n/**",
-          "**/translations/**"
         ]
       }
     },

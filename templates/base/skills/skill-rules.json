@@ -2,52 +2,6 @@
   "version": "1.0",
   "description": "Skill activation rules — Claude suggests relevant skills based on triggers",
   "skills": {
-    "ai-models": {
-      "path": ".claude/skills/ai-models/SKILL.md",
-      "description": "Current AI model versions (Claude, Gemini)",
-      "triggers": {
-        "keywords": [
-          "anthropic",
-          "claude api",
-          "gemini",
-          "openai",
-          "llm",
-          "ai model"
-        ],
-        "intentPatterns": [
-          "add.*model",
-          "integrate.*api",
-          "connect.*claude"
-        ],
-        "filePatterns": [
-          "**/ai/**",
-          "**/llm/**",
-          "**/chat/**"
-        ]
-      }
-    },
-    "tailwind": {
-      "path": ".claude/skills/tailwind/SKILL.md",
-      "description": "Tailwind CSS best practices",
-      "triggers": {
-        "keywords": [
-          "tailwind",
-          "tailwindcss",
-          "tw-",
-          "@apply"
-        ],
-        "intentPatterns": [
-          "tailwind.*config",
-          "add.*tailwind",
-          "tailwind.*class"
-        ],
-        "filePatterns": [
-          "**/tailwind.config.*",
-          "**/*.tw.css",
-          "**/postcss.config.*"
-        ]
-      }
-    },
     "docker": {
       "path": ".claude/skills/docker/SKILL.md",
       "description": "Docker and container best practices",
@@ -188,34 +142,6 @@
           "**/llm/**",
           "**/rag/**",
           "**/embeddings/**"
-        ]
-      }
-    },
-    "i18n": {
-      "path": ".claude/skills/i18n/SKILL.md",
-      "description": "Internationalization: translations, localization, multilanguage",
-      "triggers": {
-        "keywords": [
-          "i18n",
-          "l10n",
-          "translation",
-          "localization",
-          "multilanguage",
-          "locale",
-          "internationalization"
-        ],
-        "intentPatterns": [
-          "add.*language",
-          "translate.*",
-          "multilingual.*",
-          "localize.*",
-          "support.*languages"
-        ],
-        "filePatterns": [
-          "**/lang/**",
-          "**/locales/**",
-          "**/i18n/**",
-          "**/translations/**"
         ]
       }
     },
