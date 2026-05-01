@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Pre-collect all TUI selections before installing (UX-FLOW-01)
+
+Previously the install flow was: main TUI → Submit → run toolkit / security /
+etc. → 20 s pause → MCP sub-picker → Submit → install MCPs → skills sub-picker
+→ Submit → install skills. The mid-install sub-pickers felt like a hang and
+broke the user's mental model of "answer questions, then watch the install".
+
+New flow: main TUI → Submit → MCP sub-picker (if `mcp-servers` row checked)
+→ Submit → skills sub-picker (if `skills` row checked) → Submit → THEN the
+dispatch loop runs end-to-end with no further prompts.
+
+Implementation: `install.sh` collects MCP / skills selections in subshells
+(so the main TUI globals aren't clobbered) right after the bridge plumbing
+block. Selections are exported as `TK_MCP_PRE_SELECTED` / `TK_SKILLS_PRE_SELECTED`
+comma-separated lists. The `--mcps` and `--skills` branches honour these
+env vars: when set (even empty), they skip their own TUI render and build
+`TUI_RESULTS` directly from the pre-collected list. Empty value (`TK_MCP_PRE_SELECTED=""`)
+is meaningful — "user opened the picker, picked nothing, hit Submit" — and
+results in a headless install of zero items rather than falling back to a
+TUI that would reopen mid-install.
+
+Cancel semantics preserved: pressing Esc / Ctrl-C in the MCP or skills sub-
+picker aborts the entire install (no partial component install).
+
+New regression test `scripts/tests/test-flow-prequestions.sh` (8/8 PASS):
+asserts pre-selected env produces exactly the named items, empty env produces
+zero items, and unset env falls back to the legacy `--yes` default-set path.
+
 ### Fixed — Invisible-prompt regression (TUI dispatch)
 
 After a user pressed Submit on the main TUI, `init-claude.sh` ran under

@@ -330,12 +330,40 @@ if [[ "$MCPS" -eq 1 ]]; then
         echo ""
     fi
 
-    # Selection: --yes default-set OR TUI page.
+    # Selection precedence (UX-FLOW-01 + earlier policy):
+    #   1. TK_MCP_PRE_SELECTED env  — pre-collected by the parent install.sh
+    #      flow (the user picked these in an MCP sub-picker BEFORE any
+    #      installation began). Empty value is meaningful: install zero MCPs.
+    #      Set ⇒ skip TUI entirely (headless install).
+    #   2. --yes / YES=1            — default-set (everything not installed,
+    #      OAuth-only excluded unless --force).
+    #   3. interactive TUI page     — render the catalog and let the user pick.
     TUI_RESULTS=()
-    if [[ "$YES" -eq 1 ]]; then
+    local_count=${#MCP_NAMES[@]}
+    if [[ -n "${TK_MCP_PRE_SELECTED+x}" ]]; then
+        # Headless. Comma-separated names → 0/1 per row by exact match against MCP_NAMES.
+        # NOTE: this is top-level shell context (install.sh is a script body),
+        # NOT a function, so `local` is illegal. Use plain assignments + an
+        # underscore prefix to avoid clobbering the surrounding flow.
+        _pre_csv="${TK_MCP_PRE_SELECTED:-}"
+        _IFS_SAVE="$IFS"
+        IFS=','
+        # shellcheck disable=SC2206  # intentional word-split on ','
+        _pre_arr=( $_pre_csv )
+        IFS="$_IFS_SAVE"
+        for ((i=0; i<local_count; i++)); do
+            TUI_RESULTS[$i]=0
+            for _pname in "${_pre_arr[@]+"${_pre_arr[@]}"}"; do
+                if [[ "$_pname" == "${MCP_NAMES[$i]}" ]]; then
+                    TUI_RESULTS[$i]=1
+                    break
+                fi
+            done
+        done
+        unset _pre_csv _IFS_SAVE _pre_arr _pname
+    elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; skip OAuth-only unless --force
         # (OAuth needs interactive browser flow — incompatible with --yes).
-        local_count=${#MCP_NAMES[@]}
         for ((i=0; i<local_count; i++)); do
             if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
                 TUI_RESULTS[$i]=0
@@ -499,9 +527,30 @@ if [[ "$SKILLS" -eq 1 ]]; then
         TUI_DESCS+=("Curated skill mirrored from upstream")
     done
 
-    # Selection: --yes default-set OR TUI page.
+    # Selection precedence (UX-FLOW-01 mirror of the MCP branch above):
+    #   1. TK_SKILLS_PRE_SELECTED env (headless, pre-collected by parent flow)
+    #   2. --yes default-set
+    #   3. interactive TUI page
     TUI_RESULTS=()
-    if [[ "$YES" -eq 1 ]]; then
+    if [[ -n "${TK_SKILLS_PRE_SELECTED+x}" ]]; then
+        # Top-level (install.sh script body) — `local` is illegal here.
+        _pre_csv="${TK_SKILLS_PRE_SELECTED:-}"
+        _IFS_SAVE="$IFS"
+        IFS=','
+        # shellcheck disable=SC2206  # intentional word-split on ','
+        _pre_arr=( $_pre_csv )
+        IFS="$_IFS_SAVE"
+        for ((i=0; i<local_total; i++)); do
+            TUI_RESULTS[$i]=0
+            for _pname in "${_pre_arr[@]+"${_pre_arr[@]}"}"; do
+                if [[ "$_pname" == "${SKILLS_CATALOG[$i]}" ]]; then
+                    TUI_RESULTS[$i]=1
+                    break
+                fi
+            done
+        done
+        unset _pre_csv _IFS_SAVE _pre_arr _pname
+    elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; --force re-runs already-installed.
         for ((i=0; i<local_total; i++)); do
             if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
@@ -977,6 +1026,120 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
         fi
     fi
     unset _tbf_count _tbi _tui_bridge_force _tui_bridge_seen_any
+fi
+
+# ─────────────────────────────────────────────────
+# UX-FLOW-01: pre-collect MCP / skills sub-picker selections.
+#
+# Old flow: main TUI Submit → dispatch loop → toolkit/security/etc. install →
+# (later) mcp-servers dispatcher re-spawns install.sh --mcps which opens its
+# OWN TUI mid-install → user gets a sub-picker AFTER 20+ seconds of silent
+# install work, which feels like a hang.
+#
+# New flow: main TUI Submit → MCP sub-picker (if mcp-servers row checked) →
+# Skills sub-picker (if skills row checked) → THEN the dispatch loop runs
+# end-to-end. The user answers every question up front. The mcp-servers /
+# skills dispatchers reuse the pre-collected selections via the
+# TK_MCP_PRE_SELECTED / TK_SKILLS_PRE_SELECTED env contract that the --mcps
+# and --skills branches above honour (skip their own TUI when set).
+#
+# Empty value (`TK_MCP_PRE_SELECTED=""`) is meaningful: "user opened the
+# sub-picker, picked nothing, hit Submit." Headless install of zero MCPs.
+# Cancel (Esc / Ctrl-C in the sub-picker) aborts the whole install per
+# normal TUI semantics.
+# ─────────────────────────────────────────────────
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
+    _need_mcp_pre=0
+    _need_skills_pre=0
+    _ux_flow_count=${#TUI_LABELS[@]}
+    for ((_ux_i=0; _ux_i<_ux_flow_count; _ux_i++)); do
+        case "${TUI_LABELS[$_ux_i]}" in
+            mcp-servers) [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_mcp_pre=1 ;;
+            skills)      [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_skills_pre=1 ;;
+        esac
+    done
+    unset _ux_flow_count _ux_i
+
+    # ── MCP sub-picker (if needed) ──
+    if [[ "$_need_mcp_pre" -eq 1 ]]; then
+        # Source mcp.sh — only the --mcps branch above pre-sources it; the
+        # main flow lands here without it. Idempotent (lib has its own guard).
+        _source_lib mcp
+        if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
+            MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+            CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
+            if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
+                echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+                exit 1
+            fi
+            export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
+        fi
+        # Run sub-picker in a subshell so the main TUI globals (TUI_LABELS /
+        # TUI_RESULTS / TUI_INSTALLED) are not clobbered by the catalog render.
+        # The selected names come back via stdout as a comma-separated list;
+        # subshell exit 1 = user cancelled → propagate as full-install cancel.
+        _mcp_pre_csv=$(
+            mcp_catalog_load >/dev/null 2>&1 || exit 1
+            mcp_status_array
+            # Reuse main TUI globals inside this subshell only.
+            TUI_LABELS=("${MCP_NAMES[@]}")
+            TUI_GROUPS=()
+            TUI_DESCS=()
+            TUI_REQUIRED=()
+            for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
+                TUI_GROUPS+=("MCP")
+                TUI_DESCS+=("${MCP_DESCS[$i]:-}")
+                TUI_REQUIRED+=(0)
+            done
+            TUI_RESULTS=()
+            if ! tui_checklist; then exit 1; fi
+            _out=""
+            for ((i=0; i<${#TUI_LABELS[@]}; i++)); do
+                if [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]]; then
+                    _out="${_out}${_out:+,}${TUI_LABELS[$i]}"
+                fi
+            done
+            printf '%s' "$_out"
+        ) || {
+            echo "MCP selection cancelled — aborting install."
+            exit 0
+        }
+        # Empty CSV ("") is intentional and exported as such — see header note.
+        export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
+        unset _mcp_pre_csv
+    fi
+
+    # ── Skills sub-picker (if needed) ──
+    if [[ "$_need_skills_pre" -eq 1 ]]; then
+        _source_lib skills
+        _skills_pre_csv=$(
+            skills_status_array
+            TUI_LABELS=("${SKILLS_CATALOG[@]}")
+            TUI_GROUPS=()
+            TUI_DESCS=()
+            TUI_REQUIRED=()
+            for ((i=0; i<${#SKILLS_CATALOG[@]}; i++)); do
+                TUI_GROUPS+=("Skills")
+                TUI_DESCS+=("Curated skill mirrored from upstream")
+                TUI_REQUIRED+=(0)
+            done
+            TUI_RESULTS=()
+            if ! tui_checklist; then exit 1; fi
+            _out=""
+            for ((i=0; i<${#TUI_LABELS[@]}; i++)); do
+                if [[ "${TUI_RESULTS[$i]:-0}" -eq 1 ]]; then
+                    _out="${_out}${_out:+,}${TUI_LABELS[$i]}"
+                fi
+            done
+            printf '%s' "$_out"
+        ) || {
+            echo "Skills selection cancelled — aborting install."
+            exit 0
+        }
+        export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
+        unset _skills_pre_csv
+    fi
+    unset _need_mcp_pre _need_skills_pre
 fi
 
 # ─────────────────────────────────────────────────
