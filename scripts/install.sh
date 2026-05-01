@@ -145,6 +145,16 @@ _is_curl_pipe() {
     [[ "${BASH_SOURCE[0]:-}" == /dev/fd/* || "${0:-}" == bash ]]
 }
 
+# Export curl-pipe state so libs sourced from /tmp/<lib>-XXX (where their
+# own BASH_SOURCE[0] is the tmpfile path, not /dev/fd/*) can detect it.
+# dispatch.sh (D-24) reads this to choose between curl-fetch and sibling
+# resolution — without it, sibling falls back to "/tmp/../X" → ENOENT 127.
+if _is_curl_pipe; then
+    export TK_CURL_PIPE=1
+else
+    export TK_CURL_PIPE=0
+fi
+
 # Audit I5: every curl in the install path needs network-safety flags so a
 # hung TCP socket can't pin the bootstrap forever. _tk_curl_safe wraps the
 # canonical `-sSLf` with --max-time / --connect-timeout / --retry. Errors out

@@ -168,6 +168,8 @@ _bridge_match() {
 # Args: $1=source-path (must exist), $2=target-abs-path
 # Returns: 0=success, 1=missing source, 2=mkdir/write blocked.
 # Banner is byte-identical across all bridges (BRIDGE-GEN-03 contract).
+# Surfaces the precise reason on stderr for any rc=2 path so install summary
+# stops showing a bare "failed (exit 2)" with no clue (user report 2026-05-01).
 _bridge_write_file() {
     local source="$1" target_path="$2" target_dir
     [[ -f "$source" ]] || return 1
@@ -176,10 +178,19 @@ _bridge_write_file() {
     # symlinked target. Defense-in-depth against a hostile symlink already in
     # place (e.g. ~/.gemini -> /etc/sudoers.d/) — only reachable from a
     # self-attack but cheap to block.
-    if [[ -L "$target_dir" ]] || [[ -L "$target_path" ]]; then
+    if [[ -L "$target_dir" ]]; then
+        echo "bridge: refusing — parent dir is a symlink: $target_dir" >&2
         return 2
     fi
-    mkdir -p "$target_dir" 2>/dev/null || return 2
+    if [[ -L "$target_path" ]]; then
+        echo "bridge: refusing — target is a symlink: $target_path" >&2
+        echo "bridge: remove or replace it with a regular file, then re-run" >&2
+        return 2
+    fi
+    if ! mkdir -p "$target_dir" 2>/dev/null; then
+        echo "bridge: mkdir failed for $target_dir (permissions?)" >&2
+        return 2
+    fi
     # Audit M-bridge: previous implementation streamed banner+source straight
     # into $target_path. A SIGINT mid-write left a half-written GEMINI.md /
     # AGENTS.md whose SHA didn't match anything in toolkit-install.json, so
@@ -187,8 +198,11 @@ _bridge_write_file() {
     # nagged for confirmation. Stage into a sibling tmpfile then mv into
     # place — atomic on POSIX same-filesystem.
     local tmp
-    tmp="$(mktemp "${target_path}.tk-bridge.XXXXXX")" || return 2
-    {
+    if ! tmp="$(mktemp "${target_path}.tk-bridge.XXXXXX" 2>/dev/null)"; then
+        echo "bridge: mktemp failed in $target_dir" >&2
+        return 2
+    fi
+    if ! {
         cat <<'BANNER'
 <!--
   Auto-generated from CLAUDE.md by claude-code-toolkit (v4.7+).
@@ -198,9 +212,14 @@ _bridge_write_file() {
 BANNER
         echo ""
         cat "$source"
-    } >"$tmp" 2>/dev/null || { rm -f "$tmp"; return 2; }
+    } >"$tmp" 2>/dev/null; then
+        rm -f "$tmp"
+        echo "bridge: write to staging tmpfile failed: $tmp" >&2
+        return 2
+    fi
     if ! mv "$tmp" "$target_path" 2>/dev/null; then
         rm -f "$tmp"
+        echo "bridge: mv staging → target failed: $target_path" >&2
         return 2
     fi
     return 0
