@@ -619,7 +619,10 @@ download_extras() {
 # When --dry-run, prints grouped [INSTALL]/[SKIP] output and exits before any write.
 download_files() {
     echo ""
-    echo -e "${CYAN}📥 Downloading files...${NC}"
+    echo -e "${CYAN}📥 Downloading toolkit files into project (.claude/)...${NC}"
+    echo -e "  Includes commands, agents, prompts, scripts/lib, and project-local"
+    echo -e "  skill stubs (.claude/skills/*) — distinct from the global marketplace"
+    echo -e "  skills installed later to ~/.claude/skills/."
 
     # Compute skip-list (returns JSON array of paths to SKIP)
     SKIP_LIST_JSON=$(compute_skip_set "$MODE" "$MANIFEST_FILE")

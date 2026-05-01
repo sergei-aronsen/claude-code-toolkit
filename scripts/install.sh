@@ -622,7 +622,8 @@ if [[ "$SKILLS" -eq 1 ]]; then
     # Skills dispatch loop (mirrors Phase 25 D-08 continue-on-error pattern).
     # ─────────────────────────────────────────────
     echo ""
-    echo -e "${CYAN}Installing selected skill(s)...${NC}"
+    echo -e "${CYAN}Installing marketplace skills (global → ~/.claude/skills/)...${NC}"
+    echo -e "  Distinct from project-local toolkit skill stubs in <project>/.claude/skills/"
     echo ""
     INSTALLED_COUNT=0
     SKIPPED_COUNT=0
@@ -701,7 +702,7 @@ if [[ "$SKILLS" -eq 1 ]]; then
 
     # Print skills install summary.
     echo ""
-    echo -e "${CYAN}Skills install summary:${NC}"
+    echo -e "${CYAN}Marketplace skills install summary (~/.claude/skills/):${NC}"
     echo ""
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
