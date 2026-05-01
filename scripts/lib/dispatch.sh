@@ -93,7 +93,11 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Canonical install order — DISPATCH-01 contract + BRIDGE-UX-01 (Phase 30) extension.
 # Guard uses the variable-is-unset-or-empty form to avoid nounset errors.
 if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge mcp-servers skills)
+    # Skills BEFORE mcp-servers so the MCP "needs API key" follow-up block
+    # is the LAST thing on screen — that block contains action items the
+    # user must execute, so keeping it terminal-final maximises its
+    # visibility (user feedback 2026-05-01).
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge skills mcp-servers)
 fi
 
 # Internal log helpers — underscore prefix.

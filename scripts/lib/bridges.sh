@@ -194,8 +194,18 @@ _bridge_write_file() {
         return 2
     fi
     if [[ -L "$target_path" ]]; then
-        echo "bridge: refusing — target is a symlink: $target_path" >&2
-        echo "bridge: remove or replace it with a regular file, then re-run" >&2
+        # User-friendly diagnostic: explain WHY the bridge skipped, what the
+        # current symlink points at, and the exact one-line fix. Previous
+        # 2-line message ("refusing — target is a symlink" + "remove or replace
+        # ... then re-run") left users guessing what command to run
+        # (2026-05-01 user feedback).
+        local _link_dest=""
+        _link_dest="$(readlink "$target_path" 2>/dev/null || echo '?')"
+        echo "bridge: skipped — $target_path is a symlink to $_link_dest" >&2
+        echo "bridge:   the toolkit refuses to overwrite symlinks (could clobber another tool's config)." >&2
+        echo "bridge:   to install this bridge, remove the symlink first:" >&2
+        echo "bridge:     rm $target_path" >&2
+        echo "bridge:   then re-run the install command." >&2
         return 2
     fi
     if ! mkdir -p "$target_dir" 2>/dev/null; then

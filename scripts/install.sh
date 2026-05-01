@@ -755,22 +755,37 @@ if [[ "$SKILLS" -eq 1 ]]; then
         esac
     done
 
-    # Print skills install summary.
+    # Print skills install summary using the soft-checkmark style of
+    # init-claude.sh's "📥 Framework extras..." block — user feedback
+    # 2026-05-01: bright green right-aligned "installed ✓" rows were
+    # too loud for a 22-row catalog. Compact left-aligned format with
+    # subtle green checkmark reads as a list, not a billboard.
     echo ""
     echo -e "${CYAN}Marketplace skills install summary (~/.claude/skills/):${NC}"
-    echo ""
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
         local_name="${COMPONENT_NAMES[$i]}"
         local_state="${COMPONENT_STATUS[$i]:-unknown}"
-        print_install_status "$local_name" "$local_state"
         case "$local_state" in
+            "installed ✓"|installed)
+                printf '  %b✓%b %s\n' "${GREEN}" "${NC}" "$local_name"
+                ;;
+            "would-install")
+                # Keep the literal "would-install" token in dry-run output —
+                # tests + downstream tooling parse it. Soft-checkmark style
+                # only applies to the live install path.
+                printf '  %b·%b %-30s would-install\n' "${CYAN}" "${NC}" "$local_name"
+                ;;
             failed*)
+                printf '  %b✗%b %s — %s\n' "${RED}" "${NC}" "$local_name" "$local_state"
                 local_tail="${COMPONENT_STDERR_TAIL[$i]:-}"
                 if [[ -n "$local_tail" ]]; then
                     while IFS= read -r tail_line; do
                         printf '      %s\n' "$tail_line"
                     done <<< "$local_tail"
                 fi
+                ;;
+            *)
+                printf '  %b·%b %s — %s\n' "${YELLOW}" "${NC}" "$local_name" "$local_state"
                 ;;
         esac
     done
@@ -880,17 +895,17 @@ fi
 # mode so the user sees the dedicated sub-TUI for that catalog. Embedding the
 # 9-MCP + 22-skill rows directly in the main TUI would push the row count past
 # 30 and crowd the screen — sub-pages are the cleaner UX.
-TUI_LABELS+=("mcp-servers")
-TUI_GROUPS+=("Marketplace")
-TUI_INSTALLED+=("0")
-TUI_REQUIRED+=("0")
-TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
-
 TUI_LABELS+=("skills")
 TUI_GROUPS+=("Marketplace")
 TUI_INSTALLED+=("0")
 TUI_REQUIRED+=("0")
 TUI_DESCS+=("Pick skills (22 in catalog: firecrawl, notebooklm, shadcn, ...). Sub-picker opens after main install.")
+
+TUI_LABELS+=("mcp-servers")
+TUI_GROUPS+=("Marketplace")
+TUI_INSTALLED+=("0")
+TUI_REQUIRED+=("0")
+TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
 
 # Dispatch name maps 1:1 to TK_DISPATCH_ORDER.
 
@@ -1191,6 +1206,45 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
               _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED
     }
 
+    # ── Skills sub-picker (if needed) — runs FIRST so MCP picker is closer
+    #    to the dispatch loop (mcp install is intentionally LAST in dispatch
+    #    so the "needs API key" follow-up block ends the screen). ──
+    if [[ "$_need_skills_pre" -eq 1 ]]; then
+        # Skills detection is a directory probe — no slow CLI call — but the
+        # _source_lib step still downloads under curl|bash, so a one-line
+        # banner keeps the user oriented through the brief gap.
+        echo ""
+        echo -e "${CYAN}Loading skills catalog...${NC}"
+        _source_lib skills
+        _save_main_tui_state
+        skills_status_array
+        TUI_LABELS=("${SKILLS_CATALOG[@]}")
+        TUI_GROUPS=()
+        TUI_DESCS=()
+        TUI_REQUIRED=()
+        for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
+            TUI_GROUPS+=("Skills")
+            TUI_DESCS+=("Curated skill mirrored from upstream")
+            TUI_REQUIRED+=(0)
+        done
+        unset _sk_i
+        TUI_RESULTS=()
+        if ! tui_checklist; then
+            echo "Skills selection cancelled — aborting install."
+            exit 0
+        fi
+        _skills_pre_csv=""
+        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+            if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
+                _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+            fi
+        done
+        unset _sk_i
+        export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
+        unset _skills_pre_csv
+        _restore_main_tui_state
+    fi
+
     # ── MCP sub-picker (if needed) ──
     if [[ "$_need_mcp_pre" -eq 1 ]]; then
         # Visible feedback BEFORE the slow steps (download + claude mcp list)
@@ -1243,43 +1297,6 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
         # Empty CSV ("") is intentional and exported as such (= "install zero").
         export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
         unset _mcp_pre_csv
-        _restore_main_tui_state
-    fi
-
-    # ── Skills sub-picker (if needed) ──
-    if [[ "$_need_skills_pre" -eq 1 ]]; then
-        # Skills detection is a directory probe — no slow CLI call — but the
-        # _source_lib step still downloads under curl|bash, so a one-line
-        # banner keeps the user oriented through the brief gap.
-        echo ""
-        echo -e "${CYAN}Loading skills catalog...${NC}"
-        _source_lib skills
-        _save_main_tui_state
-        skills_status_array
-        TUI_LABELS=("${SKILLS_CATALOG[@]}")
-        TUI_GROUPS=()
-        TUI_DESCS=()
-        TUI_REQUIRED=()
-        for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
-            TUI_GROUPS+=("Skills")
-            TUI_DESCS+=("Curated skill mirrored from upstream")
-            TUI_REQUIRED+=(0)
-        done
-        unset _sk_i
-        TUI_RESULTS=()
-        if ! tui_checklist; then
-            echo "Skills selection cancelled — aborting install."
-            exit 0
-        fi
-        _skills_pre_csv=""
-        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
-            if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
-                _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
-            fi
-        done
-        unset _sk_i
-        export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
-        unset _skills_pre_csv
         _restore_main_tui_state
     fi
     unset _need_mcp_pre _need_skills_pre
