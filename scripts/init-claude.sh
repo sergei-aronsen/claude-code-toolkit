@@ -1309,7 +1309,7 @@ main() {
     echo ""
     if [[ "${FAILED_COUNT:-0}" -gt 0 ]]; then
         echo -e "${YELLOW}╔════════════════════════════════════════════╗${NC}"
-        echo -e "${YELLOW}║  ⚠ Installation completed with ${FAILED_COUNT} failure(s) ${NC}"
+        echo -e "${YELLOW}║  ⚠ Toolkit content installed with ${FAILED_COUNT} failure(s) ${NC}"
         echo -e "${YELLOW}╚════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "Failed files (review before commit):"
@@ -1320,40 +1320,51 @@ main() {
         echo ""
         echo -e "Re-run with TK_TOOLKIT_REF=<tag> if you suspect a stale cache,"
         echo -e "or open an issue: https://github.com/sergei-aronsen/claude-code-toolkit/issues"
-    else
-        echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
-        echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
-    fi
-    echo ""
-    echo -e "Next steps:"
-    echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
-    echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
-    echo -e ""
-    echo -e "Installed:"
-    echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
-    echo ""
-    echo -e "Available commands:"
-    echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
-    echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
-    echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
-    echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
-
-    recommend_security
-    recommend_statusline
-    recommend_optional_plugins
-
-    # Supreme Council setup (integrated)
-    if [[ "$SKIP_COUNCIL" != true ]]; then
-        setup_council
     fi
 
-    echo ""
-    echo -e "${BLUE}🔍 Verify installation:${NC}"
-    echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
-    echo ""
-    echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
-    echo ""
+    # When TK_DISPATCHED=1, init-claude.sh runs as a sub-installer of install.sh.
+    # The parent prints its own consolidated finale (Install summary + recommendations
+    # gated on user TUI selections) AFTER all dispatchers complete, so we suppress
+    # the standalone finale here to avoid a mid-flow "Installation Complete!" banner
+    # followed by more dispatcher output (user report 2026-05-01). Bridge prompts
+    # and create_post_install still run because they write artifacts the parent
+    # finale references (POST_INSTALL.md is read by Claude after all dispatchers).
+    if [[ "${TK_DISPATCHED:-0}" != "1" ]]; then
+        if [[ "${FAILED_COUNT:-0}" -eq 0 ]]; then
+            echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+            echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+            echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+        fi
+        echo ""
+        echo -e "Next steps:"
+        echo -e "  1. Review and customize ${BLUE}$CLAUDE_DIR/CLAUDE.md${NC}"
+        echo -e "  2. Commit the ${BLUE}$CLAUDE_DIR${NC} directory"
+        echo -e ""
+        echo -e "Installed:"
+        echo -e "  ${GREEN}✓${NC} Toolkit — commands, agents, prompts, skills, rules"
+        echo ""
+        echo -e "Available commands:"
+        echo -e "  ${YELLOW}/plan${NC}     — Create implementation plan"
+        echo -e "  ${YELLOW}/tdd${NC}      — Test-driven development"
+        echo -e "  ${YELLOW}/audit${NC}    — Run security/performance audit"
+        echo -e "  ${YELLOW}/helpme${NC}   — Quick reference cheatsheet (9 languages)"
+
+        recommend_security
+        recommend_statusline
+        recommend_optional_plugins
+
+        # Supreme Council setup (integrated)
+        if [[ "$SKIP_COUNCIL" != true ]]; then
+            setup_council
+        fi
+
+        echo ""
+        echo -e "${BLUE}🔍 Verify installation:${NC}"
+        echo -e "  ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/verify-install.sh)${NC}"
+        echo ""
+        echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
+        echo ""
+    fi
 
     # Create POST_INSTALL.md for Claude to read and relay to user
     create_post_install
@@ -1413,9 +1424,15 @@ POSTINSTALL
 
 main
 
-echo ""
-if [[ $NO_BANNER -eq 0 ]]; then
-    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+# Skip the "To remove" + "Read POST_INSTALL.md" trailers when running as a
+# sub-installer of install.sh (TK_DISPATCHED=1). The parent emits its own
+# consolidated finale after all dispatchers complete; emitting these here
+# would interleave with later dispatcher output (user report 2026-05-01).
+if [[ "${TK_DISPATCHED:-0}" != "1" ]]; then
+    echo ""
+    if [[ $NO_BANNER -eq 0 ]]; then
+        echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+    fi
+    echo ""
+    echo "Read .claude/POST_INSTALL.md and show its contents to the user."
 fi
-echo ""
-echo "Read .claude/POST_INSTALL.md and show its contents to the user."

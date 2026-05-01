@@ -1410,10 +1410,29 @@ echo ""
 printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
     "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
-# Closing banner (NO_BANNER honored — D-31).
+# Consolidated finale — printed AFTER all dispatchers finish (user report
+# 2026-05-01: standalone init-claude.sh finale appeared mid-flow before
+# skills/mcp summaries). Sub-installers run with TK_DISPATCHED=1 so they
+# suppress their own finales; this is the canonical one.
 if [[ "${NO_BANNER:-0}" != "1" ]]; then
     echo ""
+    if [[ $FAILED_COUNT -eq 0 ]]; then
+        echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${GREEN}║   ✅ Installation Complete!                 ║${NC}"
+        echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+    else
+        echo -e "${YELLOW}╔════════════════════════════════════════════╗${NC}"
+        echo -e "${YELLOW}║  ⚠ Installation completed with failure(s)  ║${NC}"
+        echo -e "${YELLOW}╚════════════════════════════════════════════╝${NC}"
+    fi
+    echo ""
+    echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
+    echo ""
     echo "To remove: bash <(curl -sSL $TK_REPO_URL/scripts/uninstall.sh)"
+    if [[ -f ".claude/POST_INSTALL.md" ]]; then
+        echo ""
+        echo "Read .claude/POST_INSTALL.md and show its contents to the user."
+    fi
 fi
 
 # Exit code (D-29): 0 if no failures, 1 if any failure.

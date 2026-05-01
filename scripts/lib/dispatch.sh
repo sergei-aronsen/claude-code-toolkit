@@ -238,12 +238,17 @@ dispatch_toolkit() {
         return 0
     fi
 
+    # TK_DISPATCHED=1 tells init-claude.sh it is a sub-installer; it suppresses
+    # its standalone finale ("Installation Complete!", recommend_*, "Verify",
+    # "Restart Claude Code", "To remove", "Read POST_INSTALL.md") so the parent
+    # install.sh can emit its own consolidated summary AFTER all dispatchers
+    # finish (user report 2026-05-01: standalone finale appeared mid-flow).
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
+        TK_DISPATCHED=1 bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/init-claude.sh") ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path init-claude.sh)"
-        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+        TK_DISPATCHED=1 bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 
