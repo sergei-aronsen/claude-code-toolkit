@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
-current_plan: 2
+current_plan: 4
 status: executing
-last_updated: "2026-05-02T00:00:00.000Z"
-last_activity: 2026-05-02 — Wave 1 complete (Plans 32-01 + 32-02 merged to main); ready for Wave 2 (32-03 smoke test)
+last_updated: "2026-05-02T08:00:00.000Z"
+last_activity: 2026-05-02 — Phase 33 complete (Plans 33-01..04 merged sequentially on main); catalog populated to final 20-entry shape
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 14
-  completed_plans: 2
-  percent: 14
+  completed_plans: 7
+  percent: 50
 ---
 
 # Project State
@@ -21,15 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 32 — foundation-schema-migration-cli-installer-library
+**Current focus:** Phase 33 complete — ready for Phase 34 (TUI Redesign)
 
 ## Current Position
 
-Phase: 32 (foundation-schema-migration-cli-installer-library) — EXECUTING
-Plans done: 32-01 ✓ (CAT-01..04), 32-02 ✓ (CLI-01..04)
-Plan: 32-03 (Hermetic smoke test) — Wave 2, queued
-Status: Wave 1 complete (parallel worktrees merged); ready for Wave 2
-Last activity: 2026-05-02 — 32-01 + 32-02 cherry-picked to main
+Phase: 33 (catalog-population-11-new-entries-drop-recategorize) — COMPLETE
+Plans done (Phase 32): 32-01 ✓, 32-02 ✓, 32-03 ✓
+Plans done (Phase 33): 33-01 ✓ (INT-01/02/04/05 backend), 33-02 ✓ (INT-03/07-10 payments+pm+design), 33-03 ✓ (INT-06/11/12 comm+research), 33-04 ✓ (DROP-01 + EXIST-01)
+Status: Phase 33 closed — catalog at final 20-entry / 8-CLI-block / 10-category shape; validator green, both baselines preserved
+Last activity: 2026-05-02 — Phase 33 sequential execution on main (4 commits: 08455ee, f29bc80, a2d3326, 9481ee0)
+Next: Phase 34 — TUI Redesign (TUI-01..05)
 
 ## Plan Count Estimate
 
