@@ -84,6 +84,23 @@
         "description": "Up-to-date library docs (React, Next.js, Tailwind, etc.)",
         "requires_oauth": false
       },
+      "figma": {
+        "name": "figma",
+        "display_name": "Figma",
+        "category": "design",
+        "env_var_keys": [
+          "FIGMA_API_KEY"
+        ],
+        "install_args": [
+          "figma",
+          "--",
+          "npx",
+          "-y",
+          "figma-developer-mcp"
+        ],
+        "description": "Read frames + layers + tokens — generate code from designs",
+        "requires_oauth": false
+      },
       "firecrawl": {
         "name": "firecrawl",
         "display_name": "Firecrawl",
@@ -99,6 +116,42 @@
           "firecrawl-mcp"
         ],
         "description": "Website scraping + crawling",
+        "requires_oauth": false
+      },
+      "jira": {
+        "name": "jira",
+        "display_name": "Jira (Atlassian Cloud)",
+        "category": "project-management",
+        "env_var_keys": [
+          "ATLASSIAN_SITE_NAME",
+          "ATLASSIAN_USER_EMAIL",
+          "ATLASSIAN_API_TOKEN"
+        ],
+        "install_args": [
+          "jira",
+          "--",
+          "npx",
+          "-y",
+          "@aashari/mcp-server-atlassian-jira"
+        ],
+        "description": "Atlassian Cloud — issues, projects, sprints",
+        "requires_oauth": false
+      },
+      "linear": {
+        "name": "linear",
+        "display_name": "Linear",
+        "category": "project-management",
+        "env_var_keys": [
+          "LINEAR_API_KEY"
+        ],
+        "install_args": [
+          "linear",
+          "--",
+          "npx",
+          "-y",
+          "@tacticlaunch/mcp-linear"
+        ],
+        "description": "Modern issue tracker — cycles, projects, roadmap views",
         "requires_oauth": false
       },
       "magic": {
@@ -214,6 +267,23 @@
         "description": "Structured step-by-step reasoning (zero-config)",
         "requires_oauth": false
       },
+      "stripe": {
+        "name": "stripe",
+        "display_name": "Stripe",
+        "category": "payments",
+        "env_var_keys": [
+          "STRIPE_SECRET_KEY"
+        ],
+        "install_args": [
+          "stripe",
+          "--",
+          "npx",
+          "-y",
+          "@stripe/mcp"
+        ],
+        "description": "Payments + subscriptions — query, create test customers, debug charges",
+        "requires_oauth": false
+      },
       "supabase": {
         "name": "supabase",
         "display_name": "Supabase",
@@ -229,6 +299,24 @@
           "@supabase/mcp-server-supabase"
         ],
         "description": "Postgres + auth + storage + edge functions backend",
+        "requires_oauth": false
+      },
+      "youtrack": {
+        "name": "youtrack",
+        "display_name": "YouTrack",
+        "category": "project-management",
+        "env_var_keys": [
+          "YOUTRACK_URL",
+          "YOUTRACK_TOKEN"
+        ],
+        "install_args": [
+          "youtrack",
+          "--",
+          "npx",
+          "-y",
+          "youtrack-mcp"
+        ],
+        "description": "JetBrains issue tracker — query, create, update issues + log work",
         "requires_oauth": false
       }
     },
@@ -256,6 +344,14 @@
           "linux": "npm install -g wrangler"
         },
         "post_install_hint": "wrangler login"
+      },
+      "stripe": {
+        "detect_cmd": "stripe",
+        "install": {
+          "darwin": "brew install stripe/stripe-cli/stripe",
+          "linux": "mkdir -p ~/.local/bin && curl -fsSL https://github.com/stripe/stripe-cli/releases/latest/download/stripe_linux_x86_64.tar.gz | tar -xz -C ~/.local/bin/ stripe"
+        },
+        "post_install_hint": "stripe login"
       },
       "supabase": {
         "detect_cmd": "supabase",

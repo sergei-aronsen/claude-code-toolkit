@@ -66,18 +66,17 @@ run_s1_catalog_correctness() {
     SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
     # shellcheck disable=SC2064
     trap "rm -rf '${SANDBOX:?}'" RETURN
-    echo "  -- S1_catalog_correctness: 13 entries, alpha order, notion OAuth --"
+    echo "  -- S1_catalog_correctness: 18 entries, alpha order, notion OAuth --"
 
     MCP_NAMES=()
     # shellcheck source=/dev/null
     source "${REPO_ROOT}/scripts/lib/mcp.sh"
     mcp_catalog_load
 
-    # Phase 33-01 added 4 backend entries (supabase, cloudflare, aws-cost-explorer,
-    # aws-cloudwatch-logs). Count + alpha-first updated to track current catalog
-    # state. Plans 33-02..04 will further mutate; assertions track the after-state
-    # of each plan.
-    assert_eq "13" "${#MCP_NAMES[@]}" "S1: catalog contains 13 entries"
+    # Phase 33-02 raised count to 18 (added stripe + youtrack + linear + jira +
+    # figma to the 13 from 33-01). Plans 33-03..04 will further mutate;
+    # assertions track the after-state of each plan.
+    assert_eq "18" "${#MCP_NAMES[@]}" "S1: catalog contains 18 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 
     # Find notion index and verify requires_oauth = 1
