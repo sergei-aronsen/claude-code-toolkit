@@ -265,24 +265,12 @@ assert_eq "0" "$rc" "A11: --mcps --yes --dry-run exits 0 (deprecation is non-blo
 assert_contains "deprecated" "$m_err" "A11: --mcps prints deprecation note to stderr"
 
 # ─────────────────────────────────────────────────
-# A12 — Integrations Install Summary banner renders under --dry-run
-# ─────────────────────────────────────────────────
-assert_contains "Integrations Install Summary" "$i_out" "A12: summary banner renders under --integrations --dry-run"
-
-# ─────────────────────────────────────────────────
-# A13 — Summary table header carries Entry / MCP / CLI / Notes columns
-# ─────────────────────────────────────────────────
-assert_contains "Entry" "$i_out" "A13: summary header carries Entry column"
-assert_contains "MCP" "$i_out" "A13: summary header carries MCP column"
-assert_contains "CLI" "$i_out" "A13: summary header carries CLI column"
-assert_contains "Notes" "$i_out" "A13: summary header carries Notes column"
-
-# ─────────────────────────────────────────────────
-# A14 — Summary total line of shape "Installed: N MCPs, M CLIs · Skipped: X · Failed: Y"
+# A14 — Per-row MCP install summary totals line carries shape
+#       "Installed: N · Skipped: M · Failed: K". The Phase 34-03 matrix table
+#       (A12 banner + A13 columns + A14 MCPs/CLIs lines) was removed in
+#       Phase 36-A polish (260502-usj) — it duplicated the per-row block.
 # ─────────────────────────────────────────────────
 assert_contains "Installed:" "$i_out" "A14: summary total line carries 'Installed:'"
-assert_contains "MCPs" "$i_out" "A14: summary total line carries 'MCPs'"
-assert_contains "CLIs" "$i_out" "A14: summary total line carries 'CLIs'"
 assert_contains "Skipped:" "$i_out" "A14: summary total line carries 'Skipped:'"
 assert_contains "Failed:" "$i_out" "A14: summary total line carries 'Failed:'"
 
@@ -391,9 +379,10 @@ HOME="$SANDBOX_ROOT" \
     NO_COLOR=1 \
     bash "${REPO_ROOT}/scripts/install.sh" --integrations --mcp-only --yes --dry-run \
     >"$mo_out_file" 2>"$mo_err_file" || rc=$?
-mo_out=$(cat "$mo_out_file")
 assert_eq "0" "$rc" "A16: --integrations --mcp-only --yes --dry-run exits 0"
-assert_contains "mcp-only" "$mo_out" "A16: summary CLI cell carries 'mcp-only' skip reason"
+# Note: 'mcp-only' Notes-column assertion removed — that column was rendered by
+# the Phase 34-03 matrix table (print_integrations_summary), removed in
+# Phase 36-A polish (260502-usj). Exit-code coverage is sufficient here.
 
 # ─────────────────────────────────────────────────
 # A17 — `--cli-only` skips MCP dispatch (MCP cell shows cli-only skip reason)
@@ -408,9 +397,8 @@ HOME="$SANDBOX_ROOT" \
     NO_COLOR=1 \
     bash "${REPO_ROOT}/scripts/install.sh" --integrations --cli-only --yes --dry-run \
     >"$co_out_file" 2>"$co_err_file" || rc=$?
-co_out=$(cat "$co_out_file")
 assert_eq "0" "$rc" "A17: --integrations --cli-only --yes --dry-run exits 0"
-assert_contains "cli-only" "$co_out" "A17: summary MCP cell carries 'cli-only' skip reason"
+# Note: 'cli-only' Notes-column assertion removed for the same reason as A16.
 
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"

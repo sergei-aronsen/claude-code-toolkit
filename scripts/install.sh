@@ -293,7 +293,7 @@ print_install_status() {
         "installed (needs API key)") printf '  %b%-30s %s%b\n' "${_DRO_Y:-}" "$component" "$state" "${_DRO_NC:-}" ;;
         installed*)     printf '  %b%-30s %s%b\n' "${_DRO_G:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         would-install)  printf '  %b%-30s %s%b\n' "${_DRO_C:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
-        skipped)        printf '  %b%-30s %s%b\n' "${_DRO_Y:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
+        skipped)        printf '  %b%-30s %s%b\n' "${_DRO_GREY:-}" "$component" "$state" "${_DRO_NC:-}" ;;
         failed*)        printf '  %b%-30s %s%b\n' "${_DRO_R:-}"    "$component" "$state" "${_DRO_NC:-}" ;;
         *)              printf '  %-30s %s\n' "$component" "$state" ;;
     esac
@@ -565,7 +565,7 @@ if [[ "$MCPS" -eq 1 ]]; then
 
             local_rc=0
             if [[ -n "$stderr_tmp" ]]; then
-                ( mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
+                ( mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" ) >"$stderr_tmp" 2>&1 || local_rc=$?
             else
                 mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" || local_rc=$?
             fi
@@ -750,13 +750,6 @@ if [[ "$MCPS" -eq 1 ]]; then
     printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
-    # Phase 34-03 (TUI-05): per-component summary table. Renders the per-entry
-    # × per-component matrix from RESULT_NAMES[] / RESULT_MCP_STATE[] /
-    # RESULT_CLI_STATE[] populated by the dispatch loop above. Mirrors Phase 25
-    # D-28 contract; complements (does NOT replace) the per-row "MCP install
-    # summary" block above (legacy block keeps test-mcp-selector S7/S13 happy).
-    print_integrations_summary
-
     # Follow-up block for MCPs registered without env vars. The servers are
     # already in `claude mcp list`; they just need API keys exported in the
     # shell that launches claude. claude CLI inherits the shell env and
@@ -815,16 +808,9 @@ if [[ "$MCPS" -eq 1 ]]; then
         esac
         echo ""
         echo "  3) Reload shell env (open a fresh terminal, or run: exec \$SHELL) and start claude."
-        echo ""
-        echo "     When you change a key later: edit mcp-config.env, re-open claude. No"
-        echo "     re-registration, no other commands — keys load at claude startup."
         unset _shell_rc _rc_added _rc_marker
     fi
 
-    if [[ "${NO_BANNER:-0}" != "1" ]]; then
-        echo ""
-        echo "To remove an MCP: claude mcp remove <name>"
-    fi
     if [[ $FAILED_COUNT -gt 0 ]]; then
         exit 1
     fi
@@ -1911,7 +1897,7 @@ if [[ "${NO_BANNER:-0}" != "1" ]]; then
     echo ""
     echo -e "${YELLOW}⚠  Restart Claude Code in this project directory for commands to become available.${NC}"
     echo ""
-    echo "To remove: bash <(curl -sSL $TK_REPO_URL/scripts/uninstall.sh)"
+    echo "To uninstall: bash <(curl -sSL $TK_REPO_URL/scripts/uninstall.sh)"
     if [[ -f ".claude/POST_INSTALL.md" ]]; then
         echo ""
         echo "Read .claude/POST_INSTALL.md and show its contents to the user."

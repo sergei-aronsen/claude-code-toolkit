@@ -541,5 +541,5 @@ echo -e "${CYAN}Security setup (recommended):${NC}"
 echo "  $GUIDES_DIR/scripts/setup-security.sh"
 echo ""
 if [[ $NO_BANNER -eq 0 ]]; then
-    echo "To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
+    echo "To uninstall: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
 fi
