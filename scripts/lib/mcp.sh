@@ -17,6 +17,14 @@
 #   MCP_INSTALL_ARGS[]     — install_args[] joined with $'\037' (unit-separator) for safe split
 #   MCP_DESCS[]            — description strings (parallel)
 #   MCP_OAUTH[]            — 0/1 ints (parallel)
+# Globals (write, Phase 34-01):
+#   MCP_CATEGORY[]         — entry's category (parallel; e.g. "backend", "docs-research")
+#   MCP_HAS_CLI[]          — 0/1 — 1 if components.cli.<name> block present in catalog
+#   MCP_UNOFFICIAL[]       — 0/1 — 1 if components.mcp.<name>.unofficial == true
+#   MCP_CLI_DETECT[]       — `detect_cmd` from components.cli (empty when MCP_HAS_CLI=0)
+#   CATEGORIES_ORDER[]     — canonical ordered list from .categories[] in the catalog
+#   MCP_STATUS[]           — "installed"|"absent"|"unknown" (per-entry MCP install state)
+#   CLI_STATUS[]           — "installed"|"absent"|"na" (per-entry companion CLI state)
 # Globals (write, Plan 02):
 #   MCP_SECRET_KEYS[]      — keys from mcp-config.env (parallel to MCP_SECRET_VALUES)
 #   MCP_SECRET_VALUES[]    — values from mcp-config.env
@@ -88,6 +96,15 @@ mcp_catalog_load() {
     MCP_DESCS=()
     # shellcheck disable=SC2034
     MCP_OAUTH=()
+    # Phase 34-01: parallel arrays for category grouping + component metadata.
+    # shellcheck disable=SC2034
+    MCP_CATEGORY=()
+    # shellcheck disable=SC2034
+    MCP_HAS_CLI=()
+    # shellcheck disable=SC2034
+    MCP_UNOFFICIAL=()
+    # shellcheck disable=SC2034
+    MCP_CLI_DETECT=()
     local name
     while IFS= read -r name; do
         # shellcheck disable=SC2034
@@ -108,7 +125,146 @@ mcp_catalog_load() {
             # shellcheck disable=SC2034
             MCP_OAUTH+=(0)
         fi
+
+        # Phase 34-01: category (default empty string when missing for back-compat
+        # with v4.6 schema-v1 catalogs that lack the `category` field).
+        # shellcheck disable=SC2034
+        MCP_CATEGORY+=("$(jq -r --arg n "$name" '.components.mcp[$n].category // ""' "$catalog_path")")
+
+        # Phase 34-01: unofficial flag (default 0; 1 only when set true).
+        if [[ "$(jq -r --arg n "$name" '.components.mcp[$n].unofficial // false' "$catalog_path")" == "true" ]]; then
+            # shellcheck disable=SC2034
+            MCP_UNOFFICIAL+=(1)
+        else
+            # shellcheck disable=SC2034
+            MCP_UNOFFICIAL+=(0)
+        fi
+
+        # Phase 34-01: CLI presence + detect_cmd. components.cli.<name> may be absent.
+        # `// empty` exits jq with no output when the path doesn't exist; capture and
+        # branch instead of relying on the brittle "null" string from `// null`.
+        local _cli_detect
+        _cli_detect="$(jq -r --arg n "$name" '.components.cli[$n].detect_cmd // empty' "$catalog_path")"
+        if [[ -n "$_cli_detect" ]]; then
+            # shellcheck disable=SC2034
+            MCP_HAS_CLI+=(1)
+            # shellcheck disable=SC2034
+            MCP_CLI_DETECT+=("$_cli_detect")
+        else
+            # shellcheck disable=SC2034
+            MCP_HAS_CLI+=(0)
+            # shellcheck disable=SC2034
+            MCP_CLI_DETECT+=("")
+        fi
     done < <(jq -r '.components.mcp | keys | sort | .[]' "$catalog_path")
+}
+
+# mcp_categories_load — populate CATEGORIES_ORDER[] from the catalog's
+# top-level `.categories[]` array (canonical order — Phase 33 D-06).
+# Side-effects: writes CATEGORIES_ORDER. Safe to call before mcp_catalog_load.
+# Returns 1 if catalog missing or jq absent (matches mcp_catalog_load contract).
+mcp_categories_load() {
+    local catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path)}"
+    if [[ ! -f "$catalog_path" ]]; then
+        echo -e "${RED}✗${NC} integrations-catalog.json not found at $catalog_path" >&2
+        return 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo -e "${RED}✗${NC} jq required for mcp_categories_load" >&2
+        return 1
+    fi
+    # shellcheck disable=SC2034
+    CATEGORIES_ORDER=()
+    local cat
+    while IFS= read -r cat; do
+        [[ -z "$cat" ]] && continue
+        # shellcheck disable=SC2034
+        CATEGORIES_ORDER+=("$cat")
+    done < <(jq -r '.categories[]? // empty' "$catalog_path")
+}
+
+# _mcp_category_display — title-case a kebab-case category key for the
+# section header (e.g. "docs-research" -> "Docs Research").
+# Bash 3.2: no `${var,,}` / `${var^^}`. Use `tr` + per-word capitalisation
+# via parameter expansion of the first byte.
+_mcp_category_display() {
+    local key="${1:-}"
+    [[ -z "$key" ]] && { echo ""; return 0; }
+    local out="" word first rest
+    local IFS_SAVED="$IFS"
+    IFS='-'
+    # shellcheck disable=SC2206
+    local words=( $key )
+    IFS="$IFS_SAVED"
+    for word in "${words[@]+"${words[@]}"}"; do
+        [[ -z "$word" ]] && continue
+        word=$(printf '%s' "$word" | tr '[:upper:]' '[:lower:]')
+        first="${word:0:1}"
+        rest="${word:1}"
+        first=$(printf '%s' "$first" | tr '[:lower:]' '[:upper:]')
+        if [[ -z "$out" ]]; then
+            out="${first}${rest}"
+        else
+            out="${out} ${first}${rest}"
+        fi
+    done
+    echo "$out"
+}
+
+# mcp_status_detect — populate per-component status arrays.
+# Globals (write):
+#   MCP_STATUS[]   — "installed"|"absent"|"unknown" (parallel to MCP_NAMES)
+#   CLI_STATUS[]   — "installed"|"absent"|"na" (parallel; "na" = entry has no CLI)
+# Reads MCP_NAMES[] / MCP_HAS_CLI[] / MCP_CLI_DETECT[] (must be loaded first).
+# MCP detect uses the cached `claude mcp list` (single CLI call per shell).
+# CLI detect uses `command -v <detect_cmd>` (sub-millisecond — no caching).
+# Runs ONCE per TUI launch; not per render frame (D-11 / TUI-02).
+mcp_status_detect() {
+    if [[ "${#MCP_NAMES[@]}" -eq 0 ]]; then
+        mcp_catalog_load || return 1
+    fi
+    # shellcheck disable=SC2034
+    MCP_STATUS=()
+    # shellcheck disable=SC2034
+    CLI_STATUS=()
+    _mcp_list_cache_init
+    local mcp_unknown=0
+    case "${_MCP_LIST_CACHED:-}" in
+        __no_cli__|__list_failed__) mcp_unknown=1 ;;
+    esac
+    local i name detect rc
+    for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
+        name="${MCP_NAMES[$i]}"
+        if [[ "$mcp_unknown" -eq 1 ]]; then
+            # shellcheck disable=SC2034
+            MCP_STATUS+=("unknown")
+        else
+            rc=0
+            is_mcp_installed "$name" || rc=$?
+            case "$rc" in
+                0)  # shellcheck disable=SC2034
+                    MCP_STATUS+=("installed") ;;
+                1)  # shellcheck disable=SC2034
+                    MCP_STATUS+=("absent") ;;
+                *)  # shellcheck disable=SC2034
+                    MCP_STATUS+=("unknown") ;;
+            esac
+        fi
+
+        if [[ "${MCP_HAS_CLI[$i]:-0}" == "1" ]]; then
+            detect="${MCP_CLI_DETECT[$i]:-}"
+            if [[ -n "$detect" ]] && command -v "$detect" >/dev/null 2>&1; then
+                # shellcheck disable=SC2034
+                CLI_STATUS+=("installed")
+            else
+                # shellcheck disable=SC2034
+                CLI_STATUS+=("absent")
+            fi
+        else
+            # shellcheck disable=SC2034
+            CLI_STATUS+=("na")
+        fi
+    done
 }
 
 # mcp_catalog_names — print all 9 catalog names, one per line, alphabetically sorted.
@@ -569,46 +725,135 @@ mcp_wizard_run() {
 # mcp_status_array — populate TUI_LABELS/GROUPS/INSTALLED/DESCS for the MCP page.
 # Side effects: writes to global arrays consumed by tui_checklist (from lib/tui.sh).
 # Globals (write):
-#   TUI_LABELS[]      — 9 names (alpha)
-#   TUI_GROUPS[]      — all "MCP" (single section)
-#   TUI_INSTALLED[]   — 0/1 per probe (state=2 maps to 0 with [unavailable] in desc)
-#   TUI_DESCS[]       — description strings (prefixed when CLI absent)
-#   MCP_CLI_PRESENT   — 0 if all 9 probes returned 2 (no CLI), 1 otherwise
+#   TUI_LABELS[]        — entry display names; unofficial entries get a leading
+#                         yellow `!` glyph (`! NotebookLM`) — visible badge per
+#                         TUI-03. Plain `[!]` under NO_COLOR.
+#   TUI_GROUPS[]        — title-cased category (e.g. "Backend", "Docs Research").
+#                         Phase 34-01 (TUI-01): grouped rendering replaces flat
+#                         "MCP" placeholder. Section headers come for free from
+#                         tui_checklist's TUI_GROUPS[] transition logic.
+#   TUI_INSTALLED[]     — 0/1 per probe (state=2 maps to 0 with [unavailable] in desc)
+#   TUI_DESCS[]         — description with appended `[MCP:✓ CLI:—]` status block
+#                         (TUI-02). Glyphs: ✓ installed, ✗ absent, ⊘ unknown,
+#                         — n/a (entry has no CLI block).
+#   TUI_GROUP_NAMES[]   — list of distinct categories present (for subtitle lookup)
+#   TUI_GROUP_DESCS[]   — empty strings (parallel) — keeps tui.sh's subtitle
+#                         lookup contract happy without forcing per-section copy.
+#   MCP_CLI_PRESENT     — 0 if all probes returned 2 (no CLI), 1 otherwise
+#
+# Iteration order: by CATEGORIES_ORDER[] then alphabetical within each category.
+# Categories with zero entries produce NO header (skipped silently per D-06).
+# Bash 3.2: parallel arrays only — no associative arrays, no `mapfile`.
 mcp_status_array() {
     if [[ "${#MCP_NAMES[@]}" -eq 0 ]]; then
         mcp_catalog_load || return 1
     fi
+    # Bash 3.2: `${#var[@]:-0}` is rejected as "bad substitution"; use `${var[*]+x}`
+    # existence test (mirrors the established pattern at tui.sh:164).
+    if [[ -z "${CATEGORIES_ORDER[*]+x}" ]] || [[ "${#CATEGORIES_ORDER[@]}" -eq 0 ]]; then
+        mcp_categories_load || return 1
+    fi
+
+    # Detect once per launch (D-11) — populates MCP_STATUS[] + CLI_STATUS[].
+    mcp_status_detect
+
     TUI_LABELS=()
     TUI_GROUPS=()
     TUI_INSTALLED=()
     TUI_DESCS=()
+    TUI_GROUP_NAMES=()
+    TUI_GROUP_DESCS=()
     MCP_CLI_PRESENT=0
-    local i name desc rc
-    for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
-        name="${MCP_NAMES[$i]}"
-        desc="${MCP_DESCS[$i]}"
-        TUI_LABELS+=("${MCP_DISPLAY[$i]}")
-        TUI_GROUPS+=("MCP")
-        rc=0
-        is_mcp_installed "$name" || rc=$?
-        case "$rc" in
-            0)
-                TUI_INSTALLED+=(1)
-                MCP_CLI_PRESENT=1
-                ;;
-            1)
-                TUI_INSTALLED+=(0)
-                MCP_CLI_PRESENT=1
-                ;;
-            *)
-                # rc=2 (CLI absent or list failed) — render row but mark unavailable.
-                # Using *) instead of 2) to treat any unexpected return as unavailable
-                # (fail-soft posture if jq fails or catalog is corrupted).
-                TUI_INSTALLED+=(0)
-                desc="[unavailable] ${desc}"
-                ;;
-        esac
-        TUI_DESCS+=("$desc")
+
+    # NO_COLOR-aware glyph helpers. Resolve once — these strings are appended
+    # into TUI_DESCS verbatim and re-rendered every frame, so building them
+    # per-row would be wasteful. `${NO_COLOR+x}` follows no-color.org semantics
+    # (presence disables, even when empty).
+    local _g_ok="✓" _g_no="✗" _g_unk="⊘" _g_na="—" _g_bang="!"
+    local _c_ok="" _c_no="" _c_unk="" _c_y="" _c_nc=""
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        _c_ok=$'\033[0;32m'
+        _c_no=$'\033[0;31m'
+        _c_unk=$'\033[0;36m'
+        _c_y=$'\033[1;33m'
+        _c_nc=$'\033[0m'
+    fi
+
+    # Walk categories in canonical order. For each, gather alphabetic entries.
+    # Two passes per category: first compute matching indices, then emit them.
+    local cat cat_display cat_count i name desc mcp_g cli_g status_block label
+    local seen_idx j
+    for cat in "${CATEGORIES_ORDER[@]+"${CATEGORIES_ORDER[@]}"}"; do
+        # Collect entry indices in this category. MCP_NAMES is already alpha
+        # sorted by mcp_catalog_load, so push order = alphabetic per category.
+        seen_idx=()
+        for ((i=0; i<${#MCP_NAMES[@]}; i++)); do
+            if [[ "${MCP_CATEGORY[$i]:-}" == "$cat" ]]; then
+                seen_idx+=("$i")
+            fi
+        done
+        cat_count=${#seen_idx[@]}
+        # Skip categories with zero entries — no empty headers per D-06.
+        [[ "$cat_count" -eq 0 ]] && continue
+
+        cat_display=$(_mcp_category_display "$cat")
+        TUI_GROUP_NAMES+=("$cat_display")
+        TUI_GROUP_DESCS+=("")
+
+        for j in "${seen_idx[@]+"${seen_idx[@]}"}"; do
+            i="$j"
+            name="${MCP_NAMES[$i]}"
+            desc="${MCP_DESCS[$i]}"
+
+            # Yellow `!` for unofficial entries (TUI-03 badge).
+            if [[ "${MCP_UNOFFICIAL[$i]:-0}" == "1" ]]; then
+                if [[ -n "$_c_y" ]]; then
+                    label="${_c_y}${_g_bang}${_c_nc} ${MCP_DISPLAY[$i]}"
+                else
+                    label="[!] ${MCP_DISPLAY[$i]}"
+                fi
+            else
+                label="${MCP_DISPLAY[$i]}"
+            fi
+            TUI_LABELS+=("$label")
+            TUI_GROUPS+=("$cat_display")
+
+            # MCP installed/absent → set TUI_INSTALLED for tui.sh's [installed ✓]
+            # immutable-row treatment. Unknown → 0 (selectable; status column
+            # makes the unknown state explicit in the description).
+            case "${MCP_STATUS[$i]:-unknown}" in
+                installed)
+                    TUI_INSTALLED+=(1)
+                    MCP_CLI_PRESENT=1
+                    mcp_g="${_c_ok}${_g_ok}${_c_nc}"
+                    ;;
+                absent)
+                    TUI_INSTALLED+=(0)
+                    MCP_CLI_PRESENT=1
+                    mcp_g="${_c_no}${_g_no}${_c_nc}"
+                    ;;
+                *)
+                    # unknown — claude CLI absent or list failed.
+                    TUI_INSTALLED+=(0)
+                    mcp_g="${_c_unk}${_g_unk}${_c_nc}"
+                    desc="[unavailable] ${desc}"
+                    ;;
+            esac
+
+            # CLI status column.
+            case "${CLI_STATUS[$i]:-na}" in
+                installed) cli_g="${_c_ok}${_g_ok}${_c_nc}" ;;
+                absent)    cli_g="${_c_no}${_g_no}${_c_nc}" ;;
+                *)         cli_g="$_g_na" ;;
+            esac
+
+            # Append status block to description. Format chosen for compact
+            # one-line read under the row label (tui.sh line 208 indents
+            # description under each row).
+            status_block="[MCP:${mcp_g} CLI:${cli_g}]"
+            TUI_DESCS+=("${desc} ${status_block}")
+        done
     done
+
     export MCP_CLI_PRESENT
 }

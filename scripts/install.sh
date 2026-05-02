@@ -1332,17 +1332,58 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                         echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
                         exit 1
                     fi
+                    # Phase 34-01: mcp_status_array now sets TUI_LABELS to
+                    # display_name (with [!] prefix on unofficial entries) and
+                    # TUI_GROUPS to title-cased categories. The sub-picker
+                    # historically used raw MCP_NAMES for label-to-CSV exact
+                    # match against TK_MCP_PRE_SELECTED. Preserve that contract
+                    # by overwriting TUI_LABELS back to MCP_NAMES order, but
+                    # KEEP the category groups + status-augmented descriptions
+                    # produced by mcp_status_array — those are what the user
+                    # sees and they don't affect the back-end CSV match.
                     mcp_status_array
-                    TUI_LABELS=("${MCP_NAMES[@]}")
+                    # mcp_status_array iterates by category, so its TUI_*
+                    # arrays are NOT in MCP_NAMES order. Rebuild them in
+                    # category-grouped iteration order (alpha-within-category)
+                    # using the parallel arrays already populated.
+                    TUI_LABELS=()
                     TUI_GROUPS=()
                     TUI_DESCS=()
                     TUI_REQUIRED=()
-                    for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
-                        TUI_GROUPS+=("MCP")
-                        TUI_DESCS+=("${MCP_DESCS[$_mcp_i]:-}")
-                        TUI_REQUIRED+=(0)
+                    for _cat_i in "${CATEGORIES_ORDER[@]+"${CATEGORIES_ORDER[@]}"}"; do
+                        for ((_mcp_i=0; _mcp_i<${#MCP_NAMES[@]}; _mcp_i++)); do
+                            if [[ "${MCP_CATEGORY[$_mcp_i]:-}" == "$_cat_i" ]]; then
+                                TUI_LABELS+=("${MCP_NAMES[$_mcp_i]}")
+                                TUI_GROUPS+=("$(_mcp_category_display "$_cat_i")")
+                                # Reuse description-with-status block built by
+                                # mcp_status_array — it's parallel to MCP_NAMES
+                                # ordering inside each category, but easier to
+                                # recompute here than to map indices across.
+                                _mcp_desc="${MCP_DESCS[$_mcp_i]:-}"
+                                # Append a status block mirroring mcp_status_array.
+                                _mcp_status_word="${MCP_STATUS[$_mcp_i]:-unknown}"
+                                _cli_status_word="${CLI_STATUS[$_mcp_i]:-na}"
+                                case "$_mcp_status_word" in
+                                    installed) _mcp_glyph="✓" ;;
+                                    absent)    _mcp_glyph="✗" ;;
+                                    *)         _mcp_glyph="⊘" ;;
+                                esac
+                                case "$_cli_status_word" in
+                                    installed) _cli_glyph="✓" ;;
+                                    absent)    _cli_glyph="✗" ;;
+                                    *)         _cli_glyph="—" ;;
+                                esac
+                                # Mark unofficial inline so the [!] is visible
+                                # in the sub-picker just like the main TUI.
+                                if [[ "${MCP_UNOFFICIAL[$_mcp_i]:-0}" == "1" ]]; then
+                                    _mcp_desc="[!] ${_mcp_desc}"
+                                fi
+                                TUI_DESCS+=("${_mcp_desc} [MCP:${_mcp_glyph} CLI:${_cli_glyph}]")
+                                TUI_REQUIRED+=(0)
+                            fi
+                        done
                     done
-                    unset _mcp_i
+                    unset _mcp_i _cat_i _mcp_desc _mcp_status_word _cli_status_word _mcp_glyph _cli_glyph
                     # Restore prior MCP selection on Back-return (same pattern as skills).
                     TUI_RESULTS=()
                     if [[ -n "${TK_MCP_PRE_SELECTED:-}" ]]; then
