@@ -39,7 +39,7 @@ assert_fail() {
     printf "      %s\n" "$2"
 }
 
-BANNER='To remove: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)'
+BANNER='To uninstall: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)'
 
 check_banner() {
     local file="$1" label="$2"

@@ -3,7 +3,7 @@
 # Claude Code Toolkit — Dry-Run Output Library (Phase 11 / UX-01)
 # Source this file. Do NOT execute it directly.
 # Exposes: dro_init_colors, dro_print_header, dro_print_file, dro_print_total
-# Globals: _DRO_G _DRO_C _DRO_Y _DRO_R _DRO_NC (set by dro_init_colors)
+# Globals: _DRO_G _DRO_C _DRO_Y _DRO_R _DRO_GREY _DRO_NC (set by dro_init_colors)
 #
 # IMPORTANT: No errexit/pipefail — sourced libraries must not alter caller error mode.
 #            Color gating respects no-color.org: NO_COLOR present (any value, including
@@ -28,12 +28,14 @@ dro_init_colors() {
         _DRO_C='\033[0;36m'   # cyan   — [~ UPDATE]
         _DRO_Y='\033[1;33m'   # yellow — [- SKIP]
         _DRO_R='\033[0;31m'   # red    — [- REMOVE]
+        _DRO_GREY='\033[90m'  # dim grey — low-signal "skipped" rows
         _DRO_NC='\033[0m'
     else
         _DRO_G=''
         _DRO_C=''
         _DRO_Y=''
         _DRO_R=''
+        _DRO_GREY=''
         _DRO_NC=''
     fi
 }
