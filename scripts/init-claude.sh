@@ -47,6 +47,27 @@ FAILED_PATHS=()
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --version|-v)
+            # DIST-02 (Phase 35-01): version derives from manifest at runtime,
+            # mirroring init-local.sh:122 (v4.3 D-22 contract). Under curl|bash
+            # we fetch manifest.json from $REPO_URL; locally we read the file
+            # next to this script when present (covers offline dev runs).
+            _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo '')"
+            _local_manifest="${_self_dir%/scripts}/manifest.json"
+            if [[ -n "$_self_dir" && -f "$_local_manifest" ]]; then
+                if command -v jq >/dev/null 2>&1; then
+                    _ver=$(jq -r '.version' "$_local_manifest" 2>/dev/null)
+                else
+                    _ver=$(grep -m1 '"version"' "$_local_manifest" | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+                fi
+            else
+                _ver=$(curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/manifest.json" 2>/dev/null \
+                    | grep -m1 '"version"' \
+                    | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+            fi
+            echo "claude-code-toolkit v${_ver:-unknown}"
+            exit 0
+            ;;
         --dry-run)
             DRY_RUN=true
             shift
@@ -96,7 +117,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
+            echo -e "Flags: --version, --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
             exit 1
             ;;
     esac

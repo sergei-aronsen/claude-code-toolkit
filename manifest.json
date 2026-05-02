@@ -213,6 +213,9 @@
         "path": "scripts/uninstall.sh"
       },
       {
+        "path": "scripts/validate-integrations-catalog.py"
+      },
+      {
         "path": "scripts/validate-marketplace.sh"
       },
       {
