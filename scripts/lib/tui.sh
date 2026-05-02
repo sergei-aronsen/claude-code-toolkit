@@ -7,7 +7,10 @@
 #                  TUI_INSTALLED, TUI_DESCS, TUI_REQUIRED (optional),
 #                  TUI_GROUP_NAMES + TUI_GROUP_DESCS (optional, parallel pair
 #                  for per-section dim subtitles — Bash 3.2 compat substitute
-#                  for an associative array)
+#                  for an associative array),
+#                  TUI_HEADER_TEXT (optional one-line banner above the list),
+#                  TUI_HEADER_KEY  (optional 1-char key that fires TUI_HEADER_FN),
+#                  TUI_HEADER_FN   (optional function name invoked on TUI_HEADER_KEY)
 # Globals (write): TUI_RESULTS[], _TUI_COLOR, _TUI_SAVED_STTY (internal)
 #
 # TUI_REQUIRED[i]=1 marks a row as mandatory: pre-checked, immutable
@@ -142,6 +145,14 @@ _tui_render() {
     local _frame=""
     _frame+=$'\e[H\e[J'
 
+    # Optional banner above the list (e.g. scope toggle for MCP picker).
+    # Caller sets TUI_HEADER_TEXT to a single-line string. Rendered verbatim
+    # so caller controls any inline color codes; under NO_COLOR / no-TTY the
+    # caller is responsible for emitting plain glyphs.
+    if [[ -n "${TUI_HEADER_TEXT:-}" ]]; then
+        _frame+="  ${TUI_HEADER_TEXT}"$'\n\n'
+    fi
+
     local total="${#TUI_LABELS[@]}"
     local prev_group=""
     local i
@@ -262,10 +273,14 @@ _tui_render() {
     if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
         _back_hint=" · b back"
     fi
+    local _header_hint=""
+    if [[ -n "${TUI_HEADER_KEY:-}" && -n "${TUI_HEADER_FN:-}" ]]; then
+        _header_hint=" · ${TUI_HEADER_KEY} scope"
+    fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_back_hint}"$' · Ctrl+C abort\e[0m\n'
+        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
     else
-        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_back_hint}"$' · Ctrl+C abort\n'
+        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
     fi
 
     # Single atomic write — terminal renders one frame, no flicker, no bleed.
@@ -406,7 +421,21 @@ tui_checklist() {
                 fi
                 ;;
             *)
-                # Unrecognized — ignore and re-render.
+                # Header-toggle key (caller-defined, e.g. `s` for MCP scope).
+                # Folded into the catch-all so the gate doesn't shadow b|B
+                # above. The function is called with no args; it is expected
+                # to mutate TUI_HEADER_TEXT (and any caller-side state) so
+                # the next _tui_render shows the new value.
+                if [[ -n "${TUI_HEADER_KEY:-}" && -n "${TUI_HEADER_FN:-}" ]]; then
+                    local _hk_lower="${TUI_HEADER_KEY}"
+                    local _hk_upper
+                    # Bash 3.2 has no ${var^^}; use tr.
+                    _hk_upper=$(printf '%s' "$_hk_lower" | tr '[:lower:]' '[:upper:]' 2>/dev/null || printf '%s' "$_hk_lower")
+                    if [[ "$key" == "$_hk_lower" || "$key" == "$_hk_upper" ]]; then
+                        "${TUI_HEADER_FN}" || true
+                    fi
+                fi
+                # Unrecognized otherwise — ignore and re-render.
                 ;;
         esac
     done

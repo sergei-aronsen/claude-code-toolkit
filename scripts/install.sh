@@ -95,6 +95,26 @@ while [[ $# -gt 0 ]]; do
         --cli-only)    CLI_ONLY=1;            shift ;;
         --skills)      SKILLS=1;              shift ;;
         --skills-only) SKILLS_ONLY=1; SKILLS=1; shift ;;
+        --mcp-scope=*)
+            # Phase 37 (mcp-scope-toggle): override the default `user` scope
+            # for `claude mcp add` invocations. Accepts user|local|project;
+            # any other value is rejected so a typo doesn't silently fall
+            # back. The TUI also exposes an `s` toggle, but the CLI flag
+            # wins (TK_MCP_SCOPE is read by mcp_wizard_run).
+            _scope_arg="${1#--mcp-scope=}"
+            case "$_scope_arg" in
+                user|local|project)
+                    TK_MCP_SCOPE="$_scope_arg"
+                    export TK_MCP_SCOPE
+                    ;;
+                *)
+                    echo -e "${RED}Error:${NC} --mcp-scope must be one of: user, local, project (got: $_scope_arg)" >&2
+                    exit 2
+                    ;;
+            esac
+            unset _scope_arg
+            shift
+            ;;
         -h|--help)
             cat <<USAGE
 Usage: bash scripts/install.sh [flags]
@@ -117,6 +137,8 @@ Flags:
   --skills      Install curated skills via TUI catalog (Phase 26)
   --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
                 auto-activates when 'claude' CLI is absent on PATH (DESK-03)
+  --mcp-scope=SCOPE  Scope for 'claude mcp add' (user|local|project; default: user).
+                     Inside the MCP TUI, press 's' to toggle user ↔ local.
 
 Backwards compatible: scripts/init-claude.sh URL still works unchanged.
 USAGE
@@ -430,10 +452,23 @@ if [[ "$MCPS" -eq 1 ]]; then
             echo "No TTY available for MCP TUI; pass --yes for non-interactive install."
             exit 0
         fi
+        # Phase 37: wire up scope toggle banner. `s` cycles user ↔ local;
+        # default = user (global) so MCPs land in ~/.claude.json regardless
+        # of cwd. Refresh the header text first so the banner reflects any
+        # value already set via --mcp-scope=… (env wins over default).
+        TK_MCP_SCOPE="${TK_MCP_SCOPE:-user}"
+        export TK_MCP_SCOPE
+        mcp_render_scope_header
+        # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_HEADER_KEY/FN
+        TUI_HEADER_KEY="s"
+        # shellcheck disable=SC2034
+        TUI_HEADER_FN="mcp_toggle_scope"
         if ! tui_checklist; then
+            unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
             echo "MCP install cancelled."
             exit 0
         fi
+        unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
         # Submit row in tui_checklist IS the confirm — do not chain a y/N
         # prompt after the screen-clear (it renders invisibly below the prior
         # output, same regression PR #20 fixed for the main TUI).
@@ -558,8 +593,16 @@ if [[ "$MCPS" -eq 1 ]]; then
                 local_reinstall=1
                 if [[ "$DRY_RUN" -ne 1 ]]; then
                     _claude_bin="${TK_MCP_CLAUDE_BIN:-claude}"
-                    "$_claude_bin" mcp remove "$local_name" >/dev/null 2>&1 || true
-                    unset _claude_bin
+                    # Phase 37: pass --scope so we delete the entry from the
+                    # same scope mcp_wizard_run will re-add it to. Without
+                    # this, a user who toggled to `local` could end up with
+                    # the old `user`-scope row still registered (or vice
+                    # versa). `claude mcp remove --scope X` is a no-op when
+                    # the name isn't in that scope, so falling through to
+                    # the next add is safe under either ordering.
+                    _scope_for_rm="${TK_MCP_SCOPE:-user}"
+                    "$_claude_bin" mcp remove --scope "$_scope_for_rm" "$local_name" >/dev/null 2>&1 || true
+                    unset _claude_bin _scope_for_rm
                 fi
             fi
 
@@ -1621,8 +1664,18 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                         done
                         unset _mcp_i _p _prev_mcp _IFS_SAVED2
                     fi
+                    # Phase 37: scope-toggle banner. `s` cycles user ↔ local
+                    # without leaving the picker. Default = user.
+                    TK_MCP_SCOPE="${TK_MCP_SCOPE:-user}"
+                    export TK_MCP_SCOPE
+                    mcp_render_scope_header
+                    # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_HEADER_KEY/FN
+                    TUI_HEADER_KEY="s"
+                    # shellcheck disable=SC2034
+                    TUI_HEADER_FN="mcp_toggle_scope"
                     _rc=0
                     TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
+                    unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
                     case "$_rc" in
                         0)
                             _mcp_pre_csv=""

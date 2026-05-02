@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — MCP scope toggle (Phase 37)
+
+User report 2026-05-02 flagged that the v4.9 install registered MCPs into the
+**project scope** of whatever directory the user happened to run install from
+(`~/.claude.json` → `projects.<cwd>.mcpServers`), making them invisible from
+every other working directory. The user expected "global" registration and
+the wizard never asked.
+
+- **`--scope user` is now the default** for every `claude mcp add`
+  invocation in `mcp_wizard_run`. Catalog stays scope-agnostic; the runtime
+  prepends the flag in `scripts/lib/mcp.sh` (`scoped_args=( "--scope" "$_scope"
+  "${install_args[@]}" )`). Pre-Phase 37 the toolkit left scope unset → claude
+  CLI defaulted to `local`.
+- **In-TUI radio toggle** — pressing `s` inside the MCP picker cycles
+  `◉ user (global)` ↔ `◉ local (this project)` without leaving the screen.
+  Banner color: bright-green for the active option (when color is enabled),
+  dim for the inactive. Default = user.
+- **`--mcp-scope=user|local|project` CLI flag** — non-interactive override
+  for headless installs. Invalid values exit 2 with a clear error.
+- **TUI library — generic header support** (`scripts/lib/tui.sh`):
+  - `TUI_HEADER_TEXT` — single-line banner rendered above the list. Caller
+    controls inline color codes.
+  - `TUI_HEADER_KEY` + `TUI_HEADER_FN` — opt-in key binding that calls a
+    caller-supplied function on press (uppercase variant matched too). The
+    function mutates state and re-renders the banner. Folded into the
+    existing `*)` catch-all branch so `b|B` (Back) is not shadowed.
+  - Footer hint advertises `<key> scope` only when both globals are set.
+- **Reinstall-path symmetry** — `claude mcp remove --scope $TK_MCP_SCOPE`
+  during the install↔reinstall toggle so the entry leaves the same scope
+  it will be re-added to.
+- **Tests** — `scripts/tests/test-mcp-wizard.sh` gains 5 new assertions
+  (T2/T2b/T2c/T2d/T2e) covering default scope, override, invalid fallback,
+  dry-run preview text, and the `mcp_render_scope_header`/`mcp_toggle_scope`
+  helpers.
+
+Migration: existing MCPs registered to project scope before this PR remain
+where they are. To move them to user scope, run
+`claude mcp remove --scope local <name>` then re-install via the toolkit
+(or use `--mcp-scope=local` if the project-scope entry was intentional).
+
 ### Added
 
 - **MCP install↔reinstall toggle** (PR #32) — Space on a row already showing
