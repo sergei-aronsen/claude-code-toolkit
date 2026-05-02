@@ -61,6 +61,11 @@ SKILLS=0
 SKILLS_ONLY=0
 NO_BRIDGES=false
 BRIDGES_FORCE=""
+# Phase 34-02 (TUI-04): per-component dispatch flags. Mutually exclusive.
+# When both set, exit 2 with stderr error mirroring v4.8 Phase 30
+# --bridges/--no-bridges precedent.
+MCP_ONLY=0
+CLI_ONLY=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -86,6 +91,8 @@ while [[ $# -gt 0 ]]; do
             echo -e "${YELLOW}⚠${NC} --mcps is deprecated; use --integrations (alias retained until v6.0)" >&2
             shift ;;
         --integrations) MCPS=1;               shift ;;
+        --mcp-only)    MCP_ONLY=1;            shift ;;
+        --cli-only)    CLI_ONLY=1;            shift ;;
         --skills)      SKILLS=1;              shift ;;
         --skills-only) SKILLS_ONLY=1; SKILLS=1; shift ;;
         -h|--help)
@@ -104,6 +111,9 @@ Flags:
   --bridges LIST  Force-create bridges for comma-listed CLIs (e.g. gemini,codex)
   --integrations  Install curated integrations (MCPs, etc.) via TUI catalog
   --mcps          Deprecated alias for --integrations (removed in v6.0)
+  --mcp-only    Install only MCP servers; skip companion CLI binaries
+  --cli-only    Install only companion CLI binaries; skip MCP server registration
+                  (--mcp-only and --cli-only are mutually exclusive)
   --skills      Install curated skills via TUI catalog (Phase 26)
   --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
                 auto-activates when 'claude' CLI is absent on PATH (DESK-03)
@@ -124,6 +134,13 @@ done
 # Mirrors the v4.4 --no-bootstrap / --bootstrap-only precedent (exit 2 on user-error).
 if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
     echo -e "${RED}Error:${NC} --no-bridges and --bridges are mutually exclusive" >&2
+    exit 2
+fi
+
+# Phase 34-02 (TUI-04): --mcp-only / --cli-only mutex. Mirrors the v4.8 Phase 30
+# bridges precedent — exit 2 on user-error per the BOOTSTRAP-04 contract.
+if [[ "$MCP_ONLY" -eq 1 && "$CLI_ONLY" -eq 1 ]]; then
+    echo -e "${RED}Error:${NC} --mcp-only and --cli-only are mutually exclusive" >&2
     exit 2
 fi
 # TK_NO_BRIDGES=1 env-var equivalent of --no-bridges (BRIDGE-UX-03 symmetry).
@@ -220,6 +237,10 @@ _source_lib bridges
 # MCPS=1 path needs the MCP catalog + wizard library.
 if [[ "$MCPS" -eq 1 ]]; then
     _source_lib mcp
+    # Phase 34-02 (TUI-04): cli-installer primitives for --cli-only / non-mcp-only paths.
+    # cli_detect / cli_install / cli_post_install_hint are sub-millisecond on the
+    # uncalled path, so unconditional source is safe even when only MCPs are installed.
+    _source_lib cli-installer
     # Under curl|bash, mcp.sh sourced from /tmp/mcp-XXX resolves
     # _mcp_default_catalog_path to /tmp/mcp-catalog.json which doesn't exist
     # → "Failed to load MCP catalog" exit 1 (user report 2026-05-01). Download
@@ -435,81 +456,224 @@ if [[ "$MCPS" -eq 1 ]]; then
     COMPONENT_STATUS=()
     COMPONENT_NAMES=()
     COMPONENT_STDERR_TAIL=()
+    # Phase 34-02: per-component (MCP × CLI) result tracking — RESULT_* arrays
+    # are populated alongside the legacy COMPONENT_* arrays so the existing
+    # "MCP install summary" block keeps working unchanged. Plan 34-03 reads
+    # these for the per-component summary table.
+    RESULT_NAMES=()
+    RESULT_MCP_STATE=()
+    RESULT_CLI_STATE=()
+    # Pass --yes through to unofficial_confirm via ALWAYS_YES (the symmetry
+    # name used in mcp.sh:unofficial_confirm — keeps the env-var contract
+    # decoupled from install.sh's $YES variable for testability).
+    if [[ "$YES" -eq 1 ]]; then
+        export ALWAYS_YES=1
+    fi
     local_mcp_count=${#MCP_NAMES[@]}
     for ((i=0; i<local_mcp_count; i++)); do
         local_name="${MCP_NAMES[$i]}"
         COMPONENT_NAMES+=("$local_name")
+        RESULT_NAMES+=("$local_name")
         if [[ "${TUI_RESULTS[$i]:-0}" -ne 1 ]]; then
             if [[ "${TUI_INSTALLED[$i]}" -eq 1 ]]; then
                 COMPONENT_STATUS+=("installed ✓")
                 INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+                RESULT_MCP_STATE+=("already")
             else
                 COMPONENT_STATUS+=("skipped")
                 SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                RESULT_MCP_STATE+=("skipped:unselected")
+            fi
+            # CLI side parallels: nothing to install when row not selected.
+            if [[ "${MCP_HAS_CLI[$i]:-0}" == "1" ]]; then
+                RESULT_CLI_STATE+=("skipped:unselected")
+            else
+                RESULT_CLI_STATE+=("na")
             fi
             COMPONENT_STDERR_TAIL+=("")
             continue
         fi
 
-        # Capture stderr to a per-MCP tmpfile (D-28).
-        # Audit L2: do not embed the component name in the path so shared
-        # `/tmp` on Linux can't enumerate which MCPs the user installs.
-        stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp.XXXXXX") || stderr_tmp=""
-        [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
-
-        local_flags=()
-        [[ "$DRY_RUN" -eq 1 ]] && local_flags+=("--dry-run")
-
-        local_rc=0
-        if [[ -n "$stderr_tmp" ]]; then
-            ( mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
-        else
-            mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" || local_rc=$?
-        fi
-
-        case "$local_rc" in
-            0)
-                if [[ "$DRY_RUN" -eq 1 ]]; then
-                    COMPONENT_STATUS+=("would-install")
-                else
-                    COMPONENT_STATUS+=("installed ✓")
-                    INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
-                fi
-                COMPONENT_STDERR_TAIL+=("")
-                ;;
-            2)
-                COMPONENT_STATUS+=("skipped: claude unavailable")
+        # Phase 34-02 (TUI-03): unofficial confirm gate. Runs BEFORE any install
+        # action so a declined entry is recorded as skipped without touching
+        # claude or the host CLI. --yes (ALWAYS_YES=1) bypasses the prompt.
+        if [[ "${MCP_UNOFFICIAL[$i]:-0}" == "1" ]]; then
+            if ! unofficial_confirm "${MCP_DISPLAY[$i]}"; then
+                COMPONENT_STATUS+=("skipped: unofficial declined")
                 SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
                 COMPONENT_STDERR_TAIL+=("")
-                ;;
-            3)
-                # rc=3 — server registered with claude CLI but has no env
-                # binding yet (deferred-secrets path). Counted as installed
-                # so the summary doesn't read like a failure; the follow-up
-                # block tells the user how to add the key.
-                COMPONENT_STATUS+=("installed (needs API key)")
-                INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
-                COMPONENT_STDERR_TAIL+=("")
-                ;;
-            *)
-                COMPONENT_STATUS+=("failed (exit $local_rc)")
+                RESULT_MCP_STATE+=("skipped:unofficial-declined")
+                if [[ "${MCP_HAS_CLI[$i]:-0}" == "1" ]]; then
+                    RESULT_CLI_STATE+=("skipped:unofficial-declined")
+                else
+                    RESULT_CLI_STATE+=("na")
+                fi
+                continue
+            fi
+        fi
+
+        # ─── MCP install branch ────────────────────────────────────────────
+        # Phase 34-02 (TUI-04): --cli-only skips the MCP install step. The
+        # entry's CLI is installed below so the row is not entirely skipped.
+        if [[ "$CLI_ONLY" -eq 1 ]]; then
+            COMPONENT_STATUS+=("skipped (--cli-only)")
+            SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            COMPONENT_STDERR_TAIL+=("")
+            RESULT_MCP_STATE+=("skipped:cli-only")
+        else
+            # Capture stderr to a per-MCP tmpfile (D-28).
+            # Audit L2: do not embed the component name in the path so shared
+            # `/tmp` on Linux can't enumerate which MCPs the user installs.
+            stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-mcp.XXXXXX") || stderr_tmp=""
+            [[ -n "$stderr_tmp" ]] && CLEANUP_PATHS+=("$stderr_tmp")
+
+            local_flags=()
+            [[ "$DRY_RUN" -eq 1 ]] && local_flags+=("--dry-run")
+
+            local_rc=0
+            if [[ -n "$stderr_tmp" ]]; then
+                ( mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
+            else
+                mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" || local_rc=$?
+            fi
+
+            case "$local_rc" in
+                0)
+                    if [[ "$DRY_RUN" -eq 1 ]]; then
+                        COMPONENT_STATUS+=("would-install")
+                        RESULT_MCP_STATE+=("would-install")
+                    else
+                        COMPONENT_STATUS+=("installed ✓")
+                        INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+                        RESULT_MCP_STATE+=("installed")
+                    fi
+                    COMPONENT_STDERR_TAIL+=("")
+                    ;;
+                2)
+                    COMPONENT_STATUS+=("skipped: claude unavailable")
+                    SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                    COMPONENT_STDERR_TAIL+=("")
+                    RESULT_MCP_STATE+=("skipped:claude-unavailable")
+                    ;;
+                3)
+                    # rc=3 — server registered with claude CLI but has no env
+                    # binding yet (deferred-secrets path). Counted as installed
+                    # so the summary doesn't read like a failure; the follow-up
+                    # block tells the user how to add the key.
+                    COMPONENT_STATUS+=("installed (needs API key)")
+                    INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
+                    COMPONENT_STDERR_TAIL+=("")
+                    RESULT_MCP_STATE+=("installed:needs-key")
+                    ;;
+                *)
+                    COMPONENT_STATUS+=("failed (exit $local_rc)")
+                    FAILED_COUNT=$((FAILED_COUNT + 1))
+                    local_tail=""
+                    if [[ -n "$stderr_tmp" && -s "$stderr_tmp" ]]; then
+                        local_tail=$(tail -5 "$stderr_tmp")
+                    fi
+                    COMPONENT_STDERR_TAIL+=("$local_tail")
+                    # Record the first stderr line (or short reason) for table notes.
+                    local_first_line=""
+                    if [[ -n "$local_tail" ]]; then
+                        local_first_line=$(printf '%s' "$local_tail" | head -n1)
+                    fi
+                    RESULT_MCP_STATE+=("failed:exit-${local_rc}: ${local_first_line}")
+                    if [[ "$FAIL_FAST" -eq 1 ]]; then
+                        # Fail-fast: pad remaining slots so the parallel arrays
+                        # stay aligned (RESULT_* and COMPONENT_* / TUI_RESULTS).
+                        for ((j=i+1; j<local_mcp_count; j++)); do
+                            COMPONENT_NAMES+=("${MCP_NAMES[$j]}")
+                            COMPONENT_STATUS+=("skipped")
+                            COMPONENT_STDERR_TAIL+=("")
+                            SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                            RESULT_NAMES+=("${MCP_NAMES[$j]}")
+                            RESULT_MCP_STATE+=("skipped:fail-fast")
+                            if [[ "${MCP_HAS_CLI[$j]:-0}" == "1" ]]; then
+                                RESULT_CLI_STATE+=("skipped:fail-fast")
+                            else
+                                RESULT_CLI_STATE+=("na")
+                            fi
+                        done
+                        break 2   # break BOTH the case + outer for-i
+                    fi
+                    ;;
+            esac
+        fi
+
+        # ─── CLI install branch ───────────────────────────────────────────
+        # Phase 34-02 (TUI-04): --mcp-only skips the CLI install step.
+        # Entries without a `components.cli` block report "na" regardless.
+        # When the MCP side was skipped because the claude runtime is absent
+        # (rc=2), the user is in browse-only mode — do NOT trigger eager CLI
+        # installs that would surprise them with brew/npm activity. Only
+        # --cli-only opts into the CLI side regardless of MCP-side state.
+        _last_mcp_state="${RESULT_MCP_STATE[$((${#RESULT_MCP_STATE[@]} - 1))]:-}"
+        if [[ "${MCP_HAS_CLI[$i]:-0}" != "1" ]]; then
+            RESULT_CLI_STATE+=("na")
+        elif [[ "$MCP_ONLY" -eq 1 ]]; then
+            RESULT_CLI_STATE+=("skipped:mcp-only")
+        elif [[ "$CLI_ONLY" -ne 1 ]] && [[ "$_last_mcp_state" == skipped:claude-unavailable ]]; then
+            # MCP runtime missing → keep the row consistent: don't install CLI
+            # under --yes default. User can re-run with --cli-only to override.
+            RESULT_CLI_STATE+=("skipped:claude-unavailable")
+        elif [[ "${CLI_STATUS[$i]:-absent}" == "installed" ]] && [[ "$FORCE" -ne 1 ]]; then
+            # Already installed — cli_install would re-run the brew/npm command
+            # which is idempotent but wasteful. Record as "already" so the
+            # summary table can render ⊘ without misleading the user.
+            RESULT_CLI_STATE+=("already")
+        elif [[ "$DRY_RUN" -eq 1 ]]; then
+            RESULT_CLI_STATE+=("would-install")
+        else
+            # Resolve install commands from the catalog. install.darwin /
+            # install.linux are required schema fields when components.cli
+            # is present (Phase 32-01 validator). `// empty` defends against
+            # forward-compat schema variants where these become optional.
+            _cli_catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path)}"
+            _darwin_cmd=$(jq -r --arg n "$local_name" '.components.cli[$n].install.darwin // empty' "$_cli_catalog_path")
+            _linux_cmd=$(jq -r --arg n "$local_name" '.components.cli[$n].install.linux // empty' "$_cli_catalog_path")
+            _post_hint=$(jq -r --arg n "$local_name" '.components.cli[$n].post_install_hint // empty' "$_cli_catalog_path")
+            cli_stderr_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-cli.XXXXXX") || cli_stderr_tmp=""
+            [[ -n "$cli_stderr_tmp" ]] && CLEANUP_PATHS+=("$cli_stderr_tmp")
+            cli_rc=0
+            if [[ -z "$_darwin_cmd" || -z "$_linux_cmd" ]]; then
+                # Schema corruption — record + skip (don't abort the whole loop).
+                RESULT_CLI_STATE+=("failed:catalog-missing-install-cmd")
                 FAILED_COUNT=$((FAILED_COUNT + 1))
-                local_tail=""
-                if [[ -n "$stderr_tmp" && -s "$stderr_tmp" ]]; then
-                    local_tail=$(tail -5 "$stderr_tmp")
+            else
+                if [[ -n "$cli_stderr_tmp" ]]; then
+                    ( cli_install "$local_name" "$_darwin_cmd" "$_linux_cmd" ) >"$cli_stderr_tmp" 2>&1 || cli_rc=$?
+                else
+                    cli_install "$local_name" "$_darwin_cmd" "$_linux_cmd" || cli_rc=$?
                 fi
-                COMPONENT_STDERR_TAIL+=("$local_tail")
-                if [[ "$FAIL_FAST" -eq 1 ]]; then
-                    for ((j=i+1; j<local_mcp_count; j++)); do
-                        COMPONENT_NAMES+=("${MCP_NAMES[$j]}")
-                        COMPONENT_STATUS+=("skipped")
-                        COMPONENT_STDERR_TAIL+=("")
+                case "$cli_rc" in
+                    0)
+                        RESULT_CLI_STATE+=("installed")
+                        if [[ -n "$_post_hint" ]]; then
+                            cli_post_install_hint "$_post_hint"
+                        fi
+                        ;;
+                    2)
+                        RESULT_CLI_STATE+=("skipped:unsupported-platform")
                         SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-                    done
-                    break
-                fi
-                ;;
-        esac
+                        ;;
+                    3)
+                        RESULT_CLI_STATE+=("skipped:brew-absent")
+                        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                        ;;
+                    *)
+                        cli_first_line=""
+                        if [[ -n "$cli_stderr_tmp" && -s "$cli_stderr_tmp" ]]; then
+                            cli_first_line=$(head -n1 "$cli_stderr_tmp")
+                        fi
+                        RESULT_CLI_STATE+=("failed:exit-${cli_rc}: ${cli_first_line}")
+                        FAILED_COUNT=$((FAILED_COUNT + 1))
+                        ;;
+                esac
+            fi
+            unset _darwin_cmd _linux_cmd _post_hint _cli_catalog_path
+        fi
+        unset _last_mcp_state
     done
 
     # Print MCP install summary.

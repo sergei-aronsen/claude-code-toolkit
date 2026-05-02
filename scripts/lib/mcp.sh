@@ -29,10 +29,11 @@
 #   MCP_SECRET_KEYS[]      — keys from mcp-config.env (parallel to MCP_SECRET_VALUES)
 #   MCP_SECRET_VALUES[]    — values from mcp-config.env
 # Test seams:
-#   TK_MCP_CLAUDE_BIN     — override path to claude binary (mocked in tests)
-#   TK_MCP_CATALOG_PATH   — override path to mcp-catalog.json (mocked in tests)
-#   TK_MCP_TTY_SRC        — override /dev/tty for wizard read prompts (Plan 02)
-#   TK_MCP_CONFIG_HOME    — override $HOME for mcp-config.env path resolution (Plan 02)
+#   TK_MCP_CLAUDE_BIN          — override path to claude binary (mocked in tests)
+#   TK_MCP_CATALOG_PATH        — override path to mcp-catalog.json (mocked in tests)
+#   TK_MCP_TTY_SRC             — override /dev/tty for wizard read prompts (Plan 02)
+#   TK_MCP_CONFIG_HOME         — override $HOME for mcp-config.env path resolution (Plan 02)
+#   TK_INTEGRATIONS_TTY_SRC    — override /dev/tty for unofficial_confirm prompts (Phase 34-02)
 #
 # IMPORTANT: No errexit/nounset/pipefail — sourced libraries must not alter caller error mode.
 
@@ -265,6 +266,50 @@ mcp_status_detect() {
             CLI_STATUS+=("na")
         fi
     done
+}
+
+# unofficial_confirm <display_name> — Phase 34-02 (TUI-03) — gate install of an
+# entry whose `unofficial: true` flag is set. Reads from
+# ${TK_INTEGRATIONS_TTY_SRC:-/dev/tty}, fail-closed N (matches v4.3 UN-03 contract).
+# Bypassed when ALWAYS_YES=1 (set by --yes path).
+# Returns:
+#   0 — user said yes (or --yes bypass) — install allowed
+#   1 — user said no / EOF / no readable TTY — install must be skipped
+unofficial_confirm() {
+    local display="${1:-this entry}"
+    local tty_src="${TK_INTEGRATIONS_TTY_SRC:-/dev/tty}"
+
+    # --yes bypass. The exported flag from install.sh is also accepted as
+    # ALWAYS_YES=1 for symmetry with bridge/bootstrap precedents.
+    if [[ "${ALWAYS_YES:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    # Audit the TTY source. Fail-closed N when unreadable (no-TTY CI runs and
+    # the TUI guard at install.sh:398 already ensures interactive TTY is wired
+    # by the time we reach here).
+    if [[ ! -r "$tty_src" ]]; then
+        return 1
+    fi
+
+    # Print warning + prompt. Use stderr so install.sh's `( wizard ) 2>"$tmp"`
+    # capture wrappers don't swallow the question silently.
+    if [ -t 2 ] && [ -z "${NO_COLOR+x}" ]; then
+        printf '\n%b!%b %s is community-maintained / browser-automation.\nInstall anyway? [y/N] ' \
+            "${YELLOW}" "${NC}" "$display" >&2
+    else
+        printf '\n[!] %s is community-maintained / browser-automation.\nInstall anyway? [y/N] ' \
+            "$display" >&2
+    fi
+
+    local reply=""
+    if ! IFS= read -r reply <"$tty_src" 2>/dev/null; then
+        reply=""
+    fi
+    case "$reply" in
+        y|Y|yes|YES|Yes) return 0 ;;
+        *)               return 1 ;;
+    esac
 }
 
 # mcp_catalog_names — print all 9 catalog names, one per line, alphabetically sorted.
