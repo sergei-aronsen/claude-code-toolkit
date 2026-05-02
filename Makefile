@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills sync-skills-mirror validate-skills-desktop validate-marketplace
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation sync-skills-mirror validate-skills-desktop validate-marketplace
 
 # Default target
 help:
@@ -209,6 +209,9 @@ test:
 	@echo "Test 43: update-claude.sh --dry-run (UPDATE-DRY-01..11)"
 	@bash scripts/tests/test-update-dry-run.sh
 	@echo ""
+	@echo "Test 44: integrations foundation — schema + cli-installer + alias contracts (CAT-01..04, CLI-01..04)"
+	@bash scripts/tests/test-integrations-foundation.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -230,6 +233,10 @@ test-mcp-selector:
 # Test 33 — Skills selector + cp-R install + idempotency + --force (SKILL-03..05), invokable standalone
 test-install-skills:
 	@bash scripts/tests/test-install-skills.sh
+
+# Test 44 — integrations foundation (CAT-01..04 + CLI-01..04), invokable standalone
+test-integrations-foundation:
+	@bash scripts/tests/test-integrations-foundation.sh
 
 # Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
 # from local $HOME/.claude/skills/. Not run by CI.

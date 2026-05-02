@@ -121,7 +121,7 @@ jobs:
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh
 
-      - name: Tests 21-34 — uninstall + banner suite + bootstrap + lib coverage + TUI orchestrator + MCP selector + Skills selector + bridges aggregate (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, TUI-01..09, MCP-01..05, MCP-SEC-01..02, SKILL-03..05, BRIDGE-TEST-01)
+      - name: Tests 21-44 — uninstall + banner suite + bootstrap + lib coverage + TUI orchestrator + MCP selector + Skills selector + bridges aggregate + integrations foundation (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, TUI-01..09, MCP-01..05, MCP-SEC-01..02, SKILL-03..05, BRIDGE-TEST-01, CAT-01..04, CLI-01..04)
         run: |
           bash scripts/tests/test-uninstall-dry-run.sh
           bash scripts/tests/test-uninstall-backup.sh
@@ -138,6 +138,7 @@ jobs:
           bash scripts/tests/test-install-skills.sh
           bash scripts/tests/test-bridges.sh
           bash scripts/tests/test-install-dispatch-h1.sh
+          bash scripts/tests/test-integrations-foundation.sh
 
       - name: Tests 35-43 — orphan triage (audit INF-MED-1) — backup/detect/mcp/dry-run suites previously absent from CI
         run: |
