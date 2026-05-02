@@ -651,11 +651,25 @@ mcp_wizard_run() {
 
     local tty_src="${TK_MCP_TTY_SRC:-/dev/tty}"
 
+    # Phase 37 (mcp-scope-toggle): prepend `--scope <user|local|project>` so
+    # registrations land in the user's home (~/.claude.json mcpServers) by
+    # default instead of the current working directory's project scope. The
+    # legacy behavior pre-Phase 37 left scope unset → claude CLI defaulted to
+    # `local` (project), causing user reports that "MCPs installed but I
+    # don't see them" when the install was run inside a project dir
+    # (2026-05-02). Catalog stays scope-agnostic; the runtime decides.
+    local _scope="${TK_MCP_SCOPE:-user}"
+    case "$_scope" in
+        user|local|project) ;;
+        *) _scope="user" ;;
+    esac
+    local scoped_args=( "--scope" "$_scope" "${install_args[@]}" )
+
     # Dry-run early-out — print the would-run command and return without any
     # secrets collection or claude invocation. Moved before the secrets loop so
     # --dry-run is fully non-interactive (no TTY required, no env file writes).
     if [[ "$dry_run" -eq 1 ]]; then
-        echo "[+ INSTALL] mcp ${name} (would run: ${claude_bin} mcp add ${install_args[*]})"
+        echo "[+ INSTALL] mcp ${name} (would run: ${claude_bin} mcp add ${scoped_args[*]})"
         return 0
     fi
 
@@ -713,7 +727,7 @@ mcp_wizard_run() {
         # line into ~/.zshrc / ~/.bashrc) and reloads their shell, MCPs
         # pick up the keys at next claude startup. No re-registration
         # needed when keys change later — edit + re-open claude.
-        "$claude_bin" mcp add "${install_args[@]}"
+        "$claude_bin" mcp add "${scoped_args[@]}"
         local _add_rc=$?
         if [[ "$_add_rc" -ne 0 ]]; then
             return "$_add_rc"
@@ -764,10 +778,62 @@ mcp_wizard_run() {
 
     # Invoke claude mcp add with env vars scoped to the child process only.
     if [[ "${#exported_env[@]}" -gt 0 ]]; then
-        env "${exported_env[@]}" "$claude_bin" mcp add "${install_args[@]}"
+        env "${exported_env[@]}" "$claude_bin" mcp add "${scoped_args[@]}"
     else
-        "$claude_bin" mcp add "${install_args[@]}"
+        "$claude_bin" mcp add "${scoped_args[@]}"
     fi
+}
+
+# ─────────────────────────────────────────────────
+# Scope-toggle helpers (Phase 37 — mcp-scope-toggle)
+# ─────────────────────────────────────────────────
+# Two helpers consumed by install.sh's MCP picker. They drive the optional
+# TUI header banner via TUI_HEADER_TEXT/KEY/FN globals (see lib/tui.sh).
+#
+# Scope semantics (per `claude mcp add --scope`):
+#   user    — registered in ~/.claude.json mcpServers; visible in every
+#             working directory (the "global" install most users want).
+#   local   — registered under projects.<cwd>.mcpServers in ~/.claude.json;
+#             only visible when claude is launched from that directory.
+#   project — written to <cwd>/.mcp.json; checked into the repo for sharing.
+#
+# Default = user. Pre-Phase 37 the toolkit left scope unset so claude
+# defaulted to local — surprising for users who run install from a project
+# dir and expect MCPs to follow them everywhere.
+#
+# Both helpers are idempotent and re-render the banner from current state;
+# callers can invoke mcp_render_scope_header at any time to refresh.
+
+mcp_render_scope_header() {
+    local _cur="${TK_MCP_SCOPE:-user}"
+    local _user_glyph="◯" _local_glyph="◯"
+    case "$_cur" in
+        local)  _local_glyph="◉" ;;
+        *)      _user_glyph="◉"; _cur="user" ;;
+    esac
+    # Color block: bold label + bright marker on the active option. Reset
+    # tail with \e[0m so subsequent rows aren't tinted.
+    if [[ "${_TUI_COLOR:-1}" -eq 1 ]] && [[ -z "${NO_COLOR+x}" ]]; then
+        TUI_HEADER_TEXT=$'\e[1mScope:\e[0m '
+        if [[ "$_cur" == "user" ]]; then
+            TUI_HEADER_TEXT+=$'\e[1;32m◉ user (global)\e[0m  \e[2m◯ local (this project)\e[0m'
+        else
+            TUI_HEADER_TEXT+=$'\e[2m◯ user (global)\e[0m  \e[1;33m◉ local (this project)\e[0m'
+        fi
+        TUI_HEADER_TEXT+=$'  \e[2m· press s to toggle\e[0m'
+    else
+        TUI_HEADER_TEXT="Scope: ${_user_glyph} user (global)  ${_local_glyph} local (this project)  · press s to toggle"
+    fi
+}
+
+mcp_toggle_scope() {
+    if [[ "${TK_MCP_SCOPE:-user}" == "user" ]]; then
+        TK_MCP_SCOPE="local"
+    else
+        TK_MCP_SCOPE="user"
+    fi
+    export TK_MCP_SCOPE
+    mcp_render_scope_header
 }
 
 # ─────────────────────────────────────────────────

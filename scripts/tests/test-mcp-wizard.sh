@@ -95,7 +95,42 @@ assert_contains "argv:" "$ARGV_CONTENT" "T2: argv line present"
 assert_contains "mcp" "$ARGV_CONTENT" "T2: argv contains 'mcp'"
 assert_contains "add" "$ARGV_CONTENT" "T2: argv contains 'add'"
 assert_contains "playwright" "$ARGV_CONTENT" "T2: argv contains 'playwright'"
+# Phase 37: default scope is `user` (global) — must appear before the MCP name.
+assert_contains "scope user" "$ARGV_CONTENT" "T2: argv contains default '--scope user'"
 rm -f "$SANDBOX/claude.argv"
+
+# ── Test 2b: TK_MCP_SCOPE=local override emits '--scope local' ────────────────
+TK_MCP_SCOPE=local mcp_wizard_run playwright
+ARGV_CONTENT="$(cat "$SANDBOX/claude.argv" 2>/dev/null || echo '')"
+assert_contains "scope local" "$ARGV_CONTENT" "T2b: TK_MCP_SCOPE=local emits '--scope local'"
+rm -f "$SANDBOX/claude.argv"
+
+# ── Test 2c: invalid TK_MCP_SCOPE falls back to default 'user' ───────────────
+TK_MCP_SCOPE=bogus mcp_wizard_run playwright
+ARGV_CONTENT="$(cat "$SANDBOX/claude.argv" 2>/dev/null || echo '')"
+assert_contains "scope user" "$ARGV_CONTENT" "T2c: invalid scope falls back to 'user'"
+rm -f "$SANDBOX/claude.argv"
+
+# ── Test 2d: --dry-run output advertises the scope flag ──────────────────────
+DRY_OUTPUT=$(mcp_wizard_run playwright --dry-run 2>&1)
+assert_contains "scope user" "$DRY_OUTPUT" "T2d: dry-run preview shows '--scope user'"
+
+# ── Test 2e: scope helpers — toggle flips state and refreshes header ─────────
+TK_MCP_SCOPE=user
+mcp_render_scope_header
+HDR_BEFORE="${TUI_HEADER_TEXT:-}"
+mcp_toggle_scope
+assert_eq "local" "${TK_MCP_SCOPE}" "T2e: mcp_toggle_scope flips user → local"
+mcp_toggle_scope
+assert_eq "user" "${TK_MCP_SCOPE}" "T2e: mcp_toggle_scope flips local → user"
+HDR_AFTER="${TUI_HEADER_TEXT:-}"
+if [[ "$HDR_BEFORE" == "$HDR_AFTER" && -n "$HDR_BEFORE" ]]; then
+    assert_pass "T2e: render_scope_header repopulated TUI_HEADER_TEXT after toggle round-trip"
+else
+    assert_fail "T2e: render_scope_header repopulated TUI_HEADER_TEXT after toggle round-trip" \
+                "before='${HDR_BEFORE}' after='${HDR_AFTER}'"
+fi
+unset TK_MCP_SCOPE TUI_HEADER_TEXT HDR_BEFORE HDR_AFTER
 
 # ── Test 3: keyed MCP (context7) — env var plumbed to claude + secret persisted ──
 printf 'test_secret_ctx7\n' > "$SANDBOX/tty.fix"
