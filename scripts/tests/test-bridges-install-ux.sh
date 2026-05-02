@@ -253,7 +253,7 @@ assert_eq "0" "$rc" "S12.1 BRIDGES_FORCE absent CLI without FAIL_FAST returns 0 
 echo "=== S13: BACKCOMPAT-01 — all 4 baselines unchanged ==="
 for spec in \
     "test-bootstrap.sh:PASS=26 FAIL=0" \
-    "test-install-tui.sh:PASS=52 FAIL=0" \
+    "test-install-tui.sh:PASS=58 FAIL=0" \
     "test-bridges-foundation.sh:PASS=5 FAIL=0" \
     "test-bridges-sync.sh:PASS=25 FAIL=0"
 do
