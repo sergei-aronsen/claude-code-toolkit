@@ -1518,8 +1518,13 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                         # to avoid literal-filename collision on re-runs.
                         MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX")
                         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
-                        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
-                            echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2
+                        # Phase 32-01 (CAT-01): catalog renamed
+                        # mcp-catalog.json → integrations-catalog.json. Old
+                        # name 404s on raw.githubusercontent.com (user report
+                        # 2026-05-02). The other block at line ~258 was
+                        # updated; this one was missed.
+                        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/integrations-catalog.json" -o "$MCP_CATALOG_TMP"; then
+                            echo -e "${RED}✗${NC} Failed to download integrations-catalog.json — aborting" >&2
                             exit 1
                         fi
                         export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
