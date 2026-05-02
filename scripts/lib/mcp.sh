@@ -312,6 +312,160 @@ unofficial_confirm() {
     esac
 }
 
+# print_integrations_summary — Phase 34-03 (TUI-05) — per-entry × per-component
+# install summary table. Renders after the dispatch loop completes. Mirrors
+# Phase 25 D-28 contract (Entry | MCP | CLI | Notes).
+#
+# Reads parallel arrays (caller must populate):
+#   RESULT_NAMES[]     — entry name (parallel index)
+#   RESULT_MCP_STATE[] — one of: installed | installed:needs-key | already |
+#                                 would-install | skipped:<reason> |
+#                                 failed:exit-N: <stderr-line> | na | unknown
+#   RESULT_CLI_STATE[] — same set, plus "na" for entries without CLI block
+#
+# Writes:
+#   Stdout — formatted table + total line.
+#
+# Glyphs (per D-22):
+#   ✓ installed (green)
+#   ⊘ already   (cyan)
+#   ✗ failed    (red, with truncated reason in Notes column)
+#   ⊘ skipped   (yellow, with reason in Notes)
+#   —           (n/a, neutral)
+#   ?           (unknown — defensive fallback)
+#
+# Total line (per D-24):
+#   Installed: N MCPs, M CLIs | Skipped: X | Failed: Y
+print_integrations_summary() {
+    # Bash 3.2: `${#var[@]:-0}` is rejected as bad substitution; use existence
+    # test mirroring tui.sh:164.
+    if [[ -z "${RESULT_NAMES[*]+x}" ]] || [[ "${#RESULT_NAMES[@]}" -eq 0 ]]; then
+        return 0
+    fi
+
+    # NO_COLOR-aware code resolution (no-color.org semantics).
+    local _g="" _c="" _y="" _r="" _b="" _bold="" _nc=""
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        _g=$'\033[0;32m'
+        _c=$'\033[0;36m'
+        _y=$'\033[1;33m'
+        _r=$'\033[0;31m'
+        _b=$'\033[0;34m'
+        _bold=$'\033[1m'
+        _nc=$'\033[0m'
+    fi
+
+    # Header — single empty line above + bold blue title to separate from the
+    # legacy MCP install summary block.
+    echo ""
+    printf '%b━━━ Integrations Install Summary ━━━%b\n' "$_b" "$_nc"
+    printf '%-28s %-14s %-14s %s\n' "Entry" "MCP" "CLI" "Notes"
+    printf '%-28s %-14s %-14s %s\n' \
+        "────────────────────────────" "──────────────" "──────────────" "─────"
+
+    local installed_mcp=0 installed_cli=0 skipped=0 failed=0
+    local i name mcp cli mcp_glyph cli_glyph notes mcp_reason cli_reason
+
+    for ((i=0; i<${#RESULT_NAMES[@]}; i++)); do
+        name="${RESULT_NAMES[$i]}"
+        mcp="${RESULT_MCP_STATE[$i]:-unknown}"
+        cli="${RESULT_CLI_STATE[$i]:-na}"
+        mcp_reason=""
+        cli_reason=""
+
+        # MCP cell — case-match on prefix to handle compound states like
+        # "skipped:claude-unavailable" / "failed:exit-2: error msg".
+        case "$mcp" in
+            installed)
+                mcp_glyph="${_g}✓${_nc}"
+                installed_mcp=$((installed_mcp + 1))
+                ;;
+            installed:needs-key)
+                mcp_glyph="${_y}✓${_nc}"
+                installed_mcp=$((installed_mcp + 1))
+                mcp_reason="needs API key"
+                ;;
+            would-install)
+                mcp_glyph="${_c}·${_nc}"
+                mcp_reason="would-install"
+                ;;
+            already)
+                mcp_glyph="${_c}⊘${_nc}"
+                ;;
+            skipped:*)
+                mcp_glyph="${_y}⊘${_nc}"
+                mcp_reason="${mcp#skipped:}"
+                skipped=$((skipped + 1))
+                ;;
+            failed:*)
+                mcp_glyph="${_r}✗${_nc}"
+                mcp_reason="${mcp#failed:}"
+                failed=$((failed + 1))
+                ;;
+            na)
+                mcp_glyph="—"
+                ;;
+            *)
+                mcp_glyph="?"
+                ;;
+        esac
+
+        # CLI cell — same shape.
+        case "$cli" in
+            installed)
+                cli_glyph="${_g}✓${_nc}"
+                installed_cli=$((installed_cli + 1))
+                ;;
+            would-install)
+                cli_glyph="${_c}·${_nc}"
+                cli_reason="would-install"
+                ;;
+            already)
+                cli_glyph="${_c}⊘${_nc}"
+                ;;
+            skipped:*)
+                cli_glyph="${_y}⊘${_nc}"
+                cli_reason="${cli#skipped:}"
+                skipped=$((skipped + 1))
+                ;;
+            failed:*)
+                cli_glyph="${_r}✗${_nc}"
+                cli_reason="${cli#failed:}"
+                failed=$((failed + 1))
+                ;;
+            na)
+                cli_glyph="—"
+                ;;
+            *)
+                cli_glyph="?"
+                ;;
+        esac
+
+        # Notes column — combine MCP + CLI reasons (truncate to 60 cols total).
+        notes=""
+        if [[ -n "$mcp_reason" && -n "$cli_reason" ]]; then
+            notes="MCP: ${mcp_reason}; CLI: ${cli_reason}"
+        elif [[ -n "$mcp_reason" ]]; then
+            notes="$mcp_reason"
+        elif [[ -n "$cli_reason" ]]; then
+            notes="$cli_reason"
+        fi
+        if [[ "${#notes}" -gt 60 ]]; then
+            notes="${notes:0:57}..."
+        fi
+
+        # %b for color codes; visible-width math compensates for the 8-byte
+        # ANSI prefix/suffix on glyphs by widening the column to 14 chars
+        # (vs 1-byte glyph) so plain — / ✓ / ✗ all align under both color
+        # and NO_COLOR.
+        printf '%-28s %-14b %-14b %s\n' "$name" "$mcp_glyph" "$cli_glyph" "$notes"
+    done
+
+    echo ""
+    printf '%bInstalled:%b %d MCPs, %d CLIs · Skipped: %d · Failed: %d\n' \
+        "$_bold" "$_nc" "$installed_mcp" "$installed_cli" "$skipped" "$failed"
+}
+
 # mcp_catalog_names — print all 9 catalog names, one per line, alphabetically sorted.
 mcp_catalog_names() {
     local catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path)}"
@@ -808,6 +962,21 @@ mcp_status_array() {
     TUI_DESCS=()
     TUI_GROUP_NAMES=()
     TUI_GROUP_DESCS=()
+    # Phase 34-01 ordering map: install.sh's dispatch loop iterates by
+    # MCP_NAMES alphabetical order, but the TUI renders in category-grouped
+    # order (alpha-within-category). TUI_RESULTS / TUI_LABELS / TUI_INSTALLED
+    # are populated by tui_checklist using the TUI render index, so the
+    # dispatch loop MUST translate TUI index ↔ MCP_NAMES index to read the
+    # right selection per entry. TUI_TO_MCP_IDX[$tui_idx] = MCP_NAMES idx,
+    # MCP_TO_TUI_IDX[$mcp_idx] = TUI render idx.
+    TUI_TO_MCP_IDX=()
+    MCP_TO_TUI_IDX=()
+    # Initialise MCP_TO_TUI_IDX with placeholders so partial fills are safe.
+    local _zfill
+    for ((_zfill=0; _zfill<${#MCP_NAMES[@]}; _zfill++)); do
+        MCP_TO_TUI_IDX+=(-1)
+    done
+    unset _zfill
     MCP_CLI_PRESENT=0
 
     # NO_COLOR-aware glyph helpers. Resolve once — these strings are appended
@@ -849,6 +1018,11 @@ mcp_status_array() {
             i="$j"
             name="${MCP_NAMES[$i]}"
             desc="${MCP_DESCS[$i]}"
+
+            # Record the index map: ${#TUI_LABELS[@]} is the about-to-be-pushed
+            # TUI index (current length BEFORE the push). MCP_NAMES idx = $i.
+            TUI_TO_MCP_IDX+=("$i")
+            MCP_TO_TUI_IDX[$i]="${#TUI_LABELS[@]}"
 
             # Yellow `!` for unofficial entries (TUI-03 badge).
             if [[ "${MCP_UNOFFICIAL[$i]:-0}" == "1" ]]; then

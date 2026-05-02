@@ -377,42 +377,47 @@ if [[ "$MCPS" -eq 1 ]]; then
     #      OAuth-only excluded unless --force).
     #   3. interactive TUI page     — render the catalog and let the user pick.
     TUI_RESULTS=()
-    local_count=${#MCP_NAMES[@]}
+    # Phase 34-01 ordering: TUI_LABELS / TUI_INSTALLED are populated by
+    # mcp_status_array in TUI render order (category-grouped, alpha-within),
+    # NOT in MCP_NAMES alphabetical order. Iterate by TUI render index and
+    # translate to MCP_NAMES idx via TUI_TO_MCP_IDX[] when reading per-entry
+    # catalog metadata (MCP_OAUTH[], MCP_NAMES[], etc.).
+    local_count=${#TUI_LABELS[@]}
     if [[ -n "${TK_MCP_PRE_SELECTED+x}" ]]; then
         # Headless. Comma-separated names → 0/1 per row by exact match against MCP_NAMES.
-        # NOTE: this is top-level shell context (install.sh is a script body),
-        # NOT a function, so `local` is illegal. Use plain assignments + an
-        # underscore prefix to avoid clobbering the surrounding flow.
         _pre_csv="${TK_MCP_PRE_SELECTED:-}"
         _IFS_SAVE="$IFS"
         IFS=','
         # shellcheck disable=SC2206  # intentional word-split on ','
         _pre_arr=( $_pre_csv )
         IFS="$_IFS_SAVE"
-        for ((i=0; i<local_count; i++)); do
-            TUI_RESULTS[$i]=0
+        for ((tui_i=0; tui_i<local_count; tui_i++)); do
+            TUI_RESULTS[$tui_i]=0
+            _mcp_idx="${TUI_TO_MCP_IDX[$tui_i]:-$tui_i}"
             for _pname in "${_pre_arr[@]+"${_pre_arr[@]}"}"; do
-                if [[ "$_pname" == "${MCP_NAMES[$i]}" ]]; then
-                    TUI_RESULTS[$i]=1
+                if [[ "$_pname" == "${MCP_NAMES[$_mcp_idx]}" ]]; then
+                    TUI_RESULTS[$tui_i]=1
                     break
                 fi
             done
         done
-        unset _pre_csv _IFS_SAVE _pre_arr _pname
+        unset _pre_csv _IFS_SAVE _pre_arr _pname _mcp_idx tui_i
     elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; skip OAuth-only unless --force
         # (OAuth needs interactive browser flow — incompatible with --yes).
-        for ((i=0; i<local_count; i++)); do
-            if [[ "${TUI_INSTALLED[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
-                TUI_RESULTS[$i]=0
+        for ((tui_i=0; tui_i<local_count; tui_i++)); do
+            _mcp_idx="${TUI_TO_MCP_IDX[$tui_i]:-$tui_i}"
+            if [[ "${TUI_INSTALLED[$tui_i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
+                TUI_RESULTS[$tui_i]=0
                 continue
             fi
-            if [[ "${MCP_OAUTH[$i]}" -eq 1 && "$FORCE" -ne 1 ]]; then
-                TUI_RESULTS[$i]=0
+            if [[ "${MCP_OAUTH[$_mcp_idx]}" -eq 1 && "$FORCE" -ne 1 ]]; then
+                TUI_RESULTS[$tui_i]=0
                 continue
             fi
-            TUI_RESULTS[$i]=1
+            TUI_RESULTS[$tui_i]=1
         done
+        unset _mcp_idx tui_i
     else
         # TTY check (mirrors Phase 24 _install_tty_src gate).
         _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
@@ -469,13 +474,19 @@ if [[ "$MCPS" -eq 1 ]]; then
     if [[ "$YES" -eq 1 ]]; then
         export ALWAYS_YES=1
     fi
-    local_mcp_count=${#MCP_NAMES[@]}
-    for ((i=0; i<local_mcp_count; i++)); do
+    # Phase 34-01 ordering: TUI_RESULTS / TUI_INSTALLED / TUI_LABELS are
+    # populated by tui_checklist in TUI render order (category-grouped).
+    # MCP_NAMES is alphabetical. Iterate by TUI index and translate via
+    # TUI_TO_MCP_IDX[] to the catalog index used by MCP_DISPLAY[],
+    # MCP_HAS_CLI[], MCP_UNOFFICIAL[], etc.
+    local_mcp_count=${#TUI_LABELS[@]}
+    for ((tui_i=0; tui_i<local_mcp_count; tui_i++)); do
+        i="${TUI_TO_MCP_IDX[$tui_i]:-$tui_i}"
         local_name="${MCP_NAMES[$i]}"
         COMPONENT_NAMES+=("$local_name")
         RESULT_NAMES+=("$local_name")
-        if [[ "${TUI_RESULTS[$i]:-0}" -ne 1 ]]; then
-            if [[ "${TUI_INSTALLED[$i]}" -eq 1 ]]; then
+        if [[ "${TUI_RESULTS[$tui_i]:-0}" -ne 1 ]]; then
+            if [[ "${TUI_INSTALLED[$tui_i]}" -eq 1 ]]; then
                 COMPONENT_STATUS+=("installed ✓")
                 INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
                 RESULT_MCP_STATE+=("already")
@@ -582,19 +593,27 @@ if [[ "$MCPS" -eq 1 ]]; then
                     if [[ "$FAIL_FAST" -eq 1 ]]; then
                         # Fail-fast: pad remaining slots so the parallel arrays
                         # stay aligned (RESULT_* and COMPONENT_* / TUI_RESULTS).
-                        for ((j=i+1; j<local_mcp_count; j++)); do
-                            COMPONENT_NAMES+=("${MCP_NAMES[$j]}")
+                        # Iterate by TUI index (matches outer loop), translate
+                        # to MCP_NAMES idx via TUI_TO_MCP_IDX[] before reading
+                        # per-entry catalog metadata (MCP_HAS_CLI[], etc.).
+                        # Top-level shell context — `local` is illegal; use
+                        # plain assignment + underscore prefix.
+                        _j_mcp=""
+                        for ((j=tui_i+1; j<local_mcp_count; j++)); do
+                            _j_mcp="${TUI_TO_MCP_IDX[$j]:-$j}"
+                            COMPONENT_NAMES+=("${MCP_NAMES[$_j_mcp]}")
                             COMPONENT_STATUS+=("skipped")
                             COMPONENT_STDERR_TAIL+=("")
                             SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-                            RESULT_NAMES+=("${MCP_NAMES[$j]}")
+                            RESULT_NAMES+=("${MCP_NAMES[$_j_mcp]}")
                             RESULT_MCP_STATE+=("skipped:fail-fast")
-                            if [[ "${MCP_HAS_CLI[$j]:-0}" == "1" ]]; then
+                            if [[ "${MCP_HAS_CLI[$_j_mcp]:-0}" == "1" ]]; then
                                 RESULT_CLI_STATE+=("skipped:fail-fast")
                             else
                                 RESULT_CLI_STATE+=("na")
                             fi
                         done
+                        unset _j_mcp
                         break 2   # break BOTH the case + outer for-i
                     fi
                     ;;
@@ -698,6 +717,13 @@ if [[ "$MCPS" -eq 1 ]]; then
     echo ""
     printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
         "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+
+    # Phase 34-03 (TUI-05): per-component summary table. Renders the per-entry
+    # × per-component matrix from RESULT_NAMES[] / RESULT_MCP_STATE[] /
+    # RESULT_CLI_STATE[] populated by the dispatch loop above. Mirrors Phase 25
+    # D-28 contract; complements (does NOT replace) the per-row "MCP install
+    # summary" block above (legacy block keeps test-mcp-selector S7/S13 happy).
+    print_integrations_summary
 
     # Follow-up block for MCPs registered without env vars. The servers are
     # already in `claude mcp list`; they just need API keys exported in the
