@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MCP install↔reinstall toggle** (PR #32) — Space on a row already showing
+  `[installed ✓]` toggles to `[reinstall ↻]` (light-green ANSI `\e[92m`).
+  Submit calls `claude mcp remove` then re-adds via `mcp_wizard_run`. Status
+  table differentiates `reinstalled ↻` from `installed ✓`. Skills surface
+  unaffected — `TUI_REINSTALLABLE[]` opt-in defaults to 0. Lets users refresh
+  installed MCPs from the integrations TUI without dropping to the shell.
+
+### Changed — Install transcript polish (PR #33, Phase 36-A follow-up)
+
+User report 2026-05-02 flagged 5 install-output issues on the v4.9.0 MCP
+flow. All reduce signal-to-noise without changing logic.
+
+- **Silenced `claude mcp add` chatter** — the CLI writes "Added stdio MCP
+  server …" and "File modified: …" to STDOUT, escaping the existing stderr
+  capture wrapper at `scripts/install.sh:568`. Wrapper now redirects both
+  streams to the per-MCP tmpfile (`>"$stderr_tmp" 2>&1`) — silent on
+  success, kept for `COMPONENT_STDERR_TAIL` on failure.
+- **Skipped rows recolored grey** — was yellow, visually identical to
+  "needs API key" rows above. Added `_DRO_GREY='\033[90m'` constant in
+  `scripts/lib/dry-run-output.sh`; bare `skipped)` arm in
+  `print_install_status` now uses it. Compound `skipped:*` strings keep
+  the uncolored fallback.
+- **Dropped duplicate "Integrations Install Summary" matrix table** —
+  the Phase 34-03 `print_integrations_summary` call after the per-row
+  block re-rendered the same data as a wider Entry/MCP/CLI/Notes matrix
+  with its own totals line, confusing users. Removed the call, deleted
+  the function (-154 LOC in `scripts/lib/mcp.sh`), pruned 6 dependent
+  test assertions in `test-integrations-tui.sh` (A12 banner, A13 columns,
+  A14 MCPs/CLIs subset, A16/A17 Notes-column reasons).
+- **Dropped trailing key-rotation explainer + "To remove an MCP" line** —
+  three echo lines after the numbered 1)/2)/3) deferred-secrets block:
+  redundant prose + out-of-place single-MCP guidance in a bulk-install
+  completion banner.
+- **Renamed `To remove:` → `To uninstall:`** in completion banner across
+  all 4 producers (`install.sh`, `init-claude.sh`, `init-local.sh`,
+  `update-claude.sh`) + `test-install-banner.sh` BANNER constant. Verb
+  matches the script name (`uninstall.sh`) and the action.
+- **Aligned `bridge:` skip-message indent** (PR #33) — symlink-skip warning
+  had inconsistent indent (header at col 9, continuations at col 11).
+  Body prose now uniformly aligns under "skipped"; `rm` command keeps a
+  3-space inner indent so it stands out as a command.
+
 ### Fixed
 
 - **mktemp template suffix collision on macOS BSD** — `scripts/install.sh`
