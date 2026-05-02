@@ -21,11 +21,11 @@
 
 ### TUI Redesign (TUI)
 
-- [ ] **TUI-01**: `scripts/install.sh --integrations` page groups rows by `category` with category headers (e.g., `── Backend ──`); category order matches the canonical 10-list in CAT-03; rows within a category are alphabetical.
-- [ ] **TUI-02**: Each row displays per-component status: MCP column (`✓` / `✗` / `⊘ already`) detected via `claude mcp list`; CLI column (`✓` / `✗` / `⊘ already`) detected via `command -v`. Re-detected on every TUI launch — no cache file.
-- [ ] **TUI-03**: Entries with `unofficial: true` render with a yellow `!` glyph next to the name and require a per-row `[y/N]` confirm prompt before install (`< /dev/tty`, fail-closed `N`). Reuse Phase 18 UN-03 prompt pattern.
-- [ ] **TUI-04**: New global flags: `--mcp-only` installs only MCP components from selected rows; `--cli-only` installs only CLI components; default (no flag) installs both when both available. Mutually exclusive — using both errors out.
-- [ ] **TUI-05**: Install summary at end prints per-entry, per-component status table (entry × {MCP, CLI} matrix). Mirrors Phase 25 D-28 summary contract.
+- [x] **TUI-01**: `scripts/install.sh --integrations` page groups rows by `category` with category headers (e.g., `── Backend ──`); category order matches the canonical 10-list in CAT-03; rows within a category are alphabetical.
+- [x] **TUI-02**: Each row displays per-component status: MCP column (`✓` / `✗` / `⊘ already`) detected via `claude mcp list`; CLI column (`✓` / `✗` / `⊘ already`) detected via `command -v`. Re-detected on every TUI launch — no cache file.
+- [x] **TUI-03**: Entries with `unofficial: true` render with a yellow `!` glyph next to the name and require a per-row `[y/N]` confirm prompt before install (`< /dev/tty`, fail-closed `N`). Reuse Phase 18 UN-03 prompt pattern.
+- [x] **TUI-04**: New global flags: `--mcp-only` installs only MCP components from selected rows; `--cli-only` installs only CLI components; default (no flag) installs both when both available. Mutually exclusive — using both errors out.
+- [x] **TUI-05**: Install summary at end prints per-entry, per-component status table (entry × {MCP, CLI} matrix). Mirrors Phase 25 D-28 summary contract.
 
 ### New Integrations (INT)
 
@@ -128,11 +128,11 @@ Mapped by `gsd-roadmapper` 2026-05-02. All 36 v4.9 REQ-IDs assigned to exactly o
 | CLI-02 | Phase 32 | Complete |
 | CLI-03 | Phase 32 | Complete |
 | CLI-04 | Phase 32 | Complete |
-| TUI-01 | Phase 34 | Pending |
-| TUI-02 | Phase 34 | Pending |
-| TUI-03 | Phase 34 | Pending |
-| TUI-04 | Phase 34 | Pending |
-| TUI-05 | Phase 34 | Pending |
+| TUI-01 | Phase 34 | Complete (Plan 34-01, commit 15b3bc1) |
+| TUI-02 | Phase 34 | Complete (Plan 34-01, commit 15b3bc1) |
+| TUI-03 | Phase 34 | Complete (Plan 34-02, commit fa67196) |
+| TUI-04 | Phase 34 | Complete (Plan 34-02, commit fa67196) |
+| TUI-05 | Phase 34 | Complete (Plan 34-03, commit 79fd98c) |
 | INT-01 | Phase 33 | Pending |
 | INT-02 | Phase 33 | Pending |
 | INT-03 | Phase 33 | Pending |

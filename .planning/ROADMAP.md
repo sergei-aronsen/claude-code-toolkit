@@ -19,7 +19,7 @@
 
 - [ ] **Phase 32: Foundation — Schema Migration + CLI Installer Library** — `integrations-catalog.json` schema, validator, `cli-installer.sh` library, backward-compat `--mcps` alias.
 - [ ] **Phase 33: Catalog Population — 11 New Entries + Drop + Re-categorize** — supabase, cloudflare, stripe, aws-cost-explorer, aws-cloudwatch-logs, notebooklm, youtrack, linear, jira, figma, slack, telegram; drop sequential-thinking; tag 8 existing entries with category.
-- [ ] **Phase 34: TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags** — category headers, per-component status detection, `unofficial` `[y/N]` confirm, `--mcp-only`/`--cli-only` flags, summary table.
+- [x] **Phase 34: TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags** — category headers, per-component status detection, `unofficial` `[y/N]` confirm, `--mcp-only`/`--cli-only` flags, summary table. **(Closed 2026-05-02 — 3 plans, 3 commits 15b3bc1/fa67196/79fd98c)**
 - [ ] **Phase 35: Distribution + Tests + Docs** — manifest 4.9.0, version-align, 3 test suites (catalog, CLI installer, integrations TUI), `docs/INTEGRATIONS.md`, INSTALL.md flag rows, README, CHANGELOG `[4.9.0]`.
 
 <details>

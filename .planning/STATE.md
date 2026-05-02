@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
-current_plan: 4
-status: executing
-last_updated: "2026-05-02T08:00:00.000Z"
-last_activity: 2026-05-02 — Phase 33 complete (Plans 33-01..04 merged sequentially on main); catalog populated to final 20-entry shape
+status: Phase 34 closed — TUI redesign complete (categories + status + unofficial confirm + component flags + summary table); both baselines preserved
+last_updated: "2026-05-02T10:30:00.000Z"
+last_activity: "2026-05-02 — Phase 34 sequential execution on main (3 commits: 15b3bc1, fa67196, 79fd98c)"
 progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 14
-  completed_plans: 7
-  percent: 50
+  total_phases: 8
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +20,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 33 complete — ready for Phase 34 (TUI Redesign)
+**Current focus:** Phase 34 complete — ready for Phase 35 (Distribution + Tests + Docs)
 
 ## Current Position
 
-Phase: 33 (catalog-population-11-new-entries-drop-recategorize) — COMPLETE
+Phase: 34 (tui-redesign-categories-status-unofficial-confirm-component-flags) — COMPLETE
 Plans done (Phase 32): 32-01 ✓, 32-02 ✓, 32-03 ✓
 Plans done (Phase 33): 33-01 ✓ (INT-01/02/04/05 backend), 33-02 ✓ (INT-03/07-10 payments+pm+design), 33-03 ✓ (INT-06/11/12 comm+research), 33-04 ✓ (DROP-01 + EXIST-01)
-Status: Phase 33 closed — catalog at final 20-entry / 8-CLI-block / 10-category shape; validator green, both baselines preserved
-Last activity: 2026-05-02 — Phase 33 sequential execution on main (4 commits: 08455ee, f29bc80, a2d3326, 9481ee0)
-Next: Phase 34 — TUI Redesign (TUI-01..05)
+Plans done (Phase 34): 34-01 ✓ (TUI-01/02 categories + per-component status), 34-02 ✓ (TUI-03/04 unofficial confirm + --mcp-only/--cli-only mutex flags), 34-03 ✓ (TUI-05 per-component summary table — also retroactively fixed Plan 34-01 index-mismatch ordering bug)
+Status: Phase 34 closed — TUI redesign delivered (category-grouped rendering, per-row MCP/CLI status, unofficial [y/N] gate, component-only flags, closing per-entry × per-component table); both baselines preserved through 3 sequential commits
+Last activity: 2026-05-02 — Phase 34 sequential execution on main (3 commits: 15b3bc1, fa67196, 79fd98c)
+Next: Phase 35 — Distribution + Tests + Docs (DIST-01/02, TEST-01/02/03/04, DOCS-01..05)
 
 ## Plan Count Estimate
 
