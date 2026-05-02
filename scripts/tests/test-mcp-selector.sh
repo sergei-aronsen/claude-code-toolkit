@@ -135,6 +135,37 @@ MOCK
         exit \$?
     " 2>/dev/null || rc=$?
     assert_eq "2" "$rc" "S2: is_mcp_installed returns 2 when CLI absent (fail-soft)"
+
+    # State 0 (new format): claude CLI now emits "name: cmd - ✓ Connected"
+    # rows. Probe must accept both whitespace- and colon-separated rows
+    # (regression 2026-05-02 — every MCP showed ✗ in TUI).
+    local MOCK_CLAUDE_NEW="$SANDBOX/mock-claude-newfmt"
+    cat > "$MOCK_CLAUDE_NEW" <<'MOCK'
+#!/bin/bash
+if [[ "${1:-}" == "mcp" && "${2:-}" == "list" ]]; then
+    echo "Checking MCP server health…"
+    echo ""
+    echo "context7: npx -y @upstash/context7-mcp - ✓ Connected"
+    echo "playwright: npx @playwright/mcp@latest - ✓ Connected"
+    exit 0
+fi
+exit 0
+MOCK
+    chmod +x "$MOCK_CLAUDE_NEW"
+    rc=0
+    TK_MCP_CLAUDE_BIN="$MOCK_CLAUDE_NEW" bash -c "
+        source '${REPO_ROOT}/scripts/lib/mcp.sh'
+        is_mcp_installed context7
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S2: is_mcp_installed accepts colon-separated rows (new CLI format)"
+    rc=0
+    TK_MCP_CLAUDE_BIN="$MOCK_CLAUDE_NEW" bash -c "
+        source '${REPO_ROOT}/scripts/lib/mcp.sh'
+        is_mcp_installed sentry
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "1" "$rc" "S2: still returns 1 for absent name in new format"
 }
 
 # ─────────────────────────────────────────────────
