@@ -202,10 +202,10 @@ _bridge_write_file() {
         local _link_dest=""
         _link_dest="$(readlink "$target_path" 2>/dev/null || echo '?')"
         echo "bridge: skipped — $target_path is a symlink to $_link_dest" >&2
-        echo "bridge:   the toolkit refuses to overwrite symlinks (could clobber another tool's config)." >&2
-        echo "bridge:   to install this bridge, remove the symlink first:" >&2
-        echo "bridge:     rm $target_path" >&2
-        echo "bridge:   then re-run the install command." >&2
+        echo "bridge: the toolkit refuses to overwrite symlinks (could clobber another tool's config)." >&2
+        echo "bridge: to install this bridge, remove the symlink first:" >&2
+        echo "bridge:    rm $target_path" >&2
+        echo "bridge: then re-run the install command." >&2
         return 2
     fi
     if ! mkdir -p "$target_dir" 2>/dev/null; then
