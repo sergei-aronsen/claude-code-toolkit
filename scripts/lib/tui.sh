@@ -14,6 +14,16 @@
 # (space is no-op), rendered as `[required]`. Used for toolkit (the
 # whole reason the user is running install.sh).
 #
+# TUI_REINSTALLABLE[i]=1 marks an installed row as eligible for the
+# install→reinstall toggle. Pressing Space cycles its TUI_RESULTS bit
+# 0 ↔ 1 even though TUI_INSTALLED[i]==1. The render layer swaps
+# `[installed ✓]` ↔ `[reinstall ↻]` accordingly (light-green for the
+# reinstall state). Callers consume TUI_RESULTS as before — for an
+# installed row they MUST also read TUI_INSTALLED[i] to know whether
+# to skip vs reinstall. Default 0 preserves the legacy "installed
+# rows are immutable" contract — Skills surface and any other caller
+# that omits the array is unaffected.
+#
 # Bash 3.2 compatibility:
 #   - read -rsn1 + read -rsn2 two-pass arrow detection (no capital-N flag, which is 4.2+)
 #   - parallel indexed arrays (no associative arrays which are 4.0+, no namerefs which are 4.3+)
@@ -186,10 +196,20 @@ _tui_render() {
             arrow="${TK_TUI_ARROW:-▶ }"
         fi
 
-        # Checkbox glyph (D-17). Priority: required > installed > checked > unchecked.
+        # Checkbox glyph (D-17). Priority: required > installed-and-reinstalling
+        # > installed > checked > unchecked.
+        # Reinstall state: row is installed AND user toggled Space (TUI_RESULTS[i]=1)
+        # AND TUI_REINSTALLABLE[i]=1 — render as `[reinstall ↻]` in light green so
+        # the user can see at a glance which rows will be re-added on submit.
         local box="[ ]"
+        local _reinstall=0
         if [[ "$required" -eq 1 ]]; then
             box="[required]"
+        elif [[ "$installed" -eq 1 ]] \
+             && [[ "${TUI_REINSTALLABLE[$i]:-0}" -eq 1 ]] \
+             && [[ "$checked" -eq 1 ]]; then
+            box="[reinstall ↻]"
+            _reinstall=1
         elif [[ "$installed" -eq 1 ]]; then
             box="[installed ✓]"
         elif [[ "$checked" -eq 1 ]]; then
@@ -198,7 +218,12 @@ _tui_render() {
 
         # Numbered prefix + label row. Immutable rows (installed/required) render dim
         # so they read as "disabled" — user knows space won't toggle them.
-        if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
+        # Exception: reinstall state is bright light-green (call-out, not dim) so
+        # the user can pick out pending re-adds at a glance.
+        if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && [[ "$_reinstall" -eq 1 ]]; then
+            # \e[92m — bright (light) green. \e[0m resets all attrs.
+            _frame+="$arrow"$'\e[92m'"${row_num}. ${box} ${label}"$'\e[0m\n'
+        elif [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
             _frame+="$arrow"$'\e[2m'"${row_num}. ${box} ${label}"$'\e[0m\n'
         else
             _frame+="${arrow}${row_num}. ${box} ${label}"$'\n'
@@ -314,15 +339,24 @@ tui_checklist() {
                 fi
                 ;;
             ' ')
-                # Space — toggle, but installed AND required items are immutable.
-                # Submit row (FOCUS_IDX == total) also no-op for space.
+                # Space — toggle. Required items are always immutable.
+                # Installed items are immutable UNLESS TUI_REINSTALLABLE[i]=1
+                # (caller-opt-in for the install↔reinstall cycle).
+                # Submit row (FOCUS_IDX == total) is also no-op for space.
                 if [[ "$FOCUS_IDX" -lt "$total" ]] \
-                   && [[ "${TUI_INSTALLED[$FOCUS_IDX]:-0}" -ne 1 ]] \
                    && [[ "${TUI_REQUIRED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
-                    if [[ "${TUI_RESULTS[$FOCUS_IDX]:-0}" -eq 1 ]]; then
-                        TUI_RESULTS[$FOCUS_IDX]=0
-                    else
-                        TUI_RESULTS[$FOCUS_IDX]=1
+                    local _can_toggle=0
+                    if [[ "${TUI_INSTALLED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
+                        _can_toggle=1
+                    elif [[ "${TUI_REINSTALLABLE[$FOCUS_IDX]:-0}" -eq 1 ]]; then
+                        _can_toggle=1
+                    fi
+                    if [[ "$_can_toggle" -eq 1 ]]; then
+                        if [[ "${TUI_RESULTS[$FOCUS_IDX]:-0}" -eq 1 ]]; then
+                            TUI_RESULTS[$FOCUS_IDX]=0
+                        else
+                            TUI_RESULTS[$FOCUS_IDX]=1
+                        fi
                     fi
                 fi
                 ;;

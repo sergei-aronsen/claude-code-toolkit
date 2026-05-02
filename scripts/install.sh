@@ -546,6 +546,23 @@ if [[ "$MCPS" -eq 1 ]]; then
             local_flags=()
             [[ "$DRY_RUN" -eq 1 ]] && local_flags+=("--dry-run")
 
+            # Phase 36-A: reinstall path — TUI_INSTALLED[tui_i]=1 AND
+            # TUI_RESULTS[tui_i]=1 means the user toggled the row from
+            # `[installed ✓]` to `[reinstall ↻]`. `claude mcp add` rejects
+            # already-registered names, so remove first then re-add via
+            # mcp_wizard_run. Skip the remove under --dry-run (no side
+            # effects) — the wizard's --dry-run still prints the "would run
+            # add" line which is what the user wants to see.
+            local_reinstall=0
+            if [[ "${TUI_INSTALLED[$tui_i]:-0}" -eq 1 ]]; then
+                local_reinstall=1
+                if [[ "$DRY_RUN" -ne 1 ]]; then
+                    _claude_bin="${TK_MCP_CLAUDE_BIN:-claude}"
+                    "$_claude_bin" mcp remove "$local_name" >/dev/null 2>&1 || true
+                    unset _claude_bin
+                fi
+            fi
+
             local_rc=0
             if [[ -n "$stderr_tmp" ]]; then
                 ( mcp_wizard_run "$local_name" "${local_flags[@]+"${local_flags[@]}"}" ) 2>"$stderr_tmp" || local_rc=$?
@@ -556,12 +573,22 @@ if [[ "$MCPS" -eq 1 ]]; then
             case "$local_rc" in
                 0)
                     if [[ "$DRY_RUN" -eq 1 ]]; then
-                        COMPONENT_STATUS+=("would-install")
-                        RESULT_MCP_STATE+=("would-install")
+                        if [[ "$local_reinstall" -eq 1 ]]; then
+                            COMPONENT_STATUS+=("would-reinstall")
+                            RESULT_MCP_STATE+=("would-reinstall")
+                        else
+                            COMPONENT_STATUS+=("would-install")
+                            RESULT_MCP_STATE+=("would-install")
+                        fi
                     else
-                        COMPONENT_STATUS+=("installed ✓")
+                        if [[ "$local_reinstall" -eq 1 ]]; then
+                            COMPONENT_STATUS+=("reinstalled ↻")
+                            RESULT_MCP_STATE+=("reinstalled")
+                        else
+                            COMPONENT_STATUS+=("installed ✓")
+                            RESULT_MCP_STATE+=("installed")
+                        fi
                         INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
-                        RESULT_MCP_STATE+=("installed")
                     fi
                     COMPONENT_STDERR_TAIL+=("")
                     ;;
@@ -1394,6 +1421,7 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
         _SAVE_TUI_GROUPS=("${TUI_GROUPS[@]+"${TUI_GROUPS[@]}"}")
         _SAVE_TUI_DESCS=("${TUI_DESCS[@]+"${TUI_DESCS[@]}"}")
         _SAVE_TUI_REQUIRED=("${TUI_REQUIRED[@]+"${TUI_REQUIRED[@]}"}")
+        _SAVE_TUI_REINSTALLABLE=("${TUI_REINSTALLABLE[@]+"${TUI_REINSTALLABLE[@]}"}")
     }
     _restore_main_tui_state() {
         TUI_LABELS=("${_SAVE_TUI_LABELS[@]+"${_SAVE_TUI_LABELS[@]}"}")
@@ -1402,8 +1430,10 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
         TUI_GROUPS=("${_SAVE_TUI_GROUPS[@]+"${_SAVE_TUI_GROUPS[@]}"}")
         TUI_DESCS=("${_SAVE_TUI_DESCS[@]+"${_SAVE_TUI_DESCS[@]}"}")
         TUI_REQUIRED=("${_SAVE_TUI_REQUIRED[@]+"${_SAVE_TUI_REQUIRED[@]}"}")
+        TUI_REINSTALLABLE=("${_SAVE_TUI_REINSTALLABLE[@]+"${_SAVE_TUI_REINSTALLABLE[@]}"}")
         unset _SAVE_TUI_LABELS _SAVE_TUI_RESULTS _SAVE_TUI_INSTALLED \
-              _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED
+              _SAVE_TUI_GROUPS _SAVE_TUI_DESCS _SAVE_TUI_REQUIRED \
+              _SAVE_TUI_REINSTALLABLE
     }
 
     _redo_main_tui=0

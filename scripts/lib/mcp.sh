@@ -969,6 +969,11 @@ mcp_status_array() {
     TUI_DESCS=()
     TUI_GROUP_NAMES=()
     TUI_GROUP_DESCS=()
+    # Phase 36-A: every installed MCP is reinstallable from the TUI
+    # (Space cycles install ↔ reinstall). The reinstall path = claude mcp
+    # remove + claude mcp add — works uniformly for npx/uvx/HTTP/SSE
+    # transports, so no per-transport gating here.
+    TUI_REINSTALLABLE=()
     # Phase 34-01 ordering map: install.sh's dispatch loop iterates by
     # MCP_NAMES alphabetical order, but the TUI renders in category-grouped
     # order (alpha-within-category). TUI_RESULTS / TUI_LABELS / TUI_INSTALLED
@@ -1047,20 +1052,25 @@ mcp_status_array() {
             # MCP installed/absent → set TUI_INSTALLED for tui.sh's [installed ✓]
             # immutable-row treatment. Unknown → 0 (selectable; status column
             # makes the unknown state explicit in the description).
+            # TUI_REINSTALLABLE: 1 only for installed rows (Space cycles
+            # them install ↔ reinstall). Absent and unknown rows get 0.
             case "${MCP_STATUS[$i]:-unknown}" in
                 installed)
                     TUI_INSTALLED+=(1)
+                    TUI_REINSTALLABLE+=(1)
                     MCP_CLI_PRESENT=1
                     mcp_g="${_c_ok}${_g_ok}${_c_nc}"
                     ;;
                 absent)
                     TUI_INSTALLED+=(0)
+                    TUI_REINSTALLABLE+=(0)
                     MCP_CLI_PRESENT=1
                     mcp_g="${_c_no}${_g_no}${_c_nc}"
                     ;;
                 *)
                     # unknown — claude CLI absent or list failed.
                     TUI_INSTALLED+=(0)
+                    TUI_REINSTALLABLE+=(0)
                     mcp_g="${_c_unk}${_g_unk}${_c_nc}"
                     desc="[unavailable] ${desc}"
                     ;;

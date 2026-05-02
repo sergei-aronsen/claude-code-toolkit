@@ -647,6 +647,112 @@ run_s9_no_tty_bootstrap_fork
 run_s10_desktop_auto_skills_only_routing
 run_s_render_format
 
+# ─────────────────────────────────────────────────
+# S_reinstall_glyph — Phase 36-A: TUI_REINSTALLABLE[i]=1 lets installed
+# rows toggle through `[installed ✓]` ↔ `[reinstall ↻]` via Space.
+# Light-green (\e[92m) ANSI on the reinstall variant. Legacy callers
+# (TUI_REINSTALLABLE absent / 0) still see the immutable `[installed ✓]`.
+# ─────────────────────────────────────────────────
+run_s_reinstall_glyph() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-install-tui-reinstall.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S_reinstall_glyph: 4-state install↔reinstall cycle --"
+
+    # Case 1: installed + reinstallable + checked=1 → [reinstall ↻] in light green
+    local OUT="$SANDBOX/render-reinstall.out"
+    : > "$OUT"
+    TERM=xterm-256color \
+        TK_TUI_TTY_SRC="$OUT" \
+        bash -c "
+            set -u
+            source '$REPO_ROOT/scripts/lib/tui.sh'
+            TUI_LABELS=('context7')
+            TUI_GROUPS=('Docs Research')
+            TUI_INSTALLED=(1)
+            TUI_REINSTALLABLE=(1)
+            TUI_RESULTS=(1)
+            TUI_DESCS=('docs')
+            FOCUS_IDX=0
+            _TUI_COLOR=1
+            _tui_render
+        " 2>/dev/null || true
+    local rendered
+    rendered=$(cat "$OUT" 2>/dev/null || echo "")
+    # `[` is a BRE special; assert_contains uses `grep -q --` (regex). Use
+    # grep -F via inline check for the bracketed glyph + ANSI escape.
+    if printf '%s\n' "$rendered" | grep -qF -- "[reinstall ↻]"; then
+        assert_pass "S_reinstall: glyph shown when checked + reinstallable"
+    else
+        assert_fail "S_reinstall: glyph shown when checked + reinstallable" "rendered=${rendered}"
+    fi
+    if printf '%s\n' "$rendered" | grep -qF -- $'\e[92m'; then
+        assert_pass "S_reinstall: light-green ANSI applied"
+    else
+        assert_fail "S_reinstall: light-green ANSI applied" "no \\e[92m in rendered output"
+    fi
+
+    # Case 2: installed + reinstallable + checked=0 → [installed ✓] (no reinstall)
+    : > "$OUT"
+    TERM=xterm-256color \
+        TK_TUI_TTY_SRC="$OUT" \
+        bash -c "
+            set -u
+            source '$REPO_ROOT/scripts/lib/tui.sh'
+            TUI_LABELS=('context7')
+            TUI_GROUPS=('Docs Research')
+            TUI_INSTALLED=(1)
+            TUI_REINSTALLABLE=(1)
+            TUI_RESULTS=(0)
+            TUI_DESCS=('docs')
+            FOCUS_IDX=0
+            _TUI_COLOR=1
+            _tui_render
+        " 2>/dev/null || true
+    rendered=$(cat "$OUT" 2>/dev/null || echo "")
+    if printf '%s\n' "$rendered" | grep -qF -- "[installed ✓]"; then
+        assert_pass "S_reinstall: legacy glyph when checked=0"
+    else
+        assert_fail "S_reinstall: legacy glyph when checked=0" "rendered=${rendered}"
+    fi
+    if printf '%s\n' "$rendered" | grep -qF -- "[reinstall"; then
+        assert_fail "S_reinstall: reinstall glyph absent when checked=0" "found unexpectedly"
+    else
+        assert_pass "S_reinstall: reinstall glyph absent when checked=0"
+    fi
+
+    # Case 3: installed + NOT reinstallable + checked=1 → [installed ✓] (legacy)
+    : > "$OUT"
+    NO_COLOR=1 TERM=dumb \
+        TK_TUI_TTY_SRC="$OUT" \
+        bash -c "
+            set -u
+            source '$REPO_ROOT/scripts/lib/tui.sh'
+            TUI_LABELS=('legacy')
+            TUI_GROUPS=('Skills')
+            TUI_INSTALLED=(1)
+            TUI_RESULTS=(1)
+            TUI_DESCS=('skill')
+            FOCUS_IDX=0
+            _tui_init_colors
+            _tui_render
+        " 2>/dev/null || true
+    rendered=$(cat "$OUT" 2>/dev/null || echo "")
+    if printf '%s\n' "$rendered" | grep -qF -- "[installed ✓]"; then
+        assert_pass "S_reinstall: TUI_REINSTALLABLE absent → legacy glyph (Skills surface unaffected)"
+    else
+        assert_fail "S_reinstall: TUI_REINSTALLABLE absent → legacy glyph (Skills surface unaffected)" "rendered=${rendered}"
+    fi
+    if printf '%s\n' "$rendered" | grep -qF -- "[reinstall"; then
+        assert_fail "S_reinstall: reinstall glyph absent for non-opt-in callers" "found unexpectedly"
+    else
+        assert_pass "S_reinstall: reinstall glyph absent for non-opt-in callers"
+    fi
+}
+
+run_s_reinstall_glyph
+
 echo ""
 echo "test-install-tui complete: PASS=$PASS FAIL=$FAIL"
 if [[ $FAIL -gt 0 ]]; then
