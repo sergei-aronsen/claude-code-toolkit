@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.9
 milestone_name: Integrations Catalog
-status: Phase 34 closed — TUI redesign complete (categories + status + unofficial confirm + component flags + summary table); both baselines preserved
-last_updated: "2026-05-02T10:30:00.000Z"
-last_activity: "2026-05-02 — Phase 34 sequential execution on main (3 commits: 15b3bc1, fa67196, 79fd98c)"
+status: ready_to_ship — v4.9 milestone code-complete; manual git tag v4.9.0 per CLAUDE.md never-push-main invariant
+last_updated: "2026-05-02T11:30:00.000Z"
+last_activity: "2026-05-02 — Phase 35 sequential execution on main (4 commits: 17f3ace, dd5b486, 235099e, <35-04>)"
 progress:
-  total_phases: 8
+  total_phases: 4
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 14
+  completed_plans: 14
   percent: 100
 ---
 
@@ -20,17 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 34 complete — ready for Phase 35 (Distribution + Tests + Docs)
+**Current focus:** v4.9 Integrations Catalog complete — ready to tag v4.9.0 (manual user action per CLAUDE.md never-push-main invariant)
 
 ## Current Position
 
-Phase: 34 (tui-redesign-categories-status-unofficial-confirm-component-flags) — COMPLETE
+Phase: 35 (distribution-tests-docs) — COMPLETE; v4.9 milestone closed at code-level
 Plans done (Phase 32): 32-01 ✓, 32-02 ✓, 32-03 ✓
 Plans done (Phase 33): 33-01 ✓ (INT-01/02/04/05 backend), 33-02 ✓ (INT-03/07-10 payments+pm+design), 33-03 ✓ (INT-06/11/12 comm+research), 33-04 ✓ (DROP-01 + EXIST-01)
 Plans done (Phase 34): 34-01 ✓ (TUI-01/02 categories + per-component status), 34-02 ✓ (TUI-03/04 unofficial confirm + --mcp-only/--cli-only mutex flags), 34-03 ✓ (TUI-05 per-component summary table — also retroactively fixed Plan 34-01 index-mismatch ordering bug)
-Status: Phase 34 closed — TUI redesign delivered (category-grouped rendering, per-row MCP/CLI status, unofficial [y/N] gate, component-only flags, closing per-entry × per-component table); both baselines preserved through 3 sequential commits
-Last activity: 2026-05-02 — Phase 34 sequential execution on main (3 commits: 15b3bc1, fa67196, 79fd98c)
-Next: Phase 35 — Distribution + Tests + Docs (DIST-01/02, TEST-01/02/03/04, DOCS-01..05)
+Plans done (Phase 35): 35-01 ✓ (DIST-01/02 manifest 4.9.0 + version-align), 35-02 ✓ (TEST-01/02/03/04 three hermetic test suites + Makefile/CI), 35-03 ✓ (DOCS-01/02 docs/INTEGRATIONS.md + Global-vs-per-project boundary), 35-04 ✓ (DOCS-03/04/05 INSTALL.md flags + README + CHANGELOG)
+Status: v4.9 milestone code-complete; manual git tag v4.9.0 per CLAUDE.md never-push-main invariant. All baselines green: test-mcp-selector PASS=21, test-bootstrap PASS=26, test-install-tui PASS=52, test-integrations-foundation PASS=32. New tests green: test-integrations-catalog PASS=14 (floor 10), test-cli-installer PASS=24 (floor 8), test-integrations-tui PASS=36 (floor 15). make check rc=0. python3 scripts/validate-integrations-catalog.py rc=0. init-claude.sh --version + init-local.sh --version both print 4.9.0.
+Last activity: 2026-05-02 — Phase 35 sequential execution on main (4 commits)
+Next: User runs `git tag v4.9.0 && git push origin v4.9.0` + creates GitHub Release. Awaiting v5.0 scoping.
 
 ## Plan Count Estimate
 

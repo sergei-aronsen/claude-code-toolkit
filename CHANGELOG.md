@@ -12,6 +12,148 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Major install UX overhaul on top of 4.8.x — focused on PR #28 install run on
 macOS and a series of user reports between 2026-05-01 and 2026-05-02.
 
+Phases 32-35 (Integrations Catalog) consolidated v4.9 around a unified
+MCP + companion-CLI install page. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
+for the full reference.
+
+### Added — Integrations Catalog (Phases 32-35)
+
+Unified MCP + CLI install page accessible via `--integrations` (or the
+deprecated `--mcps` alias). Replaces the old MCP-only page.
+
+- **20 MCP servers across 10 categories** — `docs-research`, `backend`,
+  `payments`, `email`, `workspace`, `project-management`, `communication`,
+  `design`, `dev-tools`, `monitoring`. The TUI groups entries by category
+  in canonical order; categories with zero entries silently skip.
+- **8 companion CLIs** — install the official command-line tool for the
+  same vendor alongside the MCP server. Cross-platform via `uname -s`
+  dispatch (`brew install` on Darwin, vendor user-space tarball or
+  `npm install -g` on Linux). NEVER auto-prefixes `sudo`. Brew-absent on
+  Darwin yields a single-line hint and rc=3 — toolkit never auto-installs
+  Homebrew.
+- **Per-component status detection** — TUI shows `[MCP:✓ CLI:—]` per
+  row (✓ installed, ✗ absent, ⊘ unknown, — n/a). MCP probe via
+  `claude mcp list` (cached once per shell, ~4s); CLI probe via
+  `command -v` (sub-millisecond, no cache).
+- **`unofficial: true` confirm gate** — community / browser-automation
+  entries (`notebooklm`, `telegram`) get a yellow `!` glyph in the TUI
+  and a `[y/N]` confirm prompt before install. Default N (fail-closed
+  per UN-03 contract). `--yes` does NOT bypass this prompt — security
+  boundary. `ALWAYS_YES=1` env override bypasses (trusted automation).
+- **`--mcp-only` / `--cli-only` mutex flags** — install only the MCP side
+  or only the CLI side of selected entries. Mutually exclusive (passing
+  both exits with rc=2 + stderr "mutually exclusive").
+- **Closing summary table** — Entry × MCP × CLI matrix with per-component
+  glyphs, Notes column for skip reasons, and `Installed: N MCPs, M CLIs ·
+  Skipped: X · Failed: Y` total line.
+
+### Added — 12 new integrations (INT-01..12)
+
+- **Backend**: `supabase` (MCP+CLI), `cloudflare` (MCP+wrangler),
+  `aws-cost-explorer` (MCP+`aws`), `aws-cloudwatch-logs` (MCP+shared
+  `aws` CLI — installer detects shared dependency, installs `aws` once
+  per session)
+- **Payments**: `stripe` (MCP+CLI)
+- **Project Management**: `youtrack`, `linear`, `jira` (MCP only)
+- **Design**: `figma` (MCP only)
+- **Communication**: `slack` (MCP), `telegram` (MCP, unofficial)
+- **Docs/Research**: `notebooklm` (MCP, unofficial)
+
+### Added — CLI installer library (`scripts/lib/cli-installer.sh`)
+
+Public primitives consumed by the integrations TUI dispatch loop:
+
+- `cli_detect <name>` — `command -v` wrapper, no caching, sub-millisecond.
+- `cli_install <name> <darwin_cmd> <linux_cmd>` — `uname -s` dispatch
+  with `TK_CLI_UNAME` test seam. Brew-absent fallback (rc=3) on Darwin
+  via `TK_CLI_BREW_BIN` seam. NO sudo auto-prefix EVER (D-17). Trusts
+  the curated catalog input (validator-enforced shape) so `eval` is
+  safe inside that boundary.
+- `cli_post_install_hint <hint>` — writes `→ Next: <hint>` to stderr
+  ONLY (stdout stays parseable). Toolkit NEVER auto-runs `<tool> login`
+  — boundary is "config + hints", not "auth flows".
+
+### Added — Schema validator + 3 hermetic test suites
+
+- **Validator** `scripts/validate-integrations-catalog.py` (Python stdlib
+  only, no `jsonschema` dependency, Python 3.8+). Wired into `make
+  validate-catalog` and CI's `validate-templates` job.
+- **Test 45** `scripts/tests/test-integrations-catalog.sh` (PASS=14,
+  floor 10): schema-only checks for catalog file — `schema_version=2`,
+  10 categories, 20 MCP entries, 8 CLI entries, required fields,
+  unofficial set is exactly `{notebooklm, telegram}`, no
+  `sequential-thinking`, no `sudo` token in any install string.
+- **Test 46** `scripts/tests/test-cli-installer.sh` (PASS=24, floor 8):
+  primitives test for `cli_detect` / `cli_install` / `cli_post_install_hint`
+  with `TK_CLI_UNAME` + `TK_CLI_BREW_BIN` seams.
+- **Test 47** `scripts/tests/test-integrations-tui.sh` (PASS=36,
+  floor 15): Phase 34 TUI redesign assertions — category-grouped
+  rendering, unofficial glyph, parallel-array length, mocked claude
+  flow, `unofficial_confirm` ALWAYS_YES + TTY paths,
+  `--mcp-only`/`--cli-only` mutex, summary table format, zero-entry
+  category skip via fixture catalog.
+
+### Added — `docs/INTEGRATIONS.md`
+
+Complete catalog reference with category-grouped tables, install flow,
+unofficial semantics, OAuth setup links per entry, troubleshooting, and
+a dedicated **Global vs per-project** section establishing the
+toolkit/SDK boundary (DOCS-02): catalog ships globals only, never
+per-project SDKs.
+
+### Changed — Schema migration (CAT-01..03)
+
+- `scripts/lib/mcp-catalog.json` → `scripts/lib/integrations-catalog.json`
+  (`schema_version: 2`). New top-level structure: `categories[]`,
+  `components.mcp{}`, `components.cli{}`. 8 surviving Phase 32 entries
+  (`context7`, `firecrawl`, `magic`, `notion`, `openrouter`, `playwright`,
+  `resend`, `sentry`) tagged with category. Optional CLI blocks added to
+  `firecrawl`, `playwright`, `sentry` whose CLIs add real value.
+- `scripts/lib/mcp.sh` rewritten to read schema v2 — `mcp_catalog_load`,
+  `mcp_categories_load`, `mcp_status_array`, `_mcp_category_display`,
+  `unofficial_confirm`, `print_integrations_summary`. Bash 3.2 parallel
+  arrays only (`MCP_NAMES[]`, `MCP_CATEGORY[]`, `MCP_UNOFFICIAL[]`,
+  `TUI_GROUPS[]`, etc.).
+- `scripts/install.sh` adds `--integrations`, `--mcp-only`, `--cli-only`,
+  `--mcps` (deprecated alias) flags + dispatch loop with per-row
+  unofficial-confirm gate, MCP-side dispatch, CLI-side dispatch via
+  `cli_install`, summary table renderer.
+
+### Changed — `--mcps` flag deprecated
+
+`--mcps` continues to work as an alias for `--integrations` but prints a
+one-line stderr deprecation note: `⚠ --mcps is deprecated; use
+--integrations (alias retained until v6.0)`. Alias removal is post-v5.0.
+
+### Changed — `manifest.json` 4.8.0 → 4.9.0
+
+`files.libs[]` registers `cli-installer.sh` and `integrations-catalog.json`
+(replacing `mcp-catalog.json`); `files.scripts[]` registers
+`validate-integrations-catalog.py`. `update-claude.sh` auto-discovers
+all three via the existing v4.4 LIB-01 D-07 jq path — no script code
+changes required for smart-update coverage.
+
+### Changed — `init-claude.sh --version` parity with `init-local.sh`
+
+Added `--version` / `-v` flag to `init-claude.sh` deriving version from
+manifest at runtime (v4.3 D-22 contract). Reads local manifest when run
+from a clone; curls `$REPO_URL/manifest.json` when run via `curl | bash`.
+Both installers now print `claude-code-toolkit v4.9.0` on `--version`.
+
+### Removed — `sequential-thinking` (DROP-01)
+
+Removed from catalog. Native Claude extended thinking covers the use case
+adequately. Existing user installs are unaffected — toolkit doesn't
+auto-uninstall MCPs when the catalog drops them (boundary preserved).
+Users with `sequential-thinking` in their `claude mcp list` keep the
+server registered until they manually `claude mcp remove sequential-thinking`.
+
+### Migration notes
+
+Users on v4.8 → v4.9: re-run `update-claude.sh` to pick up the new lib,
+script, and JSON catalog. No manual catalog re-fetch needed; the
+v4.4 LIB-01 D-07 jq-path auto-discovery handles all three.
+
 ### Added — Back navigation in multi-step picker flow (UX-FLOW-02)
 
 Press `b` (or `B`) inside the skills or MCP sub-picker to return to the

@@ -71,6 +71,10 @@ Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
 | `--keep-state` | `scripts/uninstall.sh` | Preserve `toolkit-install.json` after uninstall, enabling re-run recovery after a partial-N session. Equivalent env: `TK_UNINSTALL_KEEP_STATE=1`. |
 | `--no-bridges` | `init-claude.sh`, `init-local.sh`, `install.sh` | Skip all bridge prompts. Equivalent env: `TK_NO_BRIDGES=1`. Mirrors `--no-bootstrap` symmetry. |
 | `--bridges <list>` | `init-claude.sh`, `init-local.sh`, `install.sh` | Force-create bridges for named CLIs (comma-separated, e.g. `gemini,codex`). Skips per-CLI prompt. With `--fail-fast`: absent CLI exits 1; otherwise warns and continues. |
+| `--integrations` | `install.sh` | Open the Integrations Catalog TUI (20 MCP servers + 8 companion CLIs across 10 categories). Replaces the v4.x `--mcps` page. See [INTEGRATIONS.md](INTEGRATIONS.md). |
+| `--mcps` | `install.sh` | DEPRECATED alias for `--integrations`. Still works, prints a one-line deprecation note to stderr; removed in v6.0. |
+| `--mcp-only` | `install.sh` | When used with `--integrations`, install only MCP servers from selected entries; skip companion CLIs. Mutually exclusive with `--cli-only`. |
+| `--cli-only` | `install.sh` | When used with `--integrations`, install only companion CLIs from selected entries; skip MCP server registration. Mutually exclusive with `--mcp-only` (passing both exits with rc=2). |
 | `--break-bridge <target>` | `update-claude.sh` | Flip `user_owned: true` for the named bridge target. Subsequent `update-claude.sh` runs skip that bridge silently. |
 | `--restore-bridge <target>` | `update-claude.sh` | Reverse `--break-bridge`. Next `update-claude.sh` re-syncs the named bridge. |
 | `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
