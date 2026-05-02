@@ -171,6 +171,22 @@
         "description": "UI component generation (21st.dev)",
         "requires_oauth": false
       },
+      "notebooklm": {
+        "name": "notebooklm",
+        "display_name": "NotebookLM",
+        "category": "docs-research",
+        "env_var_keys": [],
+        "install_args": [
+          "notebooklm",
+          "--",
+          "npx",
+          "-y",
+          "notebooklm-mcp"
+        ],
+        "description": "Google NotebookLM — source-grounded answers from your docs (browser auth)",
+        "requires_oauth": true,
+        "unofficial": true
+      },
       "notion": {
         "name": "notion",
         "display_name": "Notion",
@@ -267,6 +283,24 @@
         "description": "Structured step-by-step reasoning (zero-config)",
         "requires_oauth": false
       },
+      "slack": {
+        "name": "slack",
+        "display_name": "Slack",
+        "category": "communication",
+        "env_var_keys": [
+          "SLACK_MCP_XOXC_TOKEN",
+          "SLACK_MCP_XOXD_TOKEN"
+        ],
+        "install_args": [
+          "slack",
+          "--",
+          "npx",
+          "-y",
+          "slack-mcp-server"
+        ],
+        "description": "Post messages, search history, list channels (no admin approval needed)",
+        "requires_oauth": false
+      },
       "stripe": {
         "name": "stripe",
         "display_name": "Stripe",
@@ -300,6 +334,25 @@
         ],
         "description": "Postgres + auth + storage + edge functions backend",
         "requires_oauth": false
+      },
+      "telegram": {
+        "name": "telegram",
+        "display_name": "Telegram",
+        "category": "communication",
+        "env_var_keys": [
+          "TG_APP_ID",
+          "TG_API_HASH"
+        ],
+        "install_args": [
+          "telegram",
+          "--",
+          "npx",
+          "-y",
+          "@chaindead/telegram-mcp"
+        ],
+        "description": "User-account API — read dialogs, send messages, manage channels (community)",
+        "requires_oauth": false,
+        "unofficial": true
       },
       "youtrack": {
         "name": "youtrack",
