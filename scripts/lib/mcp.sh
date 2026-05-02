@@ -537,14 +537,21 @@ is_mcp_installed() {
             return 2
             ;;
     esac
-    # Match a row that begins with "<name>" followed by whitespace OR end-of-line.
-    # `claude mcp list` rows look like "context7    sse    https://..."
+    # Match a row that begins with "<name>" followed by ":", whitespace, or EOL.
+    # `claude mcp list` output evolved across CLI versions:
+    #   old: "context7    sse    https://..."           (whitespace-separated)
+    #   new: "context7: npx -y @upstash/... - ✓ Conn"   (colon after name)
+    # The probe must accept both. user report 2026-05-02: every MCP showed
+    # MCP:✗ in the integrations TUI even though `claude mcp list` listed
+    # them — root cause was the regex requiring whitespace and missing the
+    # colon variant.
+    #
     # Audit M-MCP: $name was interpolated into the regex without escaping. An
     # MCP entry whose registered name contains "." or "+" (both legal) would
     # match unrelated rows. Escape regex metacharacters before substitution.
     local _name_escaped
     _name_escaped=$(printf '%s' "$name" | sed -e 's/[][\\.^$*+?(){}|]/\\&/g')
-    if printf '%s\n' "${_MCP_LIST_CACHE_OUT:-}" | grep -E "^${_name_escaped}([[:space:]]|\$)" >/dev/null 2>&1; then
+    if printf '%s\n' "${_MCP_LIST_CACHE_OUT:-}" | grep -E "^${_name_escaped}([[:space:]:]|\$)" >/dev/null 2>&1; then
         return 0
     fi
     return 1
