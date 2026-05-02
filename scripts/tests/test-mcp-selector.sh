@@ -66,17 +66,17 @@ run_s1_catalog_correctness() {
     SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
     # shellcheck disable=SC2064
     trap "rm -rf '${SANDBOX:?}'" RETURN
-    echo "  -- S1_catalog_correctness: 21 entries, alpha order, notion OAuth --"
+    echo "  -- S1_catalog_correctness: 20 entries, alpha order, notion OAuth --"
 
     MCP_NAMES=()
     # shellcheck source=/dev/null
     source "${REPO_ROOT}/scripts/lib/mcp.sh"
     mcp_catalog_load
 
-    # Phase 33-03 raised count to 21 (added notebooklm + slack + telegram on top
-    # of the 18 from 33-02). Plan 33-04 will drop sequential-thinking, landing
-    # at the final Phase 33 count of 19.
-    assert_eq "21" "${#MCP_NAMES[@]}" "S1: catalog contains 21 entries"
+    # Phase 33-04 final state: 21 - 1 (sequential-thinking dropped) = 20 entries.
+    # Composition: 8 surviving Phase 32 entries (context7, firecrawl, magic,
+    # notion, openrouter, playwright, resend, sentry) + 12 new INT-01..12 entries.
+    assert_eq "20" "${#MCP_NAMES[@]}" "S1: catalog contains 20 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 
     # Find notion index and verify requires_oauth = 1

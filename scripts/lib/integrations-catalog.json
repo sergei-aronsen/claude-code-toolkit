@@ -268,21 +268,6 @@
         "description": "Error monitoring + issue triage",
         "requires_oauth": false
       },
-      "sequential-thinking": {
-        "name": "sequential-thinking",
-        "display_name": "Sequential Thinking",
-        "category": "dev-tools",
-        "env_var_keys": [],
-        "install_args": [
-          "sequential-thinking",
-          "--",
-          "npx",
-          "-y",
-          "@modelcontextprotocol/server-sequential-thinking"
-        ],
-        "description": "Structured step-by-step reasoning (zero-config)",
-        "requires_oauth": false
-      },
       "slack": {
         "name": "slack",
         "display_name": "Slack",
@@ -397,6 +382,30 @@
           "linux": "npm install -g wrangler"
         },
         "post_install_hint": "wrangler login"
+      },
+      "firecrawl": {
+        "detect_cmd": "firecrawl",
+        "install": {
+          "darwin": "npm install -g firecrawl-cli",
+          "linux": "npm install -g firecrawl-cli"
+        },
+        "post_install_hint": "firecrawl --version  # set FIRECRAWL_API_KEY env"
+      },
+      "playwright": {
+        "detect_cmd": "playwright",
+        "install": {
+          "darwin": "npm install -g @playwright/test && npx playwright install",
+          "linux": "npm install -g @playwright/test && npx playwright install"
+        },
+        "post_install_hint": "playwright --version  # browsers installed to ~/.cache/ms-playwright/"
+      },
+      "sentry": {
+        "detect_cmd": "sentry-cli",
+        "install": {
+          "darwin": "brew install getsentry/tools/sentry-cli",
+          "linux": "curl -sL https://sentry.io/get-cli/ | INSTALL_DIR=$HOME/.local/bin bash"
+        },
+        "post_install_hint": "sentry-cli login  # or set SENTRY_AUTH_TOKEN env"
       },
       "stripe": {
         "detect_cmd": "stripe",
