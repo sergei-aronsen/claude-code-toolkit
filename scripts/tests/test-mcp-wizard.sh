@@ -72,7 +72,9 @@ source "${REPO_ROOT}/scripts/lib/mcp.sh"
 mcp_catalog_load
 
 # ── Test 1: --dry-run with zero-config MCP — no claude invocation, prints "would run" ──
-OUTPUT=$(mcp_wizard_run sequential-thinking --dry-run 2>&1)
+# Note: zero-config = no env_var_keys + no requires_oauth. After 33-04 dropped
+# sequential-thinking, `playwright` is the only catalog entry that fits.
+OUTPUT=$(mcp_wizard_run playwright --dry-run 2>&1)
 if [[ -f "$SANDBOX/claude.argv" ]]; then
     assert_fail "T1: dry-run must not invoke claude" "claude.argv exists"
 else
@@ -82,17 +84,17 @@ assert_contains "would run" "$OUTPUT" "T1: dry-run output contains 'would run'"
 
 # ── Test 2: zero-config MCP invocation populates argv correctly ───────────────
 rm -f "$SANDBOX/claude.argv"
-mcp_wizard_run sequential-thinking
+mcp_wizard_run playwright
 if [[ -f "$SANDBOX/claude.argv" ]]; then
-    assert_pass "T2: claude was invoked for sequential-thinking"
+    assert_pass "T2: claude was invoked for playwright"
 else
-    assert_fail "T2: claude was invoked for sequential-thinking" "claude.argv missing"
+    assert_fail "T2: claude was invoked for playwright" "claude.argv missing"
 fi
 ARGV_CONTENT="$(cat "$SANDBOX/claude.argv" 2>/dev/null || echo '')"
 assert_contains "argv:" "$ARGV_CONTENT" "T2: argv line present"
 assert_contains "mcp" "$ARGV_CONTENT" "T2: argv contains 'mcp'"
 assert_contains "add" "$ARGV_CONTENT" "T2: argv contains 'add'"
-assert_contains "sequential-thinking" "$ARGV_CONTENT" "T2: argv contains 'sequential-thinking'"
+assert_contains "playwright" "$ARGV_CONTENT" "T2: argv contains 'playwright'"
 rm -f "$SANDBOX/claude.argv"
 
 # ── Test 3: keyed MCP (context7) — env var plumbed to claude + secret persisted ──
@@ -137,7 +139,7 @@ rc=0
     export PATH="/usr/bin:/bin"
     source "${REPO_ROOT}/scripts/lib/mcp.sh"
     mcp_catalog_load
-    mcp_wizard_run sequential-thinking 2>/dev/null
+    mcp_wizard_run playwright 2>/dev/null
 ) || rc=$?
 assert_eq "2" "$rc" "T6: CLI absent returns exit code 2"
 # Restore for any further tests

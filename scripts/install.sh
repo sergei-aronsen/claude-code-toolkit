@@ -251,8 +251,13 @@ if [[ "$MCPS" -eq 1 ]]; then
     # → install.sh --mcps inherits the env). A second mktemp on the same
     # template under heavy /tmp churn produced "mkstemp failed: File exists"
     # (user report 2026-05-01) and the duplicate download is wasteful anyway.
+    #
+    # BSD mktemp (macOS): the X-run must be the LAST chars of the template,
+    # otherwise X's stay literal and re-runs collide on the literal filename
+    # (user report 2026-05-02). Drop the .json suffix — readers (jq) ignore
+    # extension.
     if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
-        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/integrations-catalog-XXXXXX.json")
+        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/integrations-catalog-XXXXXX")
         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
         # Phase 32-01 (CAT-01): catalog renamed mcp-catalog.json → integrations-catalog.json.
         if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/integrations-catalog.json" -o "$MCP_CATALOG_TMP"; then
@@ -1509,7 +1514,9 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                     echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
                     _source_lib mcp
                     if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
-                        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX.json")
+                        # BSD mktemp (macOS): X-run must be at end. Drop .json
+                        # to avoid literal-filename collision on re-runs.
+                        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX")
                         CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
                         if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/mcp-catalog.json" -o "$MCP_CATALOG_TMP"; then
                             echo -e "${RED}✗${NC} Failed to download mcp-catalog.json — aborting" >&2

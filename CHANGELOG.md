@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **mktemp template suffix collision on macOS BSD** — `scripts/install.sh`
+  and `scripts/lib/bootstrap.sh` passed templates with chars after the X-run
+  (`mcp-catalog-XXXXXX.json`, `integrations-catalog-XXXXXX.json`,
+  `gsd-installer.XXXXXX.sh`). BSD mktemp requires the X-run at the end of
+  the template — extensions kept the X's literal and produced
+  `mkstemp failed: File exists` on second invocation (user report
+  2026-05-02). Suffixes dropped; readers (`jq`, `bash`) ignore extension.
+- **`test-mcp-wizard.sh` referenced removed catalog entry** — Phase 33-04
+  dropped `sequential-thinking` from the integrations catalog but the test
+  still requested it, breaking CI. Swapped to `playwright` (the only
+  remaining zero-config MCP).
+- **CI: `actions/checkout` deprecation warning** — bumped from `v4`
+  (Node.js 20) to `v6.0.2` (Node.js 24) per
+  [GitHub deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/).
+
 ## [4.9.0] - 2026-05-02
 
 Major install UX overhaul on top of 4.8.x — focused on PR #28 install run on

@@ -71,7 +71,10 @@ _bootstrap_run_gsd_default() {
     _bootstrap_log_warning "  This runs arbitrary upstream code under your account."
     if [[ -n "${TK_GSD_PIN_SHA256:-}" ]]; then
         local tmp
-        tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX.sh")
+        # BSD mktemp (macOS): X-run must be at end of template. .sh suffix
+        # left X's literal and made re-runs collide. bash "$tmp" works
+        # regardless of extension.
+        tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX")
         # Audit M3: shell-safe trap registration (printf '%q' for paths with `'`).
         local _quoted_tmp
         _quoted_tmp=$(printf '%q' "$tmp")
