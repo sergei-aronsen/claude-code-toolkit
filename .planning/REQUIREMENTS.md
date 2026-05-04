@@ -1,171 +1,158 @@
-# Requirements: claude-code-toolkit — Milestone v4.9 (Integrations Catalog)
+# Requirements — v5.0 Per-MCP Scope + Project Secrets Boundary
 
-**Defined:** 2026-05-02
+**Defined:** 2026-05-04
 **Core Value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
+**Milestone goal:** Give the user granular per-MCP scope control (`user` vs `project`) with sensible per-MCP defaults, treat secrets correctly per scope (no literal secrets in any file that lives in a project repo), close the secrets-leak gap on uninstall, and add Calendly to the catalog.
 
-## Milestone v4.9 Requirements
+## v5.0 Requirements
 
-### Catalog Schema (CAT)
+Requirements grouped by category. Each maps to exactly one phase via the Traceability table.
 
-- [ ] **CAT-01**: `scripts/lib/integrations-catalog.json` (renamed from `mcp-catalog.json`) supports per-entry `components: { mcp?, cli? }` blocks where each component is independently optional. `mcp-catalog.json` removed; `scripts/lib/mcp.sh` reads the new path.
-- [ ] **CAT-02**: Each MCP block carries `install_args[]`, `env_var_keys[]`, `requires_oauth: bool`, optional `description`. Each CLI block carries `detect_cmd: string`, `install: { darwin: string, linux: string }`, optional `post_install_hint: string`. Schema validated by a new `scripts/validate-integrations-catalog.py` invoked from `make check`.
-- [ ] **CAT-03**: Each entry carries `category: string` (one of: `docs-research`, `backend`, `payments`, `email`, `workspace`, `project-management`, `communication`, `design`, `dev-tools`, `monitoring`) and optional `unofficial: true` flag. Validator rejects unknown categories.
-- [ ] **CAT-04**: Backward-compat: `--mcps` CLI flag in `scripts/install.sh` continues to function as alias for `--integrations`. Deprecation note printed to stderr; exit behavior unchanged.
+### Catalog schema (`scripts/lib/integrations-catalog.json` + validator)
 
-### CLI Installer Library (CLI)
+- [ ] **SCOPE-01**: New per-entry `default_scope: "user"|"project"` field on every `components.mcp.<name>` block in `integrations-catalog.json`. Validator (`scripts/validate-integrations-catalog.py`) enforces the field is present and value is one of the two enum values for every MCP. CLI-only entries are unaffected (no scope concept for `command -v` checks).
+- [ ] **SCOPE-02**: Default-scope assignments baked into the catalog as follows. Personal-tooling MCPs default `user`: `firecrawl`, `notebooklm`, `notion`, `youtrack`, `context7`, `openrouter`, `figma`, `playwright`, `magic`, `sentry`. Per-app infra MCPs default `project`: `supabase`, `cloudflare`, `stripe`, `slack`, `resend`, `aws-cost-explorer`, `aws-cloudwatch-logs`, `jira`, `linear`, `telegram`. Calendly default `user` (personal calendar tooling).
+- [ ] **SCOPE-03**: Backward-compat fallback in `mcp_catalog_load` (`scripts/lib/mcp.sh`): if a catalog entry lacks `default_scope`, treat it as `user` and emit no warning. Pre-v5.0 catalogs continue to work; pre-existing user installs are not broken.
 
-- [x] **CLI-01**: `scripts/lib/cli-installer.sh` exposes `cli_detect <name>` (returns 0 if `command -v` succeeds, 1 otherwise) and `cli_install <name> <darwin_cmd> <linux_cmd>` (dispatches by `uname`, returns rc of underlying installer).
-- [x] **CLI-02**: `cli_install` fails fast on Windows / unsupported `uname` with explicit error to stderr; never auto-elevates with `sudo`. If `brew` is absent on macOS, prints fallback instruction and returns non-zero (skipped, not aborted at top level).
-- [x] **CLI-03**: `cli_install` uses continue-on-error semantics in the dispatch loop (mirroring Phase 25 D-08). Per-CLI stderr captured to `mktemp` for diagnostics; aggregate summary printed at end with `✓ installed` / `⊘ already present` / `✗ failed: <reason>` per row.
-- [x] **CLI-04**: Post-install hints printed to stderr verbatim from catalog `cli.post_install_hint`. Toolkit never executes `<tool> login` automatically — users run it themselves.
+### TUI per-row scope toggle (`scripts/lib/mcp.sh` + `scripts/lib/tui.sh`)
 
-### TUI Redesign (TUI)
+- [ ] **TUI-SCOPE-01**: Each MCP row in the integrations TUI carries a scope indicator immediately after the checkbox: `[U]` (user-scope), `[P]` (project-scope), `[L]` (legacy local-to-cwd). Indicator is colored green for the chosen scope. NO_COLOR-aware (plain bracket form when `NO_COLOR` is set).
+- [ ] **TUI-SCOPE-02**: Hotkey to flip the scope of the currently-highlighted row only. Suggested binding: `Tab` (cycle U → P → L → U) or `Shift-S`. Final binding chosen during planning; documented in TUI hint footer either way.
+- [ ] **TUI-SCOPE-03**: Existing global header `s` keypress (Phase 37, commit `fc000d5`) repurposed as "set ALL visible rows to scope X" shortcut — pressing `s` cycles a global scope value and assigns it to every row in one stroke. Banner updated to read `s: set all to <scope>` instead of the previous toggle copy.
+- [ ] **TUI-SCOPE-04**: Per-row scope state stored in a parallel array `MCP_SELECTED_SCOPE[]` (parallel to `MCP_NAMES`/`MCP_STATUS`/`MCP_HAS_CLI`). Initialized from `default_scope` at TUI launch via `mcp_status_array`. Bash 3.2 compat (no associative arrays).
+- [ ] **TUI-SCOPE-05**: Dispatcher (`install.sh` MCP install loop) reads `MCP_SELECTED_SCOPE[$i]` per row before invoking `mcp_wizard_run`, exporting `TK_MCP_SCOPE=<scope>` for that single invocation. The pre-v5.0 single-shell `TK_MCP_SCOPE` global is retired in favor of per-call injection (still honored on the CLI for `--mcp-scope <s>` non-interactive force-set).
 
-- [x] **TUI-01**: `scripts/install.sh --integrations` page groups rows by `category` with category headers (e.g., `── Backend ──`); category order matches the canonical 10-list in CAT-03; rows within a category are alphabetical.
-- [x] **TUI-02**: Each row displays per-component status: MCP column (`✓` / `✗` / `⊘ already`) detected via `claude mcp list`; CLI column (`✓` / `✗` / `⊘ already`) detected via `command -v`. Re-detected on every TUI launch — no cache file.
-- [x] **TUI-03**: Entries with `unofficial: true` render with a yellow `!` glyph next to the name and require a per-row `[y/N]` confirm prompt before install (`< /dev/tty`, fail-closed `N`). Reuse Phase 18 UN-03 prompt pattern.
-- [x] **TUI-04**: New global flags: `--mcp-only` installs only MCP components from selected rows; `--cli-only` installs only CLI components; default (no flag) installs both when both available. Mutually exclusive — using both errors out.
-- [x] **TUI-05**: Install summary at end prints per-entry, per-component status table (entry × {MCP, CLI} matrix). Mirrors Phase 25 D-28 summary contract.
+### Project secrets writer (`scripts/lib/project-secrets.sh` — new lib)
 
-### New Integrations (INT)
+- [ ] **SEC-01**: New library `scripts/lib/project-secrets.sh` exposes three functions: `project_secrets_write_env <project_root> <KEY> <VALUE>`, `project_secrets_ensure_gitignore <project_root>`, `project_secrets_render_mcp_env_block <KEY...>`. Read-only callers can `source` it without side effects.
+- [ ] **SEC-02**: `project_secrets_write_env` writes `KEY=VALUE` to `<project_root>/.env`. File created if absent (mode 0600 enforced via `touch && chmod 0600` BEFORE first write). Idempotent merge: if `KEY` already exists in the file, prompt `[y/N] Overwrite KEY in <project>/.env?` reusing the v4.3 UN-03 `< /dev/tty` + fail-closed-N contract. Default N preserves existing value.
+- [ ] **SEC-03**: `project_secrets_ensure_gitignore` checks `<project_root>/.gitignore` for an exact `.env` line (not `*.env`, not commented). If absent, appends `.env\n` with a leading comment `# claude-code-toolkit: never commit project-scope MCP secrets`. Creates `.gitignore` if missing. Idempotent on re-run.
+- [ ] **SEC-04**: `project_secrets_render_mcp_env_block <KEY1> <KEY2> ...` returns a JSON object string `{"KEY1": "${KEY1}", "KEY2": "${KEY2}"}` for embedding into `.mcp.json` as the `env` field. The `${VAR}` form is the Claude Code substitution convention — `claude` resolves the var from the environment at MCP launch.
+- [ ] **SEC-05**: Defense-in-depth literal-secret refusal: any function that writes to `.mcp.json` (whether in this lib or in the wizard) MUST refuse to write a string value into an `env` block that does not match the regex `^\$\{[A-Z_][A-Z0-9_]*\}$`. Refusal returns rc=1 with `✗ refusing to write literal value into .mcp.json (use ${VAR} substitution)` to stderr. Test seam `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` exists for hermetic tests only and prints a one-line warning when honored.
+- [ ] **SEC-06**: `project_secrets_write_env` rejects any `VALUE` containing shell metacharacters (`$`, backtick, backslash, double-quote, single-quote, newline) — same allow-list as `_mcp_validate_value` in `mcp.sh`. Reuses or refactors the existing helper to share the rule.
 
-- [ ] **INT-01**: `supabase` entry — MCP (`@supabase/mcp-server-supabase`) + CLI (`brew install supabase/tap/supabase` darwin, official shell installer linux) + post-install hint `supabase login`. Category: `backend`.
-- [ ] **INT-02**: `cloudflare` entry — MCP (`@cloudflare/mcp-server-cloudflare`) + CLI `wrangler` (`npm i -g wrangler` darwin+linux) + post-install hint `wrangler login`. Category: `backend`.
-- [ ] **INT-03**: `stripe` entry — MCP (`@stripe/mcp-server-stripe`) + CLI (`brew install stripe/stripe-cli/stripe` darwin, apt-deb method linux) + post-install hint `stripe login`. Category: `payments`.
-- [ ] **INT-04**: `aws-cost-explorer` entry — MCP only (`@awslabs/mcp-server-cost-explorer` or current name). Category: `backend`. CLI shared with INT-05.
-- [ ] **INT-05**: `aws-cloudwatch-logs` entry — MCP (`@awslabs/mcp-server-cloudwatch-logs`) + shared `aws` CLI (`brew install awscli` darwin, official bundled installer linux) + post-install hint `aws configure`. Category: `backend`.
-- [ ] **INT-06**: `notebooklm` entry — MCP + CLI (`nlm` via `pipx install nlm` or community recipe) + post-install hint `nlm login`. `unofficial: true`. Category: `docs-research`.
-- [ ] **INT-07**: `youtrack` entry — MCP only (`@jetbrains/mcp-server-youtrack`). Auth via API token env var. Category: `project-management`.
-- [ ] **INT-08**: `linear` entry — MCP only (`@linear/mcp-server`). Auth via API key env var. Category: `project-management`.
-- [ ] **INT-09**: `jira` entry — MCP only (Atlassian official). Auth via API token + workspace URL. Category: `project-management`.
-- [ ] **INT-10**: `figma` entry — MCP only (Figma Dev Mode MCP). Auth via personal access token. Category: `design`.
-- [ ] **INT-11**: `slack` entry — MCP only (Slack official). Auth via bot token + workspace ID. Category: `communication`.
-- [ ] **INT-12**: `telegram` entry — MCP only (community implementation, pinned by SHA). `unofficial: true`. Auth via bot token. Category: `communication`.
+### Wizard dispatch update (`scripts/lib/mcp.sh::mcp_wizard_run`)
 
-### Drops (DROP)
+- [ ] **DISP-01**: `mcp_wizard_run` reads `TK_MCP_SCOPE`. When `TK_MCP_SCOPE=project`, the wizard:
+  - Resolves `project_root` from `pwd` (or `TK_PROJECT_ROOT` test seam).
+  - Collects each env-var via the existing hidden-input prompt loop (3-attempt, mask-display) — unchanged from v4.6 MCP-04.
+  - Calls `project_secrets_write_env` per key (writes to `<project>/.env`).
+  - Calls `project_secrets_ensure_gitignore` once before the first write.
+  - Invokes `claude mcp add --scope project ...` with the env block rendered as `${VAR}` substitution form (NOT literal values). Claude CLI is responsible for writing `.mcp.json` from those args; toolkit verifies the resulting file does not contain literal secrets via SEC-05.
+- [ ] **DISP-02**: When `TK_MCP_SCOPE=user` or `TK_MCP_SCOPE=local` (or unset), wizard preserves v4.6/v4.9 behavior: write to `~/.claude/mcp-config.env` via `mcp_secrets_set`, invoke `claude mcp add --scope <user|local>` with literal env values exported via `env KEY=V`. No regression on existing flow.
+- [ ] **DISP-03**: Defer-secrets path (`TK_MCP_DEFER_SECRETS=1`, set by install.sh during dispatch) extended for `project` scope: still pre-creates blank stub entries, but in `<project>/.env` (not `mcp-config.env`) when scope is `project`. Stub-only file write triggers `project_secrets_ensure_gitignore`. Deferred queue tuple grows to 4 fields: `name\tkeys\tinstall_args\tscope` so the post-install summary can print scope-correct "edit X file then reload" hints.
+- [ ] **DISP-04**: Post-install summary printer (already part of install.sh's MCP wizard close) prints per-MCP scope alongside the existing keys-needed list. Project-scope MCPs get a distinct hint line: `→ Edit <project>/.env to fill values; ensure .env is in your .gitignore (we appended it).`
 
-- [ ] **DROP-01**: `sequential-thinking` entry removed from catalog. Native Claude extended thinking covers the use case. CHANGELOG notes the removal under v4.9 with migration note (no action needed; users keep existing install if any).
+### Uninstall secret cleanup (`scripts/uninstall.sh`)
 
-### Existing Re-categorization (EXIST)
+- [ ] **UN-SEC-01**: New helper `uninstall_prompt_mcp_keys <name> <key1> <key2>...` in `uninstall.sh`. Reads keys for the named MCP from the catalog (`integrations-catalog.json` `env_var_keys`). Prompts `[y/N] also remove keys K1, K2 from ~/.claude/mcp-config.env?` via `< /dev/tty` (fail-closed N on no-TTY, mirrors UN-03). On Y, rewrites `mcp-config.env` excluding those keys, preserves 0600. On N (default) the keys remain — user may reinstall the MCP later.
+- [ ] **UN-SEC-02**: When `claude mcp remove <name>` is invoked from any toolkit-driven uninstall path (currently the bulk uninstall for the toolkit; future: per-MCP uninstall command if added), `uninstall_prompt_mcp_keys` is called immediately after.
+- [ ] **UN-SEC-03**: Full toolkit uninstall (`scripts/uninstall.sh` whole-toolkit path) prompts ONCE about the entire `~/.claude/mcp-config.env`: `[y/N] also remove ~/.claude/mcp-config.env (X keys for Y MCPs)?` Default N — the user may keep the file independent of toolkit lifecycle. On Y, file deleted before the LAST-step `STATE_FILE` removal (UN-05 D-06 ordering preserved). The base-plugin invariant (`diff -q`) still runs and still wins.
+- [ ] **UN-SEC-04**: Project `.env` files are **never** touched by `uninstall.sh`. Documented contract: project `.env` belongs to the user's project, not to the toolkit. Even when `--full` or any future flag is passed. Verified by hermetic test (no fopen of any `.env` file outside `~/.claude/`).
+- [ ] **UN-SEC-05**: `uninstall.sh --keep-state` (v4.4 KEEP-01 carry) implies `--keep-secrets` — neither `mcp-config.env` nor any other secret-bearing file is touched on `--keep-state`. Documented in `--help` and `docs/INSTALL.md`.
 
-- [ ] **EXIST-01**: All 8 surviving existing entries (context7, firecrawl, magic, notion, openrouter, playwright, resend, sentry) tagged with `category` per the canonical 10-list. Optional CLI block added to `firecrawl`, `playwright`, `sentry` (their CLIs exist and add value); other 5 stay MCP-only.
+### Catalog growth (`scripts/lib/integrations-catalog.json`)
 
-### Documentation (DOCS)
+- [ ] **INT-13**: Add `calendly` MCP entry to the catalog. `display_name: "Calendly"`, `category: "workspace"` (or new `scheduling` category if planning decides), `unofficial: false`, `default_scope: "user"`, `requires_oauth: true` (Calendly MCP uses OAuth per the official docs at `developer.calendly.com/calendly-mcp-server`). `install_args` populated per the official MCP server spec. CLI block omitted (no companion CLI).
+- [ ] **INT-14**: Catalog explicitly does NOT add a "google-workspace" MCP. Decision logged in PROJECT.md and CHANGELOG: claude.ai's built-in Gmail/Calendar/Drive connectors already cover that surface. Adding a community wrapper would duplicate Anthropic's official OAuth flow and break under upstream API changes.
 
-- [ ] **DOCS-01**: New `docs/INTEGRATIONS.md` documents the catalog: 19-entry table, category groupings, install flow, `unofficial` semantics, `--mcp-only` / `--cli-only` flags, troubleshooting (missing `brew`, OAuth setup links).
-- [ ] **DOCS-02**: New `docs/INTEGRATIONS.md` "Global vs per-project" section explicitly states: toolkit installs MCPs + CLIs **globally** on the dev machine; SDKs (`stripe-node`, `@supabase/supabase-js`, etc.) are **per-project** and never touched by toolkit.
-- [ ] **DOCS-03**: `docs/INSTALL.md` `## Installer Flags` table updated with `--integrations`, `--mcp-only`, `--cli-only` rows and `--mcps` deprecation note.
-- [ ] **DOCS-04**: `README.md` "Killer Features" section adds Integrations Catalog bullet (1 line).
-- [ ] **DOCS-05**: `CHANGELOG.md` `[4.9.0]` consolidated single block per v4.4/v4.6/v4.8 convention. Sections: Added (CAT, CLI, TUI, INT-01..12), Changed (EXIST-01, CAT-04 alias), Removed (DROP-01).
+### Tests (`scripts/tests/`)
 
-### Tests (TEST)
+- [ ] **TEST-01**: New `scripts/tests/test-project-secrets.sh` (≥18 assertions, hermetic, idempotent). Coverage:
+  - `project_secrets_write_env` creates `.env` with mode 0600 when absent.
+  - `project_secrets_write_env` idempotent merge prompts on collision (Y overwrites, N preserves).
+  - `project_secrets_ensure_gitignore` appends `.env` when missing, no-op when present (exact `^\.env$` match), no false-positive on `*.env` or `# .env`.
+  - `project_secrets_render_mcp_env_block` produces `{"K1": "${K1}"}` form.
+  - SEC-05 literal-secret refusal: writing literal value into `.mcp.json` returns rc=1 with stderr message.
+  - SEC-06 metacharacter rejection.
+  - `project_secrets_write_env` rejects values containing `$`, backtick, backslash, quote, newline.
+  - `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` test seam works and warns.
+- [ ] **TEST-02**: Extend `scripts/tests/test-mcp-wizard.sh` (currently PASS=14) with scenarios for project-scope dispatch:
+  - DISP-01 happy path: scope=project → keys land in `<project>/.env`, `.gitignore` updated, `.mcp.json` `env` block uses `${VAR}` form, `mcp-config.env` untouched.
+  - DISP-02 no regression: scope=user → keys land in `mcp-config.env`, `<project>/.env` untouched.
+  - DISP-03 defer-secrets path with scope=project → blank stubs in `<project>/.env`, queue tuple has 4 fields.
+- [ ] **TEST-03**: Extend `scripts/tests/test-mcp-secrets.sh` (currently PASS=11) with scenarios for the new shared `_mcp_validate_value` boundary if refactored (SEC-06).
+- [ ] **TEST-04**: Extend `scripts/tests/test-mcp-selector.sh` (currently PASS=21) with scenarios for per-row scope toggle:
+  - TUI-SCOPE-01 indicator render in default state.
+  - TUI-SCOPE-02 single-row hotkey flips one row only.
+  - TUI-SCOPE-03 global `s` flips all visible rows.
+  - TUI-SCOPE-04 `MCP_SELECTED_SCOPE[]` initialized from `default_scope`.
+  - TUI-SCOPE-05 dispatcher exports per-row `TK_MCP_SCOPE` to `mcp_wizard_run`.
+- [ ] **TEST-05**: Extend `scripts/tests/test-uninstall-state-cleanup.sh` (or sibling test as planning decides) with secret-cleanup prompt scenarios:
+  - UN-SEC-01 single-MCP keys cleanup Y/N branches (file rewritten without those keys on Y, preserved on N).
+  - UN-SEC-03 full-toolkit `mcp-config.env` cleanup Y/N branches.
+  - UN-SEC-04 project `.env` is never opened/touched (negative assertion via filesystem fingerprint diff).
+  - UN-SEC-05 `--keep-state` preserves all secret files.
+- [ ] **TEST-06**: Catalog validator gains assertion for SCOPE-01: every MCP entry has `default_scope` field with valid enum value. Existing `scripts/validate-integrations-catalog.py` extended (no new file).
 
-- [ ] **TEST-01**: `scripts/tests/test-integrations-catalog.sh` validates `integrations-catalog.json` against the schema (19 entries, all categories valid, all `cli` blocks have `detect_cmd` and OS keys, all MCP blocks have `install_args`). Hermetic — does not invoke `claude` or `brew`. ≥10 assertions.
-- [ ] **TEST-02**: `scripts/tests/test-cli-installer.sh` exercises `cli_detect` + `cli_install` with mocked `command -v` and `brew`/`apt` shims. Covers: success, already-present, brew-absent fallback, Windows-rejection, post-install hint emission. ≥8 assertions.
-- [ ] **TEST-03**: `scripts/tests/test-integrations-tui.sh` extends existing `test-mcp-selector.sh` (PASS=21 baseline) with new assertions: category headers render, `unofficial` confirm prompt fires, `--mcp-only` skips CLI install, `--cli-only` skips MCP install, summary table shows per-component status. ≥15 new assertions on top of baseline.
-- [ ] **TEST-04**: All 3 new test suites wired into `Makefile` (Tests 31, 32, 33) and `.github/workflows/quality.yml` step `Tests 21-33`.
+### Distribution + docs
 
-### Distribution (DIST)
-
-- [ ] **DIST-01**: `manifest.json` bumped 4.8.0 → 4.9.0. New `scripts/lib/cli-installer.sh` registered under `files.libs[]`. `scripts/lib/integrations-catalog.json` registered (replaces `mcp-catalog.json` entry). `scripts/validate-integrations-catalog.py` registered under `files.scripts[]`.
-- [ ] **DIST-02**: `init-claude.sh --version` and `init-local.sh --version` derive from manifest at runtime — version-align gate stays a 2-file (manifest + CHANGELOG) atomic bump per v4.3 D-22 contract.
+- [ ] **DIST-01**: `manifest.json` registers `scripts/lib/project-secrets.sh` under existing `files.libs[]` array. `update-claude.sh` auto-discovers it via the v4.4 LIB-01 D-07 jq path — zero code changes to `update-claude.sh` needed. Manifest version bumped to `5.0.0` (major bump justified by user-visible scope semantics change in TUI + new uninstall prompts).
+- [ ] **DIST-02**: `init-claude.sh` and `init-local.sh` `--version` outputs bump to `5.0.0` via the existing manifest-derivation path (single source of truth). 3 plugin.json files (`tk-skills`, `tk-commands`, `tk-framework-rules`) bump to `5.0.0` to keep version-align gate green.
+- [ ] **DIST-03**: `CHANGELOG.md [5.0.0]` consolidated entry covers SCOPE-01..03, TUI-SCOPE-01..05, SEC-01..06, DISP-01..04, UN-SEC-01..05, INT-13..14, plus the v4.9 → v5.0 rationale (per-row scope was originally a v4.9 follow-up but grew enough to warrant a major bump because it changes the secrets-handling boundary).
+- [ ] **DOCS-01**: New "Per-MCP Scope" section in `docs/INTEGRATIONS.md`. Documents the U/P/L semantics, where each scope's secrets live (`mcp-config.env` vs `<project>/.env`), the `${VAR}` substitution convention in `.mcp.json`, the `.gitignore` guard, and worked examples for both user-scope and project-scope flows.
+- [ ] **DOCS-02**: `docs/INSTALL.md` "Installer Flags" table extended with any new CLI flags emerging from planning (e.g., `--mcp-scope=user|project`, `--mcp-scope-<name>=<scope>` for per-MCP non-interactive force). README "Killer Features" grid mentions per-MCP scope control as a v5.0 highlight.
+- [ ] **DOCS-03**: `docs/UNINSTALL.md` (or the existing uninstall section in INSTALL.md) documents the new secret-cleanup prompts (`mcp-config.env` per-MCP and full-toolkit) and the explicit "project `.env` never touched" contract.
 
 ## Future Requirements
 
-Deferred to future release. Tracked but not in v4.9 roadmap.
-
-### Catalog (CAT-FUT)
-
-- **CAT-FUT-01**: Catalog auto-sync with upstream MCP registry (Anthropic / community) — drop manual JSON maintenance. Blocked on no upstream registry yet.
-- **CAT-FUT-02**: User-extensible catalog at `~/.claude/integrations-catalog.local.json` merged at TUI load. Lower priority — solo-dev rarely adds custom entries.
-
-### TUI (TUI-FUT)
-
-- **TUI-FUT-04**: `--preset minimal|full|dev` to install pre-defined bundles (e.g., `dev` = sentry + playwright + context7). Revisit after 19-entry catalog in production.
-- **TUI-FUT-05**: Search/filter input in TUI (type to narrow rows). Only useful at >30 entries.
-
-### CLI Installer (CLI-FUT)
-
-- **CLI-FUT-01**: Windows support via WSL detection or chocolatey. Out of scope per POSIX invariant; revisit if Windows demand surfaces.
-- **CLI-FUT-02**: Version pinning per CLI (`cli.version_pin: "x.y.z"`). KISS — vendors handle their own update channels.
-
-### Integrations (INT-FUT)
-
-- **INT-FUT-01**: Mailgun MCP (no official, no critical use case for chat-time). Skip unless community produces one.
-- **INT-FUT-02**: Cursor `.cursorrules` / Aider `CONVENTIONS.md` bridges (BRIDGE-FUT-03/04 carry-over from v4.8).
-- **INT-FUT-03**: Discord MCP. Niche; revisit if requested.
-- **INT-FUT-04**: GitHub Issues MCP (covered by `gh` CLI today; revisit if MCP adds tool-call value).
+- **SCOPE-FUT-01**: Allow per-MCP scope override via env-var (e.g., `TK_MCP_SCOPE_supabase=user`) for non-interactive force without flags. Defer until friction surfaces.
+- **SCOPE-FUT-02**: TUI `--preset minimal|full|dev` (carry-over) with per-preset scope assignments.
+- **SEC-FUT-01**: Integration with macOS Keychain / Linux libsecret as an alternative store for `mcp-config.env`. Out of scope for v5.0 — adds a platform-specific dependency surface that needs its own milestone.
+- **SEC-FUT-02**: Detect a 1Password / Vault secret manager and offer to use it instead of plaintext `.env`. Out of scope.
+- **INT-FUT-05**: Google Workspace MCP wrapper — explicitly deferred (claude.ai connectors cover it). Re-evaluate only if Anthropic deprecates the connectors.
+- **INT-FUT-06**: Zoom / Microsoft Teams MCPs — out of scope until official MCPs exist.
 
 ## Out of Scope
 
-Explicitly excluded. Documented to prevent scope creep.
-
-| Feature | Reason |
-|---------|--------|
-| Auto-execute `wrangler login` / `supabase login` / `stripe login` | Security boundary — toolkit never opens a browser or runs OAuth flows on user's behalf. Hint-only contract. |
-| Install per-project SDKs (`@supabase/supabase-js`, `stripe-node`, etc.) | Out-of-band — SDKs belong in `package.json`/`composer.json`, not in `~/.claude/`. Documented in DOCS-02. |
-| Full AWS Labs MCP set (Bedrock, ECS, CDK, …) | Curated catalog; 2 narrow MCPs (Cost Explorer + CloudWatch Logs) are the tested set. Users wanting more install manually. |
-| Mailgun MCP | No critical chat-time use case + no major official MCP. SDK in app code is the right shape. |
-| Discord MCP | Niche; revisit on demand. |
-| Custom catalog editor UI | KISS — JSON file is editable; validator catches mistakes. |
-| Per-CLI auth wizard with browser handoff | Goes beyond toolkit's "config + hints" boundary. Vendors own their auth flow. |
-| Auto-update for installed CLIs | `brew upgrade` / `npm update -g` are user-driven; toolkit installs once and gets out of the way. |
-| Pinning MCP versions to SHA in catalog | Maintenance burden; rely on `npx -y` latest pull semantics. Revisit if drift causes incidents. |
-| Integration with `superpowers` plugin auto-discovery | superpowers manages its own skill loading; toolkit MCPs/CLIs are independent layer. |
-| Telemetry / usage reporting | Privacy-first toolkit posture; no opt-out telemetry. |
+- **Auto-rotate secrets** — toolkit reads + writes secrets but does not detect leaked or stale keys. Outside the security-tooling charter.
+- **Encrypt `mcp-config.env` at rest** — adds a passphrase prompt to every `claude` launch; usability cost outweighs threat (file is already 0600 + only readable by the user).
+- **Migrate existing v4.x users to per-row scope** — pre-v5.0 installs continue to work via SCOPE-03 backward-compat fallback. No interactive migration prompt.
+- **Add Google Workspace MCP** — see INT-14. claude.ai built-in connectors are the correct surface.
+- **Modify project `.env` files outside the toolkit-managed key set** — UN-SEC-04 forbids any toolkit write to project `.env` during uninstall. Same posture during install: only the keys explicitly named by the active wizard run are written.
+- **Web UI for managing scopes** — toolkit is POSIX terminal-only.
+- **Windows-native scope semantics** — POSIX invariant carries forward.
 
 ## Traceability
 
-Mapped by `gsd-roadmapper` 2026-05-02. All 36 v4.9 REQ-IDs assigned to exactly one of Phases 32-35.
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| SCOPE-01 | TBD | not-started |
+| SCOPE-02 | TBD | not-started |
+| SCOPE-03 | TBD | not-started |
+| TUI-SCOPE-01 | TBD | not-started |
+| TUI-SCOPE-02 | TBD | not-started |
+| TUI-SCOPE-03 | TBD | not-started |
+| TUI-SCOPE-04 | TBD | not-started |
+| TUI-SCOPE-05 | TBD | not-started |
+| SEC-01 | TBD | not-started |
+| SEC-02 | TBD | not-started |
+| SEC-03 | TBD | not-started |
+| SEC-04 | TBD | not-started |
+| SEC-05 | TBD | not-started |
+| SEC-06 | TBD | not-started |
+| DISP-01 | TBD | not-started |
+| DISP-02 | TBD | not-started |
+| DISP-03 | TBD | not-started |
+| DISP-04 | TBD | not-started |
+| UN-SEC-01 | TBD | not-started |
+| UN-SEC-02 | TBD | not-started |
+| UN-SEC-03 | TBD | not-started |
+| UN-SEC-04 | TBD | not-started |
+| UN-SEC-05 | TBD | not-started |
+| INT-13 | TBD | not-started |
+| INT-14 | TBD | not-started |
+| TEST-01 | TBD | not-started |
+| TEST-02 | TBD | not-started |
+| TEST-03 | TBD | not-started |
+| TEST-04 | TBD | not-started |
+| TEST-05 | TBD | not-started |
+| TEST-06 | TBD | not-started |
+| DIST-01 | TBD | not-started |
+| DIST-02 | TBD | not-started |
+| DIST-03 | TBD | not-started |
+| DOCS-01 | TBD | not-started |
+| DOCS-02 | TBD | not-started |
+| DOCS-03 | TBD | not-started |
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| CAT-01 | Phase 32 | Pending |
-| CAT-02 | Phase 32 | Pending |
-| CAT-03 | Phase 32 | Pending |
-| CAT-04 | Phase 32 | Pending |
-| CLI-01 | Phase 32 | Complete |
-| CLI-02 | Phase 32 | Complete |
-| CLI-03 | Phase 32 | Complete |
-| CLI-04 | Phase 32 | Complete |
-| TUI-01 | Phase 34 | Complete (Plan 34-01, commit 15b3bc1) |
-| TUI-02 | Phase 34 | Complete (Plan 34-01, commit 15b3bc1) |
-| TUI-03 | Phase 34 | Complete (Plan 34-02, commit fa67196) |
-| TUI-04 | Phase 34 | Complete (Plan 34-02, commit fa67196) |
-| TUI-05 | Phase 34 | Complete (Plan 34-03, commit 79fd98c) |
-| INT-01 | Phase 33 | Pending |
-| INT-02 | Phase 33 | Pending |
-| INT-03 | Phase 33 | Pending |
-| INT-04 | Phase 33 | Pending |
-| INT-05 | Phase 33 | Pending |
-| INT-06 | Phase 33 | Pending |
-| INT-07 | Phase 33 | Pending |
-| INT-08 | Phase 33 | Pending |
-| INT-09 | Phase 33 | Pending |
-| INT-10 | Phase 33 | Pending |
-| INT-11 | Phase 33 | Pending |
-| INT-12 | Phase 33 | Pending |
-| DROP-01 | Phase 33 | Pending |
-| EXIST-01 | Phase 33 | Pending |
-| DOCS-01 | Phase 35 | Pending |
-| DOCS-02 | Phase 35 | Pending |
-| DOCS-03 | Phase 35 | Pending |
-| DOCS-04 | Phase 35 | Pending |
-| DOCS-05 | Phase 35 | Pending |
-| TEST-01 | Phase 35 | Pending |
-| TEST-02 | Phase 35 | Pending |
-| TEST-03 | Phase 35 | Pending |
-| TEST-04 | Phase 35 | Pending |
-| DIST-01 | Phase 35 | Pending |
-| DIST-02 | Phase 35 | Pending |
-
-**Coverage:**
-
-- v4.9 requirements: 36 total
-- Mapped to phases: 36 ✓
-- Unmapped: 0
-- Phase distribution: Phase 32 (8), Phase 33 (14), Phase 34 (5), Phase 35 (11)
-
----
-*Requirements defined: 2026-05-02*
-*Last updated: 2026-05-02 — Traceability mapped by `gsd-roadmapper`; 36/36 REQ-IDs assigned to Phases 32-35.*
+**Total: 37 REQ-IDs.** Roadmapper will fill the Phase column and update Status as phases close.
