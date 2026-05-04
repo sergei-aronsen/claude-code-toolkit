@@ -17,7 +17,8 @@ Schema (v2):
           "env_var_keys": ["<UPPER_SNAKE>"...],
           "install_args": ["<string>"...],
           "description": "<string>",
-          "requires_oauth": <bool>
+          "requires_oauth": <bool>,
+          "default_scope": "user"|"project"
         }
       }
     }
@@ -28,7 +29,8 @@ Checks performed:
   2. Top-level "categories" must be a non-empty array of strings.
   3. Top-level "components" must be an object with at least the "mcp" key.
   4. Every entry under components.mcp must be an object with all required keys:
-     name, display_name, category, env_var_keys, install_args, description, requires_oauth.
+     name, display_name, category, env_var_keys, install_args, description,
+     requires_oauth, default_scope.
   5. components.mcp[<name>].name must equal the entry's key (self-reference invariant).
   6. components.mcp[<name>].category must be a member of top-level categories[].
   7. env_var_keys[] must contain only valid POSIX env-var names (^[A-Z_][A-Z0-9_]*$).
@@ -36,6 +38,7 @@ Checks performed:
   9. requires_oauth must be a boolean.
   10. No duplicate entry keys across components.mcp (JSON loader already enforces this,
       but we re-check defensively against parser quirks).
+  11. default_scope must equal "user" or "project" (Phase 36 SCOPE-01).
 
 Exit 0 on pass. Exit 1 with stderr messages on any failure.
 
@@ -65,6 +68,7 @@ REQUIRED_ENTRY_KEYS = (
     "install_args",
     "description",
     "requires_oauth",
+    "default_scope",
 )
 
 # POSIX env-var name shape: leading uppercase or underscore, then alphanumeric/underscore.
@@ -240,6 +244,15 @@ def main():
             fail(
                 location + ": .requires_oauth must be a boolean, got "
                 + type(requires_oauth).__name__
+            )
+            errors += 1
+
+        # Check 11: default_scope must be "user" or "project" (Phase 36 / SCOPE-01)
+        default_scope = entry.get("default_scope")
+        if default_scope not in ("user", "project"):
+            fail(
+                location + ": .default_scope must be 'user' or 'project', got "
+                + repr(default_scope)
             )
             errors += 1
 
