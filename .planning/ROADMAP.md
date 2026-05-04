@@ -125,7 +125,7 @@
   4. Sourcing `scripts/lib/mcp.sh` against a synthetic catalog where one MCP omits `default_scope` results in `mcp_catalog_load` silently treating that entry as `user` with no warning emitted on stderr; v4.9 baselines (`test-mcp-selector.sh` PASS=21, `test-integrations-catalog.sh` PASS≥10) stay green.
 **Plans**: 2 plans
 - [x] 36-01-foundation-PLAN.md — catalog edits + validator extension + loader fallback (single landing per D-10)
-- [ ] 36-02-test-contract-PLAN.md — TEST-06 validator enforcement test + backward-compat sibling test + Makefile wiring
+- [x] 36-02-test-contract-PLAN.md — TEST-06 validator enforcement test + backward-compat sibling test + Makefile wiring
 **UI hint**: no
 
 ### Phase 37: Project Secrets Library
@@ -218,7 +218,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 36. Catalog Schema + Backward Compat | 1/2 | In Progress|  |
+| 36. Catalog Schema + Backward Compat | 2/2 | Complete   | 2026-05-04 |
 | 37. Project Secrets Library | 0/4 | Not started | - |
 | 38. Wizard Dispatch Integration | 0/4 | Not started | - |
 | 39. TUI Per-Row Scope Toggle | 0/4 | Not started | - |

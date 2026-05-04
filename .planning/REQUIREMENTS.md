@@ -83,7 +83,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - UN-SEC-03 full-toolkit `mcp-config.env` cleanup Y/N branches.
   - UN-SEC-04 project `.env` is never opened/touched (negative assertion via filesystem fingerprint diff).
   - UN-SEC-05 `--keep-state` preserves all secret files.
-- [ ] **TEST-06**: Catalog validator gains assertion for SCOPE-01: every MCP entry has `default_scope` field with valid enum value. Existing `scripts/validate-integrations-catalog.py` extended (no new file).
+- [x] **TEST-06**: Catalog validator gains assertion for SCOPE-01: every MCP entry has `default_scope` field with valid enum value. Existing `scripts/validate-integrations-catalog.py` extended (no new file).
 
 ### Distribution + docs
 
