@@ -271,6 +271,44 @@ else:
     print("install_args errors: " + repr(errors))
 '
 
+# ─────────────────────────────────────────────────
+# A15 — every MCP entry has default_scope ∈ {"user","project"} (SCOPE-01 / TEST-06)
+# ─────────────────────────────────────────────────
+_pyq "A15: every MCP entry has default_scope in {user, project}" '
+mcp = catalog.get("components", {}).get("mcp", {})
+errors = []
+for name, entry in mcp.items():
+    ds = entry.get("default_scope")
+    if ds not in ("user", "project"):
+        errors.append((name, ds))
+if not errors:
+    print("OK")
+else:
+    print("entries with bad default_scope: " + repr(errors))
+'
+
+# ─────────────────────────────────────────────────
+# A16 — SCOPE-02 grid spot-check: known infra MCP defaults to project (D-07)
+# ─────────────────────────────────────────────────
+_pyq "A16: aws-cloudwatch-logs default_scope is project (D-07)" '
+ds = catalog.get("components", {}).get("mcp", {}).get("aws-cloudwatch-logs", {}).get("default_scope")
+if ds == "project":
+    print("OK")
+else:
+    print("aws-cloudwatch-logs default_scope is " + repr(ds) + ", expected project")
+'
+
+# ─────────────────────────────────────────────────
+# A17 — SCOPE-02 grid spot-check: known personal MCP defaults to user (D-06)
+# ─────────────────────────────────────────────────
+_pyq "A17: context7 default_scope is user (D-06)" '
+ds = catalog.get("components", {}).get("mcp", {}).get("context7", {}).get("default_scope")
+if ds == "user":
+    print("OK")
+else:
+    print("context7 default_scope is " + repr(ds) + ", expected user")
+'
+
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"
 [[ "$FAIL" -eq 0 ]]
