@@ -10,9 +10,9 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Catalog schema (`scripts/lib/integrations-catalog.json` + validator)
 
-- [ ] **SCOPE-01**: New per-entry `default_scope: "user"|"project"` field on every `components.mcp.<name>` block in `integrations-catalog.json`. Validator (`scripts/validate-integrations-catalog.py`) enforces the field is present and value is one of the two enum values for every MCP. CLI-only entries are unaffected (no scope concept for `command -v` checks).
-- [ ] **SCOPE-02**: Default-scope assignments baked into the catalog as follows. Personal-tooling MCPs default `user`: `firecrawl`, `notebooklm`, `notion`, `youtrack`, `context7`, `openrouter`, `figma`, `playwright`, `magic`, `sentry`. Per-app infra MCPs default `project`: `supabase`, `cloudflare`, `stripe`, `slack`, `resend`, `aws-cost-explorer`, `aws-cloudwatch-logs`, `jira`, `linear`, `telegram`. Calendly default `user` (personal calendar tooling).
-- [ ] **SCOPE-03**: Backward-compat fallback in `mcp_catalog_load` (`scripts/lib/mcp.sh`): if a catalog entry lacks `default_scope`, treat it as `user` and emit no warning. Pre-v5.0 catalogs continue to work; pre-existing user installs are not broken.
+- [x] **SCOPE-01**: New per-entry `default_scope: "user"|"project"` field on every `components.mcp.<name>` block in `integrations-catalog.json`. Validator (`scripts/validate-integrations-catalog.py`) enforces the field is present and value is one of the two enum values for every MCP. CLI-only entries are unaffected (no scope concept for `command -v` checks).
+- [x] **SCOPE-02**: Default-scope assignments baked into the catalog as follows. Personal-tooling MCPs default `user`: `firecrawl`, `notebooklm`, `notion`, `youtrack`, `context7`, `openrouter`, `figma`, `playwright`, `magic`, `sentry`. Per-app infra MCPs default `project`: `supabase`, `cloudflare`, `stripe`, `slack`, `resend`, `aws-cost-explorer`, `aws-cloudwatch-logs`, `jira`, `linear`, `telegram`. Calendly default `user` (personal calendar tooling).
+- [x] **SCOPE-03**: Backward-compat fallback in `mcp_catalog_load` (`scripts/lib/mcp.sh`): if a catalog entry lacks `default_scope`, treat it as `user` and emit no warning. Pre-v5.0 catalogs continue to work; pre-existing user installs are not broken.
 
 ### TUI per-row scope toggle (`scripts/lib/mcp.sh` + `scripts/lib/tui.sh`)
 

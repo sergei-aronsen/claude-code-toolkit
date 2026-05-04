@@ -124,7 +124,7 @@
   3. Running `python3 scripts/validate-integrations-catalog.py` fails loudly when an MCP entry lacks `default_scope` or carries an invalid enum value; passes for valid entries; `make check` invokes the validator and fails the build on schema violations.
   4. Sourcing `scripts/lib/mcp.sh` against a synthetic catalog where one MCP omits `default_scope` results in `mcp_catalog_load` silently treating that entry as `user` with no warning emitted on stderr; v4.9 baselines (`test-mcp-selector.sh` PASS=21, `test-integrations-catalog.sh` PASS≥10) stay green.
 **Plans**: 2 plans
-- [ ] 36-01-foundation-PLAN.md — catalog edits + validator extension + loader fallback (single landing per D-10)
+- [x] 36-01-foundation-PLAN.md — catalog edits + validator extension + loader fallback (single landing per D-10)
 - [ ] 36-02-test-contract-PLAN.md — TEST-06 validator enforcement test + backward-compat sibling test + Makefile wiring
 **UI hint**: no
 
@@ -218,7 +218,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 36. Catalog Schema + Backward Compat | 0/2 | Not started | - |
+| 36. Catalog Schema + Backward Compat | 1/2 | In Progress|  |
 | 37. Project Secrets Library | 0/4 | Not started | - |
 | 38. Wizard Dispatch Integration | 0/4 | Not started | - |
 | 39. TUI Per-Row Scope Toggle | 0/4 | Not started | - |
