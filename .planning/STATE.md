@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
 status: executing
-last_updated: "2026-05-04T16:14:33.198Z"
-last_activity: 2026-05-04 — ROADMAP.md created with 6 phases (36–41), 22 plans estimated, 37/37 REQ-IDs mapped (0 orphans)
+last_updated: "2026-05-04T16:40:12.632Z"
+last_activity: 2026-05-04 -- Phase 36 execution started
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
   percent: 0
 ---
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v5.0 Per-MCP Scope + Project Secrets Boundary — granular per-row scope control + safe project-scope secrets handling
+**Current focus:** Phase 36 — Catalog Schema + Backward Compat
 
 ## Current Position
 
-Phase: 36 — Catalog Schema + Backward Compat (not yet planned)
-Plan: —
-Status: Ready to execute — ROADMAP locked, awaiting `/gsd-plan-phase 36`
-Last activity: 2026-05-04 — ROADMAP.md created with 6 phases (36–41), 22 plans estimated, 37/37 REQ-IDs mapped (0 orphans)
+Phase: 36 (Catalog Schema + Backward Compat) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 36
+Last activity: 2026-05-04 -- Phase 36 execution started
 
 Progress: [░░░░░░░░░░░░░░░░░░░░] 0/6 phases (0%)
 

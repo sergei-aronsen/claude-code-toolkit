@@ -123,7 +123,9 @@
   2. Personal-tooling MCPs (`firecrawl`, `notebooklm`, `notion`, `youtrack`, `context7`, `openrouter`, `figma`, `playwright`, `magic`, `sentry`) default to `user`; per-app infra MCPs (`supabase`, `cloudflare`, `stripe`, `slack`, `resend`, `aws-cost-explorer`, `aws-cloudwatch-logs`, `jira`, `linear`, `telegram`) default to `project`.
   3. Running `python3 scripts/validate-integrations-catalog.py` fails loudly when an MCP entry lacks `default_scope` or carries an invalid enum value; passes for valid entries; `make check` invokes the validator and fails the build on schema violations.
   4. Sourcing `scripts/lib/mcp.sh` against a synthetic catalog where one MCP omits `default_scope` results in `mcp_catalog_load` silently treating that entry as `user` with no warning emitted on stderr; v4.9 baselines (`test-mcp-selector.sh` PASS=21, `test-integrations-catalog.sh` PASS≥10) stay green.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 36-01-foundation-PLAN.md — catalog edits + validator extension + loader fallback (single landing per D-10)
+- [ ] 36-02-test-contract-PLAN.md — TEST-06 validator enforcement test + backward-compat sibling test + Makefile wiring
 **UI hint**: no
 
 ### Phase 37: Project Secrets Library
