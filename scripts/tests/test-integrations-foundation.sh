@@ -107,7 +107,8 @@ run_s2_validator_missing_field() {
         "env_var_keys": [],
         "install_args": ["broken", "--", "npx", "-y", "broken-mcp"],
         "description": "no display_name on purpose",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       }
     }
   }
@@ -144,7 +145,8 @@ run_s3_validator_bad_category() {
         "env_var_keys": [],
         "install_args": ["evil", "--", "npx", "-y", "evil-mcp"],
         "description": "Bad category on purpose",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       }
     }
   }
@@ -208,7 +210,8 @@ run_s5_validator_bad_env_var_key() {
         "env_var_keys": ["bad_lowercase_key"],
         "install_args": ["lowercase_env", "--", "npx", "-y", "lowercase-mcp"],
         "description": "Lowercase env var names rejected by POSIX shape",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       }
     }
   }
