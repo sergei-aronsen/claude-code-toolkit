@@ -132,10 +132,13 @@ mcp_catalog_load() {
             MCP_OAUTH+=(0)
         fi
 
-        # Phase 34-01: category (default empty string when missing for back-compat
-        # with v4.6 schema-v1 catalogs that lack the `category` field).
+        # Phase 34-01: category — hard-required by CAT-03 validator. Default kept
+        # for defensive runtime read of historical (v4.6 schema-v1) catalogs;
+        # routes orphaned entries into the existing "dev-tools" bucket so they
+        # render in the TUI instead of vanishing under an empty-string sentinel.
+        # Matches the SCOPE-03 pattern on line 169 (fallback to a valid value).
         # shellcheck disable=SC2034
-        MCP_CATEGORY+=("$(jq -r --arg n "$name" '.components.mcp[$n].category // ""' "$catalog_path")")
+        MCP_CATEGORY+=("$(jq -r --arg n "$name" '.components.mcp[$n].category // "dev-tools"' "$catalog_path")")
 
         # Phase 34-01: unofficial flag (default 0; 1 only when set true).
         if [[ "$(jq -r --arg n "$name" '.components.mcp[$n].unofficial // false' "$catalog_path")" == "true" ]]; then
