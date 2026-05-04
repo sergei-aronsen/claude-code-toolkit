@@ -102,9 +102,17 @@ JSON
     assert_eq "project" "$withscope_ds" "BC1.3: present default_scope='project' preserved verbatim"
 
     # D-11 silent contract — stderr must be empty (zero bytes).
-    local stderr_size
+    # On regression, surface the first 5 lines of stderr in the failure message
+    # so the operator can diagnose without re-running the test by hand.
+    local stderr_size stderr_excerpt
     stderr_size=$(wc -c < "$stderr_tmp" | tr -d ' ')
-    assert_eq "0" "$stderr_size" "BC1.4: loader emits no stderr on missing default_scope (D-11 silent)"
+    if [ "$stderr_size" = "0" ]; then
+        assert_pass "BC1.4: loader emits no stderr on missing default_scope (D-11 silent)"
+    else
+        stderr_excerpt=$(head -5 "$stderr_tmp" | tr '\n' '|')
+        assert_fail "BC1.4: loader emits no stderr on missing default_scope (D-11 silent)" \
+            "stderr_size=$stderr_size, first-5-lines: $stderr_excerpt"
+    fi
 }
 
 # ─────────────────────────────────────────────────
