@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
-status: ready_to_execute
-last_updated: "2026-05-04T00:00:00.000Z"
-last_activity: "2026-05-04 — v5.0 ROADMAP created (6 phases 36–41, 22 plans, 37/37 REQ-IDs mapped); ready for /gsd-plan-phase 36"
+status: executing
+last_updated: "2026-05-04T16:14:33.198Z"
+last_activity: 2026-05-04 — ROADMAP.md created with 6 phases (36–41), 22 plans estimated, 37/37 REQ-IDs mapped (0 orphans)
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 22
+  total_plans: 0
   completed_plans: 0
   percent: 0
 ---
@@ -138,9 +138,9 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-04 (v5.0 ROADMAP creation)
+Last session: 2026-05-04T16:14:33.195Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
-Resume file: None
+Resume file: .planning/phases/36-catalog-schema-backward-compat/36-CONTEXT.md
 
 **Next steps:**
 
