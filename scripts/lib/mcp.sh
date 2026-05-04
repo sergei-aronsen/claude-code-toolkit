@@ -25,6 +25,8 @@
 #   CATEGORIES_ORDER[]     — canonical ordered list from .categories[] in the catalog
 #   MCP_STATUS[]           — "installed"|"absent"|"unknown" (per-entry MCP install state)
 #   CLI_STATUS[]           — "installed"|"absent"|"na" (per-entry companion CLI state)
+# Globals (write, Phase 36 (SCOPE-01/03)):
+#   MCP_DEFAULT_SCOPE[]    — "user"|"project" (parallel; missing field → "user" fallback per D-09)
 # Globals (write, Plan 02):
 #   MCP_SECRET_KEYS[]      — keys from mcp-config.env (parallel to MCP_SECRET_VALUES)
 #   MCP_SECRET_VALUES[]    — values from mcp-config.env
@@ -106,6 +108,9 @@ mcp_catalog_load() {
     MCP_UNOFFICIAL=()
     # shellcheck disable=SC2034
     MCP_CLI_DETECT=()
+    # Phase 36 (SCOPE-01/03): per-entry default scope ("user"|"project").
+    # shellcheck disable=SC2034
+    MCP_DEFAULT_SCOPE=()
     local name
     while IFS= read -r name; do
         # shellcheck disable=SC2034
@@ -157,6 +162,11 @@ mcp_catalog_load() {
             # shellcheck disable=SC2034
             MCP_CLI_DETECT+=("")
         fi
+
+        # Phase 36 (SCOPE-03): default_scope with silent fallback to "user" for pre-v5.0
+        # catalogs that lack the field. Matches the .category // "" form on line 133.
+        # shellcheck disable=SC2034
+        MCP_DEFAULT_SCOPE+=("$(jq -r --arg n "$name" '.components.mcp[$n].default_scope // "user"' "$catalog_path")")
     done < <(jq -r '.components.mcp | keys | sort | .[]' "$catalog_path")
 }
 
