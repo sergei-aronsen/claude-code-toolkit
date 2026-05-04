@@ -821,7 +821,7 @@ For entries with `unofficial: true` (notebooklm, telegram), insert after `unoffi
 
 **Assumption-free verdict:** Phase 36 is small enough and the codebase is stable enough that no `[ASSUMED]` claims are needed. If the catalog or validator is edited between research and planning, the planner should re-verify line ranges (cheap — one `wc -l` and one `grep`).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the backward-compat loader test go in `test-integrations-catalog.sh` or in a sibling `test-catalog-scope-fallback.sh`?**
    - What we know: D-14 leaves it to discretion. `test-integrations-catalog.sh` uses a `_pyq` helper that reads the SHIPPED catalog and runs inline Python — it does NOT have a synthetic-catalog harness today. Adding one means adding `mktemp` + sourcing `mcp.sh` + the `TK_MCP_CATALOG_PATH` seam, which is a Bash-test idiom (matches `test-mcp-selector.sh`), not a Python-against-shipped-catalog idiom.
