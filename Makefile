@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui sync-skills-mirror validate-skills-desktop validate-marketplace
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace
 
 # Default target
 help:
@@ -221,6 +221,9 @@ test:
 	@echo "Test 47: integrations TUI redesign (TEST-03 — Phase 35)"
 	@bash scripts/tests/test-integrations-tui.sh
 	@echo ""
+	@echo "Test 48: catalog default_scope fallback (Phase 36 / SCOPE-03)"
+	@bash scripts/tests/test-catalog-scope-fallback.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -258,6 +261,10 @@ test-cli-installer:
 # Test 47 — integrations TUI redesign (TEST-03 — Phase 35), invokable standalone
 test-integrations-tui:
 	@bash scripts/tests/test-integrations-tui.sh
+
+# Test 48 — catalog default_scope fallback (Phase 36 / SCOPE-03), invokable standalone
+test-catalog-scope-fallback:
+	@bash scripts/tests/test-catalog-scope-fallback.sh
 
 # Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
 # from local $HOME/.claude/skills/. Not run by CI.
