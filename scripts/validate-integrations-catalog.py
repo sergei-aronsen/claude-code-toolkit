@@ -60,6 +60,11 @@ DEFAULT_CATALOG_PATH = os.path.join(REPO_ROOT, "scripts", "lib", "integrations-c
 EXPECTED_SCHEMA_VERSION = 2
 
 # Required keys on every components.mcp[<name>] entry.
+# `default_scope` is intentionally NOT listed here — its absence is reported
+# by Check 11's dedicated diagnostic (see WR-02), which contract test BC2.2
+# locks via grep. Listing it in the bulk-missing path would cause `continue`
+# on line 171 to skip Check 11 entirely, leaving BC2.2 dependent on the bulk
+# formatter's substring shape.
 REQUIRED_ENTRY_KEYS = (
     "name",
     "display_name",
@@ -68,7 +73,6 @@ REQUIRED_ENTRY_KEYS = (
     "install_args",
     "description",
     "requires_oauth",
-    "default_scope",
 )
 
 # POSIX env-var name shape: leading uppercase or underscore, then alphanumeric/underscore.
@@ -247,9 +251,20 @@ def main():
             )
             errors += 1
 
-        # Check 11: default_scope must be "user" or "project" (Phase 36 / SCOPE-01)
+        # Check 11: default_scope must be "user" or "project" (Phase 36 / SCOPE-01).
+        # `default_scope` is deliberately NOT in REQUIRED_ENTRY_KEYS so that
+        # this dedicated diagnostic always fires on missing/invalid values.
+        # Contract test BC2.2 (test-catalog-scope-fallback.sh) locks the
+        # missing-field message via grep — without this dedicated branch, BC2.2
+        # would silently regress if the bulk-missing formatter ever changed.
         default_scope = entry.get("default_scope")
-        if default_scope not in ("user", "project"):
+        if default_scope is None:
+            fail(
+                location
+                + ": .default_scope is required (must be 'user' or 'project')"
+            )
+            errors += 1
+        elif default_scope not in ("user", "project"):
             fail(
                 location + ": .default_scope must be 'user' or 'project', got "
                 + repr(default_scope)
