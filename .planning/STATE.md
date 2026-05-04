@@ -1,81 +1,61 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.9
-milestone_name: Integrations Catalog
-status: ready_to_ship — v4.9 milestone code-complete; manual git tag v4.9.0 per CLAUDE.md never-push-main invariant
-last_updated: "2026-05-02T11:30:00.000Z"
-last_activity: "2026-05-02 — Phase 35 sequential execution on main (4 commits: 17f3ace, dd5b486, 235099e, <35-04>)"
+milestone: v5.0
+milestone_name: Per-MCP Scope + Project Secrets Boundary
+status: defining_requirements
+last_updated: "2026-05-04T00:00:00.000Z"
+last_activity: "2026-05-04 — v5.0 milestone started; REQUIREMENTS + ROADMAP next"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-02)
+See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** v4.9 Integrations Catalog complete — ready to tag v4.9.0 (manual user action per CLAUDE.md never-push-main invariant)
+**Current focus:** v5.0 Per-MCP Scope + Project Secrets Boundary — granular per-row scope control + safe project-scope secrets handling
 
 ## Current Position
 
-Phase: 35 (distribution-tests-docs) — COMPLETE; v4.9 milestone closed at code-level
-Plans done (Phase 32): 32-01 ✓, 32-02 ✓, 32-03 ✓
-Plans done (Phase 33): 33-01 ✓ (INT-01/02/04/05 backend), 33-02 ✓ (INT-03/07-10 payments+pm+design), 33-03 ✓ (INT-06/11/12 comm+research), 33-04 ✓ (DROP-01 + EXIST-01)
-Plans done (Phase 34): 34-01 ✓ (TUI-01/02 categories + per-component status), 34-02 ✓ (TUI-03/04 unofficial confirm + --mcp-only/--cli-only mutex flags), 34-03 ✓ (TUI-05 per-component summary table — also retroactively fixed Plan 34-01 index-mismatch ordering bug)
-Plans done (Phase 35): 35-01 ✓ (DIST-01/02 manifest 4.9.0 + version-align), 35-02 ✓ (TEST-01/02/03/04 three hermetic test suites + Makefile/CI), 35-03 ✓ (DOCS-01/02 docs/INTEGRATIONS.md + Global-vs-per-project boundary), 35-04 ✓ (DOCS-03/04/05 INSTALL.md flags + README + CHANGELOG)
-Status: v4.9 milestone code-complete; manual git tag v4.9.0 per CLAUDE.md never-push-main invariant. All baselines green: test-mcp-selector PASS=21, test-bootstrap PASS=26, test-install-tui PASS=52, test-integrations-foundation PASS=32. New tests green: test-integrations-catalog PASS=14 (floor 10), test-cli-installer PASS=24 (floor 8), test-integrations-tui PASS=36 (floor 15). make check rc=0. python3 scripts/validate-integrations-catalog.py rc=0. init-claude.sh --version + init-local.sh --version both print 4.9.0.
-Last activity: 2026-05-02 — Phase 35 sequential execution on main (4 commits)
-Next: User runs `git tag v4.9.0 && git push origin v4.9.0` + creates GitHub Release. Awaiting v5.0 scoping.
-
-## Plan Count Estimate
-
-Total estimated plans across v4.9: **14 plans** distributed across 4 phases.
-
-| Phase | Plans | Rationale |
-|-------|-------|-----------|
-| 32. Foundation — Schema Migration + CLI Installer Library | 3 | (a) Schema rename + validator (`integrations-catalog.json` + `validate-integrations-catalog.py`, `mcp.sh` path swap, BACKCOMPAT alias `--mcps`); (b) `cli-installer.sh` library (`cli_detect`/`cli_install` + dispatch by `uname` + brew-absent fallback + continue-on-error + post-install hint stderr emit); (c) Hermetic smoke covering CAT-01..04 + CLI-01..04 surface contracts. Mirrors v4.8 Phase 28 (3-plan foundation) shape. |
-| 33. Catalog Population — 11 New + Drop + Re-categorize | 4 | (a) Backend cluster (supabase, cloudflare, aws-cost-explorer, aws-cloudwatch-logs sharing `aws` CLI — INT-01, INT-02, INT-04, INT-05); (b) Payments + Project-Mgmt + Design (stripe + youtrack + linear + jira + figma — INT-03, INT-07..10); (c) Communication + Research with `unofficial` flags (slack, telegram, notebooklm — INT-06, INT-11, INT-12); (d) Drop `sequential-thinking` + tag 8 existing entries with category + add CLI blocks to firecrawl/playwright/sentry (DROP-01 + EXIST-01). 4 plans isolate change risk and let each cluster ship + test independently before TUI work begins. |
-| 34. TUI Redesign — Categories, Status, Unofficial Confirm, Component Flags | 3 | (a) Category-grouped rendering + per-component status detection (TUI-01, TUI-02 — extends `mcp.sh` rendering layer); (b) `unofficial` `[y/N]` confirm gate + `--mcp-only`/`--cli-only` flags with mutex (TUI-03, TUI-04 — reuses v4.3 UN-03 prompt + v4.8 mutex pattern); (c) Per-component summary table at dispatch close (TUI-05 — mirrors Phase 25 D-28 contract). Mirrors v4.8 Phase 30 (3-plan UX) shape. |
-| 35. Distribution + Tests + Docs | 4 | (a) Manifest + version-align (DIST-01, DIST-02 — manifest 4.9.0 bump + 3 plugin.json sync + version-align gate); (b) Three hermetic test suites (TEST-01 catalog schema, TEST-02 cli-installer, TEST-03 integrations-tui) + Makefile/CI wiring (TEST-04); (c) `docs/INTEGRATIONS.md` NEW + Global-vs-per-project boundary (DOCS-01, DOCS-02); (d) INSTALL.md flag rows + README Killer Features bullet + CHANGELOG `[4.9.0]` consolidated (DOCS-03, DOCS-04, DOCS-05). Mirrors v4.8 Phase 31 close-pattern (3+ plans) — split to 4 because v4.9 ships 3 test suites vs v4.8's 1 aggregator. |
-
-**Total: 14 plans.** Range matches "standard" granularity (5-8 phases recommended; 4 phases here is justified by tight foundation→population→UX→close dependency chain — same shape as v4.8 Multi-CLI Bridge which shipped 12 plans across 4 phases).
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-04 — v5.0 milestone started
 
 ## Accumulated Context
 
-### Decisions (carry-over relevant for v4.9)
+### Decisions (carry-over relevant for v5.0)
 
 Full log in PROJECT.md Key Decisions table. Recent highlights still relevant:
 
-- **Phase 25 (v4.6) MCP catalog foundation:** `scripts/lib/mcp-catalog.json` + `scripts/lib/mcp.sh` + 9-MCP TUI is the foundation. v4.9 extends, does not rewrite.
-- **Phase 24 (v4.6) lib foundation:** `scripts/lib/{tui.sh, detect2.sh, dispatch.sh}` is the integration point — new categories + status detection extend tui.sh, not new machinery.
-- **BACKCOMPAT-01 (v4.6):** `--mcps` flag must continue to work as alias for `--integrations` after rename. URL byte-identicality preserved.
-- **v4.4 LIB-01 D-07 jq path** (`.files | to_entries[] | .value[] | .path`) auto-discovers any new `files.libs[]` entry — `cli-installer.sh` adds zero new code to `update-claude.sh` if registered there.
-- **v4.3 UN-03 `[y/N/d]` prompt contract:** read from `< /dev/tty`, fail-closed `N` on no-TTY. Reuse for `unofficial` MCP confirmation prompts (notebooklm, telegram).
-- **Phase 25 D-08 continue-on-error pattern:** per-MCP install failure does not abort the loop; reuse for CLI installs in v4.9.
-- **v4.8 Phase 30 mutex pattern:** `--bridges` / `--no-bridges` mutex contract. Reuse for `--mcp-only` / `--cli-only` mutex in TUI-04.
+- **Phase 25 (v4.6) MCP catalog foundation:** `scripts/lib/mcp-catalog.json` (renamed `integrations-catalog.json` in v4.9) + `scripts/lib/mcp.sh` + TUI is the foundation. v5.0 extends, does not rewrite.
+- **Phase 37 (v4.9 follow-up, commit fc000d5) global scope toggle:** `TK_MCP_SCOPE` env var + TUI header `s` keypress flip user/local. v5.0 makes this per-row; the global toggle becomes "set all" shortcut.
+- **MCP-SEC-01/02 (v4.6):** `~/.claude/mcp-config.env` mode 0600 enforcement. Carries forward verbatim for user-scope secrets.
+- **v4.3 UN-03 `[y/N/d]` prompt contract:** read from `< /dev/tty`, fail-closed `N` on no-TTY. Reuse for new uninstall secret-cleanup prompts.
 - **Bash 3.2 compatibility:** no `declare -A`, no `read -N`, no float `-t`, no `declare -n`. Inherited.
+- **`unofficial` badge contract (v4.9 TUI-03):** yellow `!` glyph + explicit confirmation prompt. Calendly is **official** (no badge).
+- **claude.ai built-in connectors (Gmail/Calendar/Drive):** out of toolkit catalog scope — Anthropic owns that surface. Decided 2026-05-04 not to add a community Google Workspace MCP that would duplicate it.
 
-### Key v4.9 Constraints
+### Key v5.0 Constraints
 
-- **Catalog rename, backward compat:** `mcp-catalog.json` → `integrations-catalog.json`; `mcp.sh` library functions keep their names (`mcp_catalog_load`, `mcp_status_array`, `mcp_wizard_run`) — internal schema upgrade only. `--mcps` CLI flag stays as alias for `--integrations`.
-- **Cross-platform CLI install:** `darwin` → `brew` preferred, fall-back to vendor's official shell installer (e.g. AWS CLI bundled installer). `linux` → `apt` / `snap` / shell installer. Windows out of scope (toolkit is POSIX-only — same constraint as v4.0).
-- **Privilege detection:** if `brew` not present on macOS or `sudo` required, print fallback instruction and skip — never auto-elevate.
-- **`unofficial` badge:** yellow `!` glyph in TUI; explicit confirmation prompt before install (Y/n with default N for safety).
-- **Post-install hint surface:** stderr only, never auto-execute browser-based logins (`wrangler login`, `supabase login`, etc.).
-- **Status detect:** `claude mcp list` for MCPs, `command -v <name>` for CLIs. Re-run on every TUI launch — no cache file.
-- **Category grouping:** TUI groups visually but install array is flat (no nested logic in dispatch loop).
-- **AWS scope-cap:** add 2 narrow MCPs (Cost Explorer + CloudWatch Logs) only. Full AWS Labs MCP set is out of catalog scope — too broad.
-- **`unofficial` entries:** notebooklm + telegram. Hidden by default? Or visible with badge? **Decision: visible with badge + confirm prompt** — discoverability matters.
+- **Per-MCP scope, not global:** every MCP row in the TUI carries its own scope indicator `[U]`/`[P]`/`[L]`; user can mix scopes in one install pass. Global header toggle becomes "set all" convenience.
+- **Defaults baked into catalog:** `default_scope` field on each MCP. Personal-tooling MCPs default `user`; per-app infra MCPs default `project`. Defaults override-able by user before commit.
+- **Secrets boundary is non-negotiable:** literal secrets must NEVER land in `.mcp.json` (it lives in the repo). Project-scope writes `${VAR}` substitution form into `.mcp.json` and the real value into `<project>/.env` (mode 0600). Defense-in-depth: a validator in the writer refuses any literal value in a `.mcp.json` env block.
+- **`.gitignore` guard:** project-scope writer ensures `.env` is in `<project>/.gitignore` before writing the file. Idempotent — appends only if absent.
+- **Uninstall prompts secret cleanup:** removing one MCP triggers `[y/N] also remove keys K1, K2 from mcp-config.env?` (default N — preserve, user may reinstall). Full toolkit uninstall asks once about the whole `mcp-config.env`. Project `.env` files are **never** touched by toolkit (they belong to the user's project).
+- **Backward compat:** absence of `default_scope` in a catalog entry → silent fallback to `user`. No migration prompt. Pre-v5.0 secrets in `mcp-config.env` stay where they are.
+- **Catalog growth this milestone is small:** add Calendly only. Google Workspace deliberately deferred (claude.ai connectors cover it).
 
-### Carry-overs from v4.8 (still deferred, not v4.9 scope)
+### Carry-overs from v4.9 (still deferred, not v5.0 scope)
 
-- 8 HUMAN-UAT items from v4.6 (live PTY + external CLI) — run when convenient; do not block v4.9.
+- 8 HUMAN-UAT items from v4.6 (live PTY + external CLI) — run when convenient.
 - 5 advisory code-review WR findings in Phase 24.
 - `--no-council` flag for `/audit` — keep deferred.
 - Sentinel writer instrumentation in `setup-security.sh` / `init-claude.sh` (Phase 19 D-01).
@@ -92,16 +72,18 @@ Full log in PROJECT.md Key Decisions table. Recent highlights still relevant:
 - 2026-04-26: v4.2 + v4.3 shipped
 - 2026-04-27: v4.4 shipped
 - 2026-04-29: v4.6 + v4.7 + v4.8 all shipped
-- 2026-05-02: v4.9 milestone started — Integrations Catalog scope captured in PROJECT.md
-- 2026-05-02: v4.9 ROADMAP.md created — 4 phases (32-35), 14 plans, 36/36 REQ-IDs mapped
+- 2026-05-02: v4.9 shipped (Integrations Catalog)
+- 2026-05-04: v5.0 milestone started — Per-MCP Scope + Project Secrets Boundary
 
 ### Pending Todos
 
-- Run `/gsd-plan-phase 32` to decompose Phase 32 (Foundation — Schema Migration + CLI Installer Library) into 3 atomic plans.
+- Define REQUIREMENTS.md with REQ-IDs covering: catalog `default_scope` field (SCOPE-*), TUI per-row scope toggle (TUI-*), project secrets writer lib (SEC-*), wizard dispatch update (DISP-*), uninstall secret cleanup (UN-*), Calendly catalog entry (INT-*), tests (TEST-*), docs (DOCS-*).
+- Create ROADMAP.md decomposing into phases (continuing numbering from 35 → 36+).
+- Run `/gsd-plan-phase 36` to begin executing the milestone.
 
 ### Blockers/Concerns
 
-None. v4.6 Phase 25 foundation is solid — extension path is clear. All 36 v4.9 REQ-IDs mapped to exactly one phase, no orphans.
+None. v4.9 catalog + TUI foundation is solid; v5.0 is incremental on top of it.
 
 ### Quick Tasks Completed (recent)
 
@@ -112,7 +94,7 @@ None. v4.6 Phase 25 foundation is solid — extension path is clear. All 36 v4.9
 
 ## Deferred Items
 
-Carry-overs available for next milestone scoping (unchanged from v4.8 close):
+Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -125,6 +107,7 @@ Carry-overs available for next milestone scoping (unchanged from v4.8 close):
 | Future | Windows support via WSL/chocolatey | CLI-FUT-01 — out of scope per POSIX invariant |
 | Future | CLI version pinning | CLI-FUT-02 — KISS, vendors handle update channels |
 | Future | Mailgun MCP, Discord MCP, GitHub Issues MCP | INT-FUT-01/03/04 |
+| Future | Google Workspace MCP wrapper | INT-FUT-05 — claude.ai built-in connectors cover it |
 | Future | Cursor `.cursorrules` / Aider `CONVENTIONS.md` | BRIDGE-FUT-03/04 (carry-over from v4.8) |
 | Deferred | Branding substitution layer for bridge files | BRIDGE-FUT-01 |
 | Deferred | Per-CLI tone overlay snippets | BRIDGE-FUT-02 |
@@ -133,12 +116,12 @@ Carry-overs available for next milestone scoping (unchanged from v4.8 close):
 
 ## Session Continuity
 
-Last session: 2026-05-01T23:51:08.129Z
-Started: v4.9 Integrations Catalog milestone
+Last session: 2026-05-02T11:30:00.000Z (v4.9 ship)
+Started: v5.0 Per-MCP Scope + Project Secrets Boundary
 Resume file: None
 
 **Next steps:**
 
-1. ✅ Define REQUIREMENTS.md with REQ-IDs covering: catalog schema migration (CAT-*), CLI installer lib (CLI-*), TUI redesign with categories + status (TUI-*), 11 new entries (INT-*), drop sequential-thinking (DROP-*), docs (DOCS-*), tests (TEST-*).
-2. ✅ Create ROADMAP.md with 4-phase structure (32-35), 14 plans estimated, 36/36 REQ-IDs mapped.
-3. ▶ Run `/gsd-plan-phase 32` to begin executing the milestone.
+1. ▶ Generate REQUIREMENTS.md with REQ-IDs.
+2. ▶ Spawn `gsd-roadmapper` to produce ROADMAP.md continuing phase numbering from 35.
+3. ▶ Run `/gsd-plan-phase 36` to begin executing the milestone.

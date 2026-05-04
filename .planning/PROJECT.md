@@ -154,31 +154,29 @@ After v4.0 the toolkit positions itself as a **complement, not a replacement**: 
 - **v4.1 Polish & Upstream** (2026-04-25) — 5 phases (8–12), 13 plans, 11 REQ-IDs. Bats-based install-matrix automation, backup hygiene (`--clean-backups` + threshold warns), `claude plugin list` cross-check, version-skew warnings, chezmoi-grade `--dry-run` UX across all 3 install scripts, and three filed upstream issues for gsd-build/get-shit-done bugs that should not be patched in this repo. Tagged `v4.1.0` (patch `v4.1.1` 2026-04-25).
 - **v4.0 Complement Mode** (2026-04-21) — 8 phases, 29 plans, 56 tasks. Detects `superpowers` + `get-shit-done` at install time and installs only unique-value files via 4 modes. Tagged `v4.0.0`.
 
-## Current Milestone: v4.9 Integrations Catalog (shipped 2026-05-02)
+## Current Milestone: v5.0 Per-MCP Scope + Project Secrets Boundary
 
-**Status:** Code-complete on `main`. Ready for manual `git tag v4.9.0` per CLAUDE.md never-push-main invariant.
-
-**Goal:** Transform the existing 9-MCP catalog into a unified **Integrations** catalog combining MCP servers + companion CLIs (e.g., `wrangler`, `supabase`, `stripe`, `aws`, `nlm`) under one TUI page, drop the redundant `sequential-thinking` MCP, expand coverage to backends (Supabase, Cloudflare, AWS), payments (Stripe), project management (YouTrack, Linear, Jira), communication (Slack, Telegram), design (Figma), and research (NotebookLM), with category grouping, status detection, post-install hints, and `unofficial`/`community` warning badges.
+**Goal:** Give users granular per-MCP scope control (`user` vs `project`) with sensible defaults, treat secrets correctly per scope (`~/.claude/mcp-config.env` for user-scope, `<project>/.env` + `${VAR}` substitution in `.mcp.json` for project-scope, never literal secrets in shared files), close the secrets-leak gap on uninstall, and add Calendly to the catalog.
 
 **Target features:**
 
-- Unified `--integrations` TUI page (alias: `--mcps`) listing 19 entries grouped by category (Docs/Research, Backend, Payments, Email, Workspace, Project Management, Communication, Design, Dev Tools, Monitoring)
-- Catalog schema migration: `mcp-catalog.json` → `integrations-catalog.json` with per-entry `components: { mcp, cli }` blocks, optional `cli.detect_cmd` + `cli.install.{darwin,linux}` + `cli.post_install_hint`, `unofficial: true` flag for community/browser-automation entries
-- Cross-platform CLI installer library (`scripts/lib/cli-installer.sh`): `cli_detect`, `cli_install_darwin` (brew preferred, fall-back shell installer), `cli_install_linux` (apt/snap/shell installer), continue-on-error per the Phase 24 D-08 pattern
-- 11 new entries added: supabase (MCP+CLI), cloudflare (MCP+wrangler), stripe (MCP+CLI), aws-cost-explorer (MCP), aws-cloudwatch-logs (MCP) + `aws` CLI, notebooklm (MCP+nlm CLI, `unofficial`), youtrack (MCP), linear (MCP), jira (MCP), figma (MCP), slack (MCP), telegram (MCP, `unofficial`)
-- 1 entry dropped: sequential-thinking (native Claude extended thinking covers it)
-- Per-row status (`✓ installed` / `✗ not installed` / `⊘ already present`) detected via `claude mcp list` for MCPs and `command -v` for CLIs; idempotent re-runs skip already-installed components
-- Post-install hint surface (e.g., `→ Next: run \`wrangler login\`` after Cloudflare CLI install) prints to stderr with no auto-execution
-- `--integrations` / `--mcps` accept new modifier flags `--mcp-only` / `--cli-only` to scope the install to one component type
+- Per-MCP `default_scope: "user"|"project"` field in `integrations-catalog.json`; sensible defaults baked in (firecrawl/notebooklm/notion/youtrack/context7/openrouter/figma/playwright/magic/sentry → `user`; supabase/cloudflare/stripe/slack/resend/aws-*/jira/linear/telegram → `project`)
+- TUI per-row scope indicator `[U]/[P]/[L]` next to each MCP checkbox with hotkey to flip a single row's scope; existing global header toggle (`s`) repurposed as "set all"
+- New `scripts/lib/project-secrets.sh` library: writes `KEY=value` to `<project>/.env` (mode 0600, idempotent merge), guarantees `.env` is in `<project>/.gitignore` (appends if missing), writes `"env": {"KEY": "${KEY}"}` substitution form in `.mcp.json` — never the literal value
+- `mcp_wizard_run` dispatcher routes per-MCP `TK_MCP_SCOPE` selection: `project` → `project-secrets.sh`, `user`/`local` → existing `mcp-config.env` flow; defense-in-depth validator refuses to write a literal value into any `.mcp.json` env block
+- `uninstall.sh` learns secret-cleanup prompts: removing a single MCP triggers `[y/N] also remove keys K1, K2 from mcp-config.env?` (default N); full toolkit uninstall asks once about the whole `mcp-config.env`; project `.env` files are **never** touched
+- Calendly added to the catalog as an official MCP (`developer.calendly.com/calendly-mcp-server`); Google Workspace deliberately NOT added — claude.ai's built-in Gmail/Calendar/Drive connectors already cover that surface
+- Tests: existing `test-mcp-wizard.sh` / `test-mcp-secrets.sh` / `test-mcp-selector.sh` / `test-uninstall-state-cleanup.sh` extended for per-row scope + secret-cleanup prompts; new `test-project-secrets.sh` covers `.env` writer + `.gitignore` guard + `${VAR}` substitution + literal-secret-refusal contract
+- Docs: new "Per-MCP Scope" section in `docs/INTEGRATIONS.md`, INSTALL.md flag rows updated for any new CLI flags, CHANGELOG `[5.0.0]` consolidated
 
 **Key context:**
 
-- Existing 9-MCP catalog at `scripts/lib/mcp-catalog.json` + `mcp.sh` library (Phase 25 v4.6) is the foundation — extend, don't rewrite. Backward-compat alias keeps `--mcps` working.
-- CLI tools install **globally on the dev machine** (`brew install`, `npm i -g`, official shell installers) — they are NOT per-project SDKs. Toolkit never installs SDKs into user projects. Documented in new `docs/INTEGRATIONS.md` with explicit "global vs per-project" split.
-- Browser-based authentication flows (`wrangler login`, `supabase login`, `stripe login`, `nlm login`) are **never automated** — toolkit only prints the hint. Same posture as MCP OAuth (notion).
-- `unofficial` badge in TUI (yellow `!` glyph) requires explicit confirmation prompt for notebooklm + telegram before install. Reason: browser automation / community implementations break on upstream UI/API changes — must be opt-in with eyes open.
-- Category grouping replaces the flat 9-row alphabetical list — visual scanability matters at 19 entries.
-- AWS gets **2 narrow MCPs** (Cost Explorer, CloudWatch Logs) instead of the full AWS Labs MCP set — toolkit catalog is curated, not a gateway. Users wanting more AWS MCPs install them manually.
+- v4.9 shipped a **global** scope toggle (Phase 37, commit `fc000d5`) — one keypress flipped scope for the entire TUI session. v5.0 makes it per-row so users can install some MCPs globally and others into a project in one pass.
+- Secrets boundary is the central security story. Today every key lands in `~/.claude/mcp-config.env` regardless of scope. For project-scope that's wrong: the `.mcp.json` is committed to the repo, and the team needs the env-var indirection. We must never write a literal secret into a file that could be `git add`-ed.
+- The `${VAR}` substitution form in `.mcp.json` env blocks is a Claude Code convention — `claude` resolves the var from the environment at MCP launch. Project `.env` is loaded into the user's shell (or via direnv) before launching `claude` from that directory.
+- Backward compat: existing installs without `default_scope` in the catalog row → silent fallback to `user` (current behavior). No migration prompt.
+- Bash 3.2 (macOS BSD) compat invariant carries forward — no `${var,,}`, no associative arrays, no `mapfile`, no GNU-only flag use.
+- Calendly chosen over Google Workspace because Calendly publishes an official MCP server (`developer.calendly.com/calendly-mcp-server`) while Google does not. The googleworkspace/apps-script-samples repo is Apps Script examples, not an MCP. Anthropic's claude.ai built-in Gmail/Calendar/Drive connectors are the correct surface for Google Workspace.
 
 
 
@@ -243,4 +241,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-02 — **v4.9 Integrations Catalog** started via `/gsd-new-milestone`. Goal: unify the 9-MCP catalog with companion CLIs into one Integrations TUI, expand to 19 entries across 10 categories (backend, payments, project mgmt, communication, design, etc.), drop `sequential-thinking`, add cross-platform CLI installer with post-install hints. Previous: **v4.8 Multi-CLI Bridge** shipped 2026-04-29 — 4 phases (28–31), 11 plans, 22+ tasks, 18/18 BRIDGE-* REQ-IDs. **v4.7 Council Rework SP2-11** shipped on `feature/v4.8-council-rework-sp2-11` (PR #13). **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6` — 4 phases (24–27), 17 plans, 42 tasks, 36/36 REQ-IDs.*
+*Last updated: 2026-05-04 — **v5.0 Per-MCP Scope + Project Secrets Boundary** started via `/gsd-new-milestone`. Goal: per-row scope control (user/project) for each MCP with sensible defaults, project-scope `.env` writer + `.gitignore` guard + `${VAR}` substitution in `.mcp.json` (no literal secrets in shared files), uninstall secret-cleanup prompts, add Calendly. Previous: **v4.9 Integrations Catalog** shipped 2026-05-02 — 4 phases (32–35), 14 plans, 36 REQ-IDs across schema migration + 12 new integrations + TUI redesign + distribution. **v4.8 Multi-CLI Bridge** shipped 2026-04-29 — 4 phases (28–31), 18/18 BRIDGE-* REQ-IDs. **v4.7 Council Rework SP2-11** shipped on `feature/v4.8-council-rework-sp2-11` (PR #13). **v4.6 Install Flow UX & Desktop Reach** shipped via `/gsd-complete-milestone v4.6` — 4 phases (24–27), 36/36 REQ-IDs.*
