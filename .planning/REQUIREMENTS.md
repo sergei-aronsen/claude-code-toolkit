@@ -117,42 +117,42 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SCOPE-01 | TBD | not-started |
-| SCOPE-02 | TBD | not-started |
-| SCOPE-03 | TBD | not-started |
-| TUI-SCOPE-01 | TBD | not-started |
-| TUI-SCOPE-02 | TBD | not-started |
-| TUI-SCOPE-03 | TBD | not-started |
-| TUI-SCOPE-04 | TBD | not-started |
-| TUI-SCOPE-05 | TBD | not-started |
-| SEC-01 | TBD | not-started |
-| SEC-02 | TBD | not-started |
-| SEC-03 | TBD | not-started |
-| SEC-04 | TBD | not-started |
-| SEC-05 | TBD | not-started |
-| SEC-06 | TBD | not-started |
-| DISP-01 | TBD | not-started |
-| DISP-02 | TBD | not-started |
-| DISP-03 | TBD | not-started |
-| DISP-04 | TBD | not-started |
-| UN-SEC-01 | TBD | not-started |
-| UN-SEC-02 | TBD | not-started |
-| UN-SEC-03 | TBD | not-started |
-| UN-SEC-04 | TBD | not-started |
-| UN-SEC-05 | TBD | not-started |
-| INT-13 | TBD | not-started |
-| INT-14 | TBD | not-started |
-| TEST-01 | TBD | not-started |
-| TEST-02 | TBD | not-started |
-| TEST-03 | TBD | not-started |
-| TEST-04 | TBD | not-started |
-| TEST-05 | TBD | not-started |
-| TEST-06 | TBD | not-started |
-| DIST-01 | TBD | not-started |
-| DIST-02 | TBD | not-started |
-| DIST-03 | TBD | not-started |
-| DOCS-01 | TBD | not-started |
-| DOCS-02 | TBD | not-started |
-| DOCS-03 | TBD | not-started |
+| SCOPE-01 | Phase 36 | not-started |
+| SCOPE-02 | Phase 36 | not-started |
+| SCOPE-03 | Phase 36 | not-started |
+| TUI-SCOPE-01 | Phase 39 | not-started |
+| TUI-SCOPE-02 | Phase 39 | not-started |
+| TUI-SCOPE-03 | Phase 39 | not-started |
+| TUI-SCOPE-04 | Phase 39 | not-started |
+| TUI-SCOPE-05 | Phase 39 | not-started |
+| SEC-01 | Phase 37 | not-started |
+| SEC-02 | Phase 37 | not-started |
+| SEC-03 | Phase 37 | not-started |
+| SEC-04 | Phase 37 | not-started |
+| SEC-05 | Phase 37 | not-started |
+| SEC-06 | Phase 37 | not-started |
+| DISP-01 | Phase 38 | not-started |
+| DISP-02 | Phase 38 | not-started |
+| DISP-03 | Phase 38 | not-started |
+| DISP-04 | Phase 38 | not-started |
+| UN-SEC-01 | Phase 40 | not-started |
+| UN-SEC-02 | Phase 40 | not-started |
+| UN-SEC-03 | Phase 40 | not-started |
+| UN-SEC-04 | Phase 40 | not-started |
+| UN-SEC-05 | Phase 40 | not-started |
+| INT-13 | Phase 40 | not-started |
+| INT-14 | Phase 40 | not-started |
+| TEST-01 | Phase 37 | not-started |
+| TEST-02 | Phase 38 | not-started |
+| TEST-03 | Phase 38 | not-started |
+| TEST-04 | Phase 39 | not-started |
+| TEST-05 | Phase 40 | not-started |
+| TEST-06 | Phase 40 | not-started |
+| DIST-01 | Phase 41 | not-started |
+| DIST-02 | Phase 41 | not-started |
+| DIST-03 | Phase 41 | not-started |
+| DOCS-01 | Phase 41 | not-started |
+| DOCS-02 | Phase 41 | not-started |
+| DOCS-03 | Phase 41 | not-started |
 
-**Total: 37 REQ-IDs.** Roadmapper will fill the Phase column and update Status as phases close.
+**Total: 37 REQ-IDs.** All mapped to phases 36–41. Coverage: 37/37 (100%), 0 orphans.
