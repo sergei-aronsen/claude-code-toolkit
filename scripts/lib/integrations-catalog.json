@@ -30,7 +30,8 @@
           "awslabs.cloudwatch-logs-mcp-server@latest"
         ],
         "description": "Live log streams + filter patterns + insights queries",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "aws-cost-explorer": {
         "name": "aws-cost-explorer",
@@ -48,7 +49,8 @@
           "awslabs.cost-explorer-mcp-server@latest"
         ],
         "description": "Query AWS spend + forecasts via natural language",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "cloudflare": {
         "name": "cloudflare",
@@ -65,7 +67,8 @@
           "@cloudflare/mcp-server-cloudflare"
         ],
         "description": "Workers, R2, KV, D1 — edge platform",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "context7": {
         "name": "context7",
@@ -82,7 +85,8 @@
           "@upstash/context7-mcp"
         ],
         "description": "Up-to-date library docs (React, Next.js, Tailwind, etc.)",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "figma": {
         "name": "figma",
@@ -99,7 +103,8 @@
           "figma-developer-mcp"
         ],
         "description": "Read frames + layers + tokens — generate code from designs",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "firecrawl": {
         "name": "firecrawl",
@@ -116,7 +121,8 @@
           "firecrawl-mcp"
         ],
         "description": "Website scraping + crawling",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "jira": {
         "name": "jira",
@@ -135,7 +141,8 @@
           "@aashari/mcp-server-atlassian-jira"
         ],
         "description": "Atlassian Cloud — issues, projects, sprints",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "linear": {
         "name": "linear",
@@ -152,7 +159,8 @@
           "@tacticlaunch/mcp-linear"
         ],
         "description": "Modern issue tracker — cycles, projects, roadmap views",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "magic": {
         "name": "magic",
@@ -169,7 +177,8 @@
           "@21st-dev/magic"
         ],
         "description": "UI component generation (21st.dev)",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "notebooklm": {
         "name": "notebooklm",
@@ -185,7 +194,8 @@
         ],
         "description": "Google NotebookLM — source-grounded answers from your docs (browser auth)",
         "requires_oauth": true,
-        "unofficial": true
+        "unofficial": true,
+        "default_scope": "user"
       },
       "notion": {
         "name": "notion",
@@ -200,7 +210,8 @@
           "@notionhq/notion-mcp-server"
         ],
         "description": "Workspace pages + databases (OAuth)",
-        "requires_oauth": true
+        "requires_oauth": true,
+        "default_scope": "user"
       },
       "openrouter": {
         "name": "openrouter",
@@ -217,7 +228,8 @@
           "openrouter-mcp"
         ],
         "description": "Multi-model LLM routing",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "playwright": {
         "name": "playwright",
@@ -232,7 +244,8 @@
           "@playwright/mcp"
         ],
         "description": "Browser automation + screenshot",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "resend": {
         "name": "resend",
@@ -249,7 +262,8 @@
           "@resend/mcp-send-email"
         ],
         "description": "Transactional email send",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "sentry": {
         "name": "sentry",
@@ -266,7 +280,8 @@
           "@sentry/mcp-server"
         ],
         "description": "Error monitoring + issue triage",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       },
       "slack": {
         "name": "slack",
@@ -284,7 +299,8 @@
           "slack-mcp-server"
         ],
         "description": "Post messages, search history, list channels (no admin approval needed)",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "stripe": {
         "name": "stripe",
@@ -301,7 +317,8 @@
           "@stripe/mcp"
         ],
         "description": "Payments + subscriptions — query, create test customers, debug charges",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "supabase": {
         "name": "supabase",
@@ -318,7 +335,8 @@
           "@supabase/mcp-server-supabase"
         ],
         "description": "Postgres + auth + storage + edge functions backend",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "project"
       },
       "telegram": {
         "name": "telegram",
@@ -337,7 +355,8 @@
         ],
         "description": "User-account API — read dialogs, send messages, manage channels (community)",
         "requires_oauth": false,
-        "unofficial": true
+        "unofficial": true,
+        "default_scope": "project"
       },
       "youtrack": {
         "name": "youtrack",
@@ -355,7 +374,8 @@
           "youtrack-mcp"
         ],
         "description": "JetBrains issue tracker — query, create, update issues + log work",
-        "requires_oauth": false
+        "requires_oauth": false,
+        "default_scope": "user"
       }
     },
     "cli": {
