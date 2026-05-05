@@ -452,12 +452,15 @@ tui_checklist() {
                 #
                 # Tab is ASCII 0x09 — single byte, no multi-byte ambiguity
                 # (unlike arrow `\e[A`). Position: BEFORE the catch-all *)
-                # so the header-fn dispatch doesn't shadow Tab. The strict
-                # gate `"$TUI_ROW_KEY" == $'\t'` lets future callers swap
-                # to a different byte (e.g. lowercase `t`) per CONTEXT D-05
-                # without forcing a code change here.
-                if [[ -n "${TUI_ROW_KEY:-}" && -n "${TUI_ROW_FN:-}" \
-                      && "$TUI_ROW_KEY" == $'\t' ]]; then
+                # so the header-fn dispatch doesn't shadow Tab. Caller opt-in
+                # via TUI_ROW_KEY+TUI_ROW_FN; the row key is HARDCODED to Tab
+                # in this case-arm — making it configurable would require
+                # moving dispatch into the *) arm with a positional check
+                # (deferred until D-05 actually needs another byte).
+                # MED-02 fix: dropped redundant `"$TUI_ROW_KEY" == $'\t'`
+                # inner-gate (case-arm already enforces Tab; the gate was
+                # dead code that contradicted its own comment).
+                if [[ -n "${TUI_ROW_KEY:-}" && -n "${TUI_ROW_FN:-}" ]]; then
                     "${TUI_ROW_FN}" || true
                 fi
                 ;;
