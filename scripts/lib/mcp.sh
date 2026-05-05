@@ -743,33 +743,71 @@ mcp_wizard_run() {
         # follow-up instructions.
         local _deferred_keys="${env_keys_csv//;/, }"
         if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
-            printf '%s\t%s\t%s\n' "$name" "$_deferred_keys" "${install_args[*]}" \
+            # Phase 38 (DISP-03 D-10): tuple grew from 3 to 4 fields. New format:
+            # `name\tkeys\tinstall_args\tscope`. The install.sh reader at
+            # install.sh:833 ships the matching 4-field reader in plan 38-02 in
+            # the same wave so there is never a schema-without-reader window.
+            # Pre-v5.0 rows fall back to scope=user via the reader's empty-field
+            # guard.
+            printf '%s\t%s\t%s\t%s\n' "$name" "$_deferred_keys" "${install_args[*]}" "$_scope" \
                 >> "$TK_MCP_DEFERRED_QUEUE" 2>/dev/null || true
         fi
-        # Pre-create empty stub entries in mcp-config.env so the user can
-        # `vi ~/.claude/mcp-config.env` and just fill values — no need to
-        # remember which keys belong where. mcp_secrets_set handles 0600
-        # + collision (existing entries are preserved).
+        # Phase 38 (DISP-03 D-09): pre-create blank stub entries so the user
+        # can `vi <store>` and just fill values. The store differs by scope:
+        # user/local → ~/.claude/mcp-config.env; project → <project>/.env.
+        # Both branches use the SAME `printf '%s=\n'` placeholder format
+        # (D-09 final paragraph) — only the destination file changes.
         local IFS_SAVED2="$IFS"
         IFS=';'
         # shellcheck disable=SC2206
         local _stub_keys=( $env_keys_csv )
         IFS="$IFS_SAVED2"
         local _stub_key
-        for _stub_key in "${_stub_keys[@]}"; do
-            [[ -z "$_stub_key" ]] && continue
-            # Only stub if absent — never overwrite an existing value.
-            mcp_secrets_load
-            if ! _mcp_secrets_index "$_stub_key" >/dev/null 2>&1; then
-                # Append a placeholder entry directly (skip mcp_secrets_set's
-                # interactive collision prompt — guaranteed absent here).
-                local _env_path
-                _env_path="$(_mcp_config_path)"
-                mkdir -p "$(dirname "$_env_path")" 2>/dev/null || true
-                printf '%s=\n' "$_stub_key" >> "$_env_path" 2>/dev/null || true
-                chmod 0600 "$_env_path" 2>/dev/null || true
+        if [[ "$_scope" == "project" ]]; then
+            # Phase 38 (D-09): project-scope mirror — gitignore guard ONCE,
+            # then per-key stub via printf '%s=\n' to <project>/.env. The
+            # Phase 37 lib's private helpers _project_secrets_load_env +
+            # _project_secrets_index drive the collision check
+            # (skip-if-present invariant).
+            if [[ "$_gi_done" -eq 0 ]]; then
+                if ! project_secrets_ensure_gitignore "$_project_root"; then
+                    return 1
+                fi
+                _gi_done=1
             fi
-        done
+            local _proj_env="${_project_root%/}/.env"
+            mkdir -p "$_project_root" 2>/dev/null || true
+            touch "$_proj_env" 2>/dev/null || true
+            chmod 0600 "$_proj_env" 2>/dev/null || true
+            for _stub_key in "${_stub_keys[@]}"; do
+                [[ -z "$_stub_key" ]] && continue
+                # Skip if the key already has a non-stub value — never
+                # overwrite real secrets. _project_secrets_load_env populates
+                # the parallel arrays; _project_secrets_index returns 0 if
+                # found.
+                _project_secrets_load_env "$_proj_env"
+                if ! _project_secrets_index "$_stub_key" >/dev/null 2>&1; then
+                    printf '%s=\n' "$_stub_key" >> "$_proj_env" 2>/dev/null || true
+                    chmod 0600 "$_proj_env" 2>/dev/null || true
+                fi
+            done
+        else
+            # User/local scope (UNCHANGED v4.9 behavior).
+            for _stub_key in "${_stub_keys[@]}"; do
+                [[ -z "$_stub_key" ]] && continue
+                # Only stub if absent — never overwrite an existing value.
+                mcp_secrets_load
+                if ! _mcp_secrets_index "$_stub_key" >/dev/null 2>&1; then
+                    # Append a placeholder entry directly (skip mcp_secrets_set's
+                    # interactive collision prompt — guaranteed absent here).
+                    local _env_path
+                    _env_path="$(_mcp_config_path)"
+                    mkdir -p "$(dirname "$_env_path")" 2>/dev/null || true
+                    printf '%s=\n' "$_stub_key" >> "$_env_path" 2>/dev/null || true
+                    chmod 0600 "$_env_path" 2>/dev/null || true
+                fi
+            done
+        fi
         # Run `claude mcp add` WITHOUT env vars — server registers in
         # claude.json with no env binding. claude CLI inherits shell env
         # at launch and propagates it to MCP child processes, so once the
