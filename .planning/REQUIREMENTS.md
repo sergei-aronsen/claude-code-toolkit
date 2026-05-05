@@ -33,14 +33,14 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Wizard dispatch update (`scripts/lib/mcp.sh::mcp_wizard_run`)
 
-- [ ] **DISP-01**: `mcp_wizard_run` reads `TK_MCP_SCOPE`. When `TK_MCP_SCOPE=project`, the wizard:
+- [x] **DISP-01**: `mcp_wizard_run` reads `TK_MCP_SCOPE`. When `TK_MCP_SCOPE=project`, the wizard:
   - Resolves `project_root` from `pwd` (or `TK_PROJECT_ROOT` test seam).
   - Collects each env-var via the existing hidden-input prompt loop (3-attempt, mask-display) — unchanged from v4.6 MCP-04.
   - Calls `project_secrets_write_env` per key (writes to `<project>/.env`).
   - Calls `project_secrets_ensure_gitignore` once before the first write.
   - Invokes `claude mcp add --scope project ...` with the env block rendered as `${VAR}` substitution form (NOT literal values). Claude CLI is responsible for writing `.mcp.json` from those args; toolkit verifies the resulting file does not contain literal secrets via SEC-05.
-- [ ] **DISP-02**: When `TK_MCP_SCOPE=user` or `TK_MCP_SCOPE=local` (or unset), wizard preserves v4.6/v4.9 behavior: write to `~/.claude/mcp-config.env` via `mcp_secrets_set`, invoke `claude mcp add --scope <user|local>` with literal env values exported via `env KEY=V`. No regression on existing flow.
-- [ ] **DISP-03**: Defer-secrets path (`TK_MCP_DEFER_SECRETS=1`, set by install.sh during dispatch) extended for `project` scope: still pre-creates blank stub entries, but in `<project>/.env` (not `mcp-config.env`) when scope is `project`. Stub-only file write triggers `project_secrets_ensure_gitignore`. Deferred queue tuple grows to 4 fields: `name\tkeys\tinstall_args\tscope` so the post-install summary can print scope-correct "edit X file then reload" hints.
+- [x] **DISP-02**: When `TK_MCP_SCOPE=user` or `TK_MCP_SCOPE=local` (or unset), wizard preserves v4.6/v4.9 behavior: write to `~/.claude/mcp-config.env` via `mcp_secrets_set`, invoke `claude mcp add --scope <user|local>` with literal env values exported via `env KEY=V`. No regression on existing flow.
+- [x] **DISP-03**: Defer-secrets path (`TK_MCP_DEFER_SECRETS=1`, set by install.sh during dispatch) extended for `project` scope: still pre-creates blank stub entries, but in `<project>/.env` (not `mcp-config.env`) when scope is `project`. Stub-only file write triggers `project_secrets_ensure_gitignore`. Deferred queue tuple grows to 4 fields: `name\tkeys\tinstall_args\tscope` so the post-install summary can print scope-correct "edit X file then reload" hints.
 - [ ] **DISP-04**: Post-install summary printer (already part of install.sh's MCP wizard close) prints per-MCP scope alongside the existing keys-needed list. Project-scope MCPs get a distinct hint line: `→ Edit <project>/.env to fill values; ensure .env is in your .gitignore (we appended it).`
 
 ### Uninstall secret cleanup (`scripts/uninstall.sh`)
