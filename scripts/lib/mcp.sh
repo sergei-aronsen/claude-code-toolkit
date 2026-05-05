@@ -1006,6 +1006,30 @@ mcp_toggle_scope() {
 # TUI page assembly helper (MCP-03)
 # ─────────────────────────────────────────────────
 
+# _mcp_render_scope_glyph <scope> — Phase 39 (TUI-SCOPE-01): print the 3-bracket
+# scope-indicator fragment "[U] [P] [L]" with the active bracket green-wrapped
+# and the inactive ones plain. Active scope is the first argument
+# ("user"|"project"|"local"); unknown values fall back to "user" active.
+#
+# Reads module-locals _c_scope_active / _c_nc set by the caller
+# (mcp_status_array / mcp_cycle_row_scope) so color resolution stays in
+# one place — caller checks TTY+NO_COLOR ONCE per array build per D-04.
+#
+# Output is exactly three space-separated tokens; widths stay predictable
+# under NO_COLOR (no embedded ANSI escapes when caller leaves _c_*
+# strings empty). KISS — no looping, no growth path beyond U/P/L.
+_mcp_render_scope_glyph() {
+    local _scope="${1:-user}"
+    local _u="[U]" _p="[P]" _l="[L]"
+    case "$_scope" in
+        user)    _u="${_c_scope_active}[U]${_c_nc}" ;;
+        project) _p="${_c_scope_active}[P]${_c_nc}" ;;
+        local)   _l="${_c_scope_active}[L]${_c_nc}" ;;
+        *)       _u="${_c_scope_active}[U]${_c_nc}" ;;  # fallback active=user
+    esac
+    printf '%s %s %s' "$_u" "$_p" "$_l"
+}
+
 # mcp_status_array — populate TUI_LABELS/GROUPS/INSTALLED/DESCS for the MCP page.
 # Side effects: writes to global arrays consumed by tui_checklist (from lib/tui.sh).
 # Globals (write):
@@ -1024,6 +1048,13 @@ mcp_toggle_scope() {
 #   TUI_GROUP_DESCS[]   — empty strings (parallel) — keeps tui.sh's subtitle
 #                         lookup contract happy without forcing per-section copy.
 #   MCP_CLI_PRESENT     — 0 if all probes returned 2 (no CLI), 1 otherwise
+#   MCP_SELECTED_SCOPE[] — Phase 39 (TUI-SCOPE-04): per-row mutable scope
+#                          ("user"|"project"|"local"). Parallel to TUI_LABELS
+#                          (NOT MCP_NAMES — TUI render index). Initialized from
+#                          MCP_DEFAULT_SCOPE[$i] at array-build. Mutated by
+#                          mcp_cycle_row_scope (per-row Tab) and mcp_set_all_scope
+#                          (Plan 02). Read by install.sh dispatcher to export
+#                          per-row TK_MCP_SCOPE before mcp_wizard_run.
 #
 # Iteration order: by CATEGORIES_ORDER[] then alphabetical within each category.
 # Categories with zero entries produce NO header (skipped silently per D-06).
@@ -1052,6 +1083,12 @@ mcp_status_array() {
     # remove + claude mcp add — works uniformly for npx/uvx/HTTP/SSE
     # transports, so no per-transport gating here.
     TUI_REINSTALLABLE=()
+    # Phase 39 (TUI-SCOPE-04): per-row mutable scope state, parallel to
+    # TUI_LABELS in TUI render order (NOT MCP_NAMES alpha order). Reset on
+    # every call so re-launching the TUI reseeds from MCP_DEFAULT_SCOPE
+    # without carrying over prior session's mutations (T3 mitigation).
+    # shellcheck disable=SC2034
+    MCP_SELECTED_SCOPE=()
     # Phase 34-01 ordering map: install.sh's dispatch loop iterates by
     # MCP_NAMES alphabetical order, but the TUI renders in category-grouped
     # order (alpha-within-category). TUI_RESULTS / TUI_LABELS / TUI_INSTALLED
@@ -1081,6 +1118,15 @@ mcp_status_array() {
         _c_unk=$'\033[0;36m'
         _c_y=$'\033[1;33m'
         _c_nc=$'\033[0m'
+    fi
+
+    # Phase 39 (TUI-SCOPE-01): per-row scope indicator color. Active bracket
+    # gets green (\033[0;32m — same shape as `_c_ok`); inactive brackets stay
+    # plain. Resolved once per array build per D-04 — same TTY+NO_COLOR gate
+    # as the existing `_c_*` block above. Reused by _mcp_render_scope_glyph.
+    local _c_scope_active=""
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        _c_scope_active=$'\033[0;32m'
     fi
 
     # Walk categories in canonical order. For each, gather alphabetic entries.
@@ -1124,6 +1170,16 @@ mcp_status_array() {
             else
                 label="${MCP_DISPLAY[$i]}"
             fi
+            # Phase 39 TUI-SCOPE-01/04: prepend per-row scope indicator BEFORE
+            # the (possibly unofficial-prefixed) display name. Active bracket
+            # green-wrapped via _mcp_render_scope_glyph. MCP_SELECTED_SCOPE
+            # push lands BEFORE TUI_LABELS push so both arrays grow in
+            # lockstep — index parity invariant per CONTEXT.md D-13/D-14.
+            local _row_scope="${MCP_DEFAULT_SCOPE[$i]:-user}"
+            local _scope_glyph
+            _scope_glyph=$(_mcp_render_scope_glyph "$_row_scope")
+            MCP_SELECTED_SCOPE+=("$_row_scope")
+            label="${_scope_glyph} ${label}"
             TUI_LABELS+=("$label")
             TUI_GROUPS+=("$cat_display")
 
