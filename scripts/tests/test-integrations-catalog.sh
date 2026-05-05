@@ -4,9 +4,9 @@
 # Locks the v4.9 contract for scripts/lib/integrations-catalog.json:
 #   - schema_version is the integer 2 (Phase 32 CAT-01 schema)
 #   - categories[] is the canonical 10-list (Phase 33 D-04 final order)
-#   - components.mcp has 20 entries (NOT 19 — see Phase 33 SUMMARY math note:
-#     21 - 1 (DROP-01 sequential-thinking) + 0 = 20; or equivalently
-#     9 baseline - 1 dropped + 12 added = 20)
+#   - components.mcp has 21 entries (Phase 40 INT-13 added Calendly:
+#     20 baseline + 1 = 21. Phase 33 math note: 21 - 1 (DROP-01
+#     sequential-thinking) + 0 = 20; Phase 40 INT-13 +1 = 21)
 #   - components.cli has 8 entries
 #   - every MCP entry has the required keys
 #   - every entry's category is in the top-level categories[] enum
@@ -112,16 +112,15 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A5 — components.mcp has 20 entries
-# (21 baseline - 1 DROP-01 = 20; OR 9 surviving Phase 32 + 12 INT-01..12 = 21
-#  - 1 DROP-01 = 20. The 19-vs-20 confusion in some notes is resolved here.)
+# A5 — components.mcp has 21 entries
+# (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21.)
 # ─────────────────────────────────────────────────
-_pyq "A5: components.mcp has exactly 20 entries" '
+_pyq "A5: components.mcp has exactly 21 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
-if isinstance(mcp, dict) and len(mcp) == 20:
+if isinstance(mcp, dict) and len(mcp) == 21:
     print("OK")
 else:
-    print("components.mcp count is " + str(len(mcp)) + ", expected 20")
+    print("components.mcp count is " + str(len(mcp)) + ", expected 21")
 '
 
 # ─────────────────────────────────────────────────
@@ -308,6 +307,90 @@ if ds == "user":
 else:
     print("context7 default_scope is " + repr(ds) + ", expected user")
 '
+
+# ─────────────────────────────────────────────────
+# A18 — Phase 40 INT-13: Calendly entry has expected OAuth-only shape.
+# Mirrors Notion (closest OAuth-only analog): no `unofficial` field,
+# env_var_keys=[], requires_oauth=true, default_scope=user, category=workspace.
+# Per CONTEXT D-09 + PATTERNS surprise #5 (official MCPs OMIT the `unofficial`
+# key entirely; only community wrappers like notebooklm/telegram set it true).
+# ─────────────────────────────────────────────────
+_pyq "A18: calendly entry has expected shape" '
+mcp = catalog.get("components", {}).get("mcp", {})
+e = mcp.get("calendly", {})
+if (e.get("name") == "calendly"
+    and e.get("display_name") == "Calendly"
+    and e.get("category") == "workspace"
+    and e.get("requires_oauth") is True
+    and e.get("default_scope") == "user"
+    and e.get("env_var_keys") == []
+    and "unofficial" not in e):
+    print("OK")
+else:
+    print("calendly shape mismatch: " + repr(e))
+'
+
+# ─────────────────────────────────────────────────
+# A19 — Phase 40 INT-14 lock: catalog must NEVER carry a Google Workspace
+# MCP entry (claude.ai built-in connectors cover Gmail/Calendar/Drive).
+# Per CONTEXT D-10. Defense-in-depth — the catalog has never had such an
+# entry; this assertion locks the negative invariant against future drift.
+# ─────────────────────────────────────────────────
+_pyq "A19: no google-* MCP entries (INT-14 lock)" '
+import re
+mcp = catalog.get("components", {}).get("mcp", {})
+pat = re.compile(r"^google-(workspace|drive|gmail|calendar)$")
+hits = [n for n in mcp if pat.match(n)]
+if not hits:
+    print("OK")
+else:
+    print("forbidden google-* entries present: " + repr(hits))
+'
+
+# ─────────────────────────────────────────────────
+# A20 — Phase 40 TEST-06 SCOPE-01 negative regression: validator must catch
+# a mutated catalog copy that has one entry missing `default_scope`.
+# Validator implementation is at scripts/validate-integrations-catalog.py
+# lines 254-272 (Phase 36 work, NOT modified by Phase 40). This test locks
+# the contract: removing `default_scope` from any entry produces non-zero
+# exit + stderr message containing "default_scope is required".
+# ─────────────────────────────────────────────────
+echo ""
+echo "── A20: validator catches missing default_scope (SCOPE-01 regression) ──"
+_a20_tmp="$(mktemp -t catalog-mut.XXXXXX)"
+# Strip default_scope from one entry (deterministic: alpha-first MCP name).
+# python3 heredoc runs with $CATALOG passed as argv (line 27 — script-set, not
+# user input, so no injection risk). The body uses a single-quoted heredoc so
+# Python source is not subject to shell expansion.
+python3 - "$CATALOG" > "$_a20_tmp" <<'PYEOF'
+import json, sys
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    c = json.load(fh)
+mcp = c["components"]["mcp"]
+first_name = sorted(mcp.keys())[0]
+del c["components"]["mcp"][first_name]["default_scope"]
+print(json.dumps(c, indent=2))
+PYEOF
+
+# Capture the validator output and exit code WITHOUT the `cmd | grep` pipeline
+# (that pattern interacts badly with `set -o pipefail` — when python3 exits
+# non-zero (expected here — that is exactly what we are asserting), pipefail
+# bubbles python3's rc=1 up past grep's rc=0, breaking the if-test). Instead
+# run the validator into a temp var, then `grep -q` against the captured
+# string, and explicitly assert rc != 0 from the validator.
+_a20_out="$(python3 "$REPO_ROOT/scripts/validate-integrations-catalog.py" "$_a20_tmp" 2>&1 || true)"
+_a20_rc=0
+python3 "$REPO_ROOT/scripts/validate-integrations-catalog.py" "$_a20_tmp" >/dev/null 2>&1 || _a20_rc=$?
+if [[ "$_a20_rc" -ne 0 ]] && printf '%s\n' "$_a20_out" | grep -q 'default_scope is required'; then
+    PASS=$((PASS + 1))
+    printf "  ${GREEN}OK${NC} A20: validator caught missing default_scope (SCOPE-01 regression)\n"
+else
+    FAIL=$((FAIL + 1))
+    printf "  ${RED}FAIL${NC} A20: validator did NOT catch missing default_scope (rc=%s)\n" "$_a20_rc"
+    printf "      validator stdout/stderr:\n"
+    printf '%s\n' "$_a20_out" | sed 's/^/        /'
+fi
+rm -f "$_a20_tmp"
 
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"
