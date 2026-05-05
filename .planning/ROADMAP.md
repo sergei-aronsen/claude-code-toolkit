@@ -172,7 +172,10 @@
   3. Pressing the global `s` keypress (the v4.9 Phase 37 / commit `fc000d5` global toggle, repurposed) cycles a global scope value and assigns it to every visible row in one stroke; the banner reads `s: set all to <scope>` instead of the v4.9 toggle copy.
   4. Per-row scope state lives in a Bash 3.2-compatible parallel array `MCP_SELECTED_SCOPE[]` (parallel to `MCP_NAMES`, `MCP_STATUS`, `MCP_HAS_CLI`) initialized from each entry's `default_scope` via `mcp_status_array`; no associative arrays, no `mapfile`, no `${var,,}`.
   5. The MCP install loop in `install.sh` reads `MCP_SELECTED_SCOPE[$i]` per row and exports `TK_MCP_SCOPE=<scope>` for that single `mcp_wizard_run` invocation; `--mcp-scope <s>` CLI flag still honored as a non-interactive force-set; `scripts/tests/test-mcp-selector.sh` extended from PASS=21 with TUI-SCOPE-01..05 scenarios.
-**Plans**: TBD
+**Plans**: 3 plans
+- [x] 39-01-PLAN.md — MCP_SELECTED_SCOPE state + per-row scope glyph render + Tab dispatcher in tui.sh (TUI-SCOPE-01, TUI-SCOPE-02, TUI-SCOPE-04)
+- [ ] 39-02-PLAN.md — Repurpose mcp_toggle_scope as set-all + install.sh per-row TK_MCP_SCOPE export + TUI_ROW_KEY/FN wiring (TUI-SCOPE-03, TUI-SCOPE-05)
+- [ ] 39-03-PLAN.md — test-mcp-selector.sh ≥5 new assertions for TUI-SCOPE-01..05 (PASS≥26 floor) (TEST-04)
 **UI hint**: yes
 
 ### Phase 40: Uninstall Secret Cleanup + Calendly + Validator
@@ -226,6 +229,6 @@
 | 36. Catalog Schema + Backward Compat | 2/2 | Complete   | 2026-05-04 |
 | 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
 | 38. Wizard Dispatch Integration | 3/3 | Complete   | 2026-05-05 |
-| 39. TUI Per-Row Scope Toggle | 0/4 | Not started | - |
+| 39. TUI Per-Row Scope Toggle | 1/3 | In Progress|  |
 | 40. Uninstall Secret Cleanup + Calendly + Validator | 0/5 | Not started | - |
 | 41. Distribution + Docs | 0/3 | Not started | - |
