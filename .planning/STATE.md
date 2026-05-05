@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
 status: executing
-last_updated: "2026-05-05T19:11:08.595Z"
+last_updated: "2026-05-05T19:21:30.441Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 39 (TUI Per-Row Scope Toggle) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-05-05
 
@@ -138,7 +138,7 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-05T19:11:08.592Z
+Last session: 2026-05-05T19:21:30.439Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
 Resume file: None
 

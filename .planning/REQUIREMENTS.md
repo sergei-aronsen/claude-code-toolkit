@@ -18,9 +18,9 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 - [x] **TUI-SCOPE-01**: Each MCP row in the integrations TUI carries a scope indicator immediately after the checkbox: `[U]` (user-scope), `[P]` (project-scope), `[L]` (legacy local-to-cwd). Indicator is colored green for the chosen scope. NO_COLOR-aware (plain bracket form when `NO_COLOR` is set).
 - [x] **TUI-SCOPE-02**: Hotkey to flip the scope of the currently-highlighted row only. Suggested binding: `Tab` (cycle U → P → L → U) or `Shift-S`. Final binding chosen during planning; documented in TUI hint footer either way.
-- [ ] **TUI-SCOPE-03**: Existing global header `s` keypress (Phase 37, commit `fc000d5`) repurposed as "set ALL visible rows to scope X" shortcut — pressing `s` cycles a global scope value and assigns it to every row in one stroke. Banner updated to read `s: set all to <scope>` instead of the previous toggle copy.
+- [x] **TUI-SCOPE-03**: Existing global header `s` keypress (Phase 37, commit `fc000d5`) repurposed as "set ALL visible rows to scope X" shortcut — pressing `s` cycles a global scope value and assigns it to every row in one stroke. Banner updated to read `s: set all to <scope>` instead of the previous toggle copy.
 - [x] **TUI-SCOPE-04**: Per-row scope state stored in a parallel array `MCP_SELECTED_SCOPE[]` (parallel to `MCP_NAMES`/`MCP_STATUS`/`MCP_HAS_CLI`). Initialized from `default_scope` at TUI launch via `mcp_status_array`. Bash 3.2 compat (no associative arrays).
-- [ ] **TUI-SCOPE-05**: Dispatcher (`install.sh` MCP install loop) reads `MCP_SELECTED_SCOPE[$i]` per row before invoking `mcp_wizard_run`, exporting `TK_MCP_SCOPE=<scope>` for that single invocation. The pre-v5.0 single-shell `TK_MCP_SCOPE` global is retired in favor of per-call injection (still honored on the CLI for `--mcp-scope <s>` non-interactive force-set).
+- [x] **TUI-SCOPE-05**: Dispatcher (`install.sh` MCP install loop) reads `MCP_SELECTED_SCOPE[$i]` per row before invoking `mcp_wizard_run`, exporting `TK_MCP_SCOPE=<scope>` for that single invocation. The pre-v5.0 single-shell `TK_MCP_SCOPE` global is retired in favor of per-call injection (still honored on the CLI for `--mcp-scope <s>` non-interactive force-set).
 
 ### Project secrets writer (`scripts/lib/project-secrets.sh` — new lib)
 
