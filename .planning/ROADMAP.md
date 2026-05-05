@@ -230,5 +230,5 @@
 | 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
 | 38. Wizard Dispatch Integration | 3/3 | Complete   | 2026-05-05 |
 | 39. TUI Per-Row Scope Toggle | 3/3 | Complete   | 2026-05-05 |
-| 40. Uninstall Secret Cleanup + Calendly + Validator | 0/5 | Not started | - |
+| 40. Uninstall Secret Cleanup + Calendly + Validator | 2/5 | In Progress|  |
 | 41. Distribution + Docs | 0/3 | Not started | - |

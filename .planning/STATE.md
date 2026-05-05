@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
-status: verifying
-last_updated: "2026-05-05T19:31:15.002Z"
+status: executing
+last_updated: "2026-05-05T20:47:35.698Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_plans: 15
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 39 — TUI Per-Row Scope Toggle
+**Current focus:** Phase 40 — Uninstall Secret Cleanup + Calendly + Validator
 
 ## Current Position
 
-Phase: 39 (TUI Per-Row Scope Toggle) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Phase: 40 (Uninstall Secret Cleanup + Calendly + Validator) — EXECUTING
+Plan: 3 of 5
+Status: Ready to execute
 Last activity: 2026-05-05
 
 Progress: [░░░░░░░░░░░░░░░░░░░░] 0/6 phases (0%)
@@ -138,7 +138,7 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-05T19:31:15.000Z
+Last session: 2026-05-05T20:47:35.637Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
 Resume file: None
 
