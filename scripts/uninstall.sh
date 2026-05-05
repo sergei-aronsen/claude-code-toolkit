@@ -108,6 +108,10 @@ LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state.XXXXXX")
 LIB_BACKUP_TMP=$(mktemp "${TMPDIR:-/tmp}/backup.XXXXXX")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output.XXXXXX")
 LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges.XXXXXX")
+# Phase 40 UN-SEC-01/02: mcp.sh sourced for mcp_secrets_load / _mcp_config_path /
+# mcp_catalog_names / _mcp_list_cache_init / is_mcp_installed used by the new
+# uninstall_prompt_mcp_keys helper and the per-MCP claude-mcp-remove loop.
+LIB_MCP_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp.XXXXXX")
 # UN-05 base-plugin invariant snapshots (sorted file lists, pre/post)
 SP_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/sp-snap.XXXXXX")
 GSD_SNAP_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-snap.XXXXXX")
@@ -116,10 +120,13 @@ GSD_AFTER_TMP=$(mktemp "${TMPDIR:-/tmp}/gsd-after.XXXXXX")
 # Trap registered BEFORE acquire_lock so SIGINT mid-acquire still releases cleanly.
 # release_lock is defined in lib/state.sh (sourced below); the 2>/dev/null guard
 # handles the case where the trap fires before sourcing completes.
-trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$SP_SNAP_TMP" "$GSD_SNAP_TMP" "$SP_AFTER_TMP" "$GSD_AFTER_TMP"' EXIT
+trap 'release_lock 2>/dev/null || true; rm -f "$LIB_STATE_TMP" "$LIB_BACKUP_TMP" "$LIB_DRO_TMP" "$LIB_BRIDGES_TMP" "$LIB_MCP_TMP" "$SP_SNAP_TMP" "$GSD_SNAP_TMP" "$SP_AFTER_TMP" "$GSD_AFTER_TMP"' EXIT
 
 # ───────── source libs HARD-fail (with TK_UNINSTALL_LIB_DIR test seam) ─────────
-for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP"; do
+# Phase 40 UN-SEC-01/02: mcp.sh added to the loop (was: state/backup/dry-run-output/bridges).
+# Sourcing mcp.sh enables mcp_secrets_load, _mcp_config_path, mcp_catalog_names,
+# _mcp_list_cache_init, is_mcp_installed for the per-MCP cleanup path.
+for lib_pair in "state.sh:$LIB_STATE_TMP" "backup.sh:$LIB_BACKUP_TMP" "dry-run-output.sh:$LIB_DRO_TMP" "bridges.sh:$LIB_BRIDGES_TMP" "mcp.sh:$LIB_MCP_TMP"; do
     lib_name="${lib_pair%%:*}"; lib_path="${lib_pair##*:}"
     if [[ -n "${TK_UNINSTALL_LIB_DIR:-}" && -f "$TK_UNINSTALL_LIB_DIR/$lib_name" ]]; then
         cp "$TK_UNINSTALL_LIB_DIR/$lib_name" "$lib_path"
@@ -396,6 +403,133 @@ prompt_modified_for_uninstall() {
                 ;;
         esac
     done
+}
+
+# uninstall_prompt_mcp_keys <name> [<key1> <key2> ...]
+# Phase 40 UN-SEC-01: per-MCP secret cleanup prompt + atomic rewrite of
+# ~/.claude/mcp-config.env. Called immediately after each `claude mcp remove
+# <name>` in the per-MCP loop downstream (UN-SEC-02).
+#
+# Contract (CONTEXT D-01..D-03 + D-08):
+#   - Zero keys (e.g., Calendly OAuth-only): return 0 silently — no prompt,
+#     no rewrite (defensive empty-array handling per D-03).
+#   - DRY_RUN=1: print `[dry-run] would prompt: ...` and return 0. No prompt,
+#     no rewrite (matches v4.3 dry-run zero-side-effects contract).
+#   - mcp-config.env absent: return 0 silently — nothing to clean.
+#   - TTY: read from /dev/tty by default; TK_UNINSTALL_TTY_FROM_STDIN=1
+#     test seam swaps to /dev/stdin (mirrors prompt_modified_for_uninstall:355).
+#   - Default N + fail-closed N on no-TTY (mirrors prompt_modified_for_uninstall
+#     5-attempt cap at lines 361-370).
+#   - On Y: atomic mktemp+mv+chmod 0600 rewrite mirroring mcp_secrets_set
+#     (lib/mcp.sh:553-583). Drops ONLY this MCP's keys; preserves all other
+#     MCPs' entries byte-identically.
+#   - Idempotent: re-running after a successful prune emits zero matches in
+#     the skip set; the file rewrite is byte-identical (D-02).
+#   - Mode 0600 preserved before AND after rewrite (defense in depth).
+#
+# Bash 3.2 / macOS BSD invariants (CONTEXT D-16): no `mapfile`, no `${var,,}`,
+# no `declare -A`, no `read -N`. Skip set uses a space-padded string for
+# word-boundary case-match instead of an associative array.
+#
+# Security (CLAUDE.md global rules): logs only key NAMES, never key values.
+# `printf '%s=%s\n' "$key" "$value" >> "$tmp"` writes pre-existing values back
+# unchanged — no echo of values to stdout/stderr. The Y-branch emits one
+# `log_success` line listing only the MCP name and config-file path.
+uninstall_prompt_mcp_keys() {
+    # D-03 defensive empty-array handling: name only, zero keys → no-op.
+    if [[ $# -lt 2 ]]; then
+        return 0
+    fi
+    local name="$1"
+    shift
+    # Space-padded skip-set string for word-boundary case match (Bash 3.2-safe;
+    # no associative array per D-16). Pattern: " KEY1 KEY2 ... " — leading and
+    # trailing space lets `case "$skip_keys" in *" $candidate "*) ...` work.
+    local skip_keys=" $* "
+
+    # Build human-readable comma-separated key list for the prompt label.
+    # Avoid leaking values: $@ contains key NAMES only (per UN-SEC-02 caller).
+    local key_csv=""
+    local k
+    for k in "$@"; do
+        if [[ -z "$key_csv" ]]; then
+            key_csv="$k"
+        else
+            key_csv="${key_csv}, $k"
+        fi
+    done
+
+    # Resolve mcp-config.env path. _mcp_config_path honors TK_MCP_CONFIG_HOME
+    # and (via the test harness exporting the same path under TK_UNINSTALL_HOME)
+    # stays in the sandbox during tests.
+    local cfg
+    cfg="$(_mcp_config_path)"
+    if [[ ! -f "$cfg" ]]; then
+        return 0   # nothing to clean up
+    fi
+
+    # D-08 dry-run gate. Plain `echo` per existing convention (propagate-audit-
+    # pipeline-v42.sh:396, migrate-to-complement.sh:245). No prompt, no rewrite.
+    if [[ ${DRY_RUN:-0} -eq 1 ]]; then
+        echo "[dry-run] would prompt: also remove keys ${key_csv} from $cfg?"
+        return 0
+    fi
+
+    # TTY resolution — mirrors prompt_modified_for_uninstall:353-356 verbatim.
+    # No new env-var introduced (D-13: reuse TK_UNINSTALL_TTY_FROM_STDIN seam).
+    local tty_target="/dev/tty"
+    [[ -n "${TK_UNINSTALL_TTY_FROM_STDIN:-}" ]] && tty_target="/dev/stdin"
+
+    # Prompt + fail-closed-N read with 5-attempt cap (mirrors lines 361-370).
+    local _read_fail=0
+    local choice=""
+    while :; do
+        choice=""
+        if ! read -r -p "[y/N] also remove keys ${key_csv} from mcp-config.env? " choice < "$tty_target" 2>/dev/null; then
+            choice="N"   # fail-closed: tty source unreachable
+            _read_fail=$((_read_fail + 1))
+            if [[ $_read_fail -ge 5 ]]; then
+                return 0
+            fi
+        fi
+        case "${choice:-N}" in
+            y|Y)
+                break  # fall through to rewrite path below
+                ;;
+            *)
+                return 0   # default N — no side effects
+                ;;
+        esac
+    done
+
+    # ── Y-branch: atomic rewrite excluding skip_keys ──
+    # Mirrors mcp_secrets_set:553-583 (lib/mcp.sh) — same mkdir/touch/chmod/mktemp
+    # /loop/mv/chmod sequence. D-02 inversion: skip listed keys instead of
+    # overwriting one.
+    mcp_secrets_load                              # populates MCP_SECRET_KEYS[] / MCP_SECRET_VALUES[]
+    chmod 0600 "$cfg" 2>/dev/null || true        # pre-write 0600 (defensive)
+    local tmp
+    tmp="$(mktemp "${cfg}.XXXXXX")" || return 1
+    local i
+    if [[ ${#MCP_SECRET_KEYS[@]} -gt 0 ]]; then
+        for ((i=0; i<${#MCP_SECRET_KEYS[@]}; i++)); do
+            case "$skip_keys" in
+                *" ${MCP_SECRET_KEYS[$i]} "*)
+                    # Drop this key (matches the skip-set).
+                    continue
+                    ;;
+                *)
+                    printf '%s=%s\n' "${MCP_SECRET_KEYS[$i]}" "${MCP_SECRET_VALUES[$i]}" >> "$tmp"
+                    ;;
+            esac
+        done
+    fi
+    mv "$tmp" "$cfg" || { rm -f "$tmp"; return 1; }
+    chmod 0600 "$cfg" || return 1
+
+    # T-40-01-02 mitigation: log only the MCP name + cfg path. No values.
+    log_success "Removed ${name} keys from ${cfg}"
+    return 0
 }
 
 # strip_sentinel_block <file>
