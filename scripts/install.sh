@@ -452,23 +452,41 @@ if [[ "$MCPS" -eq 1 ]]; then
             echo "No TTY available for MCP TUI; pass --yes for non-interactive install."
             exit 0
         fi
-        # Phase 37: wire up scope toggle banner. `s` cycles user ↔ local;
-        # default = user (global) so MCPs land in ~/.claude.json regardless
-        # of cwd. Refresh the header text first so the banner reflects any
-        # value already set via --mcp-scope=… (env wins over default).
+        # Phase 37 (preserved for CLI --mcp-scope) + Phase 39 (TUI-SCOPE-03/05):
+        # The pre-loop TK_MCP_SCOPE export is kept ONLY so the v4.9 CLI flag
+        # --mcp-scope still wins for non-interactive scripted use. The TUI
+        # dispatcher loop overwrites TK_MCP_SCOPE per-iteration from
+        # MCP_SELECTED_SCOPE[$tui_i] (around line 600+) so this initial
+        # export is effectively replaced once any TUI wizard runs (D-17/D-18).
         TK_MCP_SCOPE="${TK_MCP_SCOPE:-user}"
         export TK_MCP_SCOPE
+        # Phase 39 (banner cosmetics): seed the set-all banner from CLI
+        # --mcp-scope so the initial render reflects the user's CLI choice.
+        # Per-row MCP_SELECTED_SCOPE[] still wins for actual dispatch
+        # (D-13/D-15) — this assignment is purely banner display state.
+        _MCP_SETALL_SCOPE="${TK_MCP_SCOPE:-user}"
         mcp_render_scope_header
         # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_HEADER_KEY/FN
         TUI_HEADER_KEY="s"
         # shellcheck disable=SC2034
         TUI_HEADER_FN="mcp_toggle_scope"
+        # Phase 39 (TUI-SCOPE-02): per-row scope hotkey wiring — TUI_ROW_KEY
+        # / TUI_ROW_FN globals. Tab byte ($'\t') dispatches mcp_cycle_row_scope
+        # to mutate the focused row's MCP_SELECTED_SCOPE slot. Mirrors the
+        # TUI_HEADER_KEY/FN shape; consumed by tui.sh's case-match Tab arm
+        # (Plan 01 wired it).
+        # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_ROW_KEY
+        TUI_ROW_KEY=$'\t'
+        # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_ROW_FN
+        TUI_ROW_FN="mcp_cycle_row_scope"
         if ! tui_checklist; then
-            unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
+            unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN \
+                  TUI_ROW_KEY TUI_ROW_FN
             echo "MCP install cancelled."
             exit 0
         fi
-        unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
+        unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN \
+              TUI_ROW_KEY TUI_ROW_FN
         # Submit row in tui_checklist IS the confirm — do not chain a y/N
         # prompt after the screen-clear (it renders invisibly below the prior
         # output, same regression PR #20 fixed for the main TUI).
@@ -580,6 +598,22 @@ if [[ "$MCPS" -eq 1 ]]; then
 
             local_flags=()
             [[ "$DRY_RUN" -eq 1 ]] && local_flags+=("--dry-run")
+
+            # Phase 39 (TUI-SCOPE-05 D-17): export per-row scope for THIS
+            # iteration's mcp_wizard_run invocation. The pre-loop export at
+            # the TUI launch site set the CLI --mcp-scope value or "user"
+            # default; we overwrite per-iteration so each MCP gets its own
+            # scope (TUI Tab/`s` mutations land in MCP_SELECTED_SCOPE — read
+            # here as the source of truth). Index basis is $tui_i (TUI render
+            # order — parallel to MCP_SELECTED_SCOPE), NOT $i (MCP_NAMES alpha
+            # index — wrong frame). Fallback to "user" when MCP_SELECTED_SCOPE
+            # is unset/empty (defensive: pre-v5.0 callers, headless scripts
+            # before mcp_status_array runs). The reinstall block immediately
+            # below reads _scope_for_rm via ${TK_MCP_SCOPE:-user} so this
+            # export drives BOTH `claude mcp remove --scope X` AND the wizard
+            # call with the row-correct scope.
+            TK_MCP_SCOPE="${MCP_SELECTED_SCOPE[$tui_i]:-user}"
+            export TK_MCP_SCOPE
 
             # Phase 36-A: reinstall path — TUI_INSTALLED[tui_i]=1 AND
             # TUI_RESULTS[tui_i]=1 means the user toggled the row from
