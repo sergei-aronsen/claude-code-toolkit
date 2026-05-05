@@ -1002,6 +1002,65 @@ mcp_toggle_scope() {
     mcp_render_scope_header
 }
 
+# mcp_cycle_row_scope — Phase 39 TUI-SCOPE-02 per-row Tab handler.
+# Mutates MCP_SELECTED_SCOPE[$FOCUS_IDX] in place, cycling user → project →
+# local → user. Re-renders the row's TUI_LABELS slot so the new active
+# bracket is green on the next _tui_render frame.
+#
+# No-op when FOCUS_IDX is out of bounds (synthetic Submit row at
+# FOCUS_IDX==${#TUI_LABELS[@]}, or any index ≥ ${#MCP_SELECTED_SCOPE[@]}).
+# Per D-06 CLI-only rows have no MCP_SELECTED_SCOPE entry, so this guard
+# automatically skips them (T-39-02-T2 mitigation: parallel-array length
+# acts as the dispatcher gate; CLI-only rows never push to either array).
+#
+# Reads:  FOCUS_IDX, MCP_SELECTED_SCOPE[], TUI_LABELS[], TUI_TO_MCP_IDX[],
+#         MCP_DISPLAY[], MCP_UNOFFICIAL[], NO_COLOR
+# Writes: MCP_SELECTED_SCOPE[$FOCUS_IDX], TUI_LABELS[$FOCUS_IDX]
+mcp_cycle_row_scope() {
+    local _idx="${FOCUS_IDX:-0}"
+    local _len="${#MCP_SELECTED_SCOPE[@]}"
+    # Guard: out-of-bounds (Submit row, or no MCP_SELECTED_SCOPE entry).
+    if [[ "$_idx" -ge "$_len" ]]; then
+        return 0
+    fi
+    local _cur="${MCP_SELECTED_SCOPE[$_idx]:-user}"
+    local _next
+    case "$_cur" in
+        user)    _next="project" ;;
+        project) _next="local" ;;
+        local)   _next="user" ;;
+        *)       _next="user" ;;
+    esac
+    MCP_SELECTED_SCOPE[$_idx]="$_next"
+
+    # Re-build the label for this row so the green active bracket follows
+    # the new scope. Mirror the assembly in mcp_status_array (the unofficial
+    # `!` prefix + display name + scope glyph). Color resolution duplicated
+    # here because the function may be called outside mcp_status_array's
+    # lexical scope (caller wires it as TUI_ROW_FN — see tui.sh dispatch).
+    local _c_scope_active="" _c_nc="" _c_y=""
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        _c_scope_active=$'\033[0;32m'
+        _c_nc=$'\033[0m'
+        _c_y=$'\033[1;33m'
+    fi
+    local _g_bang="!"
+    local _mcp_idx="${TUI_TO_MCP_IDX[$_idx]:-0}"
+    local _scope_glyph
+    _scope_glyph=$(_mcp_render_scope_glyph "$_next")
+    local _name_part
+    if [[ "${MCP_UNOFFICIAL[$_mcp_idx]:-0}" == "1" ]]; then
+        if [[ -n "$_c_y" ]]; then
+            _name_part="${_c_y}${_g_bang}${_c_nc} ${MCP_DISPLAY[$_mcp_idx]}"
+        else
+            _name_part="[!] ${MCP_DISPLAY[$_mcp_idx]}"
+        fi
+    else
+        _name_part="${MCP_DISPLAY[$_mcp_idx]}"
+    fi
+    TUI_LABELS[$_idx]="${_scope_glyph} ${_name_part}"
+}
+
 # ─────────────────────────────────────────────────
 # TUI page assembly helper (MCP-03)
 # ─────────────────────────────────────────────────

@@ -10,7 +10,9 @@
 #                  for an associative array),
 #                  TUI_HEADER_TEXT (optional one-line banner above the list),
 #                  TUI_HEADER_KEY  (optional 1-char key that fires TUI_HEADER_FN),
-#                  TUI_HEADER_FN   (optional function name invoked on TUI_HEADER_KEY)
+#                  TUI_HEADER_FN   (optional function name invoked on TUI_HEADER_KEY),
+#                  TUI_ROW_KEY     (optional 1-byte key — typically $'\t' — that fires TUI_ROW_FN),
+#                  TUI_ROW_FN      (optional function name invoked on TUI_ROW_KEY; FOCUS_IDX in scope)
 # Globals (write): TUI_RESULTS[], _TUI_COLOR, _TUI_SAVED_STTY (internal)
 #
 # TUI_REQUIRED[i]=1 marks a row as mandatory: pre-checked, immutable
@@ -273,14 +275,28 @@ _tui_render() {
     if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
         _back_hint=" · b back"
     fi
+    # Phase 39 TUI-SCOPE-02: per-row hint surfaces only when caller wires the
+    # Tab→TUI_ROW_FN dispatch. Composes with _header_hint (the s key) into a
+    # single line; combined width was checked at planning (~95 chars under
+    # 100-col terminals).
+    local _row_hint=""
+    if [[ -n "${TUI_ROW_KEY:-}" && -n "${TUI_ROW_FN:-}" ]]; then
+        _row_hint=" · Tab row-scope"
+    fi
     local _header_hint=""
     if [[ -n "${TUI_HEADER_KEY:-}" && -n "${TUI_HEADER_FN:-}" ]]; then
-        _header_hint=" · ${TUI_HEADER_KEY} scope"
+        # Phase 39 TUI-SCOPE-03 D-11: header key copy updated from "${KEY} scope"
+        # (Phase 37) to "${KEY} set-all-scope" since `s` no longer toggles a
+        # global flag — Plan 02 will make it write every row's
+        # MCP_SELECTED_SCOPE slot. Updated here in Plan 01 because the footer
+        # text is a render concern that ships with the per-row Tab hint;
+        # behavior wiring lands in Plan 02.
+        _header_hint=" · ${TUI_HEADER_KEY} set-all-scope"
     fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
+        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
     else
-        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
+        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
     fi
 
     # Single atomic write — terminal renders one frame, no flicker, no bleed.
@@ -418,6 +434,31 @@ tui_checklist() {
                 if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
                     rc=4
                     break
+                fi
+                ;;
+            $'\t')
+                # Phase 39 TUI-SCOPE-02: per-row scope hotkey. Mirrors the
+                # TUI_HEADER_KEY/FN indirection in the catch-all *) below but
+                # binds to a dedicated TUI_ROW_KEY (typically Tab byte $'\t')
+                # so the caller can wire a per-row mutator alongside the
+                # global header toggle (`s` for set-all). Caller-supplied
+                # function is invoked with no args; FOCUS_IDX is already a
+                # global mutated by ↑/↓ above. Function MUST mutate
+                # caller-side state (typically a parallel array) and may
+                # also rebuild the row's TUI_LABELS slot so the next
+                # _tui_render reflects the new state. No-op when the row
+                # is out of bounds (Submit row, CLI-only row) — caller's
+                # guard responsibility (see mcp_cycle_row_scope).
+                #
+                # Tab is ASCII 0x09 — single byte, no multi-byte ambiguity
+                # (unlike arrow `\e[A`). Position: BEFORE the catch-all *)
+                # so the header-fn dispatch doesn't shadow Tab. The strict
+                # gate `"$TUI_ROW_KEY" == $'\t'` lets future callers swap
+                # to a different byte (e.g. lowercase `t`) per CONTEXT D-05
+                # without forcing a code change here.
+                if [[ -n "${TUI_ROW_KEY:-}" && -n "${TUI_ROW_FN:-}" \
+                      && "$TUI_ROW_KEY" == $'\t' ]]; then
+                    "${TUI_ROW_FN}" || true
                 fi
                 ;;
             *)
