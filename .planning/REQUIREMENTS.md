@@ -53,8 +53,8 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Catalog growth (`scripts/lib/integrations-catalog.json`)
 
-- [ ] **INT-13**: Add `calendly` MCP entry to the catalog. `display_name: "Calendly"`, `category: "workspace"` (or new `scheduling` category if planning decides), `unofficial: false`, `default_scope: "user"`, `requires_oauth: true` (Calendly MCP uses OAuth per the official docs at `developer.calendly.com/calendly-mcp-server`). `install_args` populated per the official MCP server spec. CLI block omitted (no companion CLI).
-- [ ] **INT-14**: Catalog explicitly does NOT add a "google-workspace" MCP. Decision logged in PROJECT.md and CHANGELOG: claude.ai's built-in Gmail/Calendar/Drive connectors already cover that surface. Adding a community wrapper would duplicate Anthropic's official OAuth flow and break under upstream API changes.
+- [x] **INT-13**: Add `calendly` MCP entry to the catalog. `display_name: "Calendly"`, `category: "workspace"` (or new `scheduling` category if planning decides), `unofficial: false`, `default_scope: "user"`, `requires_oauth: true` (Calendly MCP uses OAuth per the official docs at `developer.calendly.com/calendly-mcp-server`). `install_args` populated per the official MCP server spec. CLI block omitted (no companion CLI).
+- [x] **INT-14**: Catalog explicitly does NOT add a "google-workspace" MCP. Decision logged in PROJECT.md and CHANGELOG: claude.ai's built-in Gmail/Calendar/Drive connectors already cover that surface. Adding a community wrapper would duplicate Anthropic's official OAuth flow and break under upstream API changes.
 
 ### Tests (`scripts/tests/`)
 

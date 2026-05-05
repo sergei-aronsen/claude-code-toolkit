@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
 status: executing
-last_updated: "2026-05-05T20:47:35.698Z"
+last_updated: "2026-05-05T23:01:52.928Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
@@ -138,7 +138,7 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-05T20:47:35.637Z
+Last session: 2026-05-05T23:01:42.436Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
 Resume file: None
 
