@@ -875,6 +875,95 @@ if [[ $KEEP_STATE -eq 0 && ${#DELETED_LIST[@]} -gt 0 && ${#BRIDGE_PATHS[@]} -gt 
     done
 fi
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Phase 40 UN-SEC-01/02: per-MCP cleanup loop (claude mcp remove + key prompt)
+# ═════════════════════════════════════════════════════════════════════════════
+# Recover MCP names from `claude mcp list` ∩ mcp_catalog_names() — installed_mcps[]
+# is NOT a field in toolkit-install.json today (PATTERNS.md "No Analog Found" #2;
+# state.sh:117-129 records only installed_files[] and bridges[]). The intersection
+# guarantees we only remove toolkit-known MCPs even if the user registered other
+# MCPs via `claude mcp add` outside the toolkit.
+#
+# Graceful degradation (CONTEXT D-04 + v4.4 LIB-01 D-09 fail-soft contract):
+#   - claude CLI absent → outer command -v guard false → INSTALLED_MCPS stays
+#     empty → block is silently skipped, no log noise, no error.
+#   - claude mcp list fails (auth missing, transient daemon error) →
+#     _mcp_list_cache_init sets sentinel "__list_failed__" → is_mcp_installed
+#     returns 2 for every name → INSTALLED_MCPS stays empty → block skipped.
+#   - Catalog file unreadable → mcp_catalog_names emits nothing → outer guard
+#     skips. The per-MCP _keys lookup also short-circuits to "" → helper
+#     short-circuits at $# -lt 2.
+#
+# Placement (CONTEXT D-06 ordering invariant):
+#   ... → MODIFIED_LIST loop → bridges[] purge → THIS BLOCK → post-run summary
+#       → sentinel strip → base-plugin invariant → STATE_FILE removal (LAST)
+# Plan 40-02 will add the full-toolkit mcp-config.env prompt downstream of this
+# block, immediately upstream of STATE_FILE removal.
+#
+# NOTE: this block is NOT yet wrapped in a `[[ $KEEP_STATE -eq 0 ]]` gate;
+# Plan 40-03 (UN-SEC-05) will add that gate as a single-call-site change.
+INSTALLED_MCPS=()
+if command -v "${TK_MCP_CLAUDE_BIN:-claude}" >/dev/null 2>&1; then
+    # Initialize cache (always returns 0; sentinel state stored in
+    # _MCP_LIST_CACHED via is_mcp_installed below).
+    _mcp_list_cache_init >/dev/null 2>&1 || true
+    # Iterate catalog names; keep only those is_mcp_installed reports as
+    # currently registered (return 0). Returns 1 (not installed) and 2
+    # (CLI absent / list failed) both filter out cleanly.
+    while IFS= read -r _cat_name; do
+        [[ -z "$_cat_name" ]] && continue
+        if is_mcp_installed "$_cat_name"; then
+            INSTALLED_MCPS+=("$_cat_name")
+        fi
+    done <<EOF
+$(mcp_catalog_names 2>/dev/null || true)
+EOF
+fi
+
+if [[ ${#INSTALLED_MCPS[@]} -gt 0 ]]; then
+    echo ""
+    log_info "${#INSTALLED_MCPS[@]} MCP(s) registered by toolkit. Removing…"
+    # Resolve catalog path once for env_var_keys lookups. _mcp_default_catalog_path
+    # honors BASH_SOURCE of mcp.sh; under the curl-pipe install path it points
+    # at the temp file and the catalog won't be present, so we fall through to
+    # an empty key list and the helper short-circuits.
+    _catalog_path="${TK_MCP_CATALOG_PATH:-$(_mcp_default_catalog_path 2>/dev/null || echo "")}"
+    for _mcp_name in "${INSTALLED_MCPS[@]}"; do
+        # Step 1: claude mcp remove --scope user (mirrors install.sh:686-687
+        # reinstall pattern). Suppress stdout/stderr + `|| true` per
+        # T-40-01-05 acceptance: a fake claude on PATH cannot leak via this
+        # pipeline, and a transient registration failure should not abort
+        # the whole uninstall.
+        if [[ ${DRY_RUN:-0} -eq 1 ]]; then
+            echo "[dry-run] would run: claude mcp remove --scope user $_mcp_name"
+        else
+            "${TK_MCP_CLAUDE_BIN:-claude}" mcp remove --scope user "$_mcp_name" >/dev/null 2>&1 || true
+        fi
+        # Step 2: per-MCP key cleanup prompt (UN-SEC-02 D-04). env_var_keys
+        # is a JSON array (may be empty for OAuth-only MCPs like Calendly).
+        # `// []` defends against a missing field. `join(" ")` produces a
+        # whitespace-separated key list safe for word-splitting because
+        # env-var names match ^[A-Z_][A-Z0-9_]*$ (validated by
+        # mcp_secrets_load:505) — no shell metacharacters possible.
+        # T-40-01-04 mitigation: --arg passes the MCP name as a JSON
+        # variable, never interpolated into the jq filter string.
+        _keys=""
+        if [[ -n "$_catalog_path" && -f "$_catalog_path" ]]; then
+            _keys="$(jq -r --arg n "$_mcp_name" \
+                '.components.mcp[$n].env_var_keys // [] | join(" ")' \
+                "$_catalog_path" 2>/dev/null || echo "")"
+        fi
+        # Empty $_keys (OAuth-only MCP, missing catalog, or jq error) →
+        # helper short-circuits at `[[ $# -lt 2 ]]` (D-03 no-op contract).
+        # The unquoted $_keys word-splits on whitespace into one positional
+        # argument per env-var name; env-var names cannot contain spaces or
+        # shell metacharacters (validated by mcp_secrets_load:505 regex
+        # ^[A-Z_][A-Z0-9_]*$), so the split is safe.
+        # shellcheck disable=SC2086
+        uninstall_prompt_mcp_keys "$_mcp_name" $_keys
+    done
+fi
+
 # ───────── Post-run summary (4-group) ─────────
 # IMPORTANT: every array iteration uses the bash 3.2-safe array-length guard
 # pattern — NEVER the inline `[@]:-` default modifier. Empty arrays under
