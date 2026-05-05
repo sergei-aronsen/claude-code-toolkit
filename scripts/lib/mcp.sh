@@ -745,7 +745,7 @@ mcp_wizard_run() {
         if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" ]]; then
             # Phase 38 (DISP-03 D-10): tuple grew from 3 to 4 fields. New format:
             # `name\tkeys\tinstall_args\tscope`. The install.sh reader at
-            # install.sh:833 ships the matching 4-field reader in plan 38-02 in
+            # install.sh:809 ships the matching 4-field reader in plan 38-02 in
             # the same wave so there is never a schema-without-reader window.
             # Pre-v5.0 rows fall back to scope=user via the reader's empty-field
             # guard.
@@ -785,6 +785,13 @@ mcp_wizard_run() {
                 # overwrite real secrets. _project_secrets_load_env populates
                 # the parallel arrays; _project_secrets_index returns 0 if
                 # found.
+                # Phase 38 (D-09): re-parse <project>/.env on every iteration
+                # so a stub we just appended is visible to the next
+                # iteration's collision check. DO NOT lift this load out of
+                # the loop — it is the cycle-breaker that preserves
+                # "see your own previous stubs" semantics within a single
+                # wizard run. User-scope sibling at line ~813 has the same
+                # load-per-iteration pattern via mcp_secrets_load.
                 _project_secrets_load_env "$_proj_env"
                 if ! _project_secrets_index "$_stub_key" >/dev/null 2>&1; then
                     printf '%s=\n' "$_stub_key" >> "$_proj_env" 2>/dev/null || true
