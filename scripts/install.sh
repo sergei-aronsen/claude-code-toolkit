@@ -850,23 +850,28 @@ if [[ "$MCPS" -eq 1 ]]; then
             echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
             echo ""
             echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
+            # Phase 38 (MED-01 fix): wrap `set -- $_row` in a subshell so the
+            # positional-param mutation is contained. At top-level, `set --`
+            # would permanently overwrite the script's $@/$1/$2 — latent
+            # time-bomb for any future feature flag check after summary or
+            # `exec "$@"` re-entry. Subshell isolates the mutation per row.
             for _row in "${_user_rows[@]}"; do
-                _IFS_SAVED2="$IFS"
-                IFS=$'\t'
-                # shellcheck disable=SC2086
-                set -- $_row
-                IFS="$_IFS_SAVED2"
-                _row_keys="$2"
-                _IFS_SAVED2="$IFS"
-                IFS=','
-                for _k in $_row_keys; do
-                    _k="${_k# }"
-                    [[ -z "$_k" ]] && continue
-                    printf '       %s=<your-key>\n' "$_k"
-                done
-                IFS="$_IFS_SAVED2"
+                (
+                    _IFS_SAVED2="$IFS"
+                    IFS=$'\t'
+                    # shellcheck disable=SC2086
+                    set -- $_row
+                    IFS="$_IFS_SAVED2"
+                    _row_keys="$2"
+                    IFS=','
+                    for _k in $_row_keys; do
+                        _k="${_k# }"
+                        [[ -z "$_k" ]] && continue
+                        printf '       %s=<your-key>\n' "$_k"
+                    done
+                )
             done
-            unset _k _IFS_SAVED2 _row _row_keys
+            unset _row
             echo ""
             case "$_rc_added" in
                 1) echo "  2) Shell rc updated: auto-source line added to ${_shell_rc/#$HOME/~}." ;;
@@ -885,23 +890,27 @@ if [[ "$MCPS" -eq 1 ]]; then
             echo -e "${YELLOW}Some project-scope MCPs need API keys finished:${NC}"
             echo ""
             echo "  1) Open <project>/.env (already stubbed; mode 0600) and fill in:"
+            # Phase 38 (MED-01 fix): wrap `set -- $_row` in a subshell — see
+            # mirror comment on the user-block above. Project-block cloned
+            # the v4.9 user-block pattern in Phase 38, doubling the surface
+            # for the latent positional-param mutation; subshell contains it.
             for _row in "${_project_rows[@]}"; do
-                _IFS_SAVED2="$IFS"
-                IFS=$'\t'
-                # shellcheck disable=SC2086
-                set -- $_row
-                IFS="$_IFS_SAVED2"
-                _row_keys="$2"
-                _IFS_SAVED2="$IFS"
-                IFS=','
-                for _k in $_row_keys; do
-                    _k="${_k# }"
-                    [[ -z "$_k" ]] && continue
-                    printf '       %s=<your-key>\n' "$_k"
-                done
-                IFS="$_IFS_SAVED2"
+                (
+                    _IFS_SAVED2="$IFS"
+                    IFS=$'\t'
+                    # shellcheck disable=SC2086
+                    set -- $_row
+                    IFS="$_IFS_SAVED2"
+                    _row_keys="$2"
+                    IFS=','
+                    for _k in $_row_keys; do
+                        _k="${_k# }"
+                        [[ -z "$_k" ]] && continue
+                        printf '       %s=<your-key>\n' "$_k"
+                    done
+                )
             done
-            unset _k _IFS_SAVED2 _row _row_keys
+            unset _row
             echo ""
             echo "  2) <project>/.gitignore already includes .env (toolkit added it)."
             echo ""
