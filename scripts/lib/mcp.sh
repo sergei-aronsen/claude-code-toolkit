@@ -795,6 +795,18 @@ mcp_wizard_run() {
             # User/local scope (UNCHANGED v4.9 behavior).
             for _stub_key in "${_stub_keys[@]}"; do
                 [[ -z "$_stub_key" ]] && continue
+                # LOW-01 fix: defense-in-depth shape check. The bare
+                # `printf '%s=\n' "$_stub_key"` below bypasses
+                # mcp_secrets_set's validation pipeline. _stub_key comes
+                # from the curated catalog (audit L1 enforced at load),
+                # but the project-scope sibling above gets defense-in-depth
+                # via _project_secrets_load_env's parse-time filter — keep
+                # parity here so a future catalog typo cannot leak shell
+                # metacharacters into ~/.claude/mcp-config.env. Mirrors
+                # mcp_secrets_load's audit L1 guard (line 496).
+                if [[ ! "$_stub_key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+                    continue
+                fi
                 # Only stub if absent — never overwrite an existing value.
                 mcp_secrets_load
                 if ! _mcp_secrets_index "$_stub_key" >/dev/null 2>&1; then
