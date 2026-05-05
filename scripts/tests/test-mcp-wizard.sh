@@ -409,6 +409,117 @@ fi
 
 rm -f "$SANDBOX/claude.argv"
 
+# ── Test 11 (DISP-04): install.sh post-install summary block prints scope-aware copy ──
+# Extracts the install.sh summary `if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s ...
+# ]]; then ... fi` block via awk into a hermetic harness. Runs the harness with
+# a synthetic queue containing a single project-scope row and asserts the four
+# D-14 exact phrases land in stdout. Then runs with a mixed user+project queue
+# and asserts D-16 ordering (user-scope block printed BEFORE project-scope).
+
+# Extract the summary block once (used for both single-scope and mixed-scope runs).
+SUMMARY_SCRIPT="$SANDBOX/summary11.sh"
+{
+    printf '#!/bin/bash\n'
+    # Shell-rc auto-source line never fires under the harness — clear SHELL/_VERSION
+    # so neither the zsh nor bash branch matches → _shell_rc stays empty → the
+    # `> file` write is skipped (HOME mutation cannot happen).
+    printf 'unset ZSH_VERSION BASH_VERSION SHELL\n'
+    # Color vars (referenced by the extracted block via ${YELLOW} / ${NC}).
+    printf 'YELLOW="\\033[1;33m"; NC="\\033[0m"\n'
+    # FAILED_COUNT exists in install.sh ambient state — set to 0 so the
+    # post-block `if [[ $FAILED_COUNT -gt 0 ]]` does not exit non-zero.
+    printf 'FAILED_COUNT=0\n'
+    # Wrap the extracted block in a function so the trailing `exit 0` does
+    # not terminate stdout capture; we ignore the exit/return semantics here.
+    printf '_summary_block() {\n'
+    awk '
+        /^    if \[\[ -n "\$\{TK_MCP_DEFERRED_QUEUE:-\}" && -s "\$TK_MCP_DEFERRED_QUEUE" \]\]; then/ {capture=1}
+        capture==1 {print}
+        capture==1 && /^    fi$/ {capture=0}
+    ' "${REPO_ROOT}/scripts/install.sh"
+    printf '\n}\n'
+    printf '_summary_block\n'
+} > "$SUMMARY_SCRIPT"
+chmod +x "$SUMMARY_SCRIPT"
+
+# Single project-scope row.
+QUEUE11="$(mktemp "$SANDBOX/queue11.XXXXXX")"
+printf 'context7\tCONTEXT7_API_KEY\targs1\tproject\n' > "$QUEUE11"
+
+SUMMARY_OUT="$(TK_MCP_DEFERRED_QUEUE="$QUEUE11" bash "$SUMMARY_SCRIPT" 2>&1 || true)"
+
+assert_contains "Some project-scope MCPs need API keys finished:" "$SUMMARY_OUT" \
+    "T11 (DISP-04): summary prints project-scope yellow heading"
+assert_contains "Open <project>/.env" "$SUMMARY_OUT" \
+    "T11 (DISP-04): summary prints step 1 (Open <project>/.env)"
+assert_contains ".gitignore already includes .env" "$SUMMARY_OUT" \
+    "T11 (DISP-04): summary prints step 2 (gitignore guard already in place)"
+assert_contains "CONTEXT7_API_KEY=<your-key>" "$SUMMARY_OUT" \
+    "T11 (DISP-04): summary prints per-key fill-in line"
+assert_not_contains "Open ~/.claude/mcp-config.env" "$SUMMARY_OUT" \
+    "T11 (DISP-04): user-scope copy NOT printed when only project rows present"
+
+# Mixed scope (D-16): user row first, project row second.
+QUEUE11M="$(mktemp "$SANDBOX/queue11m.XXXXXX")"
+printf 'alpha\tA_KEY\targs0\tuser\ncontext7\tCONTEXT7_API_KEY\targs1\tproject\n' > "$QUEUE11M"
+MIXED_OUT="$(TK_MCP_DEFERRED_QUEUE="$QUEUE11M" bash "$SUMMARY_SCRIPT" 2>&1 || true)"
+
+# D-16 ordering: position of user-scope heading < position of project-scope heading.
+USER_POS=$(printf '%s\n' "$MIXED_OUT" | grep -n "Some MCPs registered" | head -1 | cut -d: -f1)
+PROJ_POS=$(printf '%s\n' "$MIXED_OUT" | grep -n "Some project-scope MCPs need API keys finished" | head -1 | cut -d: -f1)
+if [[ -n "$USER_POS" && -n "$PROJ_POS" && "$USER_POS" -lt "$PROJ_POS" ]]; then
+    assert_pass "T11 (DISP-04 D-16): user-scope block printed BEFORE project-scope block in mixed-scope queue"
+else
+    assert_fail "T11 (DISP-04 D-16): user-scope block printed BEFORE project-scope block in mixed-scope queue" \
+                "USER_POS='$USER_POS' PROJ_POS='$PROJ_POS' OUT_HEAD=$(printf '%s\n' "$MIXED_OUT" | head -3)"
+fi
+
+rm -f "$SANDBOX/claude.argv"
+
+# ── Test 12 (Defense-in-depth, T1 mitigation from threat model): wizard call site ──
+# When project_secrets_render_mcp_env_block is mocked to return a poisoned block
+# (literal value, no `${VAR}` substitution), mcp_wizard_run MUST:
+#   - return rc=1
+#   - emit the exact-phrase `refusing to write literal value` to stderr
+#   - NEVER invoke claude (claude.argv must NOT exist after the call)
+# This is the call-site assertion — the Phase 37 lib already covers the
+# validate_mcp_env_block contract; this test exercises the wizard's call-site
+# defense-in-depth gate (which runs BEFORE claude mcp add).
+rm -rf "$PROJECT"
+mkdir -p "$PROJECT"
+rm -f "$SANDBOX/claude.argv"
+
+# Override the render function to emit a poisoned block (literal value).
+project_secrets_render_mcp_env_block() {
+    printf '{"CONTEXT7_API_KEY":"plain-literal-not-substitution"}'
+    return 0
+}
+
+printf 'tk_did_not_matter\n' > "$SANDBOX/tty.fix.poison"
+DEF_RC=0
+ERR=$(TK_MCP_SCOPE=project TK_PROJECT_ROOT="$PROJECT" \
+      TK_MCP_TTY_SRC="$SANDBOX/tty.fix.poison" \
+      mcp_wizard_run context7 2>&1 1>/dev/null) || DEF_RC=$?
+
+assert_eq "1" "$DEF_RC" "T12 (Defense-in-depth): wizard returns rc=1 on poisoned env block"
+assert_contains "refusing to write literal value" "$ERR" \
+    "T12 (Defense-in-depth): stderr contains exact-phrase refusal"
+
+# claude was NOT invoked — claude.argv must NOT exist.
+if [[ -f "$SANDBOX/claude.argv" ]]; then
+    assert_fail "T12 (Defense-in-depth): claude was NOT invoked" \
+                "claude.argv exists — wizard called claude despite literal leak"
+else
+    assert_pass "T12 (Defense-in-depth): claude was NOT invoked"
+fi
+
+# Restore the real render function for any downstream tests / re-runs.
+unset -f project_secrets_render_mcp_env_block
+# shellcheck source=/dev/null
+source "${REPO_ROOT}/scripts/lib/project-secrets.sh"
+
+rm -f "$SANDBOX/claude.argv"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf "\n=== Results: %s passed, %s failed ===\n" "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
