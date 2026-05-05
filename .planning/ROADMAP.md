@@ -189,7 +189,12 @@
   3. Project `.env` files outside `~/.claude/` are **never** opened or modified by `uninstall.sh` — verified by hermetic filesystem-fingerprint diff in `test-uninstall-state-cleanup.sh`; `--keep-state` (and `TK_UNINSTALL_KEEP_STATE=1`) implies `--keep-secrets` — neither `mcp-config.env` nor any other secret-bearing file is touched; documented in `--help` and `docs/INSTALL.md`.
   4. `integrations-catalog.json` contains a `calendly` MCP entry with `display_name: "Calendly"`, `unofficial: false`, `default_scope: "user"`, `requires_oauth: true`, populated `install_args` per the official MCP server spec, no CLI block; the catalog explicitly does NOT contain any `google-workspace` entry, with the decision logged in PROJECT.md Key Decisions and CHANGELOG `[5.0.0]`.
   5. `scripts/validate-integrations-catalog.py` enforces SCOPE-01 (every MCP has `default_scope` with valid enum) — extends the existing validator, no new file; `scripts/tests/test-uninstall-state-cleanup.sh` extended with UN-SEC-01 / UN-SEC-03 Y/N branches, UN-SEC-04 negative assertion, and UN-SEC-05 `--keep-state` preservation; `test-integrations-catalog.sh` PASS≥10 stays green and gains the SCOPE-01 / Calendly assertions.
-**Plans**: TBD
+**Plans**: 5 plans (3 complete, 2 pending)
+- [x] 40-01-PLAN.md — uninstall_prompt_mcp_keys helper + per-MCP claude-mcp-remove loop in uninstall.sh (UN-SEC-01, UN-SEC-02)
+- [x] 40-02-PLAN.md — full-toolkit mcp-config.env cleanup prompt with D-06 ordering preservation (UN-SEC-03)
+- [ ] 40-03-PLAN.md — `--keep-state` implies `--keep-secrets` + `.env` never touched contract (UN-SEC-04, UN-SEC-05)
+- [x] 40-04-PLAN.md — Calendly catalog entry + INT-14 Google Workspace lock + SCOPE-01 regression test (INT-13, INT-14, TEST-06)
+- [ ] 40-05-PLAN.md — test-uninstall-state-cleanup.sh extension (TEST-05)
 **UI hint**: no
 
 ### Phase 41: Distribution + Docs

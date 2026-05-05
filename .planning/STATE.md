@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
 status: executing
-last_updated: "2026-05-05T23:01:52.928Z"
+last_updated: "2026-05-05T23:30:00.000Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -25,11 +25,21 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 40 (Uninstall Secret Cleanup + Calendly + Validator) — EXECUTING
-Plan: 3 of 5
-Status: Ready to execute
+Plan: 4 of 5 (next: 40-03 keep-state-implies-keep-secrets)
+Status: 40-02 complete (UN-SEC-03 closed in commit 5d08292) — Ready for next plan
 Last activity: 2026-05-05
 
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0/6 phases (0%)
+Progress: [████████████████░░░░] 13/15 plans (87%)
+
+### Phase 40 Plan Status
+
+| Plan | Title | Status | Commit |
+|------|-------|--------|--------|
+| 40-01 | uninstall_prompt_mcp_keys helper + per-MCP loop (UN-SEC-01/02) | complete | 48a661d, 71ba883 |
+| 40-02 | full-toolkit mcp-config.env prompt (UN-SEC-03) | complete | 5d08292 |
+| 40-03 | --keep-state implies --keep-secrets (UN-SEC-04/05) | pending | — |
+| 40-04 | Calendly catalog + INT-14 lock + SCOPE-01 regression | complete | eae7b89, 1be1ed4, 0f45ddc |
+| 40-05 | test-uninstall-state-cleanup.sh extension (TEST-05) | pending | — |
 
 ## Plan Count Estimate
 
@@ -138,8 +148,9 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-05T23:01:42.436Z
+Last session: 2026-05-05T23:30:00.000Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
+Stopped at: Completed 40-02 full-toolkit mcp-config.env prompt (UN-SEC-03) — commit 5d08292; STATE_FILE D-06 ordering preserved (rm of MCP_CFG line 1114 < rm of STATE_FILE line 1134)
 Resume file: None
 
 **Next steps:**
