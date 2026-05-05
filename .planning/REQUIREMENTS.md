@@ -67,11 +67,11 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - SEC-06 metacharacter rejection.
   - `project_secrets_write_env` rejects values containing `$`, backtick, backslash, quote, newline.
   - `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` test seam works and warns.
-- [ ] **TEST-02**: Extend `scripts/tests/test-mcp-wizard.sh` (currently PASS=14) with scenarios for project-scope dispatch:
+- [x] **TEST-02**: Extend `scripts/tests/test-mcp-wizard.sh` (currently PASS=14) with scenarios for project-scope dispatch:
   - DISP-01 happy path: scope=project → keys land in `<project>/.env`, `.gitignore` updated, `.mcp.json` `env` block uses `${VAR}` form, `mcp-config.env` untouched.
   - DISP-02 no regression: scope=user → keys land in `mcp-config.env`, `<project>/.env` untouched.
   - DISP-03 defer-secrets path with scope=project → blank stubs in `<project>/.env`, queue tuple has 4 fields.
-- [ ] **TEST-03**: Extend `scripts/tests/test-mcp-secrets.sh` (currently PASS=11) with scenarios for the new shared `_mcp_validate_value` boundary if refactored (SEC-06).
+- [x] **TEST-03**: Extend `scripts/tests/test-mcp-secrets.sh` (currently PASS=11) with scenarios for the new shared `_mcp_validate_value` boundary if refactored (SEC-06).
 - [ ] **TEST-04**: Extend `scripts/tests/test-mcp-selector.sh` (currently PASS=21) with scenarios for per-row scope toggle:
   - TUI-SCOPE-01 indicator render in default state.
   - TUI-SCOPE-02 single-row hotkey flips one row only.
