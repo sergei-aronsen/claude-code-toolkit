@@ -494,7 +494,16 @@ if [[ "$MCPS" -eq 1 ]]; then
         # --mcp-scope so the initial render reflects the user's CLI choice.
         # Per-row MCP_SELECTED_SCOPE[] still wins for actual dispatch
         # (D-13/D-15) — this assignment is purely banner display state.
+        # LOW-03 fix: defense-in-depth validation. If a malformed
+        # TK_MCP_SCOPE leaks in (caller bypassed the argument-parser
+        # validator, or env from another tool), refuse outright rather
+        # than letting mcp_render_scope_header silently fall through to
+        # `[U]` while mcp_toggle_scope's first cycle silently drops it.
         _MCP_SETALL_SCOPE="${TK_MCP_SCOPE:-user}"
+        case "$_MCP_SETALL_SCOPE" in
+            user|local|project) ;;
+            *) _MCP_SETALL_SCOPE="user" ;;
+        esac
         mcp_render_scope_header
         # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_HEADER_KEY/FN
         TUI_HEADER_KEY="s"
