@@ -45,6 +45,18 @@ assert_not_contains() {
     fi
 }
 
+# Cross-platform 0600 mode check — copied verbatim from test-project-secrets.sh:52-60
+# (Phase 38 plan 38-03). Echoes "1" when mode is exactly 0600, "0" otherwise.
+mode_is_0600() {
+    local f="$1"
+    if stat -f %Mp%Lp "$f" 2>/dev/null | grep -q "^0600$"; then
+        echo "1"; return 0
+    elif [ "$(stat -c %a "$f" 2>/dev/null)" = "600" ]; then
+        echo "1"; return 0
+    fi
+    echo "0"
+}
+
 printf "=== mcp-wizard tests (Plan 25-02 Task 2) ===\n"
 
 SANDBOX="$(mktemp -d /tmp/mcp-wizard.XXXXXX)"
@@ -52,12 +64,33 @@ trap 'rm -rf "$SANDBOX"' EXIT
 export TK_MCP_CONFIG_HOME="$SANDBOX"
 mkdir -p "$SANDBOX/.claude"
 
-# Build a mock claude binary that records argv + env to a file.
+# Phase 38 (TK_PROJECT_ROOT seam — plan 38-03): hermetic project dir for
+# project-scope tests. Each project-scope test rm -rf + mkdir -p $PROJECT before
+# running so each assertion sees a clean directory (no carry-over from a
+# previous test's .env / .gitignore).
+PROJECT="$SANDBOX/myproj"
+mkdir -p "$PROJECT"
+
+# Build a mock claude binary that records argv + env to a file. Phase 38
+# extension: parses --scope <value> distinctly (writes a `scope:<value>` line
+# to claude.argv) so DISP-01/02/03 tests can grep `scope:project` /
+# `scope:user` directly without scanning the full argv string.
 cat > "$SANDBOX/claude" <<'MOCK'
 #!/bin/bash
+# Mock claude binary — records argv + env + parsed scope to $SANDBOX/claude.argv.
 printf 'argv:' > "$SANDBOX/claude.argv"
 for a in "$@"; do printf ' %s' "$a"; done >> "$SANDBOX/claude.argv"
 printf '\n' >> "$SANDBOX/claude.argv"
+# Parse --scope <value> distinctly — emit a `scope:<value>` line.
+_scope_seen=""
+_prev=""
+for a in "$@"; do
+    if [[ "$_prev" == "--scope" || "$_prev" == "-s" ]]; then
+        _scope_seen="$a"
+    fi
+    _prev="$a"
+done
+printf 'scope:%s\n' "$_scope_seen" >> "$SANDBOX/claude.argv"
 printf 'env:CTX=%s\n' "${CONTEXT7_API_KEY:-}" >> "$SANDBOX/claude.argv"
 printf 'env:SENTRY=%s\n' "${SENTRY_AUTH_TOKEN:-}" >> "$SANDBOX/claude.argv"
 exit 0
