@@ -1084,7 +1084,14 @@ mcp_toggle_scope() {
 # Writes: MCP_SELECTED_SCOPE[$FOCUS_IDX], TUI_LABELS[$FOCUS_IDX]
 mcp_cycle_row_scope() {
     local _idx="${FOCUS_IDX:-0}"
-    local _len="${#MCP_SELECTED_SCOPE[@]}"
+    # Bash 3.2 + nounset safety: callers under `set -u` would crash on
+    # ${#MCP_SELECTED_SCOPE[@]} when the array is undeclared. Use the
+    # ${var[*]+x} existence-check, mirroring sibling mcp_toggle_scope
+    # (Plan 01 invariant; MED-01 fix — sibling parity).
+    local _len=0
+    if [[ -n "${MCP_SELECTED_SCOPE[*]+x}" ]]; then
+        _len="${#MCP_SELECTED_SCOPE[@]}"
+    fi
     # Guard: out-of-bounds (Submit row, or no MCP_SELECTED_SCOPE entry).
     if [[ "$_idx" -ge "$_len" ]]; then
         return 0
