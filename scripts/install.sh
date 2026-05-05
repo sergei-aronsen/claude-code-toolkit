@@ -104,6 +104,16 @@ while [[ $# -gt 0 ]]; do
             _scope_arg="${1#--mcp-scope=}"
             case "$_scope_arg" in
                 user|local|project)
+                    # Phase 39 (HIGH-02): TK_MCP_SCOPE_CLI captures the
+                    # explicit CLI value separately so headless dispatch can
+                    # tell "user supplied --mcp-scope" from "default fallback
+                    # to user". TK_MCP_SCOPE remains exported for the inline
+                    # 1-MCP path (mcp_wizard_run reads it directly); the main
+                    # TUI dispatcher consults TK_MCP_SCOPE_CLI to broadcast
+                    # the override into every MCP_SELECTED_SCOPE[] slot
+                    # (D-18 "CLI flag wins" intent).
+                    TK_MCP_SCOPE_CLI="$_scope_arg"
+                    export TK_MCP_SCOPE_CLI
                     TK_MCP_SCOPE="$_scope_arg"
                     export TK_MCP_SCOPE
                     ;;
@@ -386,6 +396,26 @@ if [[ "$MCPS" -eq 1 ]]; then
         exit 1
     }
     mcp_status_array
+
+    # Phase 39 (HIGH-02): CLI --mcp-scope wins over catalog defaults in
+    # headless paths. mcp_status_array seeds MCP_SELECTED_SCOPE[] from
+    # MCP_DEFAULT_SCOPE[i] (catalog defaults); without this broadcast, the
+    # --yes and TK_MCP_PRE_SELECTED paths never run Tab/`s` so the CLI flag
+    # is silently lost (D-18 violation). Per-row Tab/`s` mutations during
+    # the interactive TUI still override per-iteration (writes land in
+    # MCP_SELECTED_SCOPE before the dispatcher reads it at line ~615).
+    if [[ -n "${TK_MCP_SCOPE_CLI:-}" ]]; then
+        case "$TK_MCP_SCOPE_CLI" in
+            user|local|project)
+                if [[ -n "${MCP_SELECTED_SCOPE[*]+x}" ]]; then
+                    for ((_si=0; _si<${#MCP_SELECTED_SCOPE[@]}; _si++)); do
+                        MCP_SELECTED_SCOPE[$_si]="$TK_MCP_SCOPE_CLI"
+                    done
+                    unset _si
+                fi
+                ;;
+        esac
+    fi
 
     # CLI-absent banner per CONTEXT.md "Failure & Degradation" — render but warn.
     if [[ "${MCP_CLI_PRESENT:-0}" -eq 0 ]]; then
