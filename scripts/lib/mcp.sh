@@ -52,6 +52,15 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
+# Phase 39 (TUI-SCOPE-03 D-09/D-10/D-12): module-local "global pending" scope
+# used by the repurposed `s` keypress (mcp_toggle_scope below). Tracks the
+# next scope value the user will commit to ALL rows on the next `s` press.
+# NOT exported — TK_MCP_SCOPE is now strictly the per-call wizard env-var
+# (Phase 38 contract + Phase 39 D-18). The dispatcher in install.sh is the
+# sole writer of TK_MCP_SCOPE in the TUI hot path. Initialised to "user" so
+# the first banner render shows a sane default before any cycle.
+: "${_MCP_SETALL_SCOPE:=user}"
+
 # Internal helper — resolves sibling integrations-catalog.json path from BASH_SOURCE.
 # Phase 32-01 (CAT-01): catalog renamed mcp-catalog.json → integrations-catalog.json
 # to make room for non-MCP component types (skills, plugins, statuslines) under
@@ -971,34 +980,91 @@ mcp_wizard_run() {
 # callers can invoke mcp_render_scope_header at any time to refresh.
 
 mcp_render_scope_header() {
-    local _cur="${TK_MCP_SCOPE:-user}"
-    local _user_glyph="◯" _local_glyph="◯"
+    # Phase 39 (TUI-SCOPE-03 D-11): banner repurposed from Phase 37's
+    # 2-state user/local toggle copy to "Set all to: [U] · press s to cycle". Reads
+    # module-local _MCP_SETALL_SCOPE — the "global pending" value mcp_toggle_scope
+    # will write to every MCP_SELECTED_SCOPE slot on the next `s` press.
+    # Width budget: 36 chars plain, well under 80-col after tui.sh:153 indent.
+    local _cur="${_MCP_SETALL_SCOPE:-user}"
+    local _glyph
     case "$_cur" in
-        local)  _local_glyph="◉" ;;
-        *)      _user_glyph="◉"; _cur="user" ;;
+        user)    _glyph="[U]" ;;
+        project) _glyph="[P]" ;;
+        local)   _glyph="[L]" ;;
+        *)       _glyph="[U]" ;;
     esac
-    # Color block: bold label + bright marker on the active option. Reset
-    # tail with \e[0m so subsequent rows aren't tinted.
-    if [[ "${_TUI_COLOR:-1}" -eq 1 ]] && [[ -z "${NO_COLOR+x}" ]]; then
-        TUI_HEADER_TEXT=$'\e[1mScope:\e[0m '
-        if [[ "$_cur" == "user" ]]; then
-            TUI_HEADER_TEXT+=$'\e[1;32m◉ user (global)\e[0m  \e[2m◯ local (this project)\e[0m'
-        else
-            TUI_HEADER_TEXT+=$'\e[2m◯ user (global)\e[0m  \e[1;33m◉ local (this project)\e[0m'
-        fi
-        TUI_HEADER_TEXT+=$'  \e[2m· press s to toggle\e[0m'
+    if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && [[ -z "${NO_COLOR+x}" ]]; then
+        # Bold "Set all to:" label + bright green active bracket + dim hint.
+        TUI_HEADER_TEXT=$'\e[1mSet all to:\e[0m '$'\e[1;32m'"${_glyph}"$'\e[0m  \e[2m· press s to cycle\e[0m'
     else
-        TUI_HEADER_TEXT="Scope: ${_user_glyph} user (global)  ${_local_glyph} local (this project)  · press s to toggle"
+        TUI_HEADER_TEXT="Set all to: ${_glyph}  · press s to cycle"
     fi
 }
 
 mcp_toggle_scope() {
-    if [[ "${TK_MCP_SCOPE:-user}" == "user" ]]; then
-        TK_MCP_SCOPE="local"
-    else
-        TK_MCP_SCOPE="user"
+    # Phase 39 (TUI-SCOPE-03 D-09/D-10/D-12): repurposed from Phase 37's
+    # "flip TK_MCP_SCOPE between user/local" 2-state toggle to "set ALL
+    # visible MCP rows to the next scope value" 3-state cycle. Order
+    # user → project → local → user matches the per-row Tab cycle in
+    # mcp_cycle_row_scope (Plan 01) for muscle-memory consistency. Module-
+    # local _MCP_SETALL_SCOPE is the source of truth for the banner; per-row
+    # state is mirrored into MCP_SELECTED_SCOPE[] (D-12: explicit overwrite
+    # of any per-row Tab tweaks — by user request).
+    #
+    # D-18: TK_MCP_SCOPE is NOT exported here. The env-var is now strictly
+    # per-call (Phase 38 wizard contract); install.sh's dispatcher is the
+    # sole writer of TK_MCP_SCOPE in the TUI hot path.
+    case "${_MCP_SETALL_SCOPE:-user}" in
+        user)    _MCP_SETALL_SCOPE="project" ;;
+        project) _MCP_SETALL_SCOPE="local" ;;
+        local)   _MCP_SETALL_SCOPE="user" ;;
+        *)       _MCP_SETALL_SCOPE="user" ;;
+    esac
+
+    # Write the new value into every per-row slot. Iteration runs
+    # 0..${#MCP_SELECTED_SCOPE[@]}-1; CLI-only rows have no slot in this
+    # array (Plan 01 parity invariant) so they are NOT overwritten.
+    # Bash 3.2 + nounset safety: callers under `set -u` would crash on
+    # ${#MCP_SELECTED_SCOPE[@]} when the array is undeclared. Use the
+    # ${var[*]+x} existence-check (mirrors mcp_status_array:1127 pattern).
+    local _len=0
+    if [[ -n "${MCP_SELECTED_SCOPE[*]+x}" ]]; then
+        _len="${#MCP_SELECTED_SCOPE[@]}"
     fi
-    export TK_MCP_SCOPE
+    local _j
+    for ((_j=0; _j<_len; _j++)); do
+        MCP_SELECTED_SCOPE[$_j]="$_MCP_SETALL_SCOPE"
+    done
+
+    # Rebuild every row's label so the active green bracket follows the
+    # new scope. Mirrors the per-row label rebuild in mcp_cycle_row_scope
+    # (Plan 01) but applies to all rows, not just FOCUS_IDX. The single
+    # source of truth for the bracket render is _mcp_render_scope_glyph
+    # (T5 mitigation: set-all and initial render agree byte-for-byte).
+    local _c_scope_active="" _c_nc="" _c_y=""
+    if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
+        _c_scope_active=$'\033[0;32m'
+        _c_nc=$'\033[0m'
+        _c_y=$'\033[1;33m'
+    fi
+    local _g_bang="!"
+    for ((_j=0; _j<_len; _j++)); do
+        local _mcp_idx="${TUI_TO_MCP_IDX[$_j]:-0}"
+        local _scope_glyph
+        _scope_glyph=$(_mcp_render_scope_glyph "$_MCP_SETALL_SCOPE")
+        local _name_part
+        if [[ "${MCP_UNOFFICIAL[$_mcp_idx]:-0}" == "1" ]]; then
+            if [[ -n "$_c_y" ]]; then
+                _name_part="${_c_y}${_g_bang}${_c_nc} ${MCP_DISPLAY[$_mcp_idx]}"
+            else
+                _name_part="[!] ${MCP_DISPLAY[$_mcp_idx]}"
+            fi
+        else
+            _name_part="${MCP_DISPLAY[$_mcp_idx]}"
+        fi
+        TUI_LABELS[$_j]="${_scope_glyph} ${_name_part}"
+    done
+
     mcp_render_scope_header
 }
 

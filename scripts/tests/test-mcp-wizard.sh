@@ -148,22 +148,32 @@ rm -f "$SANDBOX/claude.argv"
 DRY_OUTPUT=$(mcp_wizard_run playwright --dry-run 2>&1)
 assert_contains "scope user" "$DRY_OUTPUT" "T2d: dry-run preview shows '--scope user'"
 
-# ── Test 2e: scope helpers — toggle flips state and refreshes header ─────────
-TK_MCP_SCOPE=user
+# ── Test 2e: scope helpers — Phase 39 (TUI-SCOPE-03 D-09/D-10/D-18) ─────────
+# Contract repurposed: mcp_toggle_scope is now the global "set-all" cycle —
+# 3-state user→project→local→user, writes _MCP_SETALL_SCOPE (NOT TK_MCP_SCOPE),
+# and propagates the new value to every MCP_SELECTED_SCOPE[] slot. D-18: must
+# NOT export TK_MCP_SCOPE (the dispatcher in install.sh is the sole writer).
+_MCP_SETALL_SCOPE=user
+MCP_SELECTED_SCOPE=("user" "user")
+TUI_LABELS=("a" "b")
+TUI_TO_MCP_IDX=(0 0)
+MCP_DISPLAY=("AA" "BB")
+MCP_UNOFFICIAL=(0 0)
 mcp_render_scope_header
 HDR_BEFORE="${TUI_HEADER_TEXT:-}"
 mcp_toggle_scope
-assert_eq "local" "${TK_MCP_SCOPE}" "T2e: mcp_toggle_scope flips user → local"
+assert_eq "project" "${_MCP_SETALL_SCOPE}" "T2e: mcp_toggle_scope cycles user → project (Phase 39 D-10)"
 mcp_toggle_scope
-assert_eq "user" "${TK_MCP_SCOPE}" "T2e: mcp_toggle_scope flips local → user"
+assert_eq "local" "${_MCP_SETALL_SCOPE}" "T2e: mcp_toggle_scope cycles project → local (Phase 39 D-10)"
 HDR_AFTER="${TUI_HEADER_TEXT:-}"
-if [[ "$HDR_BEFORE" == "$HDR_AFTER" && -n "$HDR_BEFORE" ]]; then
-    assert_pass "T2e: render_scope_header repopulated TUI_HEADER_TEXT after toggle round-trip"
+if [[ "$HDR_BEFORE" != "$HDR_AFTER" && -n "$HDR_BEFORE" && -n "$HDR_AFTER" ]]; then
+    assert_pass "T2e: render_scope_header rebuilt TUI_HEADER_TEXT after cycle"
 else
-    assert_fail "T2e: render_scope_header repopulated TUI_HEADER_TEXT after toggle round-trip" \
+    assert_fail "T2e: render_scope_header rebuilt TUI_HEADER_TEXT after cycle" \
                 "before='${HDR_BEFORE}' after='${HDR_AFTER}'"
 fi
-unset TK_MCP_SCOPE TUI_HEADER_TEXT HDR_BEFORE HDR_AFTER
+unset _MCP_SETALL_SCOPE MCP_SELECTED_SCOPE TUI_LABELS TUI_TO_MCP_IDX \
+      MCP_DISPLAY MCP_UNOFFICIAL TUI_HEADER_TEXT HDR_BEFORE HDR_AFTER
 
 # ── Test 3: keyed MCP (context7) — env var plumbed to claude + secret persisted ──
 printf 'test_secret_ctx7\n' > "$SANDBOX/tty.fix"
