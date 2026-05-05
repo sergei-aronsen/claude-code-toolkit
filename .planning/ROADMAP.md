@@ -141,7 +141,7 @@
   5. `scripts/tests/test-project-secrets.sh` exists with ≥18 hermetic, idempotent assertions covering: 0600 mode enforcement, idempotent merge prompt branches, `.gitignore` append + no-op + false-negative-on-`*.env` cases, `${VAR}` renderer output, SEC-05 literal-secret refusal contract, SEC-06 metacharacter rejection (`$`, backtick, backslash, single + double quote, newline), and the `TK_PROJECT_SECRETS_ALLOW_LITERAL` test seam warning.
 **Plans**: 2 plans
 - [x] 37-01-secrets-lib-PLAN.md — scripts/lib/project-secrets.sh with 4 public functions + private helpers (SEC-01..06)
-- [ ] 37-02-test-contract-PLAN.md — scripts/tests/test-project-secrets.sh ≥18 assertions + Makefile + CI wiring (TEST-01)
+- [x] 37-02-test-contract-PLAN.md — scripts/tests/test-project-secrets.sh ≥18 assertions + Makefile + CI wiring (TEST-01)
 **UI hint**: no
 
 ### Phase 38: Wizard Dispatch Integration
@@ -221,7 +221,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 36. Catalog Schema + Backward Compat | 2/2 | Complete   | 2026-05-04 |
-| 37. Project Secrets Library | 1/2 | In Progress|  |
+| 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
 | 38. Wizard Dispatch Integration | 0/4 | Not started | - |
 | 39. TUI Per-Row Scope Toggle | 0/4 | Not started | - |
 | 40. Uninstall Secret Cleanup + Calendly + Validator | 0/5 | Not started | - |

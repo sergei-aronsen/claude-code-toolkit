@@ -58,7 +58,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Tests (`scripts/tests/`)
 
-- [ ] **TEST-01**: New `scripts/tests/test-project-secrets.sh` (≥18 assertions, hermetic, idempotent). Coverage:
+- [x] **TEST-01**: New `scripts/tests/test-project-secrets.sh` (≥18 assertions, hermetic, idempotent). Coverage:
   - `project_secrets_write_env` creates `.env` with mode 0600 when absent.
   - `project_secrets_write_env` idempotent merge prompts on collision (Y overwrites, N preserves).
   - `project_secrets_ensure_gitignore` appends `.env` when missing, no-op when present (exact `^\.env$` match), no false-positive on `*.env` or `# .env`.
