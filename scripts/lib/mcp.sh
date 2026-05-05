@@ -35,6 +35,7 @@
 #   TK_MCP_CATALOG_PATH        — override path to mcp-catalog.json (mocked in tests)
 #   TK_MCP_TTY_SRC             — override /dev/tty for wizard read prompts (Plan 02)
 #   TK_MCP_CONFIG_HOME         — override $HOME for mcp-config.env path resolution (Plan 02)
+#   TK_PROJECT_ROOT            — override pwd for project-scope dispatch (Phase 38 DISP-01); MUST be absolute
 #   TK_INTEGRATIONS_TTY_SRC    — override /dev/tty for unofficial_confirm prompts (Phase 34-02)
 #
 # IMPORTANT: No errexit/nounset/pipefail — sourced libraries must not alter caller error mode.
@@ -71,6 +72,27 @@ if ! command -v tui_tty_read >/dev/null 2>&1; then
     if [[ -f "${_MCP_LIB_DIR}/tui.sh" ]]; then
         # shellcheck source=/dev/null
         source "${_MCP_LIB_DIR}/tui.sh"
+    fi
+fi
+
+# Lazy-source project-secrets.sh so project_secrets_write_env /
+# project_secrets_ensure_gitignore / project_secrets_render_mcp_env_block /
+# project_secrets_validate_mcp_env_block are available for the project-scope
+# branch of mcp_wizard_run (Phase 38 DISP-01..03). Sibling resolution mirrors
+# the tui.sh guard above; the lib is source-safe (no errexit/nounset, no
+# top-level side effects per Phase 37 SEC-01).
+# Re-entrancy guard: project-secrets.sh has a symmetric lazy-source of mcp.sh
+# (project-secrets.sh:34-40). Without _MCP_SOURCING_PROJECT_SECRETS the two
+# files would mutually re-source each other forever (segfault) when neither
+# has been loaded yet. Sentinel breaks the cycle on the second entry.
+if ! command -v project_secrets_write_env >/dev/null 2>&1 \
+   && [[ -z "${_MCP_SOURCING_PROJECT_SECRETS:-}" ]]; then
+    _MCP_LIB_DIR="${_MCP_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || pwd)}"
+    if [[ -f "${_MCP_LIB_DIR}/project-secrets.sh" ]]; then
+        _MCP_SOURCING_PROJECT_SECRETS=1
+        # shellcheck source=/dev/null
+        source "${_MCP_LIB_DIR}/project-secrets.sh"
+        unset _MCP_SOURCING_PROJECT_SECRETS
     fi
 fi
 
@@ -677,6 +699,21 @@ mcp_wizard_run() {
         *) _scope="user" ;;
     esac
     local scoped_args=( "--scope" "$_scope" "${install_args[@]}" )
+
+    # Phase 38 (DISP-01 D-02): project-scope persistence root. TK_PROJECT_ROOT is
+    # the test seam (absolute path required); pwd is the production caller (the
+    # install.sh dispatch loop runs from the user's project dir). Resolution is
+    # scope-agnostic — only the project-scope branches consume it.
+    local _project_root="${TK_PROJECT_ROOT:-$(pwd)}"
+    local _gi_done=0   # sentinel — gate ensure_gitignore to fire ONCE per wizard run
+
+    # Phase 38 (T5 mitigation): if the project-scope branches will be hit but the
+    # Phase 37 lib failed to source, fail loudly — never silently fall back to
+    # user-scope (that would write secrets to the wrong store).
+    if [[ "$_scope" == "project" ]] && ! command -v project_secrets_write_env >/dev/null 2>&1; then
+        echo -e "${RED}✗${NC} mcp_wizard_run: project-scope requested but scripts/lib/project-secrets.sh not loaded" >&2
+        return 1
+    fi
 
     # Dry-run early-out — print the would-run command and return without any
     # secrets collection or claude invocation. Moved before the secrets loop so
