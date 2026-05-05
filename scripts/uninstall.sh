@@ -8,8 +8,16 @@
 # Usage:
 #   bash scripts/uninstall.sh               # interactive default
 #   bash scripts/uninstall.sh --dry-run     # preview only, no changes
-#   bash scripts/uninstall.sh --keep-state  # preserve toolkit-install.json for re-run recovery
+#   bash scripts/uninstall.sh --keep-state  # preserve toolkit-install.json + secrets (implies --keep-secrets)
 #   bash scripts/uninstall.sh --help        # show this usage block
+#
+# Secret cleanup (Phase 40 UN-SEC-01..05):
+#   When a registered MCP is removed, you are prompted [y/N] to also remove
+#   that MCP's keys from ~/.claude/mcp-config.env. Default N preserves the keys.
+#   At the end of a full toolkit uninstall, you are prompted ONCE to remove the
+#   entire ~/.claude/mcp-config.env. Default N preserves the file.
+#   Project .env files are NEVER touched by this script.
+#   --keep-state implies --keep-secrets (no secret prompts surfaced).
 #
 # Safety invariants:
 #   - --no-backup flag does not exist (UN-04): backup before uninstall is mandatory
@@ -32,7 +40,7 @@ for arg in "$@"; do
             KEEP_STATE=1
             ;;
         --help|-h)
-            sed -n '3,19p' "${BASH_SOURCE[0]}"
+            sed -n '3,27p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
         --no-backup)
@@ -897,11 +905,13 @@ fi
 # Placement (CONTEXT D-06 ordering invariant):
 #   ... → MODIFIED_LIST loop → bridges[] purge → THIS BLOCK → post-run summary
 #       → sentinel strip → base-plugin invariant → STATE_FILE removal (LAST)
-# Plan 40-02 will add the full-toolkit mcp-config.env prompt downstream of this
+# Plan 40-02 added the full-toolkit mcp-config.env prompt downstream of this
 # block, immediately upstream of STATE_FILE removal.
 #
-# NOTE: this block is NOT yet wrapped in a `[[ $KEEP_STATE -eq 0 ]]` gate;
-# Plan 40-03 (UN-SEC-05) will add that gate as a single-call-site change.
+# Plan 40-03 (UN-SEC-05): `claude mcp remove` runs unconditionally (it removes
+# only the registration, not any secret-bearing file). The secret-cleanup
+# helper call at the BOTTOM of this loop is now wrapped in
+# `[[ $KEEP_STATE -eq 0 ]]` so `--keep-state` implies `--keep-secrets`.
 INSTALLED_MCPS=()
 if command -v "${TK_MCP_CLAUDE_BIN:-claude}" >/dev/null 2>&1; then
     # Initialize cache (always returns 0; sentinel state stored in
@@ -959,8 +969,17 @@ if [[ ${#INSTALLED_MCPS[@]} -gt 0 ]]; then
         # argument per env-var name; env-var names cannot contain spaces or
         # shell metacharacters (validated by mcp_secrets_load:505 regex
         # ^[A-Z_][A-Z0-9_]*$), so the split is safe.
-        # shellcheck disable=SC2086
-        uninstall_prompt_mcp_keys "$_mcp_name" $_keys
+        #
+        # Phase 40 Plan 40-03 (UN-SEC-05): KEEP_STATE gate. When the user
+        # passed --keep-state (or set TK_UNINSTALL_KEEP_STATE=1), the
+        # secret-cleanup helper is SKIPPED entirely — `--keep-state` implies
+        # `--keep-secrets`. The `claude mcp remove` step above STILL runs
+        # (it removes only the MCP registration, not any secret-bearing
+        # file). Mirrors the existing STATE_FILE gate at line 1133.
+        if [[ $KEEP_STATE -eq 0 ]]; then
+            # shellcheck disable=SC2086
+            uninstall_prompt_mcp_keys "$_mcp_name" $_keys
+        fi
     done
 fi
 
@@ -1046,8 +1065,10 @@ fi
 # Single safety-net prompt at the END of the MCP cleanup chain (downstream of
 # Plan 40-01's per-MCP loop, UPSTREAM of the LAST-step STATE_FILE removal).
 #
-# Contract (CONTEXT.md D-05):
+# Contract (CONTEXT.md D-05 + D-07):
 #   - File absent → silent skip (no prompt, no log).
+#   - KEEP_STATE=1 → silent skip with `log_info "preserved (--keep-state)"`
+#     (Plan 40-03 / UN-SEC-05: --keep-state implies --keep-secrets).
 #   - Default N (single-shot — NO 5-attempt loop here; per-MCP helper drains
 #     residual keys, this is just the whole-file safety net).
 #   - Fail-closed N on no-TTY (mirrors UN-03 / Plan 40-01 helper).
@@ -1055,9 +1076,9 @@ fi
 #     preserved — STATE_FILE stays LAST).
 #   - DRY_RUN=1: print `[dry-run] would prompt: also remove ...` and skip.
 #
-# KEEP_STATE gate is intentionally NOT applied here — Plan 40-03 (UN-SEC-05)
-# extends KEEP_STATE to also imply --keep-secrets, wrapping this block + the
-# Plan 40-01 loop in a single `[[ $KEEP_STATE -eq 0 ]]` gate.
+# Phase 40 Plan 40-03 (UN-SEC-05): the inner branch order is KEEP_STATE first,
+# DRY_RUN second, interactive prompt last. Mirrors the structure of the
+# existing STATE_FILE block at line 1133 (preserved-on-keep-state pattern).
 #
 # Variable name discipline: all locals prefixed with `_` to avoid colliding
 # with existing globals; MCP_CFG is unprefixed (verified non-colliding via
@@ -1065,7 +1086,11 @@ fi
 # pre-edit).
 MCP_CFG="$(_mcp_config_path 2>/dev/null || echo "")"
 if [[ -n "$MCP_CFG" && -f "$MCP_CFG" ]]; then
-    if [[ ${DRY_RUN:-0} -eq 1 ]]; then
+    if [[ $KEEP_STATE -ne 0 ]]; then
+        # Plan 40-03 UN-SEC-05: --keep-state implies --keep-secrets.
+        # Symmetric with the existing STATE_FILE block at line 1133.
+        log_info "mcp-config.env preserved (--keep-state): $MCP_CFG"
+    elif [[ ${DRY_RUN:-0} -eq 1 ]]; then
         echo "[dry-run] would prompt: also remove $MCP_CFG?"
     else
         # Compute X (total remaining keys) and Y (distinct MCP count) for the
