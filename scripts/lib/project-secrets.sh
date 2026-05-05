@@ -280,6 +280,23 @@ project_secrets_validate_mcp_env_block() {
         echo -e "${RED}✗${NC} project_secrets_validate_mcp_env_block: jq required" >&2
         return 1
     fi
+    # MED-01: capture jq's stderr AND exit status. Previously jq stderr was
+    # suppressed via `2>/dev/null` and piped into `while read`; on malformed
+    # JSON the loop iterated zero times and the function fell through to
+    # `return 0` (fail-open). Now: run jq once, branch on exit status, and
+    # only iterate the values when parsing succeeded. Bash 3.2 compat:
+    # process substitution `<<<` is portable; no associative arrays / mapfile.
+    local rendered
+    if ! rendered="$(printf '%s' "$json" | jq -r '.[] | tostring' 2>&1)"; then
+        echo -e "${RED}✗${NC} project_secrets_validate_mcp_env_block: invalid JSON: ${rendered}" >&2
+        return 1
+    fi
+    # Empty rendered output (e.g., empty array `[]` or `{}`) → no values to
+    # check, return 0. Avoid the read-empty-string heredoc edge case where
+    # `<<< ""` injects a single empty line.
+    if [[ -z "$rendered" ]]; then
+        return 0
+    fi
     local v
     while IFS= read -r v; do
         if [[ ! "$v" =~ ^\$\{[A-Z_][A-Z0-9_]*\}$ ]]; then
@@ -293,6 +310,6 @@ project_secrets_validate_mcp_env_block() {
             echo -e "${RED}✗${NC} refusing to write literal value into .mcp.json (use \${VAR} substitution)" >&2
             return 1
         fi
-    done < <(printf '%s' "$json" | jq -r '.[] | tostring' 2>/dev/null)
+    done <<< "$rendered"
     return 0
 }

@@ -62,7 +62,9 @@ mode_is_0600() {
 printf "=== project-secrets tests (Phase 37 / TEST-01) ===\n"
 
 SANDBOX="$(mktemp -d /tmp/project-secrets.XXXXXX)"
-trap 'rm -rf "$SANDBOX"' EXIT
+# LOW-02 bonus fix: cover INT/TERM in addition to EXIT — Ctrl-C and CI timeout
+# (SIGTERM) previously left orphaned /tmp/project-secrets.* sandboxes behind.
+trap 'rm -rf "$SANDBOX"' EXIT INT TERM
 
 # Per-test project root (D-06: caller-supplied absolute path).
 PROJECT="$SANDBOX/myproj"
@@ -289,6 +291,14 @@ fi
 # T23b: ALLOW_LITERAL emits "test seam only" warning to stderr (D-15).
 assert_contains 'test seam only' "$ERR" \
     "T23b: ALLOW_LITERAL warning stderr phrase"
+
+# T24: MED-01 — malformed JSON must fail closed (rc=1 + `invalid JSON` stderr).
+# Previously jq stderr was suppressed and the empty-stdout `while read` loop
+# iterated zero times → fell through to `return 0`. Defense-in-depth fail-open.
+ERR="$(project_secrets_validate_mcp_env_block "garbage" 2>&1 1>/dev/null)" \
+    && { assert_fail "T24: malformed JSON rc=1" "expected rc=1, got rc=0"; ERR=""; } \
+    || assert_pass "T24: malformed JSON rc=1"
+assert_contains "invalid JSON" "$ERR" "T24-stderr: malformed JSON refusal phrase"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf "\n=== Results: %s passed, %s failed ===\n" "$PASS" "$FAIL"
