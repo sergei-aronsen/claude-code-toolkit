@@ -152,6 +152,42 @@ ERR="$(project_secrets_write_env "$PROJECT" NL "$NL_VAL" 2>&1 1>/dev/null)" \
     && { assert_fail "T12: newline in value rejected" "expected rc=1, got rc=0"; ERR=""; } \
     || assert_pass "T12: newline in value rejected"
 
+# ── Block B2: HIGH-01 KEY-shape rejection (review-fix regression) ─────────────
+# Mirror T7..T12 pattern: each invalid KEY shape gets rc=1 + exact stderr phrase
+# `invalid KEY` AND must NOT modify .env (silent-duplicate prevention).
+
+# Capture pre-fix .env state for the no-mutation assertion. PROJECT/.env
+# currently contains FOO=updated (T5) plus the SEC-06 metacharacter rejections,
+# none of which mutated the file. Hash before each KEY-shape call, compare after.
+PRE_HASH="$(shasum "$PROJECT/.env" | awk '{print $1}')"
+
+# T12a: lowercase key rejected.
+ERR="$(project_secrets_write_env "$PROJECT" lowerkey value 2>&1 1>/dev/null)" \
+    && { assert_fail "T12a: lowercase KEY rejected" "expected rc=1, got rc=0"; ERR=""; } \
+    || assert_pass "T12a: lowercase KEY rejected"
+assert_contains "invalid KEY" "$ERR" "T12a-stderr: lowercase KEY refusal phrase"
+POST_HASH="$(shasum "$PROJECT/.env" | awk '{print $1}')"
+assert_eq "$PRE_HASH" "$POST_HASH" "T12a-no-mutation: lowercase KEY did not modify .env"
+
+# T12b: leading-digit key rejected.
+ERR="$(project_secrets_write_env "$PROJECT" 1BAD value 2>&1 1>/dev/null)" \
+    && { assert_fail "T12b: leading-digit KEY rejected" "expected rc=1, got rc=0"; ERR=""; } \
+    || assert_pass "T12b: leading-digit KEY rejected"
+assert_contains "invalid KEY" "$ERR" "T12b-stderr: leading-digit KEY refusal phrase"
+POST_HASH="$(shasum "$PROJECT/.env" | awk '{print $1}')"
+assert_eq "$PRE_HASH" "$POST_HASH" "T12b-no-mutation: leading-digit KEY did not modify .env"
+
+# T12c: newline-in-key rejected (newline injection — would otherwise forge a
+# multi-line append where the second physical line looks like a fresh
+# KEY=VALUE record on next load).
+NL_KEY="$(printf 'K1\nINJECTED')"
+ERR="$(project_secrets_write_env "$PROJECT" "$NL_KEY" value 2>&1 1>/dev/null)" \
+    && { assert_fail "T12c: newline-in-KEY rejected" "expected rc=1, got rc=0"; ERR=""; } \
+    || assert_pass "T12c: newline-in-KEY rejected"
+assert_contains "invalid KEY" "$ERR" "T12c-stderr: newline-in-KEY refusal phrase"
+POST_HASH="$(shasum "$PROJECT/.env" | awk '{print $1}')"
+assert_eq "$PRE_HASH" "$POST_HASH" "T12c-no-mutation: newline-in-KEY did not modify .env"
+
 # ── Block C: project_secrets_ensure_gitignore (SEC-03 / D-07..D-09) ───────────
 
 # T13: creates .gitignore when absent.

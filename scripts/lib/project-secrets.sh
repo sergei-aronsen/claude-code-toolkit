@@ -125,6 +125,18 @@ project_secrets_write_env() {
         echo -e "${RED}✗${NC} project_secrets_write_env: missing KEY argument" >&2
         return 1
     fi
+    # HIGH-01: defense in depth — refuse keys whose shape would be silently
+    # dropped on re-read by _project_secrets_load_env (line 76-78 audit L1
+    # guard). Without this validation, the load-time parser drops invalid keys,
+    # so collision detection always returns 1 (not found), append branch fires,
+    # and silent duplicates accumulate across writes. Also blocks newline
+    # injection in the KEY argument (printf '%s=%s\n' "$key" splits across
+    # lines when $key contains '\n', forging a fresh KEY=VALUE record on the
+    # second physical line) and shell-meta injection.
+    if [[ ! "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+        echo -e "${RED}✗${NC} project_secrets_write_env: invalid KEY '${key}' (must match ^[A-Z_][A-Z0-9_]*\$)" >&2
+        return 1
+    fi
     if ! _mcp_validate_value "$value"; then
         echo -e "${RED}✗${NC} project_secrets_write_env: value for ${key} contains shell metacharacters — refusing to write" >&2
         return 1
