@@ -378,6 +378,18 @@ fi
 # Mode 0600 on stub file (defense in depth — defer path must not widen perms).
 assert_eq "1" "$(mode_is_0600 "$PROJECT/.env")" "T9 (DISP-03): stub file mode is 0600"
 
+# INFO-02 fix: positive assertion that claude WAS invoked under defer+project.
+# rc=3 contract: claude IS invoked (registration happens, just no env binding).
+# Mirror of T12's "claude must NOT be invoked" assertion — without this, a
+# future regression making the defer branch skip `claude mcp add` entirely
+# would still pass T9 (the `rm -f` at the end assumes argv but never asserts).
+if [[ -f "$SANDBOX/claude.argv" ]]; then
+    assert_pass "T9 (DISP-03): claude mcp add WAS invoked under defer+project (rc=3 means registered)"
+else
+    assert_fail "T9 (DISP-03): claude mcp add WAS invoked under defer+project (rc=3 means registered)" \
+                "claude.argv missing — defer branch skipped registration"
+fi
+
 rm -f "$SANDBOX/claude.argv"
 
 # ── Test 10 (DISP-03 user-scope back-compat): defer + scope=user → mcp-config.env stub ──
