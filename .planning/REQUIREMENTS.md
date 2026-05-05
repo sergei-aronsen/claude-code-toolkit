@@ -72,7 +72,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - DISP-02 no regression: scope=user → keys land in `mcp-config.env`, `<project>/.env` untouched.
   - DISP-03 defer-secrets path with scope=project → blank stubs in `<project>/.env`, queue tuple has 4 fields.
 - [x] **TEST-03**: Extend `scripts/tests/test-mcp-secrets.sh` (currently PASS=11) with scenarios for the new shared `_mcp_validate_value` boundary if refactored (SEC-06).
-- [ ] **TEST-04**: Extend `scripts/tests/test-mcp-selector.sh` (currently PASS=21) with scenarios for per-row scope toggle:
+- [x] **TEST-04**: Extend `scripts/tests/test-mcp-selector.sh` (currently PASS=21) with scenarios for per-row scope toggle:
   - TUI-SCOPE-01 indicator render in default state.
   - TUI-SCOPE-02 single-row hotkey flips one row only.
   - TUI-SCOPE-03 global `s` flips all visible rows.
