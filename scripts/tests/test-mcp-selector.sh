@@ -411,6 +411,284 @@ run_s8_install_sh_mcps_no_cli() {
     assert_eq "0" "$RC" "S8: --mcps without CLI exits 0 (read-only browse mode)"
 }
 
+# ─────────────────────────────────────────────────
+# S9_per_row_indicator — TUI-SCOPE-01: per-row [U]/[P]/[L] glyph in TUI_LABELS
+# matches catalog default_scope per row.
+# ─────────────────────────────────────────────────
+run_s9_per_row_indicator() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S9_per_row_indicator: TUI_LABELS carry [U]/[P]/[L] per default_scope (TUI-SCOPE-01) --"
+
+    MCP_NAMES=()
+    MCP_DEFAULT_SCOPE=()
+    TUI_LABELS=()
+    TUI_TO_MCP_IDX=()
+    MCP_SELECTED_SCOPE=()
+    # shellcheck source=/dev/null
+    NO_COLOR=1 source "${REPO_ROOT}/scripts/lib/mcp.sh"
+    NO_COLOR=1 mcp_catalog_load
+    NO_COLOR=1 mcp_status_array
+
+    # Find context7 and supabase TUI render-order indices via TUI_TO_MCP_IDX.
+    local _ctx7_tui=-1 _supa_tui=-1 j _i_mcp
+    for ((j=0; j<${#TUI_LABELS[@]}; j++)); do
+        _i_mcp="${TUI_TO_MCP_IDX[$j]}"
+        case "${MCP_NAMES[$_i_mcp]}" in
+            context7) _ctx7_tui=$j ;;
+            supabase) _supa_tui=$j ;;
+        esac
+    done
+
+    # context7 default_scope=user → label contains [U] substring.
+    assert_contains '\[U\]' "${TUI_LABELS[$_ctx7_tui]:-}" \
+        "S9: context7 row label carries [U] indicator (default_scope=user)"
+    # supabase default_scope=project → label contains [P] substring.
+    assert_contains '\[P\]' "${TUI_LABELS[$_supa_tui]:-}" \
+        "S9: supabase row label carries [P] indicator (default_scope=project)"
+
+    # Every MCP row must contain at least one bracket glyph.
+    local _all_have_glyph=1 _label
+    for _label in "${TUI_LABELS[@]+"${TUI_LABELS[@]}"}"; do
+        if ! printf '%s' "$_label" | grep -qE '\[U\]|\[P\]|\[L\]'; then
+            _all_have_glyph=0
+            break
+        fi
+    done
+    assert_eq "1" "$_all_have_glyph" \
+        "S9: every TUI MCP row contains at least one [U]/[P]/[L] glyph"
+}
+
+# ─────────────────────────────────────────────────
+# S10_per_row_hotkey — TUI-SCOPE-02: mcp_cycle_row_scope mutates only FOCUS_IDX;
+# 3-call cycle returns to start; cycled value is one of {user, project, local}.
+# ─────────────────────────────────────────────────
+run_s10_per_row_hotkey() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S10_per_row_hotkey: mcp_cycle_row_scope mutates only FOCUS_IDX (TUI-SCOPE-02) --"
+
+    MCP_NAMES=()
+    MCP_SELECTED_SCOPE=()
+    TUI_LABELS=()
+    TUI_TO_MCP_IDX=()
+    # shellcheck source=/dev/null
+    NO_COLOR=1 source "${REPO_ROOT}/scripts/lib/mcp.sh"
+    NO_COLOR=1 mcp_catalog_load
+    NO_COLOR=1 mcp_status_array
+
+    # Capture sibling fingerprint at index 1 and self at index 0.
+    local _sibling_before="${MCP_SELECTED_SCOPE[1]:-MISSING}"
+    local _self_before="${MCP_SELECTED_SCOPE[0]:-MISSING}"
+
+    # FOCUS_IDX is a caller-side global consumed by mcp_cycle_row_scope; the
+    # tui.sh keypress dispatcher mutates it via arrow keys in production. The
+    # test sets it directly to drive the handler headlessly.
+    # shellcheck disable=SC2034
+    FOCUS_IDX=0
+    mcp_cycle_row_scope
+
+    assert_eq "$_sibling_before" "${MCP_SELECTED_SCOPE[1]:-MISSING}" \
+        "S10: sibling row 1 untouched by single-row cycle on FOCUS_IDX=0"
+
+    # Two more cycles — total 3 calls — should return to the starting value.
+    mcp_cycle_row_scope
+    mcp_cycle_row_scope
+    assert_eq "$_self_before" "${MCP_SELECTED_SCOPE[0]:-MISSING}" \
+        "S10: 3-call cycle returns FOCUS_IDX=0 scope to initial value"
+
+    # Single cycle output is one of {user, project, local}.
+    # shellcheck disable=SC2034
+    FOCUS_IDX=0
+    mcp_cycle_row_scope
+    local _val="${MCP_SELECTED_SCOPE[0]:-}"
+    local _is_valid=0
+    case "$_val" in
+        user|project|local) _is_valid=1 ;;
+    esac
+    assert_eq "1" "$_is_valid" \
+        "S10: cycled value is one of {user, project, local}"
+}
+
+# ─────────────────────────────────────────────────
+# S11_global_set_all — TUI-SCOPE-03: mcp_toggle_scope writes every
+# MCP_SELECTED_SCOPE slot uniformly + banner contains "Set all to:".
+# ─────────────────────────────────────────────────
+run_s11_global_set_all() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S11_global_set_all: mcp_toggle_scope writes every MCP_SELECTED_SCOPE slot (TUI-SCOPE-03) --"
+
+    MCP_NAMES=()
+    MCP_SELECTED_SCOPE=()
+    TUI_LABELS=()
+    TUI_TO_MCP_IDX=()
+    TUI_HEADER_TEXT=""
+    _MCP_SETALL_SCOPE="user"
+    # shellcheck source=/dev/null
+    NO_COLOR=1 source "${REPO_ROOT}/scripts/lib/mcp.sh"
+    NO_COLOR=1 mcp_catalog_load
+    NO_COLOR=1 mcp_status_array
+
+    # Pre-seed mixed values to prove the global set-all overwrites.
+    MCP_SELECTED_SCOPE[0]="user"
+    MCP_SELECTED_SCOPE[1]="local"
+    if [[ "${#MCP_SELECTED_SCOPE[@]}" -gt 2 ]]; then
+        MCP_SELECTED_SCOPE[2]="project"
+    fi
+
+    mcp_toggle_scope
+
+    # Every slot now equals _MCP_SETALL_SCOPE (uniformity invariant D-09/D-12).
+    local _uniform=1 _j
+    for ((_j=0; _j<${#MCP_SELECTED_SCOPE[@]}; _j++)); do
+        if [[ "${MCP_SELECTED_SCOPE[$_j]}" != "${_MCP_SETALL_SCOPE}" ]]; then
+            _uniform=0
+            break
+        fi
+    done
+    assert_eq "1" "$_uniform" \
+        "S11: every MCP_SELECTED_SCOPE slot equals _MCP_SETALL_SCOPE after toggle"
+
+    # Banner copy assertion — D-11.
+    assert_contains "Set all to:" "${TUI_HEADER_TEXT:-}" \
+        "S11: TUI_HEADER_TEXT contains 'Set all to:' after toggle"
+}
+
+# ─────────────────────────────────────────────────
+# S12_default_scope_init — TUI-SCOPE-04: MCP_SELECTED_SCOPE length parity with
+# TUI_LABELS; per-index value matches MCP_DEFAULT_SCOPE[TUI_TO_MCP_IDX[i]].
+# ─────────────────────────────────────────────────
+run_s12_default_scope_init() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S12_default_scope_init: MCP_SELECTED_SCOPE initialized from default_scope (TUI-SCOPE-04) --"
+
+    MCP_NAMES=()
+    MCP_DEFAULT_SCOPE=()
+    MCP_SELECTED_SCOPE=()
+    TUI_LABELS=()
+    TUI_TO_MCP_IDX=()
+    # shellcheck source=/dev/null
+    NO_COLOR=1 source "${REPO_ROOT}/scripts/lib/mcp.sh"
+    NO_COLOR=1 mcp_catalog_load
+    NO_COLOR=1 mcp_status_array
+
+    # Length parity (TUI render index, not MCP_NAMES alpha index).
+    assert_eq "${#TUI_LABELS[@]}" "${#MCP_SELECTED_SCOPE[@]}" \
+        "S12: MCP_SELECTED_SCOPE parallel to TUI_LABELS"
+
+    # Per-index value: MCP_SELECTED_SCOPE[j] == MCP_DEFAULT_SCOPE[TUI_TO_MCP_IDX[j]].
+    local _all_match=1 j _i_mcp
+    for ((j=0; j<${#TUI_LABELS[@]}; j++)); do
+        _i_mcp="${TUI_TO_MCP_IDX[$j]}"
+        if [[ "${MCP_SELECTED_SCOPE[$j]}" != "${MCP_DEFAULT_SCOPE[$_i_mcp]:-user}" ]]; then
+            _all_match=0
+            break
+        fi
+    done
+    assert_eq "1" "$_all_match" \
+        "S12: every MCP_SELECTED_SCOPE[j] matches MCP_DEFAULT_SCOPE[TUI_TO_MCP_IDX[j]]"
+}
+
+# ─────────────────────────────────────────────────
+# S13_dispatcher_per_row_export — TUI-SCOPE-05: install.sh dispatcher exports
+# per-row TK_MCP_SCOPE before each mcp_wizard_run invocation. Runs strictly
+# under --dry-run (D-21 — live mode would write .env to repo tree). Mock claude
+# logs TK_MCP_SCOPE + argv per invocation; if --dry-run short-circuits the
+# wizard so no `mcp add` invocation fires (only the `mcp list` probe), the
+# test falls back to a stdout-grep assertion that both rows were iterated.
+# ─────────────────────────────────────────────────
+run_s13_dispatcher_per_row_export() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S13_dispatcher_per_row_export: install.sh exports per-row TK_MCP_SCOPE (TUI-SCOPE-05) --"
+
+    mkdir -p "$SANDBOX/.claude"
+
+    # Mock claude — clean argv-agnostic capture form. Records TK_MCP_SCOPE
+    # (the variable under test) plus full argv for each invocation. The
+    # mock makes ZERO attempt to parse claude's argv: tokens are recorded
+    # verbatim and the test asserts on env-var substring presence.
+    local TRACE_LOG="$SANDBOX/scope-trace.log"
+    local MOCK_CLAUDE="$SANDBOX/mock-claude"
+    cat > "$MOCK_CLAUDE" <<MOCK
+#!/usr/bin/env bash
+# Mock claude — captures TK_MCP_SCOPE + argv per invocation.
+{
+    printf 'TK_MCP_SCOPE=%s\n' "\${TK_MCP_SCOPE:-<unset>}"
+    printf 'argv:'
+    for _a in "\$@"; do printf ' %s' "\$_a"; done
+    printf '\n'
+} >> "$TRACE_LOG"
+exit 0
+MOCK
+    chmod +x "$MOCK_CLAUDE"
+
+    # Drive install.sh headlessly under --dry-run ONLY. Live-mode would
+    # invoke project_secrets_write_env which resolves project_root from
+    # `pwd` and writes .env into the dev's working tree (D-21 violation).
+    # Per-row TK_MCP_SCOPE export (Plan 02 Step 2) fires BEFORE the wizard
+    # subshell — so the trace log captures the env-var if any claude
+    # invocation happens. If --dry-run short-circuits all `mcp add` calls
+    # (only `mcp list` probe runs), the test falls back to stdout grep.
+    local RC=0
+    local OUTPUT
+    OUTPUT=$(
+        HOME="$SANDBOX" \
+        TK_MCP_CONFIG_HOME="$SANDBOX" \
+        TK_MCP_CLAUDE_BIN="$MOCK_CLAUDE" \
+        TK_MCP_PRE_SELECTED="context7,supabase" \
+        TK_MCP_DEFER_SECRETS=0 \
+        NO_COLOR=1 \
+        bash "${REPO_ROOT}/scripts/install.sh" --mcps --yes --dry-run 2>&1
+    ) || RC=$?
+
+    # install.sh swallows wizard errors and prints a summary; exit 0 expected.
+    assert_eq "0" "$RC" "S13: install.sh --mcps --yes --dry-run exits 0 with mock claude"
+
+    # Read trace log if present.
+    local TRACE=""
+    if [[ -f "$TRACE_LOG" ]]; then
+        TRACE="$(cat "$TRACE_LOG")"
+    fi
+
+    # Best signal: trace contains per-row TK_MCP_SCOPE values from `mcp add`
+    # calls. The pre-loop `mcp list` probe always logs `TK_MCP_SCOPE=<unset>`
+    # (probe runs before the dispatcher loop's per-row export), so a non-empty
+    # trace alone is not sufficient — we require at least one of {user, project}
+    # to be observed before claiming the strong signal.
+    if printf '%s' "$TRACE" | grep -qE 'TK_MCP_SCOPE=(user|project|local)'; then
+        # Strong signal: dispatcher exported per-row scope to claude argv.
+        assert_contains "TK_MCP_SCOPE=user" "$TRACE" \
+            "S13: dispatcher exported TK_MCP_SCOPE=user for at least one row"
+        assert_contains "TK_MCP_SCOPE=project" "$TRACE" \
+            "S13: dispatcher exported TK_MCP_SCOPE=project for at least one row"
+    else
+        # Fallback (still hermetic — NO live-mode retry per D-21).
+        # --dry-run wizard short-circuit suppressed all `mcp add` invocations;
+        # only the `mcp list` probe ran (with stale TK_MCP_SCOPE=<unset>).
+        # Assert on stdout that both rows were iterated. Row-name presence is
+        # the floor signal that the dispatcher walked MCP_SELECTED_SCOPE
+        # end-to-end. Strong-signal assertions land in non-dry-run E2E
+        # (deferred to a future plan to keep D-21 hermetic invariant intact).
+        assert_contains "context7" "$OUTPUT" \
+            "S13: dispatcher iterated context7 row (scope-trace fallback)"
+        assert_contains "supabase" "$OUTPUT" \
+            "S13: dispatcher iterated supabase row (scope-trace fallback)"
+    fi
+}
+
 run_s1_catalog_correctness
 run_s2_detection_three_state
 run_s3_secret_persistence_and_mode
@@ -419,6 +697,11 @@ run_s5_collision_prompt_y_overwrites
 run_s6_wizard_hidden_input_no_leak
 run_s7_install_sh_mcps_dry_run
 run_s8_install_sh_mcps_no_cli
+run_s9_per_row_indicator
+run_s10_per_row_hotkey
+run_s11_global_set_all
+run_s12_default_scope_init
+run_s13_dispatcher_per_row_export
 
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"
