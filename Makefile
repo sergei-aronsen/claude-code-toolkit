@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets
 
 # Default target
 help:
@@ -224,6 +224,9 @@ test:
 	@echo "Test 48: catalog default_scope fallback (Phase 36 / SCOPE-03)"
 	@bash scripts/tests/test-catalog-scope-fallback.sh
 	@echo ""
+	@echo "Test 49: project secrets library (Phase 37 / SEC-01..06, TEST-01)"
+	@bash scripts/tests/test-project-secrets.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -265,6 +268,10 @@ test-integrations-tui:
 # Test 48 — catalog default_scope fallback (Phase 36 / SCOPE-03), invokable standalone
 test-catalog-scope-fallback:
 	@bash scripts/tests/test-catalog-scope-fallback.sh
+
+# Test 49 — project secrets library (Phase 37 / SEC-01..06, TEST-01), invokable standalone
+test-project-secrets:
+	@bash scripts/tests/test-project-secrets.sh
 
 # Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
 # from local $HOME/.claude/skills/. Not run by CI.

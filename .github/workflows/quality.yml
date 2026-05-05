@@ -143,7 +143,7 @@ jobs:
           bash scripts/tests/test-cli-installer.sh
           bash scripts/tests/test-integrations-tui.sh
 
-      - name: Tests 35-43 — orphan triage (audit INF-MED-1) — backup/detect/mcp/dry-run suites previously absent from CI
+      - name: Tests 35-49 — orphan triage + Phase 37 project secrets library (audit INF-MED-1, SEC-01..06, TEST-01)
         run: |
           bash scripts/tests/test-backup-lib.sh
           bash scripts/tests/test-backup-threshold.sh
@@ -154,6 +154,7 @@ jobs:
           bash scripts/tests/test-mcp-wizard.sh
           bash scripts/tests/test-migrate-dry-run.sh
           bash scripts/tests/test-update-dry-run.sh
+          bash scripts/tests/test-project-secrets.sh
 
       - name: HARDEN-A-01 — validate commands/*.md required headings
         run: make validate-commands
