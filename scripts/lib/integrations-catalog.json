@@ -52,6 +52,21 @@
         "requires_oauth": false,
         "default_scope": "project"
       },
+      "calendly": {
+        "name": "calendly",
+        "display_name": "Calendly",
+        "category": "workspace",
+        "env_var_keys": [],
+        "install_args": [
+          "--transport",
+          "http",
+          "calendly",
+          "https://mcp.calendly.com/"
+        ],
+        "description": "Scheduling — events, availability, links (OAuth DCR)",
+        "requires_oauth": true,
+        "default_scope": "user"
+      },
       "cloudflare": {
         "name": "cloudflare",
         "display_name": "Cloudflare",
