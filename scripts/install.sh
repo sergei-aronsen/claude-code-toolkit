@@ -1764,18 +1764,18 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                         done
                         unset _mcp_i _p _prev_mcp _IFS_SAVED2
                     fi
-                    # Phase 37: scope-toggle banner. `s` cycles user ↔ local
-                    # without leaving the picker. Default = user.
-                    TK_MCP_SCOPE="${TK_MCP_SCOPE:-user}"
-                    export TK_MCP_SCOPE
-                    mcp_render_scope_header
-                    # shellcheck disable=SC2034  # consumed by tui.sh _tui_render via TUI_HEADER_KEY/FN
-                    TUI_HEADER_KEY="s"
-                    # shellcheck disable=SC2034
-                    TUI_HEADER_FN="mcp_toggle_scope"
+                    # Phase 39 (HIGH-01 fix): the sub-picker is a pre-collection
+                    # screen whose ONLY contract is "produce TK_MCP_PRE_SELECTED
+                    # CSV of raw MCP_NAMES" for the main TUI to re-match. Wiring
+                    # mcp_toggle_scope here corrupts every TUI_LABELS[] slot
+                    # with a scope-glyph prefix (e.g. "[U] context7"); the CSV
+                    # builder + lookback restore below both read TUI_LABELS as
+                    # raw names, breaking exact-match. Per-row scope choice
+                    # happens in the main TUI (where MCP_SELECTED_SCOPE[] is
+                    # already wired). No scope banner / `s` toggle here.
                     _rc=0
                     TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
-                    unset TUI_HEADER_TEXT TUI_HEADER_KEY TUI_HEADER_FN
+                    unset TUI_HEADER_TEXT
                     case "$_rc" in
                         0)
                             _mcp_pre_csv=""
