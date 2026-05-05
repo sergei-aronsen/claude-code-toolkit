@@ -1040,6 +1040,90 @@ if ! diff -q "$GSD_SNAP_TMP" "$GSD_AFTER_TMP" >/dev/null 2>&1; then
     exit 1
 fi
 
+# ═════════════════════════════════════════════════════════════════════════════
+# Phase 40 UN-SEC-03: full-toolkit mcp-config.env cleanup prompt (Plan 40-02)
+# ═════════════════════════════════════════════════════════════════════════════
+# Single safety-net prompt at the END of the MCP cleanup chain (downstream of
+# Plan 40-01's per-MCP loop, UPSTREAM of the LAST-step STATE_FILE removal).
+#
+# Contract (CONTEXT.md D-05):
+#   - File absent → silent skip (no prompt, no log).
+#   - Default N (single-shot — NO 5-attempt loop here; per-MCP helper drains
+#     residual keys, this is just the whole-file safety net).
+#   - Fail-closed N on no-TTY (mirrors UN-03 / Plan 40-01 helper).
+#   - On Y: `rm -f` mcp-config.env BEFORE STATE_FILE removal (D-06 ordering
+#     preserved — STATE_FILE stays LAST).
+#   - DRY_RUN=1: print `[dry-run] would prompt: also remove ...` and skip.
+#
+# KEEP_STATE gate is intentionally NOT applied here — Plan 40-03 (UN-SEC-05)
+# extends KEEP_STATE to also imply --keep-secrets, wrapping this block + the
+# Plan 40-01 loop in a single `[[ $KEEP_STATE -eq 0 ]]` gate.
+#
+# Variable name discipline: all locals prefixed with `_` to avoid colliding
+# with existing globals; MCP_CFG is unprefixed (verified non-colliding via
+# `grep -n "MCP_CFG\|n_keys\|n_mcps" scripts/uninstall.sh` returning 0 hits
+# pre-edit).
+MCP_CFG="$(_mcp_config_path 2>/dev/null || echo "")"
+if [[ -n "$MCP_CFG" && -f "$MCP_CFG" ]]; then
+    if [[ ${DRY_RUN:-0} -eq 1 ]]; then
+        echo "[dry-run] would prompt: also remove $MCP_CFG?"
+    else
+        # Compute X (total remaining keys) and Y (distinct MCP count) for the
+        # prompt label. mcp_secrets_load populates MCP_SECRET_KEYS[] in the
+        # parent shell — Plan 40-02 reuses this populated state.
+        mcp_secrets_load
+        _n_keys=${#MCP_SECRET_KEYS[@]}
+        # Y = distinct MCP_<NAME>_ prefix count from MCP_SECRET_KEYS[].
+        # Bash 3.2: no associative array (CONTEXT D-16); subshell-isolated
+        # `sort -u | wc -l | tr -d ' '` is POSIX + macOS BSD safe (BSD wc -l
+        # emits leading whitespace; tr -d ' ' normalizes).
+        _n_mcps=0
+        if [[ $_n_keys -gt 0 ]]; then
+            _n_mcps=$(
+                _i=0
+                while [[ $_i -lt $_n_keys ]]; do
+                    # MCP_SECRET_KEYS[i] shape: MCP_<NAME>_<KEYNAME>.
+                    # Strip leading "MCP_", then trim trailing "_<KEYNAME>"
+                    # via parameter expansion (Bash 3.2-safe).
+                    _k="${MCP_SECRET_KEYS[$_i]}"
+                    _stripped="${_k#MCP_}"     # NAME_KEY
+                    _name="${_stripped%_*}"    # NAME
+                    echo "$_name"
+                    _i=$((_i + 1))
+                done | sort -u | wc -l | tr -d ' '
+            )
+        fi
+
+        # TTY resolution — reuse TK_UNINSTALL_TTY_FROM_STDIN seam (no new env
+        # var introduced; mirrors prompt_modified_for_uninstall:353-356 and
+        # uninstall_prompt_mcp_keys:480-481).
+        _tty_target="/dev/tty"
+        [[ -n "${TK_UNINSTALL_TTY_FROM_STDIN:-}" ]] && _tty_target="/dev/stdin"
+
+        # Single-shot read (NO 5-attempt cap — D-05 explicit: per-MCP helper
+        # already drained residual keys; this is the whole-file safety net).
+        # Failure → fail-closed N → file preserved (safe-by-default per
+        # threat T-40-02-03).
+        _choice=""
+        if ! read -r -p "[y/N] also remove $MCP_CFG ($_n_keys keys for $_n_mcps MCPs)? " \
+                _choice < "$_tty_target" 2>/dev/null; then
+            _choice="N"
+        fi
+        case "${_choice:-N}" in
+            y|Y)
+                if rm -f "$MCP_CFG"; then
+                    log_success "Removed: $MCP_CFG"
+                else
+                    log_warning "Failed to remove $MCP_CFG"
+                fi
+                ;;
+            *)
+                log_info "Preserved: $MCP_CFG"
+                ;;
+        esac
+    fi
+fi
+
 # ───────── UN-05: delete toolkit-install.json (LAST step, D-06) ─────────
 # Failure logs warning but exits 0: files already removed; orphaned state is recoverable
 # by manual `rm`. Hard-fail on state-delete failure would leave the user thinking the
