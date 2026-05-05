@@ -41,7 +41,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - Invokes `claude mcp add --scope project ...` with the env block rendered as `${VAR}` substitution form (NOT literal values). Claude CLI is responsible for writing `.mcp.json` from those args; toolkit verifies the resulting file does not contain literal secrets via SEC-05.
 - [x] **DISP-02**: When `TK_MCP_SCOPE=user` or `TK_MCP_SCOPE=local` (or unset), wizard preserves v4.6/v4.9 behavior: write to `~/.claude/mcp-config.env` via `mcp_secrets_set`, invoke `claude mcp add --scope <user|local>` with literal env values exported via `env KEY=V`. No regression on existing flow.
 - [x] **DISP-03**: Defer-secrets path (`TK_MCP_DEFER_SECRETS=1`, set by install.sh during dispatch) extended for `project` scope: still pre-creates blank stub entries, but in `<project>/.env` (not `mcp-config.env`) when scope is `project`. Stub-only file write triggers `project_secrets_ensure_gitignore`. Deferred queue tuple grows to 4 fields: `name\tkeys\tinstall_args\tscope` so the post-install summary can print scope-correct "edit X file then reload" hints.
-- [ ] **DISP-04**: Post-install summary printer (already part of install.sh's MCP wizard close) prints per-MCP scope alongside the existing keys-needed list. Project-scope MCPs get a distinct hint line: `→ Edit <project>/.env to fill values; ensure .env is in your .gitignore (we appended it).`
+- [x] **DISP-04**: Post-install summary printer (already part of install.sh's MCP wizard close) prints per-MCP scope alongside the existing keys-needed list. Project-scope MCPs get a distinct hint line: `→ Edit <project>/.env to fill values; ensure .env is in your .gitignore (we appended it).`
 
 ### Uninstall secret cleanup (`scripts/uninstall.sh`)
 

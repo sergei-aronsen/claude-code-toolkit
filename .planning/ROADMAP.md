@@ -157,7 +157,7 @@
   5. `scripts/tests/test-mcp-wizard.sh` extended from PASS=14 to PASS≥20 with DISP-01 / DISP-02 / DISP-03 happy paths plus the DISP-04 summary-line assertion; `scripts/tests/test-mcp-secrets.sh` extended from PASS=11 with the shared `_mcp_validate_value` boundary scenarios from SEC-06; v4.9 `test-mcp-selector.sh` PASS=21 baseline unchanged.
 **Plans**: 3 plans
 - [x] 38-01-PLAN.md — mcp_wizard_run scope-routing branch + 4-tuple deferred queue write + project-scope defer mirror (DISP-01, DISP-02, DISP-03 wizard side)
-- [ ] 38-02-PLAN.md — install.sh post-install summary 4-field tuple reader + per-scope dispatch blocks (DISP-03 reader side, DISP-04)
+- [x] 38-02-PLAN.md — install.sh post-install summary 4-field tuple reader + per-scope dispatch blocks (DISP-03 reader side, DISP-04)
 - [ ] 38-03-PLAN.md — test-mcp-wizard.sh extension (PASS≥20) + test-mcp-secrets.sh boundary preservation (TEST-02, TEST-03)
 **UI hint**: no
 
@@ -225,7 +225,7 @@
 |-------|----------------|--------|-----------|
 | 36. Catalog Schema + Backward Compat | 2/2 | Complete   | 2026-05-04 |
 | 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
-| 38. Wizard Dispatch Integration | 1/3 | In Progress|  |
+| 38. Wizard Dispatch Integration | 2/3 | In Progress|  |
 | 39. TUI Per-Row Scope Toggle | 0/4 | Not started | - |
 | 40. Uninstall Secret Cleanup + Calendly + Validator | 0/5 | Not started | - |
 | 41. Distribution + Docs | 0/3 | Not started | - |
