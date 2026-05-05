@@ -24,12 +24,12 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Project secrets writer (`scripts/lib/project-secrets.sh` — new lib)
 
-- [ ] **SEC-01**: New library `scripts/lib/project-secrets.sh` exposes three functions: `project_secrets_write_env <project_root> <KEY> <VALUE>`, `project_secrets_ensure_gitignore <project_root>`, `project_secrets_render_mcp_env_block <KEY...>`. Read-only callers can `source` it without side effects.
-- [ ] **SEC-02**: `project_secrets_write_env` writes `KEY=VALUE` to `<project_root>/.env`. File created if absent (mode 0600 enforced via `touch && chmod 0600` BEFORE first write). Idempotent merge: if `KEY` already exists in the file, prompt `[y/N] Overwrite KEY in <project>/.env?` reusing the v4.3 UN-03 `< /dev/tty` + fail-closed-N contract. Default N preserves existing value.
-- [ ] **SEC-03**: `project_secrets_ensure_gitignore` checks `<project_root>/.gitignore` for an exact `.env` line (not `*.env`, not commented). If absent, appends `.env\n` with a leading comment `# claude-code-toolkit: never commit project-scope MCP secrets`. Creates `.gitignore` if missing. Idempotent on re-run.
-- [ ] **SEC-04**: `project_secrets_render_mcp_env_block <KEY1> <KEY2> ...` returns a JSON object string `{"KEY1": "${KEY1}", "KEY2": "${KEY2}"}` for embedding into `.mcp.json` as the `env` field. The `${VAR}` form is the Claude Code substitution convention — `claude` resolves the var from the environment at MCP launch.
-- [ ] **SEC-05**: Defense-in-depth literal-secret refusal: any function that writes to `.mcp.json` (whether in this lib or in the wizard) MUST refuse to write a string value into an `env` block that does not match the regex `^\$\{[A-Z_][A-Z0-9_]*\}$`. Refusal returns rc=1 with `✗ refusing to write literal value into .mcp.json (use ${VAR} substitution)` to stderr. Test seam `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` exists for hermetic tests only and prints a one-line warning when honored.
-- [ ] **SEC-06**: `project_secrets_write_env` rejects any `VALUE` containing shell metacharacters (`$`, backtick, backslash, double-quote, single-quote, newline) — same allow-list as `_mcp_validate_value` in `mcp.sh`. Reuses or refactors the existing helper to share the rule.
+- [x] **SEC-01**: New library `scripts/lib/project-secrets.sh` exposes three functions: `project_secrets_write_env <project_root> <KEY> <VALUE>`, `project_secrets_ensure_gitignore <project_root>`, `project_secrets_render_mcp_env_block <KEY...>`. Read-only callers can `source` it without side effects.
+- [x] **SEC-02**: `project_secrets_write_env` writes `KEY=VALUE` to `<project_root>/.env`. File created if absent (mode 0600 enforced via `touch && chmod 0600` BEFORE first write). Idempotent merge: if `KEY` already exists in the file, prompt `[y/N] Overwrite KEY in <project>/.env?` reusing the v4.3 UN-03 `< /dev/tty` + fail-closed-N contract. Default N preserves existing value.
+- [x] **SEC-03**: `project_secrets_ensure_gitignore` checks `<project_root>/.gitignore` for an exact `.env` line (not `*.env`, not commented). If absent, appends `.env\n` with a leading comment `# claude-code-toolkit: never commit project-scope MCP secrets`. Creates `.gitignore` if missing. Idempotent on re-run.
+- [x] **SEC-04**: `project_secrets_render_mcp_env_block <KEY1> <KEY2> ...` returns a JSON object string `{"KEY1": "${KEY1}", "KEY2": "${KEY2}"}` for embedding into `.mcp.json` as the `env` field. The `${VAR}` form is the Claude Code substitution convention — `claude` resolves the var from the environment at MCP launch.
+- [x] **SEC-05**: Defense-in-depth literal-secret refusal: any function that writes to `.mcp.json` (whether in this lib or in the wizard) MUST refuse to write a string value into an `env` block that does not match the regex `^\$\{[A-Z_][A-Z0-9_]*\}$`. Refusal returns rc=1 with `✗ refusing to write literal value into .mcp.json (use ${VAR} substitution)` to stderr. Test seam `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` exists for hermetic tests only and prints a one-line warning when honored.
+- [x] **SEC-06**: `project_secrets_write_env` rejects any `VALUE` containing shell metacharacters (`$`, backtick, backslash, double-quote, single-quote, newline) — same allow-list as `_mcp_validate_value` in `mcp.sh`. Reuses or refactors the existing helper to share the rule.
 
 ### Wizard dispatch update (`scripts/lib/mcp.sh::mcp_wizard_run`)
 
@@ -125,12 +125,12 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 | TUI-SCOPE-03 | Phase 39 | not-started |
 | TUI-SCOPE-04 | Phase 39 | not-started |
 | TUI-SCOPE-05 | Phase 39 | not-started |
-| SEC-01 | Phase 37 | not-started |
-| SEC-02 | Phase 37 | not-started |
-| SEC-03 | Phase 37 | not-started |
-| SEC-04 | Phase 37 | not-started |
-| SEC-05 | Phase 37 | not-started |
-| SEC-06 | Phase 37 | not-started |
+| SEC-01 | Phase 37 | complete (37-01 0b0544f) |
+| SEC-02 | Phase 37 | complete (37-01 0b0544f) |
+| SEC-03 | Phase 37 | complete (37-01 0b0544f) |
+| SEC-04 | Phase 37 | complete (37-01 0b0544f) |
+| SEC-05 | Phase 37 | complete (37-01 0b0544f) |
+| SEC-06 | Phase 37 | complete (37-01 0b0544f) |
 | DISP-01 | Phase 38 | not-started |
 | DISP-02 | Phase 38 | not-started |
 | DISP-03 | Phase 38 | not-started |
