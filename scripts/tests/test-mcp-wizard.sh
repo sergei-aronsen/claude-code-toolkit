@@ -489,17 +489,23 @@ rm -rf "$PROJECT"
 mkdir -p "$PROJECT"
 rm -f "$SANDBOX/claude.argv"
 
-# Override the render function to emit a poisoned block (literal value).
-project_secrets_render_mcp_env_block() {
-    printf '{"CONTEXT7_API_KEY":"plain-literal-not-substitution"}'
-    return 0
-}
+# MED-03 fix: wrap function override in a subshell so the override cannot
+# leak into the parent shell namespace. Drops the unset -f + re-source
+# dance — subshell exit guarantees the real `project_secrets_render_mcp_env_block`
+# is the one any downstream test re-uses (no fragile cleanup contract).
 
 printf 'tk_did_not_matter\n' > "$SANDBOX/tty.fix.poison"
 DEF_RC=0
-ERR=$(TK_MCP_SCOPE=project TK_PROJECT_ROOT="$PROJECT" \
-      TK_MCP_TTY_SRC="$SANDBOX/tty.fix.poison" \
-      mcp_wizard_run context7 2>&1 1>/dev/null) || DEF_RC=$?
+ERR=$( (
+    # Override the render function to emit a poisoned block (literal value).
+    project_secrets_render_mcp_env_block() {
+        printf '{"CONTEXT7_API_KEY":"plain-literal-not-substitution"}'
+        return 0
+    }
+    TK_MCP_SCOPE=project TK_PROJECT_ROOT="$PROJECT" \
+    TK_MCP_TTY_SRC="$SANDBOX/tty.fix.poison" \
+        mcp_wizard_run context7 2>&1 1>/dev/null
+) ) || DEF_RC=$?
 
 assert_eq "1" "$DEF_RC" "T12 (Defense-in-depth): wizard returns rc=1 on poisoned env block"
 assert_contains "refusing to write literal value" "$ERR" \
@@ -512,11 +518,6 @@ if [[ -f "$SANDBOX/claude.argv" ]]; then
 else
     assert_pass "T12 (Defense-in-depth): claude was NOT invoked"
 fi
-
-# Restore the real render function for any downstream tests / re-runs.
-unset -f project_secrets_render_mcp_env_block
-# shellcheck source=/dev/null
-source "${REPO_ROOT}/scripts/lib/project-secrets.sh"
 
 rm -f "$SANDBOX/claude.argv"
 
