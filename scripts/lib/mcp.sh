@@ -815,19 +815,78 @@ mcp_wizard_run() {
                 echo -e "${RED}✗${NC} mcp_wizard_run: missing required key ${env_key} after 3 attempts" >&2
                 return 1
             fi
-            # Persist to mcp-config.env (handles 0600 + collision prompt).
-            if ! mcp_secrets_set "$env_key" "$collected_value"; then
-                return 1
+            # Phase 38 (DISP-01/02 D-04/D-05): branch persistence destination on
+            # scope. User/local: ~/.claude/mcp-config.env via mcp_secrets_set
+            # (UNCHANGED v4.6/v4.9 contract). Project: <project>/.env via
+            # project_secrets_write_env (Phase 37 lib). The collected_value never
+            # transits the user-scope path when scope=project (T2 mitigation —
+            # wrong-scope leak prevented by strict per-scope dispatch).
+            if [[ "$_scope" == "project" ]]; then
+                # Phase 38 (D-04): ensure .gitignore guard fires ONCE before the
+                # first project-scope write — the lib is idempotent, but the
+                # sentinel saves one grep -Fxq per subsequent key.
+                if [[ "$_gi_done" -eq 0 ]]; then
+                    if ! project_secrets_ensure_gitignore "$_project_root"; then
+                        return 1
+                    fi
+                    _gi_done=1
+                fi
+                if ! project_secrets_write_env "$_project_root" "$env_key" "$collected_value"; then
+                    return 1
+                fi
+                # Phase 38 (D-08): project-scope does NOT populate exported_env[] —
+                # real values stay in <project>/.env; only ${VAR} substitution
+                # forms reach claude in the post-loop invocation below.
+            else
+                # User/local scope (UNCHANGED v4.6/v4.9 contract).
+                if ! mcp_secrets_set "$env_key" "$collected_value"; then
+                    return 1
+                fi
+                # Queue for export to child process only (scoped via `env` below).
+                exported_env+=("${env_key}=${collected_value}")
             fi
-            # Queue for export to child process only (scoped via `env` below).
-            exported_env+=("${env_key}=${collected_value}")
             # Overwrite local copy immediately — never let it linger as a named var.
             collected_value=""
         done
     fi
 
-    # Invoke claude mcp add with env vars scoped to the child process only.
-    if [[ "${#exported_env[@]}" -gt 0 ]]; then
+    # Phase 38 (DISP-01 D-06/D-07/D-08): scope-aware claude mcp add invocation.
+    # Project-scope: build repeated `-e KEY=${KEY}` substitution-form flags AND
+    # call project_secrets_validate_mcp_env_block as defense-in-depth (T1
+    # mitigation — refuses to invoke claude if any literal value somehow lands
+    # in the rendered block). User/local: existing `env KEY=V claude mcp add`
+    # exec wrapper (UNCHANGED).
+    if [[ "$_scope" == "project" && -n "$env_keys_csv" ]]; then
+        # Reconstruct env_keys from CSV — env_keys array is local to the elif
+        # branch above, out of scope here.
+        local IFS_SAVED3="$IFS"
+        IFS=';'
+        # shellcheck disable=SC2206
+        local _claude_env_keys=( $env_keys_csv )
+        IFS="$IFS_SAVED3"
+        # Render the JSON env block once for the validator (defense-in-depth).
+        local _env_block
+        if ! _env_block="$(project_secrets_render_mcp_env_block "${_claude_env_keys[@]}")"; then
+            return 1
+        fi
+        if ! project_secrets_validate_mcp_env_block "$_env_block"; then
+            # validate prints `✗ refusing to write literal value into .mcp.json
+            # (use ${VAR} substitution)` to stderr — caller sees it.
+            return 1
+        fi
+        # Build repeated `-e KEY=${KEY}` flags. claude mcp add accepts -e env...
+        # (per `claude mcp add --help` line "-e, --env <env...>"). The literal
+        # ${KEY} substring (with $/{/} characters) reaches claude — claude
+        # writes .mcp.json with that as the env value and resolves it from the
+        # launched process environment at MCP launch.
+        local _env_flags=()
+        local _ek
+        for _ek in "${_claude_env_keys[@]}"; do
+            [[ -z "$_ek" ]] && continue
+            _env_flags+=( "-e" "${_ek}=\${${_ek}}" )
+        done
+        "$claude_bin" mcp add "${_env_flags[@]}" "${scoped_args[@]}"
+    elif [[ "${#exported_env[@]}" -gt 0 ]]; then
         env "${exported_env[@]}" "$claude_bin" mcp add "${scoped_args[@]}"
     else
         "$claude_bin" mcp add "${scoped_args[@]}"
