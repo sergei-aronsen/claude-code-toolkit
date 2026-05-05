@@ -799,59 +799,116 @@ if [[ "$MCPS" -eq 1 ]]; then
     # passes it through to MCP child processes — no re-registration needed
     # when keys change.
     if [[ -n "${TK_MCP_DEFERRED_QUEUE:-}" && -s "$TK_MCP_DEFERRED_QUEUE" ]]; then
-        # Auto-install the source line into shell rc if absent. Idempotent —
-        # detects existing line via marker comment. User wanted "edit key,
-        # restart claude, done" — adding the source line manually was an
-        # extra friction step we can eliminate (2026-05-01).
-        _shell_rc=""
-        if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == *zsh* ]]; then
-            _shell_rc="$HOME/.zshrc"
-        elif [[ -n "${BASH_VERSION:-}" ]] || [[ "${SHELL:-}" == *bash* ]]; then
-            # macOS bash users typically rely on .bash_profile, Linux on .bashrc.
-            if [[ "$(uname -s)" == "Darwin" ]]; then
-                _shell_rc="$HOME/.bash_profile"
-            else
-                _shell_rc="$HOME/.bashrc"
-            fi
-        fi
-        _rc_added=0
-        _rc_marker="# claude-code-toolkit: source ~/.claude/mcp-config.env into shell env"
-        if [[ -n "$_shell_rc" ]]; then
-            if [[ -f "$_shell_rc" ]] && grep -qF "$_rc_marker" "$_shell_rc" 2>/dev/null; then
-                _rc_added=2   # already present
-            else
-                {
-                    printf '\n%s\n' "$_rc_marker"
-                    printf 'set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a\n'
-                } >> "$_shell_rc" 2>/dev/null && _rc_added=1
-            fi
-        fi
-        echo ""
-        echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
-        echo ""
-        echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
-        while IFS=$'\t' read -r d_name d_keys _; do
+        # Phase 38 (DISP-03/DISP-04): 4-field queue reader. Pre-v5.0 producers
+        # leave the 4th field empty — fall back to scope=user for empty d_scope
+        # (mirrors mcp.sh:674 default). Buckets per scope so two-block dispatch
+        # (D-16) prints user-scope block first, project-scope block second.
+        _user_rows=()
+        _project_rows=()
+        # shellcheck disable=SC2034  # d_args read positionally to skip the 3rd field; we only consume name/keys/scope here
+        while IFS=$'\t' read -r d_name d_keys d_args d_scope; do
             [[ -z "$d_name" ]] && continue
-            _IFS_SAVED2="$IFS"
-            IFS=','
-            for _k in $d_keys; do
-                _k="${_k# }"
-                [[ -z "$_k" ]] && continue
-                printf '       %s=<your-key>\n' "$_k"
-            done
-            IFS="$_IFS_SAVED2"
+            # D-10 back-compat: empty 4th field → scope=user (mirrors mcp.sh:674).
+            [[ -z "${d_scope:-}" ]] && d_scope="user"
+            case "$d_scope" in
+                project) _project_rows+=("${d_name}"$'\t'"${d_keys}") ;;
+                local|user|*) _user_rows+=("${d_name}"$'\t'"${d_keys}") ;;
+            esac
         done < "$TK_MCP_DEFERRED_QUEUE"
-        unset _k _IFS_SAVED2
-        echo ""
-        case "$_rc_added" in
-            1) echo "  2) Shell rc updated: auto-source line added to ${_shell_rc/#$HOME/~}." ;;
-            2) echo "  2) Shell rc already configured (auto-source line found in ${_shell_rc/#$HOME/~})." ;;
-            *) echo "  2) Could not detect/write to your shell rc. Add this ONE line to ~/.zshrc (or ~/.bashrc) manually:"
-               echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a" ;;
-        esac
-        echo ""
-        echo "  3) Reload shell env (open a fresh terminal, or run: exec \$SHELL) and start claude."
-        unset _shell_rc _rc_added _rc_marker
+        unset d_name d_keys d_args d_scope
+
+        # ─── User-scope block (existing v4.9 copy — UNCHANGED) ───────────────
+        if [[ "${#_user_rows[@]}" -gt 0 ]]; then
+            # Auto-install the source line into shell rc if absent. Idempotent —
+            # detects existing line via marker comment. User wanted "edit key,
+            # restart claude, done" — adding the source line manually was an
+            # extra friction step we can eliminate (2026-05-01).
+            _shell_rc=""
+            if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == *zsh* ]]; then
+                _shell_rc="$HOME/.zshrc"
+            elif [[ -n "${BASH_VERSION:-}" ]] || [[ "${SHELL:-}" == *bash* ]]; then
+                # macOS bash users typically rely on .bash_profile, Linux on .bashrc.
+                if [[ "$(uname -s)" == "Darwin" ]]; then
+                    _shell_rc="$HOME/.bash_profile"
+                else
+                    _shell_rc="$HOME/.bashrc"
+                fi
+            fi
+            _rc_added=0
+            _rc_marker="# claude-code-toolkit: source ~/.claude/mcp-config.env into shell env"
+            if [[ -n "$_shell_rc" ]]; then
+                if [[ -f "$_shell_rc" ]] && grep -qF "$_rc_marker" "$_shell_rc" 2>/dev/null; then
+                    _rc_added=2   # already present
+                else
+                    {
+                        printf '\n%s\n' "$_rc_marker"
+                        printf 'set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a\n'
+                    } >> "$_shell_rc" 2>/dev/null && _rc_added=1
+                fi
+            fi
+            echo ""
+            echo -e "${YELLOW}Some MCPs registered without API keys — finish setup:${NC}"
+            echo ""
+            echo "  1) Open ~/.claude/mcp-config.env (already stubbed; mode 0600) and fill in:"
+            for _row in "${_user_rows[@]}"; do
+                _IFS_SAVED2="$IFS"
+                IFS=$'\t'
+                # shellcheck disable=SC2086
+                set -- $_row
+                IFS="$_IFS_SAVED2"
+                _row_keys="$2"
+                _IFS_SAVED2="$IFS"
+                IFS=','
+                for _k in $_row_keys; do
+                    _k="${_k# }"
+                    [[ -z "$_k" ]] && continue
+                    printf '       %s=<your-key>\n' "$_k"
+                done
+                IFS="$_IFS_SAVED2"
+            done
+            unset _k _IFS_SAVED2 _row _row_keys
+            echo ""
+            case "$_rc_added" in
+                1) echo "  2) Shell rc updated: auto-source line added to ${_shell_rc/#$HOME/~}." ;;
+                2) echo "  2) Shell rc already configured (auto-source line found in ${_shell_rc/#$HOME/~})." ;;
+                *) echo "  2) Could not detect/write to your shell rc. Add this ONE line to ~/.zshrc (or ~/.bashrc) manually:"
+                   echo "       set -a; [ -f ~/.claude/mcp-config.env ] && . ~/.claude/mcp-config.env; set +a" ;;
+            esac
+            echo ""
+            echo "  3) Reload shell env (open a fresh terminal, or run: exec \$SHELL) and start claude."
+            unset _shell_rc _rc_added _rc_marker
+        fi
+
+        # ─── Project-scope block (NEW — D-14 copy) ───────────────────────────
+        if [[ "${#_project_rows[@]}" -gt 0 ]]; then
+            echo ""
+            echo -e "${YELLOW}Some project-scope MCPs need API keys finished:${NC}"
+            echo ""
+            echo "  1) Open <project>/.env (already stubbed; mode 0600) and fill in:"
+            for _row in "${_project_rows[@]}"; do
+                _IFS_SAVED2="$IFS"
+                IFS=$'\t'
+                # shellcheck disable=SC2086
+                set -- $_row
+                IFS="$_IFS_SAVED2"
+                _row_keys="$2"
+                _IFS_SAVED2="$IFS"
+                IFS=','
+                for _k in $_row_keys; do
+                    _k="${_k# }"
+                    [[ -z "$_k" ]] && continue
+                    printf '       %s=<your-key>\n' "$_k"
+                done
+                IFS="$_IFS_SAVED2"
+            done
+            unset _k _IFS_SAVED2 _row _row_keys
+            echo ""
+            echo "  2) <project>/.gitignore already includes .env (toolkit added it)."
+            echo ""
+            echo "  3) Reload shell env from the project dir (or restart claude) and the MCP picks up the keys."
+        fi
+
+        unset _user_rows _project_rows
     fi
 
     if [[ $FAILED_COUNT -gt 0 ]]; then
