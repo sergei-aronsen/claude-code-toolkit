@@ -3,14 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
 status: executing
-last_updated: "2026-05-05T23:30:00.000Z"
+stopped_at: Completed 40-03-keep-state-implies-keep-secrets-PLAN.md
+last_updated: "2026-05-05T23:21:17.190Z"
 last_activity: 2026-05-05
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -25,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-04)
 ## Current Position
 
 Phase: 40 (Uninstall Secret Cleanup + Calendly + Validator) — EXECUTING
-Plan: 4 of 5 (next: 40-03 keep-state-implies-keep-secrets)
-Status: 40-02 complete (UN-SEC-03 closed in commit 5d08292) — Ready for next plan
+Plan: 5 of 5 (next: 40-05 test-uninstall-state-cleanup.sh extension)
+Status: 40-03 complete (UN-SEC-04/05 closed in commit c36475d) — Ready for next plan
 Last activity: 2026-05-05
 
-Progress: [████████████████░░░░] 13/15 plans (87%)
+Progress: [██████████████████░░] 14/15 plans (93%)
 
 ### Phase 40 Plan Status
 
@@ -37,7 +38,7 @@ Progress: [████████████████░░░░] 13/15 p
 |------|-------|--------|--------|
 | 40-01 | uninstall_prompt_mcp_keys helper + per-MCP loop (UN-SEC-01/02) | complete | 48a661d, 71ba883 |
 | 40-02 | full-toolkit mcp-config.env prompt (UN-SEC-03) | complete | 5d08292 |
-| 40-03 | --keep-state implies --keep-secrets (UN-SEC-04/05) | pending | — |
+| 40-03 | --keep-state implies --keep-secrets (UN-SEC-04/05) | complete | c36475d |
 | 40-04 | Calendly catalog + INT-14 lock + SCOPE-01 regression | complete | eae7b89, 1be1ed4, 0f45ddc |
 | 40-05 | test-uninstall-state-cleanup.sh extension (TEST-05) | pending | — |
 
@@ -148,9 +149,9 @@ Carry-overs available for next milestone scoping (unchanged from v4.9 close):
 
 ## Session Continuity
 
-Last session: 2026-05-05T23:30:00.000Z
+Last session: 2026-05-05T23:21:07.898Z
 Started: v5.0 Per-MCP Scope + Project Secrets Boundary
-Stopped at: Completed 40-02 full-toolkit mcp-config.env prompt (UN-SEC-03) — commit 5d08292; STATE_FILE D-06 ordering preserved (rm of MCP_CFG line 1114 < rm of STATE_FILE line 1134)
+Stopped at: Completed 40-03-keep-state-implies-keep-secrets-PLAN.md
 Resume file: None
 
 **Next steps:**

@@ -48,8 +48,8 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 - [x] **UN-SEC-01**: New helper `uninstall_prompt_mcp_keys <name> <key1> <key2>...` in `uninstall.sh`. Reads keys for the named MCP from the catalog (`integrations-catalog.json` `env_var_keys`). Prompts `[y/N] also remove keys K1, K2 from ~/.claude/mcp-config.env?` via `< /dev/tty` (fail-closed N on no-TTY, mirrors UN-03). On Y, rewrites `mcp-config.env` excluding those keys, preserves 0600. On N (default) the keys remain — user may reinstall the MCP later.
 - [x] **UN-SEC-02**: When `claude mcp remove <name>` is invoked from any toolkit-driven uninstall path (currently the bulk uninstall for the toolkit; future: per-MCP uninstall command if added), `uninstall_prompt_mcp_keys` is called immediately after.
 - [x] **UN-SEC-03**: Full toolkit uninstall (`scripts/uninstall.sh` whole-toolkit path) prompts ONCE about the entire `~/.claude/mcp-config.env`: `[y/N] also remove ~/.claude/mcp-config.env (X keys for Y MCPs)?` Default N — the user may keep the file independent of toolkit lifecycle. On Y, file deleted before the LAST-step `STATE_FILE` removal (UN-05 D-06 ordering preserved). The base-plugin invariant (`diff -q`) still runs and still wins.
-- [ ] **UN-SEC-04**: Project `.env` files are **never** touched by `uninstall.sh`. Documented contract: project `.env` belongs to the user's project, not to the toolkit. Even when `--full` or any future flag is passed. Verified by hermetic test (no fopen of any `.env` file outside `~/.claude/`).
-- [ ] **UN-SEC-05**: `uninstall.sh --keep-state` (v4.4 KEEP-01 carry) implies `--keep-secrets` — neither `mcp-config.env` nor any other secret-bearing file is touched on `--keep-state`. Documented in `--help` and `docs/INSTALL.md`.
+- [x] **UN-SEC-04**: Project `.env` files are **never** touched by `uninstall.sh`. Documented contract: project `.env` belongs to the user's project, not to the toolkit. Even when `--full` or any future flag is passed. Verified by hermetic test (no fopen of any `.env` file outside `~/.claude/`).
+- [x] **UN-SEC-05**: `uninstall.sh --keep-state` (v4.4 KEEP-01 carry) implies `--keep-secrets` — neither `mcp-config.env` nor any other secret-bearing file is touched on `--keep-state`. Documented in `--help` and `docs/INSTALL.md`.
 
 ### Catalog growth (`scripts/lib/integrations-catalog.json`)
 
@@ -117,37 +117,37 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SCOPE-01 | Phase 36 | not-started |
-| SCOPE-02 | Phase 36 | not-started |
-| SCOPE-03 | Phase 36 | not-started |
-| TUI-SCOPE-01 | Phase 39 | not-started |
-| TUI-SCOPE-02 | Phase 39 | not-started |
-| TUI-SCOPE-03 | Phase 39 | not-started |
-| TUI-SCOPE-04 | Phase 39 | not-started |
-| TUI-SCOPE-05 | Phase 39 | not-started |
+| SCOPE-01 | Phase 36 | complete (36-01 796f282) |
+| SCOPE-02 | Phase 36 | complete (36-01 cb79920) |
+| SCOPE-03 | Phase 36 | complete (36-01 a5fa7c5) |
+| TUI-SCOPE-01 | Phase 39 | complete (39-01 f68c76d) |
+| TUI-SCOPE-02 | Phase 39 | complete (39-01 29557a8) |
+| TUI-SCOPE-03 | Phase 39 | complete (39-02 cf6fef4) |
+| TUI-SCOPE-04 | Phase 39 | complete (39-01 f68c76d) |
+| TUI-SCOPE-05 | Phase 39 | complete (39-02 0eaaa2c) |
 | SEC-01 | Phase 37 | complete (37-01 0b0544f) |
 | SEC-02 | Phase 37 | complete (37-01 0b0544f) |
 | SEC-03 | Phase 37 | complete (37-01 0b0544f) |
 | SEC-04 | Phase 37 | complete (37-01 0b0544f) |
 | SEC-05 | Phase 37 | complete (37-01 0b0544f) |
 | SEC-06 | Phase 37 | complete (37-01 0b0544f) |
-| DISP-01 | Phase 38 | not-started |
-| DISP-02 | Phase 38 | not-started |
-| DISP-03 | Phase 38 | not-started |
-| DISP-04 | Phase 38 | not-started |
-| UN-SEC-01 | Phase 40 | not-started |
-| UN-SEC-02 | Phase 40 | not-started |
+| DISP-01 | Phase 38 | complete (38-01 82eaf27) |
+| DISP-02 | Phase 38 | complete (38-01 82eaf27) |
+| DISP-03 | Phase 38 | complete (38-01 f511b5b) |
+| DISP-04 | Phase 38 | complete (38-02 f85ed32) |
+| UN-SEC-01 | Phase 40 | complete (40-01 48a661d) |
+| UN-SEC-02 | Phase 40 | complete (40-01 71ba883) |
 | UN-SEC-03 | Phase 40 | complete (40-02 5d08292) |
-| UN-SEC-04 | Phase 40 | not-started |
-| UN-SEC-05 | Phase 40 | not-started |
-| INT-13 | Phase 40 | not-started |
-| INT-14 | Phase 40 | not-started |
-| TEST-01 | Phase 37 | not-started |
-| TEST-02 | Phase 38 | not-started |
-| TEST-03 | Phase 38 | not-started |
-| TEST-04 | Phase 39 | not-started |
+| UN-SEC-04 | Phase 40 | complete (40-03 c36475d) |
+| UN-SEC-05 | Phase 40 | complete (40-03 c36475d) |
+| INT-13 | Phase 40 | complete (40-04 eae7b89) |
+| INT-14 | Phase 40 | complete (40-04 1be1ed4) |
+| TEST-01 | Phase 37 | complete (37-02 8f30645) |
+| TEST-02 | Phase 38 | complete (38-03 92bd530) |
+| TEST-03 | Phase 38 | complete (38-03 92bd530) |
+| TEST-04 | Phase 39 | complete (39-03 05cc01e) |
 | TEST-05 | Phase 40 | not-started |
-| TEST-06 | Phase 40 | not-started |
+| TEST-06 | Phase 40 | complete (40-04 1be1ed4) |
 | DIST-01 | Phase 41 | not-started |
 | DIST-02 | Phase 41 | not-started |
 | DIST-03 | Phase 41 | not-started |

@@ -192,7 +192,7 @@
 **Plans**: 5 plans (3 complete, 2 pending)
 - [x] 40-01-PLAN.md — uninstall_prompt_mcp_keys helper + per-MCP claude-mcp-remove loop in uninstall.sh (UN-SEC-01, UN-SEC-02)
 - [x] 40-02-PLAN.md — full-toolkit mcp-config.env cleanup prompt with D-06 ordering preservation (UN-SEC-03)
-- [ ] 40-03-PLAN.md — `--keep-state` implies `--keep-secrets` + `.env` never touched contract (UN-SEC-04, UN-SEC-05)
+- [x] 40-03-PLAN.md — `--keep-state` implies `--keep-secrets` + `.env` never touched contract (UN-SEC-04, UN-SEC-05)
 - [x] 40-04-PLAN.md — Calendly catalog entry + INT-14 Google Workspace lock + SCOPE-01 regression test (INT-13, INT-14, TEST-06)
 - [ ] 40-05-PLAN.md — test-uninstall-state-cleanup.sh extension (TEST-05)
 **UI hint**: no
@@ -235,5 +235,5 @@
 | 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
 | 38. Wizard Dispatch Integration | 3/3 | Complete   | 2026-05-05 |
 | 39. TUI Per-Row Scope Toggle | 3/3 | Complete   | 2026-05-05 |
-| 40. Uninstall Secret Cleanup + Calendly + Validator | 2/5 | In Progress|  |
+| 40. Uninstall Secret Cleanup + Calendly + Validator | 4/5 | In Progress|  |
 | 41. Distribution + Docs | 0/3 | Not started | - |
