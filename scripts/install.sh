@@ -412,6 +412,16 @@ if [[ "$MCPS" -eq 1 ]]; then
                         MCP_SELECTED_SCOPE[$_si]="$TK_MCP_SCOPE_CLI"
                     done
                     unset _si
+                    # Phase 39 MED-03: re-render TUI_LABELS[] from the new
+                    # MCP_SELECTED_SCOPE[] values so the interactive --mcp-scope
+                    # path shows row-glyphs that agree with the banner and the
+                    # actual install scope. mcp_status_array seeded labels from
+                    # MCP_DEFAULT_SCOPE[]; without this rebuild, labels would
+                    # display the catalog-default mix while dispatch installs
+                    # to the broadcast scope. Headless paths (--yes /
+                    # TK_MCP_PRE_SELECTED) skip the TUI render so the cost is
+                    # purely string-rebuild — no visible difference.
+                    _mcp_rebuild_row_labels
                 fi
                 ;;
         esac

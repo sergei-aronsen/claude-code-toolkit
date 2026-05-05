@@ -1041,6 +1041,35 @@ mcp_toggle_scope() {
     # (Plan 01) but applies to all rows, not just FOCUS_IDX. The single
     # source of truth for the bracket render is _mcp_render_scope_glyph
     # (T5 mitigation: set-all and initial render agree byte-for-byte).
+    # Phase 39 MED-03: extracted into _mcp_rebuild_row_labels so the
+    # install.sh CLI-scope broadcast (post-mcp_status_array) and any future
+    # bulk MCP_SELECTED_SCOPE writer share one byte-for-byte renderer.
+    _mcp_rebuild_row_labels
+
+    mcp_render_scope_header
+}
+
+# _mcp_rebuild_row_labels — Phase 39 MED-03 private helper.
+# Re-renders every TUI_LABELS[$_j] from the current MCP_SELECTED_SCOPE[$_j]
+# scope value, preserving the unofficial-`!` prefix (yellow under TTY+color)
+# and the display name. Single source of truth for the active green-bracket
+# render (delegates to _mcp_render_scope_glyph).
+#
+# Used by:
+#   - mcp_toggle_scope            (set-all 's' broadcast)
+#   - install.sh post-broadcast   (--mcp-scope CLI override of catalog defaults)
+#
+# Reads:  MCP_SELECTED_SCOPE[], TUI_TO_MCP_IDX[], MCP_UNOFFICIAL[],
+#         MCP_DISPLAY[], NO_COLOR
+# Writes: TUI_LABELS[]
+#
+# Bash 3.2 + nounset safe: ${MCP_SELECTED_SCOPE[*]+x} existence-check
+# mirrors mcp_toggle_scope/mcp_cycle_row_scope (MED-01 sibling parity).
+_mcp_rebuild_row_labels() {
+    local _len=0
+    if [[ -n "${MCP_SELECTED_SCOPE[*]+x}" ]]; then
+        _len="${#MCP_SELECTED_SCOPE[@]}"
+    fi
     local _c_scope_active="" _c_nc="" _c_y=""
     if [ -t 1 ] && [ -z "${NO_COLOR+x}" ]; then
         _c_scope_active=$'\033[0;32m'
@@ -1048,11 +1077,10 @@ mcp_toggle_scope() {
         _c_y=$'\033[1;33m'
     fi
     local _g_bang="!"
+    local _j _mcp_idx _scope_glyph _name_part
     for ((_j=0; _j<_len; _j++)); do
-        local _mcp_idx="${TUI_TO_MCP_IDX[$_j]:-0}"
-        local _scope_glyph
-        _scope_glyph=$(_mcp_render_scope_glyph "$_MCP_SETALL_SCOPE")
-        local _name_part
+        _mcp_idx="${TUI_TO_MCP_IDX[$_j]:-0}"
+        _scope_glyph=$(_mcp_render_scope_glyph "${MCP_SELECTED_SCOPE[$_j]:-user}")
         if [[ "${MCP_UNOFFICIAL[$_mcp_idx]:-0}" == "1" ]]; then
             if [[ -n "$_c_y" ]]; then
                 _name_part="${_c_y}${_g_bang}${_c_nc} ${MCP_DISPLAY[$_mcp_idx]}"
@@ -1064,8 +1092,6 @@ mcp_toggle_scope() {
         fi
         TUI_LABELS[$_j]="${_scope_glyph} ${_name_part}"
     done
-
-    mcp_render_scope_header
 }
 
 # mcp_cycle_row_scope — Phase 39 TUI-SCOPE-02 per-row Tab handler.
