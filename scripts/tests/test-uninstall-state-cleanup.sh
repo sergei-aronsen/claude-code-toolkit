@@ -502,6 +502,134 @@ else
     fi
 fi
 rm -rf "$SCN_HOME"
+
+# ─────────────────────────────────────────────────
+# UN-SEC-04: project .env files outside ~/.claude/ NEVER touched
+# (fingerprint diff under both --dry-run and live runs)
+# ─────────────────────────────────────────────────
+echo ""
+echo "── UN-SEC-04: project .env files outside ~/.claude/ untouched (fingerprint diff) ──"
+SCN_HOME="$(mktemp -d /tmp/uninstall-un-sec-04.XXXXXX)"
+seed_scenario "$SCN_HOME" "firecrawl" "FIRECRAWL_API_KEY"
+mkdir -p "$SCN_HOME/projects/alpha" "$SCN_HOME/projects/beta" "$SCN_HOME/projects/gamma"
+
+# Seed several "project" .env files at various depths to prove that a
+# breadth-first traversal (find depth 1..N) plus a root-level .env are all
+# byte-identical pre/post.
+echo "DATABASE_URL=postgres://placeholder" > "$SCN_HOME/projects/alpha/.env"
+echo "API_KEY=placeholder-1"               > "$SCN_HOME/projects/beta/.env"
+echo "STRIPE_KEY=placeholder-2"            > "$SCN_HOME/projects/gamma/.env"
+echo "ROOT_VAR=placeholder"                > "$SCN_HOME/.env"
+
+# Fingerprint helper: list all .env files under $SCN_HOME EXCLUDING those
+# inside the .claude/ subtree (mcp-config.env stays out of this set), one
+# per line as `<sha256>  <relative-path>`. Stable across runs (sort).
+fingerprint() {
+    # `-not -path '*/.claude/*'` is BSD-find compatible and excludes ANY
+    # path with /.claude/ in it (depth-independent).
+    find "$SCN_HOME" -name '.env' -not -path '*/.claude/*' -type f 2>/dev/null \
+        | LC_ALL=C sort \
+        | while IFS= read -r f; do
+            printf '%s  %s\n' "$(sha256_any "$f")" "${f#"$SCN_HOME"/}"
+        done
+}
+
+PRE_FP="$(fingerprint)"
+
+# Run #1: dry-run. Under --dry-run, uninstall.sh:757 short-circuits before
+# the per-MCP loop and full-toolkit prompt fire — so even if the prompts
+# WOULD have touched .env (they don't), the path isn't reached. Either way:
+# the negative invariant holds. Output captured to /dev/null because the
+# fingerprint diff (not stdout) is the contract under test.
+#
+# Note: TK_MCP_CATALOG_PATH is intentionally NOT exported for the dry-run
+# leg — per-MCP loop is short-circuited by --dry-run early-exit anyway, and
+# leaving the catalog seam off proves the negative invariant even when the
+# per-MCP loop is fully bypassed.
+printf '\n\n' | \
+    HOME="$SCN_HOME" \
+    TK_UNINSTALL_HOME="$SCN_HOME" \
+    TK_UNINSTALL_LIB_DIR="$REPO_ROOT/scripts/lib" \
+    TK_UNINSTALL_TTY_FROM_STDIN=1 \
+    bash "$REPO_ROOT/scripts/uninstall.sh" --dry-run >/dev/null 2>&1 || true
+POST_FP_DRYRUN="$(fingerprint)"
+
+# Run #2: live. Need to RE-SEED STATE_FILE because dry-run does not remove
+# it — but this scenario already runs dry-run BEFORE live, and dry-run
+# exits early at uninstall.sh:759 without removing STATE_FILE. Verify by
+# inspection, then proceed with live run on the remaining state.
+#
+# Live run DOES export TK_MCP_CATALOG_PATH so the per-MCP loop actually
+# fires (mock claude reports firecrawl as installed). This proves the
+# negative invariant under the FULL uninstall path — including the secret-
+# cleanup helper and full-toolkit prompt — not just the short-circuit case.
+if [[ ! -f "$SCN_HOME/.claude/toolkit-install.json" ]]; then
+    # Defensive: if some future change makes dry-run remove STATE_FILE, we
+    # need to re-seed before the live run. Today this branch is unreachable.
+    seed_scenario "$SCN_HOME" "firecrawl" "FIRECRAWL_API_KEY"
+fi
+MOCK_BIN_04="$(build_mock_claude "$SCN_HOME" "firecrawl")"
+
+printf '\n\n' | \
+    HOME="$SCN_HOME" \
+    TK_UNINSTALL_HOME="$SCN_HOME" \
+    TK_UNINSTALL_LIB_DIR="$REPO_ROOT/scripts/lib" \
+    TK_MCP_CATALOG_PATH="$TK_CATALOG_PATH" \
+    TK_MCP_CLAUDE_BIN="$MOCK_BIN_04" \
+    TK_UNINSTALL_TTY_FROM_STDIN=1 \
+    bash "$REPO_ROOT/scripts/uninstall.sh" >/dev/null 2>&1 || true
+POST_FP_LIVE="$(fingerprint)"
+
+if [[ "$PRE_FP" != "$POST_FP_DRYRUN" ]]; then
+    assert_fail "UN-SEC-04: project .env fingerprint byte-identical under --dry-run" \
+        "$(diff <(printf '%s\n' "$PRE_FP") <(printf '%s\n' "$POST_FP_DRYRUN") || true)"
+elif [[ "$PRE_FP" != "$POST_FP_LIVE" ]]; then
+    assert_fail "UN-SEC-04: project .env fingerprint byte-identical under live run" \
+        "$(diff <(printf '%s\n' "$PRE_FP") <(printf '%s\n' "$POST_FP_LIVE") || true)"
+else
+    assert_pass "UN-SEC-04: 4 project .env files byte-identical under --dry-run AND live"
+fi
+rm -rf "$SCN_HOME"
+
+# ─────────────────────────────────────────────────
+# UN-SEC-05: --keep-state preserves mcp-config.env + STATE_FILE
+# (and surfaces no [y/N] prompt in stdout)
+# ─────────────────────────────────────────────────
+echo ""
+echo "── UN-SEC-05: --keep-state preserves all secret-bearing files; no [y/N] in stdout ──"
+SCN_HOME="$(mktemp -d /tmp/uninstall-un-sec-05.XXXXXX)"
+seed_scenario "$SCN_HOME" "firecrawl" "FIRECRAWL_API_KEY"
+PRE_MCP_HASH="$(sha256_any "$SCN_HOME/.claude/mcp-config.env")"
+PRE_STATE_HASH="$(sha256_any "$SCN_HOME/.claude/toolkit-install.json")"
+
+# No mock claude needed: KEEP_STATE skips the per-MCP helper and the
+# full-toolkit prompt regardless of whether the per-MCP loop fires. No
+# stdin needed: no prompts surface.
+OUTPUT=$(HOME="$SCN_HOME" \
+    TK_UNINSTALL_HOME="$SCN_HOME" \
+    TK_UNINSTALL_LIB_DIR="$REPO_ROOT/scripts/lib" \
+    bash "$REPO_ROOT/scripts/uninstall.sh" --keep-state 2>&1) || true
+
+if [[ ! -f "$SCN_HOME/.claude/mcp-config.env" ]]; then
+    assert_fail "UN-SEC-05: --keep-state preserves mcp-config.env" \
+        "file removed under --keep-state. Output excerpt: $(printf '%s\n' "$OUTPUT" | tail -10)"
+elif [[ "$(sha256_any "$SCN_HOME/.claude/mcp-config.env")" != "$PRE_MCP_HASH" ]]; then
+    assert_fail "UN-SEC-05: --keep-state leaves mcp-config.env byte-identical" \
+        "sha256 changed under --keep-state"
+elif [[ ! -f "$SCN_HOME/.claude/toolkit-install.json" ]]; then
+    assert_fail "UN-SEC-05: --keep-state preserves STATE_FILE" \
+        "STATE_FILE removed under --keep-state. Output excerpt: $(printf '%s\n' "$OUTPUT" | tail -10)"
+elif [[ "$(sha256_any "$SCN_HOME/.claude/toolkit-install.json")" != "$PRE_STATE_HASH" ]]; then
+    assert_fail "UN-SEC-05: --keep-state leaves STATE_FILE byte-identical" \
+        "STATE_FILE sha256 changed under --keep-state"
+elif printf '%s\n' "$OUTPUT" | grep -qF '[y/N]'; then
+    assert_fail "UN-SEC-05: no [y/N] prompt surfaces under --keep-state" \
+        "stdout contained '[y/N]'. Output excerpt: $(printf '%s\n' "$OUTPUT" | grep -F '[y/N]' | head -3)"
+else
+    assert_pass "UN-SEC-05: --keep-state preserves both files byte-identically; no [y/N] in stdout"
+fi
+rm -rf "$SCN_HOME"
+
 # ─────────────────────────────────────────────────
 # Summary
 # ─────────────────────────────────────────────────
