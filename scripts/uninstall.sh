@@ -774,6 +774,22 @@ n_keep=${#KEEP_LIST[@]}
 # Zero filesystem changes from this point if --dry-run was passed.
 if [[ $DRY_RUN -eq 1 ]]; then
     print_uninstall_dry_run
+    # v6.1 F-3 dry-run preview: the live tear-down block lives at end-of-script
+    # (after state cleanup), but dry-run early-exits before reaching it. Mirror
+    # the same opt-in conditional logic here so users see what the tear-down
+    # would do during a preview run.
+    if [[ $REMOVE_HOOKS -eq 1 ]]; then
+        log_info "[dry-run] would invoke: bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh) --uninstall"
+    fi
+    if [[ $REMOVE_COST_ROUTING -eq 1 ]]; then
+        log_info "[dry-run] would invoke: bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh) --uninstall"
+    fi
+    if [[ $REMOVE_HOOKS -eq 0 || $REMOVE_COST_ROUTING -eq 0 ]]; then
+        echo ""
+        log_info "Global v6.1 helpers preserved (shared across all projects). To remove:"
+        [[ $REMOVE_HOOKS -eq 0 ]]        && log_info "  bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh) --uninstall"
+        [[ $REMOVE_COST_ROUTING -eq 0 ]] && log_info "  bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh) --uninstall"
+    fi
     exit 0
 fi
 
