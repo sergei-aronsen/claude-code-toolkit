@@ -57,6 +57,9 @@
         "path": "commands/learn.md"
       },
       {
+        "path": "commands/update-deps.md"
+      },
+      {
         "path": "commands/update-toolkit.md"
       },
       {
@@ -133,6 +136,9 @@
       },
       {
         "path": "scripts/uninstall.sh"
+      },
+      {
+        "path": "scripts/update-deps.sh"
       },
       {
         "path": "scripts/validate-integrations-catalog.py"
