@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-05-06
+
+**Three-layer overlay redesign — TK on top of `superpowers` + `get-shit-done`,
+plus optional external tools.**
+
+### Added
+
+- **Advisory hooks** (PR #43) — four opt-in Claude Code hooks under
+  `templates/global/hooks/` that nudge toward the right tool at the right phase
+  without ever blocking:
+  - `tk-pre-gsd-plan-council.sh` (UserPromptSubmit) — suggests `/council` when
+    `/gsd-plan-phase` touches auth/payments/security/db-migration keywords.
+  - `tk-post-gsd-phase-audit.sh` (Stop) — suggests `/audit security && /audit code`
+    after `/gsd-execute-phase` completes.
+  - `tk-pre-ship-reality-check.sh` (PreToolUse Bash) — reminds reality-check
+    skill before push to main / vercel/netlify/fly/kubectl deploy.
+  - `tk-cost-warning.sh` (Stop) — once per session when transcript suggests
+    >`TK_COST_WARN_KTOK` (default 200k) tokens consumed.
+  - Installer at `scripts/install-hooks.sh` with atomic JSON merge,
+    `_tk_owned + _tk_hook_id` markers, `--dry-run`, `--uninstall`.
+- **Cost routing** (PR #45) — `scripts/setup-cost-routing.sh` wraps
+  `npx -y better-model init` to route Sonnet 4.6 (60% of tasks), Opus 4.7
+  (architecture/security), Haiku 4.5 (search/trivial) per slash command.
+  Backup + restore on failure; `--uninstall` strips the routing block cleanly.
+- **External MCPs in integrations catalog** (PR #45):
+  - `morph-fast-tools` (dev-tools) — Fast Apply diffs + warpgrep_codebase_search.
+  - `claude-context` (dev-tools) — vector-DB code search via Milvus + OpenAI/Voyage.
+  - Catalog grows 21 → 23 entries.
+- **New skills** (PR #42) under `templates/base/skills/`:
+  - `production-observability`, `reality-check`, `cost-routing-discipline`,
+    `gsd-mode-selector`, `domain-expert-simulation`.
+- **New rules** (PR #42) auto-loaded every session:
+  - `cost-discipline.md`, `non-programmer-safeguards.md`, `three-layer-bridge.md`.
+- **New components** (PR #42) — `production-observability`, `cost-discipline`,
+  `vendor-risk`, `domain-expert-simulation`, `large-codebase-search`,
+  `external-tools-recommended`.
+- **`/vendor-audit` slash command** (PR #42) — quarterly external dependency
+  risk review (GSD, Superpowers, Morph, better-model, claude-context).
+- **Architecture docs** (PR #46) — `docs/architecture.md` (three-layer
+  diagram + runtime composition matrix); `docs/non-programmer-mode.md`
+  (recommended setup + cost expectations for solo founders).
+
+### Changed
+
+- **Trimmed duplicates with GSD/Superpowers** (PR #41) — removed 26 commands,
+  9 components, 2 base skills (testing + debugging — covered by Superpowers
+  TDD + systematic-debugging), 2 templates (nextjs covered by GSD
+  skills-marketplace; nodejs merged into base). Net deletion: ~28k LOC.
+- **Trimmed framework templates** (PR #44) — removed 32 framework template
+  files (byte-identical to base or stale copies). Each of
+  `templates/{laravel,rails,python,go}/` shrinks 23-25 → 16 files.
+  `init-claude.sh` framework→base fallback chain handles the missing files.
+  -8.7k LOC.
+
+### Migration
+
+Existing v5.x users on `complement-sp` / `complement-full` will see hard-
+deleted files vanish on next `/update-toolkit` — intended. Run
+`scripts/migrate-to-complement.sh` if you were on `standalone` and now have
+SP+GSD installed; otherwise no manual migration. `install-hooks.sh` and
+`setup-cost-routing.sh` are opt-in and never auto-run.
+
 ## [5.0.0] - 2026-05-06
 
 **Per-MCP Scope + Project Secrets Boundary** — give the user granular per-MCP
