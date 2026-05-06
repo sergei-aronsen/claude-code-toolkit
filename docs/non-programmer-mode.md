@@ -88,8 +88,8 @@ This is not a real expert. It's a checklist scaffold built from real expert revi
 
 - **Auto-merges code.** Every code change is yours to accept or reject.
 - **Auto-deploys.** Every ship operation requires explicit user confirmation. The reality-check hook only reminds, never blocks (unless `TK_HOOKS_BLOCK_SHIP=1`).
-- **Auto-pays.** Every paid external tool (Morph, claude-context, better-model API consumption) requires explicit install + API key entry. No covert spend.
-- **Replaces a real engineer for high-stakes work.** v6.0 catches what a careful checklist + multi-AI review can catch. It does not catch a subtle race condition in a distributed system. Get a human reviewer for those.
+- **Auto-pays.** Every paid external tool (claude-context vector embeddings, better-model API consumption) requires explicit install + API key entry. No covert spend. Serena is free OSS (LSP-driven, runs locally — no per-token billing).
+- **Replaces a real engineer for high-stakes work.** v6.1 catches what a careful checklist + multi-AI review can catch. It does not catch a subtle race condition in a distributed system. Get a human reviewer for those.
 
 ## Cost expectations (rough)
 
@@ -99,7 +99,7 @@ For a moderate product (lantern-class — 100k LOC, 5-10 features per month):
 |---|---|---|
 | Claude Code subscription | $20-200 | Max plan recommended |
 | Anthropic API (council, agents) | $10-50 | Council ~$0.10/run, ~50 runs/month |
-| Morph API | $20-100 | Token-efficient edits, scales w/ activity |
+| Serena (LSP) | $0 | OSS, runs locally — symbol-aware retrieval/edit |
 | claude-context (Milvus + Voyage) | $0-30 | Self-host Milvus; Voyage cheap |
 | better-model | $0 | npm package, free, just routes |
 | Sentry + Posthog (free tiers) | $0 | Free tier covers most solo products |

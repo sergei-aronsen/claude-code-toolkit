@@ -62,13 +62,21 @@ Each framework template documents its required base plugins in `## Required Base
 e.g. [templates/base/CLAUDE.md](templates/base/CLAUDE.md). For the full 12-cell install matrix
 and step-by-step guidance, see [docs/INSTALL.md](docs/INSTALL.md).
 
-## v6.0 Three-Layer Architecture
+## v6.1 Three-Layer Architecture
 
-Toolkit v6.0 positions itself as a **thin overlay** on Anthropic's plugin ecosystem
+Toolkit v6.1 positions itself as a **thin overlay** on Anthropic's plugin ecosystem
 plus optional external tools. See [docs/architecture.md](docs/architecture.md) for
 the full diagram. For solo founders / non-developer product builders, see
 [docs/non-programmer-mode.md](docs/non-programmer-mode.md) — recommended setup
 of advisory hooks, cost routing, and reality-check before ship.
+
+v6.1 dropped `morph-fast-tools` (closed-source SDK + paid SaaS, no public privacy
+policy) in favour of [oraios/serena](https://github.com/oraios/serena) — symbol-aware
+code retrieval and editing via LSP, MIT, runs locally. The default Layer-3 stack:
+Serena (symbolic) + ripgrep (textual) + claude-context (semantic vector search) +
+better-model (cost routing). v6.1 also wired `install-hooks.sh` and
+`setup-cost-routing.sh` into `init-claude.sh` so they no longer need a separate
+manual run.
 
 ### Interactive install (recommended)
 
