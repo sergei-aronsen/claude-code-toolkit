@@ -22,3 +22,6 @@ __pycache__/
 
 # Skills Desktop-safety audit artifact (runtime output — do not commit)
 .audit-skills-desktop.txt
+
+# External vendor code for read-only analysis (never bundle/distribute)
+_external/
