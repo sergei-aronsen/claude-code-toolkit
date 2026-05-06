@@ -44,10 +44,10 @@ This document explains the three-layer model TK adopts in v6.0. If you are using
                           │ optionally augmented by
                           │
 ┌─────────────────────────┴───────────────────────────────┐
-│  Layer 3 — External tools (paid / opt-in)               │
+│  Layer 3 — External tools (free OSS or paid / opt-in)   │
 │                                                         │
-│  • morph-fast-tools — Fast Apply diffs +                │
-│    warpgrep_codebase_search (token-efficient edits)     │
+│  • serena — symbol-aware code retrieval and editing     │
+│    via LSP (oraios/serena, MIT, runs locally)           │
 │  • claude-context — vector-DB code search via Milvus    │
 │    + OpenAI/Voyage embeddings (100k+ LOC codebases)     │
 │  • better-model — model routing (Sonnet 60% / Opus      │
@@ -55,6 +55,10 @@ This document explains the three-layer model TK adopts in v6.0. If you are using
 │    scripts/setup-cost-routing.sh                        │
 │  • Sentry / Posthog / Playwright — production           │
 │    observability (reality-check skill prerequisite)     │
+│                                                         │
+│  Removed v6.1: morph-fast-tools (closed-source SDK,     │
+│  paid SaaS, no privacy guarantee — see                  │
+│  docs/research/morph-deep-dive-2026-05-06.md)           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +70,7 @@ Three reasons drove the v6.0 redesign:
 
 2. **Vendor risk control.** Each base plugin or external tool can disengage, change license, or get acquired. Layered architecture means TK can swap any layer-2 plugin or layer-3 tool without rewriting layer 1. `/vendor-audit` runs quarterly to surface drift early.
 
-3. **Cost discipline.** Each layer has different cost characteristics. Layer 1 (TK) is free + local. Layer 2 (plugins) is free but consumes tokens. Layer 3 (Morph, claude-context, better-model) costs real money but pays back via reduced token spend. The cost-routing skill lives in layer 1 because it's the routing decision, not the engine.
+3. **Cost discipline.** Each layer has different cost characteristics. Layer 1 (TK) is free + local. Layer 2 (plugins) is free but consumes tokens. Layer 3 (Serena is free OSS; claude-context and better-model cost real money but pay back via reduced token spend). The cost-routing skill lives in layer 1 because it's the routing decision, not the engine.
 
 ## How layers compose at runtime
 
@@ -77,11 +81,12 @@ Three reasons drove the v6.0 redesign:
 | Plan generated | 2 (SP) | `writing-plans` skill activates |
 | `/council` runs | 1 (TK) | multi-AI plan validation (Gemini + ChatGPT) |
 | Execute phase | 2 (GSD) | `/gsd-execute-phase` + `executing-plans` skill |
-| Edits applied | 3 (Morph) | `mcp__morph-fast-tools__edit_file` (token-efficient) |
+| Symbol-level edits | 3 (Serena) | `mcp__serena__replace_symbol_body` / `rename_symbol` (LSP-driven, local) |
+| Plain-text edits | — | native `Edit` tool |
 | Phase finishes | 1 (TK) | `tk-post-gsd-phase-audit.sh` suggests `/audit security && /audit code` |
 | `/gsd-ship` invoked | 1 (TK) | `tk-pre-ship-reality-check.sh` reminds Playwright + Sentry |
 
-Each layer can be replaced independently. If GSD breaks tomorrow, swap to pure SP + `/gsd-plan-phase`-equivalent slash command derived from SP `writing-plans` skill. If Morph rate-limits, fall back to native Edit. If TK hooks misfire, `export TK_HOOKS_DISABLE=1`.
+Each layer can be replaced independently. If GSD breaks tomorrow, swap to pure SP + `/gsd-plan-phase`-equivalent slash command derived from SP `writing-plans` skill. If Serena's LSP backend fails for a given language, fall back to native Edit + ripgrep. If TK hooks misfire, `export TK_HOOKS_DISABLE=1`.
 
 ## Standalone mode
 

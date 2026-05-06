@@ -1,52 +1,78 @@
 # Large Codebase Search
 
-> When grep + Read stops scaling. Threshold: ~100k LOC. Below that — ripgrep + Read are fine. Above — semantic search via vector DB pays for itself.
+> When grep + Read stops scaling. Three orthogonal axes — symbolic
+> (Serena), textual (ripgrep), semantic (claude-context). Pick the one
+> that matches the question, not the codebase size.
+
+## Pick by query, not by size
+
+| Question | Tool |
+|---|---|
+| "Find function `foo`, all callers, all overrides" | **Serena** (LSP, symbol-level) |
+| "Find every place we touch the `stripe_customer_id` column" | `rg` (Claude built-in) |
+| "Find the code that retries on auth failure" (no exact term) | **claude-context** (semantic vectors) |
+| "Rename `User` to `Account` across project" | **Serena** (`rename` refactor) |
+
+If you only have one of these, install **Serena first** — it covers the
+symbolic and refactor cases for free, and that's where the biggest
+discovery-token spend usually sits.
 
 ## When you need it
 
-| Codebase size | Tool |
+| Codebase size | Recommended stack |
 |---|---|
 | < 10k LOC | `rg` + `Read` (Claude built-in) |
-| 10k - 50k LOC | `rg` + `Read`, optionally Morph warpgrep MCP for ad-hoc semantic queries |
-| 50k - 100k LOC | Morph warpgrep MCP (semantic, no setup) |
-| > 100k LOC | claude-context MCP (persistent vector index, free queries) |
+| 10k - 50k LOC | Serena + `rg` |
+| 50k - 100k LOC | Serena + `rg` (claude-context optional for "find code about X" queries) |
+| > 100k LOC | Serena + `rg` + claude-context (persistent vector index) |
 
 ## Why it matters
 
-Discovery (finding the right file/function) is 30-50% of token spend on big projects. Loading 50 files at 5KB each just to find the one that matters = 250KB context = expensive.
+Discovery (finding the right file/function) is 30-50% of token spend on
+big projects. Loading 50 files at 5KB each just to find the one that
+matters = 250KB context = expensive.
 
-Vector indexing flips this:
+The three search axes flip this:
 
-- Index once (~$1-5 for 100k LOC, OpenAI embedding)
-- Query thousands of times for free
-- Each query returns top-K relevant chunks (~5KB) instead of N files (~250KB)
+- **Serena** answers structural questions in one tool call (LSP returns
+  the precise symbol locations) instead of N grep+Read iterations.
+- **Vector indexing** (claude-context) flips frequent semantic queries:
+  index once (~$1-5 for 100k LOC, OpenAI embedding), query thousands of
+  times for free, each query returns top-K relevant chunks (~5KB)
+  instead of N files (~250KB).
+- **ripgrep** stays free and fast for exact-term searches and is
+  complementary to both.
 
 ## Tools
 
-### Morph warpgrep (ad-hoc, no setup)
+### Serena (symbolic / refactor)
 
-Already-installed MCP `mcp__morph-fast-tools__warpgrep_codebase_search`.
+Already covered in `components/external-tools-recommended.md` (Serena
+section). The MCP catalog entry is `serena` (`integrations-catalog.json`,
+v6.1+). Open source, MIT, runs locally.
 
 ```text
 Pros:
-- Zero setup (works immediately)
-- Hybrid search (semantic + grep fallback)
-- Per-query pricing (no subscription)
+- IDE-level understanding (find references, rename, move, type hierarchy)
+- 40+ language LSP backends (TypeScript, Python, Go, Rust, Java, ...)
+- Symbol-aware editing (replace symbol body, insert before/after symbol)
+- Local — code never leaves your machine
+- Free
 
 Cons:
-- Per-query cost adds up (~$0.005 per query)
-- No persistent index — rebuilds on file changes
-- Less effective for very large codebases (>200k LOC)
+- Per-language LSP server may need setup (Java/Scala/Kotlin in particular)
+- Less effective for natural-language semantic queries — pair with
+  claude-context for that
 
 When:
-- Codebase 50-100k LOC
-- Occasional queries (< 30/day)
-- You don't want to maintain another service
+- Any codebase >10k LOC
+- Heavy refactoring or cross-file navigation
+- You want symbolic precision (find ALL callers, not text matches)
 ```
 
-### claude-context (persistent index, big codebase)
+### claude-context (semantic / persistent index, big codebase)
 
-Install via toolkit MCP wizard (PR 5):
+Install via toolkit MCP wizard:
 
 ```bash
 # Public Zilliz Cloud (free tier — DO NOT USE for sensitive code)
@@ -62,7 +88,7 @@ Pros:
 - Persistent index (one-time embed cost ~$1-5 per 100k LOC)
 - Free queries (after embed)
 - Incremental updates via Merkle tree (changed files re-embed only)
-- Best for repeated queries on stable codebases
+- Best for repeated semantic queries on stable codebases
 
 Cons:
 - Setup overhead (Milvus + OpenAI keys)
@@ -71,8 +97,9 @@ Cons:
 
 When:
 - Codebase > 100k LOC
-- Frequent queries (>30/day)
+- Frequent semantic queries (>30/day)
 - Stable codebase (heavy reads, modest writes)
+- Pair with Serena for the structural questions
 ```
 
 ## Security: claude-context for sensitive code
@@ -85,7 +112,10 @@ When:
 - HIPAA / GDPR-regulated logic
 - Payment processing code
 
-The free tier's metadata is shared across tenants. While vectors aren't directly readable, embedding inversion research (arxiv.org/abs/2305.03010) shows approximate code reconstruction is possible.
+The free tier's metadata is shared across tenants. While vectors aren't
+directly readable, embedding inversion research
+(arxiv.org/abs/2305.03010) shows approximate code reconstruction is
+possible.
 
 ### Self-hosted Milvus setup
 
@@ -123,7 +153,8 @@ claude mcp add claude-context \
 
 ### Alternative: Voyage AI embedding (better for code)
 
-Voyage's `voyage-code-3` model is purpose-built for code search and outperforms OpenAI's general embedding.
+Voyage's `voyage-code-3` model is purpose-built for code search and
+outperforms OpenAI's general embedding.
 
 ```bash
 claude mcp add claude-context \
@@ -145,22 +176,24 @@ ollama pull nomic-embed-text
 # Configure claude-context to use Ollama via env vars (verify support in latest version)
 ```
 
-Local = zero cost per embedding + zero cloud exposure. Trade-off: slower indexing, less accurate retrieval.
+Local = zero cost per embedding + zero cloud exposure. Trade-off:
+slower indexing, less accurate retrieval.
 
 ## Cost projection
 
 For a 305k LOC codebase like notebooklm-ultra:
 
-| Setup | One-time | Monthly (50 queries/day) |
+| Setup | One-time | Monthly |
 |---|---|---|
-| Morph warpgrep | $0 | ~$7.50 |
+| Serena (symbolic) | $0 | $0 |
 | claude-context (Zilliz Cloud free) | ~$3 (embed) | ~$0 |
 | claude-context (self-hosted Milvus + OpenAI embed) | ~$3 (embed) + $0 (Docker) | ~$0 |
 | claude-context (self-hosted + local Ollama) | $0 + $0 | ~$0 |
 
-For >100k LOC active dev: self-hosted claude-context with Voyage AI = best ROI.
+For >100k LOC active dev: Serena + self-hosted claude-context with
+Voyage AI = best ROI.
 
-## Index lifecycle
+## Index lifecycle (claude-context)
 
 After initial embed:
 
@@ -168,10 +201,13 @@ After initial embed:
 - Re-embed cost is proportional to delta, not full codebase
 - Stale chunks pruned automatically
 
-Typical month for 100k LOC project: ~10% files change = ~$0.30 in incremental embeds.
+Typical month for 100k LOC project: ~10% files change = ~$0.30 in
+incremental embeds.
 
 ## Cross-references
 
-- `components/external-tools-recommended.md` — install order including claude-context
+- `components/external-tools-recommended.md` — install order including
+  Serena and claude-context
 - `components/cost-discipline.md` — when paying for search vs. doing it manually
 - `components/security-hardening.md` — sensitive code handling
+- `docs/research/morph-deep-dive-2026-05-06.md` — why Morph WarpGrep was dropped

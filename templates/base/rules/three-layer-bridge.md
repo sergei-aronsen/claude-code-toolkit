@@ -56,10 +56,12 @@ Big feature (auth, payments, public API)          →  GSD (/gsd-plan-phase) + T
 Bug investigation                                 →  Superpowers (systematic-debugging)
 TDD discipline (write test first)                 →  Superpowers (test-driven-development)
 Brainstorm new idea before coding                 →  Superpowers (brainstorming)
-Multi-file refactor                               →  GSD (/gsd-plan-phase) + better-model auto-routes Opus
-Code search small project                         →  Morph warpgrep
-Code search lantern/notebooklm (>100k LOC)        →  claude-context MCP
-Edits any project                                 →  Morph Fast Apply via MCP
+Multi-file refactor                               →  GSD (/gsd-plan-phase) + Serena (symbol rename) + better-model
+Find symbol / callers / references (any size)     →  Serena (mcp__serena__*)
+Semantic search "code that does X" (>100k LOC)    →  claude-context MCP
+Exact-string search                               →  ripgrep (built-in)
+Symbol-level edits (rename, move, replace body)   →  Serena
+Plain text edits                                  →  native Edit (Morph removed in v6.1)
 Security-sensitive change                         →  GSD (/gsd-secure-phase) + Toolkit (/audit security + /council)
 Pre-ship reality check                            →  Toolkit (skill: reality-check)
 Domain expert second opinion                      →  Toolkit (skill: domain-expert-simulation)

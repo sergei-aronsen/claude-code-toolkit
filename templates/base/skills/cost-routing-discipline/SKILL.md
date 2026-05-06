@@ -57,17 +57,26 @@ Novel algorithm                      →  Opus 4.7          max
 
 ## Edit operations
 
-If Morph MCP installed (`mcp__morph-fast-tools__edit_file`):
+If Serena MCP installed (look for `mcp__serena__*` tools):
 
-- Use Morph Fast Apply for ALL edits (5-10× cheaper than native Edit)
-- Reserve native Edit only when Morph is unavailable
+- Use Serena's symbol-level operations (`replace_symbol_body`,
+  `insert_before_symbol`, `insert_after_symbol`, `rename_symbol`) for
+  refactoring — local LSP, no network round-trips, dramatically fewer
+  tokens than full-file rewrites
+- Use native Edit for plain-text single-line changes
+
+Morph Fast Apply was removed in v6.1 (no public source repo for the SDK,
+paid SaaS with no privacy guarantee). There is no plug-and-play
+equivalent — native Edit covers ~95% of cases honestly.
 
 ## Discovery operations
 
 ```text
-Codebase < 50k LOC      →  ripgrep + Read
-Codebase 50-100k LOC    →  Morph warpgrep_codebase_search
-Codebase > 100k LOC     →  claude-context MCP (persistent vector index)
+"find function/symbol/all callers of foo" →  Serena (mcp__serena__*)
+"find code that does X" semantically       →  claude-context MCP (>100k LOC)
+exact-string search                        →  ripgrep
+small project (<10k LOC)                   →  ripgrep + Read
+big project (>100k LOC) + frequent queries →  claude-context MCP
 ```
 
 ## Budget reality check

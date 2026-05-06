@@ -11,9 +11,16 @@ The toolkit overlay depends on multiple external systems. Each has different ven
 | GSD (gsd-build) | Phase workflows + verification gates | Maintainer drift, $GSD memecoin pivot |
 | Superpowers (obra) | Discipline skills (TDD, debug, brainstorm) | Single maintainer (Jesse Vincent) |
 | Anthropic (Claude API) | Model availability + pricing | Pricing changes, model deprecation |
-| Morph LLM | Fast Apply + warpgrep MCP | Paid API, vendor pricing pivot |
+| Serena (oraios) | LSP-driven symbol search + edit MCP | MIT, 23.9k stars, healthy maintainer cadence |
 | better-model (talkstream) | Cost routing matrix | Single maintainer, low star count |
 | claude-context (zilliztech) | Vector DB MCP | Org-backed but Zilliz cloud free tier ToS shifts |
+
+**Removed in v6.1:** `@morphllm/morphmcp` + `@morphllm/morphsdk` (Morph
+Fast Apply / WarpGrep / Compact). Decision rationale:
+`docs/research/morph-deep-dive-2026-05-06.md`. The npm packages were MIT
+on the registry but the source repo did not exist on GitHub — the
+toolkit was piping user code to a closed binary calling a paid SaaS
+with no published privacy/retention policy. Tier 3 vendor risk.
 
 ## Quarterly review checklist
 
