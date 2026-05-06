@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.2.0] - 2026-05-06
+
+**`/update-deps` dependency dashboard + v6.1 install TUI fixes + Russian
+README rewrite. Single PR (#55).**
+
+### Added
+
+- `commands/update-deps.md` + `scripts/update-deps.sh` — interactive
+  dependency update dashboard. Surfaces every tracked toolkit dep across
+  Layer 1 (toolkit), Layer 2 (superpowers, get-shit-done, ru-text),
+  Optional (caveman), External (cc-safety-net, rtk, get-shit-done-cc,
+  better-model), and MCP (serena, claude-context). User picks what to
+  upgrade via curses-like checkbox picker; nothing auto-updates.
+- Modes: `--dry-run` (table only), `--yes` (update every outdated dep),
+  `--check NAME` (single-dep TSV probe).
+
+### Changed
+
+- **Plugin probing matches reality:** read marketplace.json's pinned
+  `.source.sha`, fetch `plugin.json` at that SHA via `gh api` — matches
+  what `claude plugin update` actually ships. Source-repo HEAD probing
+  used as fallback only when marketplace tracks HEAD (no `.sha` pin).
+  Closes the "ru-text shows outdated immediately after upgrade" symptom.
+- **MCP probing skips `claude mcp list`:** reads `~/.claude.json` directly
+  via `jq` instead. Avoids spawning every MCP for connectivity check —
+  serena was opening a browser tab to its localhost dashboard
+  (127.0.0.1:24282) just from probing.
+- **claude-context probe walks `~/.npm/_npx/<hash>/node_modules/<pkg>`** —
+  picks newest by mtime, reads package.json `.version`. Replaces the
+  previous "rolling" placeholder with the actual cached version.
+- **Bash 3.2-safe arrow keys:** integer `-t 1` timeout (no fractional
+  `-t` — macOS `/bin/bash` 3.2.57 doesn't support it). Earlier
+  fractional timeout silently failed and let the second byte of an arrow
+  sequence leak into the outer case, triggering select-all on ↑.
+- **Picker no-flicker rendering:** home cursor + per-line `\033[K` erase
+  instead of full `\033[2J` clear on every iteration.
+- `docs/readme/ru.md`: rewritten under v6.1 architecture (Three-Layer
+  Architecture moved up; Killer Features expanded to 10 rows; v6.0 →
+  v6.1 deltas surfaced). Other 7 translations deferred.
+
+### Fixed
+
+- `scripts/install.sh`: drop the standalone Marketplace/Catalogs TUI
+  group. Avoids the "looks like it will install everything" misread.
+- `scripts/install.sh`: per-MCP and per-skill bubble-up via
+  `TK_CHILD_STATE_DIR` (TSV). Install summary now lists each MCP and
+  each skill with its own state instead of a single rolled-up parent
+  row.
+- `scripts/install-statusline.sh`: add `CYAN` to color palette. `set -u`
+  was killing the script mid-install at line 71 with `CYAN: unbound
+  variable`.
+- `scripts/lib/integrations-catalog.json`: trim serena description from
+  359 → 168 chars so the install picker fits on one line.
+
 ## [6.1.0] - 2026-05-06
 
 **Drop Morph, add Serena, reposition claude-context. Close five v6 audit
