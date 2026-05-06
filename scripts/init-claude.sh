@@ -908,6 +908,17 @@ recommend_hooks() {
     echo -e "  Requires: jq, python3"
 }
 
+# Show cost-routing recommendation (v6.0 — better-model)
+recommend_cost_routing() {
+    echo ""
+    echo -e "${CYAN}💰 Cost Routing (optional, v6.0):${NC}"
+    echo -e "  Routes Sonnet 4.6 (60% of tasks), Opus 4.7 (architecture/security),"
+    echo -e "  Haiku 4.5 (search/trivial) per slash command. Cuts ~50% off blended cost."
+    echo -e "  Powered by talkstream/better-model (MIT, zero deps)."
+    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh)${NC}"
+    echo -e "  Requires: Node.js 18+"
+}
+
 # Setup Supreme Council (integrated)
 setup_council() {
     local council_dir="$HOME/.claude/council"
@@ -1386,6 +1397,7 @@ main() {
         recommend_security
         recommend_statusline
         recommend_hooks
+        recommend_cost_routing
         recommend_optional_plugins
 
         # Supreme Council setup (integrated)
@@ -1452,6 +1464,18 @@ bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/install-hooks.sh)
 \`\`\`
 
 Disable advisories at runtime: \`export TK_HOOKS_DISABLE=1\`. Uninstall: \`bash <(curl -sSL $REPO_URL/scripts/install-hooks.sh) --uninstall\`.
+
+💰 **Cost Routing (v6.0)** — installs talkstream/better-model and writes
+a model-routing block into \`~/.claude/CLAUDE.md\` so /gsd-fast uses Haiku 4.5,
+/gsd-quick uses Sonnet 4.6 (60% of tasks), and /gsd-plan-phase + /council use
+Opus 4.7. Cuts roughly 50% off blended cost without quality regression on the
+common path. Requires Node.js 18+.
+
+\`\`\`bash
+bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/setup-cost-routing.sh)
+\`\`\`
+
+Uninstall the routing block: \`bash <(curl -sSL $REPO_URL/scripts/setup-cost-routing.sh) --uninstall\`.
 
 ## Supreme Council
 

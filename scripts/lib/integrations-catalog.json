@@ -246,6 +246,43 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "morph-fast-tools": {
+        "name": "morph-fast-tools",
+        "display_name": "Morph Fast Apply + Search",
+        "category": "dev-tools",
+        "env_var_keys": [
+          "MORPH_API_KEY"
+        ],
+        "install_args": [
+          "morph-fast-tools",
+          "--",
+          "npx",
+          "-y",
+          "@morphllm/morphmcp"
+        ],
+        "description": "Fast Apply diff edits + semantic codebase search (warpgrep). Token-efficient for large refactors. v6.0 recommended.",
+        "requires_oauth": false,
+        "default_scope": "user"
+      },
+      "claude-context": {
+        "name": "claude-context",
+        "display_name": "Claude Context (semantic search)",
+        "category": "dev-tools",
+        "env_var_keys": [
+          "MILVUS_TOKEN",
+          "OPENAI_API_KEY"
+        ],
+        "install_args": [
+          "claude-context",
+          "--",
+          "npx",
+          "-y",
+          "@zilliz/claude-context-mcp@latest"
+        ],
+        "description": "Vector-DB semantic code search (Milvus + OpenAI/Voyage embeddings). Justified for 100k+ LOC codebases. v6.0 recommended.",
+        "requires_oauth": false,
+        "default_scope": "user"
+      },
       "playwright": {
         "name": "playwright",
         "display_name": "Playwright",
