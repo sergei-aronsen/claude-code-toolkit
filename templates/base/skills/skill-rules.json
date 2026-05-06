@@ -144,6 +144,119 @@
           ".claude/audits/**"
         ]
       }
+    },
+    "production-observability": {
+      "path": ".claude/skills/production-observability/SKILL.md",
+      "description": "Sentry + Posthog + Playwright instrumentation discipline; closes GSD's plan-vs-spec blind spot",
+      "triggers": {
+        "keywords": [
+          "ship",
+          "deploy",
+          "release",
+          "production",
+          "monitor",
+          "sentry",
+          "posthog",
+          "observability",
+          "instrument"
+        ],
+        "intentPatterns": [
+          "ship.*to.*prod",
+          "deploy.*production",
+          "add.*monitoring",
+          "setup.*sentry"
+        ],
+        "filePatterns": [
+          "**/sentry.*",
+          "**/posthog.*",
+          "**/playwright.*"
+        ]
+      }
+    },
+    "reality-check": {
+      "path": ".claude/skills/reality-check/SKILL.md",
+      "description": "Post-ship runtime verification — Playwright e2e against prod URL, Sentry error rate check, Posthog conversion funnel validation",
+      "triggers": {
+        "keywords": [
+          "did it work",
+          "verify deploy",
+          "check prod",
+          "post-ship",
+          "after ship",
+          "проверить деплой",
+          "сработало"
+        ],
+        "intentPatterns": [
+          "verify.*deploy",
+          "check.*production",
+          "post-ship.*verify"
+        ],
+        "filePatterns": []
+      }
+    },
+    "cost-routing-discipline": {
+      "path": ".claude/skills/cost-routing-discipline/SKILL.md",
+      "description": "Mode selection (gsd-fast/quick/plan-phase) and subagent model routing (Haiku/Sonnet/Opus) for cost efficiency",
+      "triggers": {
+        "keywords": [
+          "cost",
+          "budget",
+          "token cost",
+          "expensive",
+          "cheap",
+          "дёшево",
+          "дорого",
+          "сколько токенов"
+        ],
+        "intentPatterns": [
+          "save.*cost",
+          "reduce.*tokens",
+          "cheaper.*way"
+        ],
+        "filePatterns": []
+      }
+    },
+    "gsd-mode-selector": {
+      "path": ".claude/skills/gsd-mode-selector/SKILL.md",
+      "description": "Selects appropriate GSD command (gsd-fast / gsd-quick / gsd-plan-phase) based on user task description",
+      "triggers": {
+        "keywords": [
+          "fix",
+          "add",
+          "change",
+          "implement",
+          "поправь",
+          "добавь",
+          "сделай"
+        ],
+        "intentPatterns": [
+          "fix.*",
+          "add.*feature",
+          "implement.*"
+        ],
+        "filePatterns": []
+      }
+    },
+    "domain-expert-simulation": {
+      "path": ".claude/skills/domain-expert-simulation/SKILL.md",
+      "description": "Pre-ship domain expert review (auth/payments/db/infra/privacy/UX) — non-programmer review proxy",
+      "triggers": {
+        "keywords": [
+          "review my",
+          "is this safe",
+          "can you check",
+          "что я пропустил",
+          "проверь",
+          "domain expert",
+          "second opinion"
+        ],
+        "intentPatterns": [
+          "review.*my.*code",
+          "is.*safe",
+          "check.*for.*issues"
+        ],
+        "filePatterns": []
+      }
     }
   }
 }
