@@ -1,6 +1,6 @@
-# Claude Code Toolkit 入門ガイド
+# Claude Code Toolkit のインストールと使い方
 
-> 完全な初心者向けガイド: ゼロから Claude Code を使った生産的な開発まで
+> ゼロから Claude Code での生産的な開発までの完全な経路を、一箇所にまとめた。
 
 **[English](en.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **日本語** | **[Português](pt.md)** | **[한국어](ko.md)**
 
@@ -8,12 +8,14 @@
 
 ## 前提条件
 
-以下がインストールされていることを確認してください:
+以下が入っていることを確認：
 
-- **Node.js** (確認: `node --version`)
-- **Claude Code** (確認: `claude --version`)
+- **Node.js** —— `node --version`（20.x 以降推奨）
+- **Claude Code** —— `claude --version`
+- **git** —— `.claude/` をリポジトリにコミットするため
+- **jq** —— インストーラが `settings.json` をマージするのに必要（`brew install jq` / `apt install jq`）
 
-Claude Code がまだインストールされていない場合:
+Claude Code がまだ入っていなければ：
 
 ```bash
 npm install -g @anthropic-ai/claude-code
@@ -21,255 +23,131 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-## セットアップの2つのレベル
+## インストール
 
-| レベル | 内容 | タイミング |
-|--------|------|------------|
-| **グローバル** | セキュリティルール + hooks + プラグイン | マシンごとに1回 |
-| **プロジェクトごと** | コマンド、スキル、テンプレート | プロジェクトごとに1回 |
-
----
-
-## ステップ 1: グローバルセットアップ (マシンごとに1回)
-
-セキュリティルール、統合フック（safety-net + RTK サポート）、Anthropic 公式プラグインをインストールします。**1回**だけ実行すれば、**すべての**プロジェクトで機能します。
-
-通常のターミナル (Claude Code ではなく) を開いてください:
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-**実行される内容:**
-
-- `~/.claude/CLAUDE.md` が作成されます -- グローバルセキュリティルールです。Claude Code は**すべてのプロジェクトで起動するたびに**このファイルを読み込みます。「SQLインジェクションを行わない、eval()を使わない、危険な操作の前に確認を取る」といった指示です
-- `cc-safety-net` がインストールされます -- 破壊的なコマンド (`rm -rf /`、`git push --force` など) をブロックします
-- 統合フックが設定されます (safety-net + RTK 順次実行、並列の競合なし)
-- Anthropic 公式プラグインが有効化されます (code-review、commit-commands、security-guidance、frontend-design)
-
-**正常に動作しているか確認:**
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
-```
-
-以上です。グローバル部分は完了しました。**この作業を繰り返す必要はありません**。
-
----
-
-## ステップ 2: プロジェクトを作成する
-
-例えば、Laravel プロジェクトの場合:
-
-```bash
-cd ~/Projects
-composer create-project laravel/laravel my-app
-cd my-app
-git init
-```
-
-Next.js の場合:
-
-```bash
-cd ~/Projects
-npx create-next-app@latest my-app
-cd my-app
-```
-
-既にプロジェクトがある場合は、そのフォルダに移動するだけです:
+プロジェクトフォルダに `cd` し、**普通のターミナル**で（Claude Code の中ではダメ）実行：
 
 ```bash
 cd ~/Projects/my-app
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
----
-
-## ステップ 3: プロジェクトに Toolkit をインストールする
-
-**通常のターミナル**（Claude Code 内ではなく）でプロジェクトフォルダから以下を実行します:
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-スクリプトがフレームワーク (Laravel、Next.js、Python、Go など) を**自動検出**し、以下を作成します:
+インストーラは全コンポーネント入りの TUI チェックリストを開きます：
 
 ```text
-my-app/
-└── .claude/
-    ├── CLAUDE.md              ← Claude への指示 (プロジェクト用)
-    ├── settings.json          ← 設定、フック
-    ├── commands/              ← 24個のスラッシュコマンド
-    │   ├── debug.md           ← /debug — 体系的なデバッグ
-    │   ├── plan.md            ← /plan — コーディング前の計画
-    │   ├── verify.md          ← /verify — コミット前のチェック
-    │   ├── audit.md           ← /audit — セキュリティ/パフォーマンス監査
-    │   ├── test.md            ← /test — テストの作成
-    │   └── ...                ← その他約19個のコマンド
-    ├── prompts/               ← 監査テンプレート
-    ├── agents/                ← サブエージェント (code-reviewer, test-writer)
-    ├── skills/                ← フレームワークの専門知識
-    ├── cheatsheets/           ← チートシート (9言語)
-    ├── memory/                ← セッション間のメモリ
-    └── scratchpad/            ← 作業メモ
+[x] toolkit              ← toolkit のコンテンツ（プロジェクトの .claude/）
+[x] security             ← グローバルな security pack + cc-safety-net
+[ ] rtk                  ← 冗長な開発コマンド出力を書き換え（-60-90% トークン）
+[ ] statusline           ← ステータスバーにセッション/週次の使用量
+[ ] council              ← /council = Gemini + ChatGPT のプラン検証
+[ ] gemini-bridge        ← CLAUDE.md → GEMINI.md 自動同期
+[ ] codex-bridge         ← CLAUDE.md → AGENTS.md 自動同期
+[ ] mcp-servers (24)     ← インテグレーション TUI チェックリスト（Stripe, Sentry, dbhub, …）
+[ ] skills (22)          ← marketplace skill（i18n, shadcn, stripe, …）
 ```
 
-**フレームワークを明示的に指定する場合:**
+`スペース` で切替、`↑/↓` で移動、`Enter` でチェック済みをインストール。
 
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
-```
+インストーラは特徴ファイルからフレームワーク（Laravel, Next.js, Python, Go, …）を検出し、対応する `CLAUDE.md` テンプレートを配置します。`superpowers` と `get-shit-done` が既に入っていれば、それらのプラグインが既に提供するファイルはスキップし、toolkit 固有の約 47 件の貢献だけを入れます。
+
+完了後、ローカルの HTML ページが `.claude/setup-guide.html` で開き、インストール済み MCP ごとの手順（API key の取り方、設定すべき env 変数、テスト方法）が並びます。
 
 ---
 
-## ステップ 4: プロジェクト用に CLAUDE.md を設定する
-
-これが最も重要なファイルです。エディタで `.claude/CLAUDE.md` を開き、内容を記入してください:
-
-```markdown
-# My App — Claude Code Instructions
-
-## Project Overview
-**Framework:** Laravel 12
-**Description:** Online electronics store
-
-## Key Directories
-app/Services/    — business logic
-app/Models/      — Eloquent models
-resources/js/    — Vue components
-
-## Development Workflow
-### Running Locally
-composer serve    — start server
-npm run dev       — frontend
-
-### Testing
-php artisan test
-
-## Project-Specific Rules
-1. All controllers use Form Requests
-2. Money is stored in cents (integer)
-3. API returns JSON via Resources
-```
-
-Claude はこのプロジェクトで**起動するたびにこのファイルを読み込みます**。詳しく記入すればするほど、Claude はより賢く動作します。
-
----
-
-## ステップ 5: .claude を Git にコミットする
+## コミットして使い始める
 
 ```bash
-git add .claude/
-git commit -m "feat: add Claude Code toolkit configuration"
-```
-
-これで設定がリポジトリに保存されました。別のマシンでプロジェクトをクローンしても、Toolkit が既に含まれています。
-
----
-
-## ステップ 6: Claude Code を起動して作業する
-
-```bash
+git add .claude/ CLAUDE.md
+git commit -m "chore: add Claude Code toolkit configuration"
 claude
 ```
 
-Claude Code が起動し、自動的に以下を読み込みます:
+Claude Code が起動し、自動的に読み込みます：
 
-1. **グローバル** `~/.claude/CLAUDE.md` (セキュリティルール -- ステップ 1 より)
-2. **プロジェクト** `.claude/CLAUDE.md` (あなたの指示 -- ステップ 4 より)
-3. `.claude/commands/` のすべてのコマンド
+1. グローバルな `~/.claude/CLAUDE.md`（セキュリティルール —— スクリプトが配置）
+2. プロジェクトの `CLAUDE.md`（スタックに合わせた内容 —— プロジェクト固有の詳細を追記可）
+3. `.claude/commands/` の全コマンドと marketplace の skill
 
-これで作業を始められます:
+---
+
+## 便利なコマンド
+
+| コマンド           | 機能                                                                           |
+|--------------------|--------------------------------------------------------------------------------|
+| `/update-toolkit`  | toolkit の最新コンテンツを取り込み、`CLAUDE.md` のローカル編集を保持。         |
+| `/update-deps`     | 依存ダッシュボード（Layer 1/2/3 + MCP）を開き、更新対象を選ぶ。                |
+| `/council プラン`  | プランを Gemini + ChatGPT に送り独立レビュー。                                 |
+| `/learn`           | 現在の決定を scoped rule として保存し、今後のセッションで使う。                |
+| `/audit security`  | 7 種類のフレームワーク対応監査の一つを実行。                                  |
+| `/debug 問題`      | 4 フェーズの体系的デバッガ。                                                  |
+| `/setup-guide`     | ローカル HTML 設定ガイドを再生成。                                             |
+| `/helpme`          | 全コマンドのチートシート。                                                    |
+
+---
+
+## 全体フロー
 
 ```text
-> Create a REST API for product management: CRUD, pagination, search
+┌────────────────────────────────────────────────────────┐
+│  インストール（プロジェクトごとに 1 回）                │
+│                                                        │
+│  $ cd ~/Projects/my-app                                │
+│  $ bash <(curl -sSL …/install.sh)                      │
+│  → TUI チェックリスト → スペース/Enter                  │
+│                                                        │
+│  結果：                                                │
+│   ~/.claude/CLAUDE.md       ← セキュリティルール       │
+│   .claude/                  ← コマンド・skill・agent   │
+│   CLAUDE.md                 ← スタック対応テンプレート │
+│   .claude/setup-guide.html  ← MCP の API 設定ガイド    │
+└────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────┐
+│  日常の作業                                            │
+│                                                        │
+│  $ claude                                              │
+│  > /plan 認証を追加する                                │
+│  > /debug /api/users で 500                            │
+│  > /audit security                                     │
+│  > /council DB 移行プラン                              │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Claude Code 内で使える便利なコマンド
-
-| コマンド | 機能 |
-|----------|------|
-| `/plan` | まず考え、それからコーディング (調査 → 計画 → 実行) |
-| `/debug problem` | 4つのフェーズによる体系的なデバッグ |
-| `/audit security` | セキュリティ監査 |
-| `/audit` | コードレビュー |
-| `/verify` | コミット前チェック (build + lint + tests) |
-| `/test` | テストの作成 |
-| `/learn` | 問題の解決策を将来の参照用に保存 |
-| `/helpme` | 全コマンドのチートシート |
-
----
-
-## 全体像 -- 完全なパス
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  ONCE PER MACHINE (Step 1)                          │
-│                                                     │
-│  Terminal:                                          │
-│  $ bash <(curl ... setup-security.sh)                │
-│                                                     │
-│  Result:                                            │
-│  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← 統合フック + プラグイン   │
-│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK     │
-│  cc-safety-net            ← npm package             │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  FOR EACH PROJECT (Steps 2-5)                       │
-│                                                     │
-│  Terminal:                                          │
-│  $ cd ~/Projects/my-app                             │
-│  $ bash <(curl ... init-claude.sh)                   │
-│  $ # edit .claude/CLAUDE.md                         │
-│  $ git add .claude/ && git commit                   │
-│                                                     │
-│  Result:                                            │
-│  .claude/                 ← commands, skills,       │
-│                              prompts, agents        │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  WORK (Step 6)                                      │
-│                                                     │
-│  $ claude                                           │
-│  > /plan add authentication                         │
-│  > /debug why 500 on /api/users                     │
-│  > /verify                                          │
-│  > /audit security                                  │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## Toolkit のアップデート
-
-新しいコマンドやテンプレートがリリースされた場合:
+## アップデート
 
 ```bash
 cd ~/Projects/my-app
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
+# Claude Code 内で：
+> /update-toolkit   # toolkit のコンテンツ
+> /update-deps      # 全依存（チェックボックス付き TUI）
 ```
 
-または Claude Code 内で:
+`/update-deps` は installed-vs-latest つきの完全な TUI リストを表示します。更新するものを選び、それ以外はそのまま。
+
+---
+
+## Claude Desktop
+
+Desktop ユーザーは marketplace 経由でインストール：
 
 ```text
-> /install
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
+
+3 つのサブプラグインを取得します：`tk-skills`（22 skill）、`tk-commands`（29 コマンド）、`tk-framework-rules`（7 つの CLAUDE.md フラグメント）。詳細：[docs/CLAUDE_DESKTOP.md](../CLAUDE_DESKTOP.md)。
 
 ---
 
 ## トラブルシューティング
 
-| 問題 | 解決策 |
-|------|--------|
-| `cc-safety-net: command not found` | `npm install -g cc-safety-net` を実行してください |
-| Claude が Toolkit を検出しない | プロジェクトルートに `.claude/CLAUDE.md` が存在するか確認してください |
-| コマンドが利用できない | `init-claude.sh` を再実行するか、`.claude/commands/` フォルダを確認してください |
-| safety-net が正当なコマンドをブロックする | Claude Code の外の通常のターミナルでコマンドを手動実行してください |
-| RTK がコマンドを書き換えない | settings.json に単一の統合フックがあることを確認してください。個別のフックではなく統合フックを使用してください |
+| 問題                                                | 対処                                                                                       |
+|-----------------------------------------------------|--------------------------------------------------------------------------------------------|
+| インストール後 `cc-safety-net: command not found`   | `npm install -g cc-safety-net`、その後 `bash <(curl …/scripts/install-hooks.sh)`           |
+| RTK がコマンドを書き換えない                        | `~/.claude/settings.json` には**統合された 1 つの**フックが必要（2 つに分けない）           |
+| Claude がプロジェクトのコマンドを見つけない         | `.claude/` がある同じフォルダで `claude` を再起動                                          |
+| safety-net が必要なコマンドをブロックする           | 普通のターミナルで手動実行（または一時的に `TK_NO_SAFETY=1`）                              |
+| インストーラが TUI で固まる                         | `Ctrl-C` で再起動；macOS `bash` 3.2 では ↑/↓ に `--no-tui-fallback` が必要なことあり        |
+| `setup-guide.html` が開かない                       | `open .claude/setup-guide.html`（macOS）/ `xdg-open`（Linux）。または `/setup-guide` を実行。 |

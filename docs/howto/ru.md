@@ -1,6 +1,6 @@
-# Начало работы с Claude Code Toolkit
+# Установка и работа с Claude Code Toolkit
 
-> Полный гайд для новичков: от нуля до продуктивной разработки с Claude Code
+> Полный путь от нуля до продуктивной разработки с Claude Code в одном месте.
 
 **[English](en.md)** | **Русский** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 
@@ -10,8 +10,10 @@
 
 Убедись, что установлены:
 
-- **Node.js** (проверь: `node --version`)
-- **Claude Code** (проверь: `claude --version`)
+- **Node.js** — `node --version` (рекомендуется 20.x или новее)
+- **Claude Code** — `claude --version`
+- **git** — для коммита `.claude/` в репозиторий
+- **jq** — нужен установщику для merge `settings.json` (`brew install jq` / `apt install jq`)
 
 Если Claude Code ещё не установлен:
 
@@ -21,255 +23,131 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-## Два уровня установки
+## Установка
 
-| Уровень | Что | Когда |
-|---------|-----|-------|
-| **Глобальный** | Security rules + хуки + плагины | Один раз на машину |
-| **Проектный** | Команды, скиллы, шаблоны | Один раз на проект |
-
----
-
-## Шаг 1: Глобальная настройка (один раз на машину)
-
-Ставит security rules, комбинированный хук (safety-net + поддержка RTK) и официальные плагины Anthropic. Делается **один раз**, работает для **всех** проектов.
-
-Открой обычный терминал (не Claude Code):
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-**Что произойдёт:**
-
-- Создастся `~/.claude/CLAUDE.md` — глобальные правила безопасности. Claude Code читает этот файл **при каждом запуске в любом проекте**. Это инструкция: "никогда не делай SQL injection, не используй eval(), спрашивай перед опасными операциями"
-- Установится `cc-safety-net` — блокирует деструктивные команды (`rm -rf /`, `git push --force` и т.д.)
-- Настроится комбинированный хук в `~/.claude/settings.json` — safety-net и RTK (если установлен) последовательно, без конфликтов
-- Включатся официальные плагины Anthropic — code-review, commit-commands, security-guidance, frontend-design
-
-**Проверить что всё встало:**
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
-```
-
-Всё. Глобальная часть готова. Это больше **никогда не нужно повторять**.
-
----
-
-## Шаг 2: Создай свой проект
-
-Например, Laravel-проект:
-
-```bash
-cd ~/Projects
-composer create-project laravel/laravel my-app
-cd my-app
-git init
-```
-
-Или Next.js:
-
-```bash
-cd ~/Projects
-npx create-next-app@latest my-app
-cd my-app
-```
-
-Или если проект уже есть — просто перейди в его папку:
+Зайди в папку проекта в **обычном терминале** (не внутри Claude Code) и запусти:
 
 ```bash
 cd ~/Projects/my-app
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
----
-
-## Шаг 3: Установи toolkit в проект
-
-**В обычном терминале** (не внутри Claude Code), из папки проекта, запусти:
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-Скрипт **автоматически определит** твой фреймворк (Laravel, Next.js, Python, Go и т.д.) и создаст:
+Установщик откроет TUI-чеклист со всеми компонентами:
 
 ```text
-my-app/
-└── .claude/
-    ├── CLAUDE.md              ← Инструкции для Claude (ПОД ТВОЙ ПРОЕКТ)
-    ├── settings.json          ← Настройки, хуки
-    ├── commands/              ← 24 слэш-команды
-    │   ├── debug.md           ← /debug — системная отладка
-    │   ├── plan.md            ← /plan — планирование перед кодом
-    │   ├── verify.md          ← /verify — проверка перед коммитом
-    │   ├── audit.md           ← /audit — аудит безопасности/перформанса
-    │   ├── test.md            ← /test — написание тестов
-    │   └── ...                ← ещё ~19 команд
-    ├── prompts/               ← Шаблоны аудитов
-    ├── agents/                ← Субагенты (code-reviewer, test-writer)
-    ├── skills/                ← Экспертиза по фреймворку
-    ├── cheatsheets/           ← Шпаргалки (9 языков)
-    ├── memory/                ← Память между сессиями
-    └── scratchpad/            ← Рабочие заметки
+[x] toolkit              ← контент toolkit (.claude/ в проекте)
+[x] security             ← глобальный security pack + cc-safety-net
+[ ] rtk                  ← переписывание dev-команд (-60-90% токенов)
+[ ] statusline           ← session/weekly usage в статусбаре
+[ ] council              ← /council = Gemini + ChatGPT валидация планов
+[ ] gemini-bridge        ← авто-sync CLAUDE.md → GEMINI.md
+[ ] codex-bridge         ← авто-sync CLAUDE.md → AGENTS.md
+[ ] mcp-servers (24)     ← TUI-чеклист интеграций (Stripe, Sentry, dbhub, …)
+[ ] skills (22)          ← marketplace-скиллы (i18n, shadcn, stripe, …)
 ```
 
-**Чтобы указать фреймворк явно:**
+`Space` — переключить, `↑/↓` — двигаться, `Enter` — поставить отмеченное.
 
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
-```
+Установщик сам определит фреймворк (Laravel, Next.js, Python, Go и т.д.) по характерным файлам и поставит подходящий шаблон `CLAUDE.md`. Если уже стоят `superpowers` и `get-shit-done` — toolkit пропустит файлы, которые те плагины уже предоставляют, и поставит только ~47 уникальных вкладов.
+
+В конце откроется локальная HTML-страница `.claude/setup-guide.html` с пошаговыми инструкциями для каждого установленного MCP (получить API-ключ, поставить env-переменную, протестировать).
 
 ---
 
-## Шаг 4: Настрой CLAUDE.md под свой проект
-
-Это самый важный файл. Открой `.claude/CLAUDE.md` в редакторе и заполни:
-
-```markdown
-# My App — Claude Code Instructions
-
-## Project Overview
-**Framework:** Laravel 12
-**Description:** Онлайн-магазин электроники
-
-## Key Directories
-app/Services/    — бизнес-логика
-app/Models/      — модели Eloquent
-resources/js/    — Vue компоненты
-
-## Development Workflow
-### Running Locally
-composer serve    — запуск сервера
-npm run dev       — фронтенд
-
-### Testing
-php artisan test
-
-## Project-Specific Rules
-1. Все контроллеры используют Form Requests
-2. Деньги хранятся в копейках (integer)
-3. API возвращает JSON через Resources
-```
-
-Claude **читает этот файл при каждом запуске** в этом проекте. Чем лучше заполнишь — тем умнее будет Claude.
-
----
-
-## Шаг 5: Закоммить .claude в Git
+## Закоммить и работать
 
 ```bash
-git add .claude/
-git commit -m "feat: add Claude Code toolkit configuration"
-```
-
-Теперь конфигурация сохранена в репозитории. Клонируешь проект на другой компьютер — toolkit уже будет там.
-
----
-
-## Шаг 6: Запусти Claude Code и работай
-
-```bash
+git add .claude/ CLAUDE.md
+git commit -m "chore: add Claude Code toolkit configuration"
 claude
 ```
 
 Claude Code стартует и автоматически загружает:
 
-1. **Глобальный** `~/.claude/CLAUDE.md` (security rules — из шага 1)
-2. **Проектный** `.claude/CLAUDE.md` (твои инструкции — из шага 4)
-3. Все команды из `.claude/commands/`
+1. Глобальный `~/.claude/CLAUDE.md` (security-правила — поставлены установщиком)
+2. Проектный `CLAUDE.md` (под твой стек — поставлен установщиком, можно дописать project-specific детали)
+3. Все команды из `.claude/commands/` и скиллы из marketplace
 
-Теперь можешь работать:
+---
+
+## Полезные команды
+
+| Команда            | Что делает                                                                  |
+|--------------------|-----------------------------------------------------------------------------|
+| `/update-toolkit`  | Подтянуть свежий контент toolkit, сохраняя локальные правки `CLAUDE.md`.    |
+| `/update-deps`     | Дашборд зависимостей (Layer 1/2/3 + MCP). Выбрать, что обновлять.           |
+| `/council план`    | Отправить план в Gemini + ChatGPT для независимого ревью.                   |
+| `/learn`           | Сохранить решение как scoped rule для будущих сессий.                       |
+| `/audit security`  | Один из 7 framework-aware аудитов.                                          |
+| `/debug проблема`  | 4-фазный систематический дебаггер.                                          |
+| `/setup-guide`     | Перегенерировать локальную HTML-инструкцию по настройке.                    |
+| `/helpme`          | Полная шпаргалка по командам.                                               |
+
+---
+
+## Визуальная схема
 
 ```text
-> Создай REST API для управления товарами: CRUD, пагинация, поиск
+┌────────────────────────────────────────────────────────┐
+│  УСТАНОВКА (один раз на проект)                        │
+│                                                        │
+│  $ cd ~/Projects/my-app                                │
+│  $ bash <(curl -sSL …/install.sh)                      │
+│  → TUI-чеклист → Space/Enter                           │
+│                                                        │
+│  Результат:                                            │
+│   ~/.claude/CLAUDE.md       ← security rules           │
+│   .claude/                  ← команды, скиллы, agents  │
+│   CLAUDE.md                 ← шаблон под стек          │
+│   .claude/setup-guide.html  ← инструкция для MCP-API   │
+└────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────┐
+│  ЕЖЕДНЕВНАЯ РАБОТА                                     │
+│                                                        │
+│  $ claude                                              │
+│  > /plan добавить авторизацию                          │
+│  > /debug 500 на /api/users                            │
+│  > /audit security                                     │
+│  > /council мой план миграции БД                       │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Полезные команды внутри Claude Code
-
-| Команда | Что делает |
-|---------|------------|
-| `/plan` | Сначала думает, потом кодит (Research → Plan → Execute) |
-| `/debug проблема` | Системная отладка в 4 фазах |
-| `/audit security` | Аудит безопасности |
-| `/audit` | Код-ревью |
-| `/verify` | Проверка перед коммитом (build + lint + tests) |
-| `/test` | Написание тестов |
-| `/learn` | Сохранить решение проблемы на будущее |
-| `/helpme` | Шпаргалка по всем командам |
-
----
-
-## Визуальная схема — весь путь
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  ОДИН РАЗ НА МАШИНУ (Шаг 1)                        │
-│                                                     │
-│  Terminal:                                          │
-│  $ bash <(curl ... setup-security.sh)                │
-│                                                     │
-│  Результат:                                         │
-│  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← комбинированный хук     │
-│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK    │
-│  cc-safety-net            ← npm package             │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  ДЛЯ КАЖДОГО ПРОЕКТА (Шаги 2-5)                    │
-│                                                     │
-│  Terminal:                                          │
-│  $ cd ~/Projects/my-app                             │
-│  $ bash <(curl ... init-claude.sh)                   │
-│  $ # отредактируй .claude/CLAUDE.md                 │
-│  $ git add .claude/ && git commit                   │
-│                                                     │
-│  Результат:                                         │
-│  .claude/                 ← команды, скиллы,        │
-│                              промпты, агенты        │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  РАБОТА (Шаг 6)                                     │
-│                                                     │
-│  $ claude                                           │
-│  > /plan добавить авторизацию                       │
-│  > /debug почему 500 на /api/users                  │
-│  > /verify                                          │
-│  > /audit security                                  │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## Обновление toolkit
-
-Когда выходят новые команды или шаблоны:
+## Обновление
 
 ```bash
 cd ~/Projects/my-app
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
+# Внутри Claude Code:
+> /update-toolkit   # контент toolkit
+> /update-deps      # все зависимости (TUI с галочками)
 ```
 
-Или внутри Claude Code:
+Полный TUI-список с installed-vs-latest показывает `/update-deps`. Можно выбрать конкретные компоненты, остальные не трогать.
+
+---
+
+## Claude Desktop
+
+Для Desktop-пользователей установка через marketplace:
 
 ```text
-> /install
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
+
+Получишь три суб-плагина: `tk-skills` (22 скилла), `tk-commands` (29 команд), `tk-framework-rules` (7 фрагментов CLAUDE.md). Подробности — [docs/CLAUDE_DESKTOP.md](../CLAUDE_DESKTOP.md).
 
 ---
 
 ## Решение проблем
 
-| Проблема | Решение |
-|----------|---------|
-| `cc-safety-net: command not found` | Запусти `npm install -g cc-safety-net` |
-| RTK не реврайтит команды | Убедись что в settings.json один комбинированный хук, не отдельные |
-| Claude не видит toolkit | Проверь что `.claude/CLAUDE.md` есть в корне проекта |
-| Команды не доступны | Перезапусти `init-claude.sh` или проверь папку `.claude/commands/` |
-| safety-net блокирует нормальную команду | Выполни команду вручную в обычном терминале |
+| Проблема                                          | Решение                                                                                   |
+|---------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `cc-safety-net: command not found` после установки | `npm install -g cc-safety-net`, затем `bash <(curl …/scripts/install-hooks.sh)`           |
+| RTK не реврайтит команды                          | В `~/.claude/settings.json` должен быть **один комбинированный** хук, не два отдельных     |
+| Claude не видит проектные команды                 | Перезапусти `claude` из той же папки, где лежит `.claude/`                                |
+| safety-net блокирует нужную команду               | Выполни её руками в обычном терминале (или временно `TK_NO_SAFETY=1`)                     |
+| Установщик завис в TUI                            | `Ctrl-C`, перезапусти; на macOS `bash` 3.2 ↑/↓ требуют `--no-tui-fallback`                |
+| Не открывается setup-guide.html                   | `open .claude/setup-guide.html` (macOS) / `xdg-open` (Linux). Или вызови `/setup-guide`.  |

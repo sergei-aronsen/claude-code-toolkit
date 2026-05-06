@@ -103,6 +103,25 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "dbhub": {
+        "name": "dbhub",
+        "display_name": "DBHub",
+        "category": "backend",
+        "env_var_keys": [
+          "DSN"
+        ],
+        "install_args": [
+          "dbhub",
+          "--",
+          "npx",
+          "-y",
+          "@bytebase/dbhub",
+          "--readonly"
+        ],
+        "description": "Multi-DB MCP — Postgres / MySQL / MariaDB / MSSQL / SQLite. Token-efficient (~1.4k tokens, 13× less than alternatives). DSN env var carries the connection string. ALWAYS use a read-only DB user — `--readonly` flag is bypassable (issue #271).",
+        "requires_oauth": false,
+        "default_scope": "project"
+      },
       "figma": {
         "name": "figma",
         "display_name": "Figma",

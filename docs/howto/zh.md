@@ -1,6 +1,6 @@
-# Claude Code Toolkit 入门指南
+# 安装与使用 Claude Code Toolkit
 
-> 完整的新手教程：从零开始使用 Claude Code 进行高效开发
+> 从零到 Claude Code 高效开发的完整路径，集中在一处。
 
 **[English](en.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **中文** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 
@@ -8,12 +8,14 @@
 
 ## 前置条件
 
-请确保已安装以下工具：
+确认已安装：
 
-- **Node.js**（检查方法：`node --version`）
-- **Claude Code**（检查方法：`claude --version`）
+- **Node.js** —— `node --version`（建议 20.x 或更新）
+- **Claude Code** —— `claude --version`
+- **git** —— 把 `.claude/` 提交到仓库
+- **jq** —— 安装器需要它来合并 `settings.json`（`brew install jq` / `apt install jq`）
 
-如果尚未安装 Claude Code：
+如果 Claude Code 还没装：
 
 ```bash
 npm install -g @anthropic-ai/claude-code
@@ -21,255 +23,131 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-## 两个层级的配置
+## 安装
 
-| 层级 | 内容 | 时机 |
-|------|------|------|
-| **全局** | 安全规则 + hooks + 插件 | 每台机器配置一次 |
-| **项目级** | 命令、技能、模板 | 每个项目配置一次 |
-
----
-
-## 第一步：全局配置（每台机器一次）
-
-此步骤安装安全规则、组合 hook（safety-net + RTK 支持）和 Anthropic 官方插件。只需执行**一次**，即可在**所有**项目中生效。
-
-打开常规终端（不是 Claude Code）：
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-**执行结果：**
-
-- 创建 `~/.claude/CLAUDE.md` — 全局安全规则。Claude Code **在任何项目中每次启动时**都会读取此文件。它相当于一条指令，告诉 Claude "不要进行 SQL 注入、不要使用 eval()、执行危险操作前先确认"
-- 安装 `cc-safety-net` — 阻止破坏性命令（如 `rm -rf /`、`git push --force` 等）
-- 配置组合 hook（safety-net + RTK 顺序执行，无并行冲突）
-- 启用 Anthropic 官方插件（code-review、commit-commands、security-guidance、frontend-design）
-
-**验证是否正常工作：**
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/verify-install.sh)
-```
-
-完成。全局部分已配置好，**无需再次执行此步骤**。
-
----
-
-## 第二步：创建你的项目
-
-例如，一个 Laravel 项目：
-
-```bash
-cd ~/Projects
-composer create-project laravel/laravel my-app
-cd my-app
-git init
-```
-
-或 Next.js 项目：
-
-```bash
-cd ~/Projects
-npx create-next-app@latest my-app
-cd my-app
-```
-
-如果你已有项目 — 直接进入项目文件夹即可：
+`cd` 到项目目录里的**普通终端**（不要在 Claude Code 内）执行：
 
 ```bash
 cd ~/Projects/my-app
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
----
-
-## 第三步：将 Toolkit 安装到项目中
-
-在**常规终端**（不是在 Claude Code 内部）中，从项目文件夹运行：
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-脚本会**自动检测**你的框架（Laravel、Next.js、Python、Go 等）并创建：
+安装器打开一个 TUI 检查列表，列出所有组件：
 
 ```text
-my-app/
-└── .claude/
-    ├── CLAUDE.md              ← Claude 的指令（针对你的项目）
-    ├── settings.json          ← 设置、hooks
-    ├── commands/              ← 24 个斜杠命令
-    │   ├── debug.md           ← /debug — 系统化调试
-    │   ├── plan.md            ← /plan — 编码前规划
-    │   ├── verify.md          ← /verify — 提交前检查
-    │   ├── audit.md           ← /audit — 安全/性能审计
-    │   ├── test.md            ← /test — 编写测试
-    │   └── ...                ← 约 19 个其他命令
-    ├── prompts/               ← 审计模板
-    ├── agents/                ← 子代理（code-reviewer、test-writer）
-    ├── skills/                ← 框架专业知识
-    ├── cheatsheets/           ← 速查表（9 种语言）
-    ├── memory/                ← 会话间记忆
-    └── scratchpad/            ← 工作笔记
+[x] toolkit              ← toolkit 内容（项目里的 .claude/）
+[x] security             ← 全局 security pack + cc-safety-net
+[ ] rtk                  ← 重写冗长的开发命令输出（-60-90% token）
+[ ] statusline           ← 状态栏显示会话/周用量
+[ ] council              ← /council = Gemini + ChatGPT 计划验证
+[ ] gemini-bridge        ← 自动同步 CLAUDE.md → GEMINI.md
+[ ] codex-bridge         ← 自动同步 CLAUDE.md → AGENTS.md
+[ ] mcp-servers (24)     ← 集成 TUI 检查列表（Stripe、Sentry、dbhub、…）
+[ ] skills (22)          ← marketplace skill（i18n、shadcn、stripe、…）
 ```
 
-**手动指定框架：**
+`空格`切换、`↑/↓`移动、`回车`安装已勾选项。
 
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) laravel
-```
+安装器按特征文件检测你的框架（Laravel、Next.js、Python、Go 等）并提供匹配的 `CLAUDE.md` 模板。如果 `superpowers` 和 `get-shit-done` 已安装，toolkit 会跳过那些插件已经提供的文件，只装 toolkit 独有的 ~47 项贡献。
+
+完成后会自动打开本地 HTML 页面 `.claude/setup-guide.html`，包含每个已装 MCP 的分步说明（去哪拿 API key、要设哪个 env 变量、如何测试）。
 
 ---
 
-## 第四步：为你的项目配置 CLAUDE.md
-
-这是最重要的文件。用编辑器打开 `.claude/CLAUDE.md` 并填写：
-
-```markdown
-# My App — Claude Code Instructions
-
-## Project Overview
-**Framework:** Laravel 12
-**Description:** Online electronics store
-
-## Key Directories
-app/Services/    — business logic
-app/Models/      — Eloquent models
-resources/js/    — Vue components
-
-## Development Workflow
-### Running Locally
-composer serve    — start server
-npm run dev       — frontend
-
-### Testing
-php artisan test
-
-## Project-Specific Rules
-1. All controllers use Form Requests
-2. Money is stored in cents (integer)
-3. API returns JSON via Resources
-```
-
-Claude **在此项目中每次启动时都会读取该文件**。填写得越详细 — Claude 就越智能。
-
----
-
-## 第五步：将 .claude 提交到 Git
+## 提交并开始工作
 
 ```bash
-git add .claude/
-git commit -m "feat: add Claude Code toolkit configuration"
-```
-
-现在配置已保存在代码仓库中。如果你在另一台机器上克隆项目 — toolkit 已经包含在内。
-
----
-
-## 第六步：启动 Claude Code 开始工作
-
-```bash
+git add .claude/ CLAUDE.md
+git commit -m "chore: add Claude Code toolkit configuration"
 claude
 ```
 
 Claude Code 启动并自动加载：
 
-1. **全局** `~/.claude/CLAUDE.md`（安全规则 — 来自第一步）
-2. **项目级** `.claude/CLAUDE.md`（你的指令 — 来自第四步）
-3. `.claude/commands/` 中的所有命令
+1. 全局 `~/.claude/CLAUDE.md`（安全规则 —— 由脚本安装）
+2. 项目 `CLAUDE.md`（按你的栈匹配 —— 你可以追加项目专属细节）
+3. `.claude/commands/` 里的每条命令和 marketplace 的 skill
 
-现在你可以开始工作了：
+---
+
+## 常用命令
+
+| 命令               | 作用                                                                          |
+|--------------------|-------------------------------------------------------------------------------|
+| `/update-toolkit`  | 拉取最新 toolkit 内容，保留 `CLAUDE.md` 的本地修改。                           |
+| `/update-deps`     | 依赖看板（Layer 1/2/3 + MCP），选择要更新的项。                               |
+| `/council 计划`    | 把方案发给 Gemini + ChatGPT 做独立评审。                                       |
+| `/learn`           | 把当前决策保存为 scoped rule，供未来会话使用。                                 |
+| `/audit security`  | 7 套框架感知审计中的一套。                                                    |
+| `/debug 问题`      | 4 阶段系统化调试器。                                                          |
+| `/setup-guide`     | 重新生成本地 HTML 安装引导。                                                  |
+| `/helpme`          | 完整命令速查。                                                                |
+
+---
+
+## 流程图
 
 ```text
-> Create a REST API for product management: CRUD, pagination, search
+┌────────────────────────────────────────────────────────┐
+│  安装（每个项目一次）                                  │
+│                                                        │
+│  $ cd ~/Projects/my-app                                │
+│  $ bash <(curl -sSL …/install.sh)                      │
+│  → TUI 检查列表 → 空格/回车                            │
+│                                                        │
+│  结果：                                                │
+│   ~/.claude/CLAUDE.md       ← 安全规则                 │
+│   .claude/                  ← 命令、skill、agent       │
+│   CLAUDE.md                 ← 匹配栈的模板             │
+│   .claude/setup-guide.html  ← MCP API 设置指南         │
+└────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────┐
+│  日常开发                                              │
+│                                                        │
+│  $ claude                                              │
+│  > /plan 添加身份验证                                   │
+│  > /debug /api/users 报 500                             │
+│  > /audit security                                      │
+│  > /council 我的数据库迁移方案                          │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Claude Code 中的常用命令
-
-| 命令 | 功能说明 |
-|------|----------|
-| `/plan` | 先思考，后编码（调研 - 规划 - 执行） |
-| `/debug problem` | 4 阶段系统化调试 |
-| `/audit security` | 安全审计 |
-| `/audit` | 代码审查 |
-| `/verify` | 提交前检查（构建 + lint + 测试） |
-| `/test` | 编写测试 |
-| `/learn` | 保存问题解决方案以供将来参考 |
-| `/helpme` | 所有命令的速查表 |
-
----
-
-## 全局概览 — 完整流程
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  ONCE PER MACHINE (Step 1)                          │
-│                                                     │
-│  Terminal:                                          │
-│  $ bash <(curl ... setup-security.sh)                │
-│                                                     │
-│  Result:                                            │
-│  ~/.claude/CLAUDE.md      ← security rules          │
-│  ~/.claude/settings.json  ← 组合 hook + 插件         │
-│  ~/.claude/hooks/pre-bash.sh ← safety-net + RTK     │
-│  cc-safety-net            ← npm package             │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  FOR EACH PROJECT (Steps 2-5)                       │
-│                                                     │
-│  Terminal:                                          │
-│  $ cd ~/Projects/my-app                             │
-│  $ bash <(curl ... init-claude.sh)                   │
-│  $ # edit .claude/CLAUDE.md                         │
-│  $ git add .claude/ && git commit                   │
-│                                                     │
-│  Result:                                            │
-│  .claude/                 ← commands, skills,       │
-│                              prompts, agents        │
-└─────────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│  WORK (Step 6)                                      │
-│                                                     │
-│  $ claude                                           │
-│  > /plan add authentication                         │
-│  > /debug why 500 on /api/users                     │
-│  > /verify                                          │
-│  > /audit security                                  │
-└─────────────────────────────────────────────────────┘
-```
-
----
-
-## 更新 Toolkit
-
-当有新的命令或模板发布时：
+## 升级
 
 ```bash
 cd ~/Projects/my-app
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/update-claude.sh)
+# 在 Claude Code 内：
+> /update-toolkit   # toolkit 内容
+> /update-deps      # 所有依赖（带复选框的 TUI）
 ```
 
-或在 Claude Code 内部执行：
+`/update-deps` 展示完整 TUI 列表带 installed-vs-latest。你挑要升级的，其他保持不变。
+
+---
+
+## Claude Desktop
+
+Desktop 用户通过 marketplace 安装：
 
 ```text
-> /install
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
+
+会得到三个子插件：`tk-skills`（22 个 skill）、`tk-commands`（29 条命令）、`tk-framework-rules`（7 个 CLAUDE.md 片段）。详情：[docs/CLAUDE_DESKTOP.md](../CLAUDE_DESKTOP.md)。
 
 ---
 
 ## 故障排查
 
-| 问题 | 解决方案 |
-|------|----------|
-| `cc-safety-net: command not found` | 运行 `npm install -g cc-safety-net` |
-| Claude 未检测到 Toolkit | 检查项目根目录中是否存在 `.claude/CLAUDE.md` |
-| 命令不可用 | 重新运行 `init-claude.sh` 或检查 `.claude/commands/` 文件夹 |
-| safety-net 阻止了合法命令 | 在 Claude Code 外部的终端中手动运行该命令 |
-| RTK 未重写命令 | 确保 settings.json 中只有一个组合 hook，而不是多个独立 hook |
+| 问题                                              | 解法                                                                                       |
+|---------------------------------------------------|--------------------------------------------------------------------------------------------|
+| 安装后 `cc-safety-net: command not found`          | `npm install -g cc-safety-net`，然后 `bash <(curl …/scripts/install-hooks.sh)`             |
+| RTK 不重写命令                                    | `~/.claude/settings.json` 必须是**一个合并的** hook，不是两个分开的                          |
+| Claude 看不见项目命令                             | 在 `.claude/` 所在的同一目录重启 `claude`                                                  |
+| safety-net 拦截了你需要的命令                     | 在普通终端手动执行（或临时设置 `TK_NO_SAFETY=1`）                                           |
+| 安装器卡在 TUI                                    | `Ctrl-C`，重启；macOS `bash` 3.2 上 ↑/↓ 可能需要 `--no-tui-fallback`                       |
+| `setup-guide.html` 打不开                         | `open .claude/setup-guide.html`（macOS）/ `xdg-open`（Linux）；或用 `/setup-guide`。       |
