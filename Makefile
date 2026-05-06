@@ -326,7 +326,7 @@ validate:
 		echo "Found $$ERRORS v4.2 marker errors across audit prompts"; \
 		exit 1; \
 	fi
-	@echo "✅ All 49 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
+	@echo "✅ All 35 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
 	@MANIFEST_VER=$$(grep -m1 '"version"' manifest.json | sed 's/.*"version": *"\([^"]*\)".*/\1/'); \
 		CHANGELOG_VER=$$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/'); \
 		if [ "$$MANIFEST_VER" != "$$CHANGELOG_VER" ]; then \
