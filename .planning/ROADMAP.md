@@ -10,7 +10,7 @@
 - ✅ **v4.6 Install Flow UX & Desktop Reach** — Phases 24–27 (shipped 2026-04-29). See `.planning/milestones/v4.6-ROADMAP.md`.
 - ✅ **v4.8 Multi-CLI Bridge** — Phases 28–31 (shipped 2026-04-29). See `.planning/milestones/v4.8-ROADMAP.md`.
 - ✅ **v4.9 Integrations Catalog** — Phases 32–35 (shipped 2026-05-02).
-- 🚧 **v5.0 Per-MCP Scope + Project Secrets Boundary** — Phases 36–41 (active, started 2026-05-04).
+- ✅ **v5.0 Per-MCP Scope + Project Secrets Boundary** — Phases 36–41 (shipped 2026-05-06).
 
 ## Active Milestone
 
@@ -23,7 +23,7 @@
 - [ ] **Phase 38: Wizard Dispatch Integration** — `mcp_wizard_run` learns per-MCP scope routing, defer-secrets path extended to project scope, post-install summary printer updated, wizard tests extended.
 - [ ] **Phase 39: TUI Per-Row Scope Toggle** — per-row `[U]/[P]/[L]` indicator, single-row hotkey, global `s` repurposed as "set all", `MCP_SELECTED_SCOPE[]` parallel array, dispatcher per-row injection, selector tests extended.
 - [x] **Phase 40: Uninstall Secret Cleanup + Calendly + Validator** — uninstall.sh per-MCP + full-toolkit secret-cleanup prompts, project `.env` never touched, `--keep-state` implies `--keep-secrets`, Calendly catalog entry, Google Workspace decision logged, validator + uninstall tests extended.
-- [ ] **Phase 41: Distribution + Docs** — manifest 5.0.0 + `project-secrets.sh` registration, version-align across init scripts + 3 plugin.json files, CHANGELOG `[5.0.0]` consolidated, `docs/INTEGRATIONS.md` Per-MCP Scope section, INSTALL.md flag rows, UNINSTALL.md secret-cleanup section.
+- [x] **Phase 41: Distribution + Docs** — manifest 5.0.0 + `project-secrets.sh` registration confirmed, version-align across init scripts + 3 plugin.json files, CHANGELOG `[5.0.0]` consolidated, `docs/INTEGRATIONS.md` Per-MCP Scope section, INSTALL.md `--mcp-scope` flag row + new ## Uninstall section, README "Killer Features" v5.0 highlight.
 
 <details>
 <summary>✅ v4.0 Complement Mode (Phases 1–7 + 6.1) — SHIPPED 2026-04-21</summary>
@@ -225,7 +225,7 @@
 | v4.6 Install Flow UX & Desktop Reach | 24–27 | 17/17 | ✅ Shipped | 2026-04-29 |
 | v4.8 Multi-CLI Bridge | 28–31 | 12/12 | ✅ Shipped | 2026-04-29 |
 | v4.9 Integrations Catalog | 32–35 | 14/14 | ✅ Shipped | 2026-05-02 |
-| v5.0 Per-MCP Scope + Project Secrets Boundary | 36–41 | 0/22 (planned) | 🚧 Active | TBD |
+| v5.0 Per-MCP Scope + Project Secrets Boundary | 36–41 | 16/16 | ✅ Shipped | 2026-05-06 |
 
 ## v5.0 Progress
 
@@ -236,4 +236,4 @@
 | 38. Wizard Dispatch Integration | 3/3 | Complete   | 2026-05-05 |
 | 39. TUI Per-Row Scope Toggle | 3/3 | Complete   | 2026-05-05 |
 | 40. Uninstall Secret Cleanup + Calendly + Validator | 5/5 | Complete   | 2026-05-06 |
-| 41. Distribution + Docs | 0/3 | Not started | - |
+| 41. Distribution + Docs | 1/1 | Complete   | 2026-05-06 |

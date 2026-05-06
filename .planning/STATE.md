@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Per-MCP Scope + Project Secrets Boundary
-status: verifying
-stopped_at: Completed 40-05-test-uninstall-secret-cleanup-PLAN.md (Phase 40 ready_for_verification)
-last_updated: "2026-05-06T05:58:06.914Z"
-last_activity: 2026-05-06
+status: complete
+stopped_at: Completed Phase 41 (Distribution + Docs); v5.0 milestone closed; ready to tag v5.0.0
+last_updated: "2026-05-06T08:30:00.000Z"
+last_activity: 2026-05-06 -- Phase 41 single-pass execution complete; all 6 phases of v5.0 closed
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  completed_phases: 6
+  total_plans: 16
+  completed_plans: 16
   percent: 100
 ---
 
@@ -21,16 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Install only what adds value over `superpowers` + `get-shit-done`. No duplicates, no name collisions.
-**Current focus:** Phase 40 — Uninstall Secret Cleanup + Calendly + Validator
+**Current focus:** v5.0 milestone closed. Ready to tag v5.0.0.
 
 ## Current Position
 
-Phase: 40 (Uninstall Secret Cleanup + Calendly + Validator) — COMPLETE (ready_for_verification)
-Plan: 5 of 5 — all closed (TEST-05 commits d8d2fd9, b8d0771)
-Status: Phase 40 ready for verification — all 9 requirements (UN-SEC-01..05, INT-13, INT-14, TEST-05, TEST-06) closed
-Last activity: 2026-05-06
+Phase: 41 (Distribution + Docs) — COMPLETE
+Plan: 1 of 1 (single-pass)
+Status: v5.0 milestone closed
+Last activity: 2026-05-06 -- Phase 41 single-pass execution complete; all 6 phases of v5.0 closed
 
-Progress: [████████████████████] 15/15 plans (100%)
+Progress: [████████████████████] 16/16 plans (100%)
+
+### Phase 41 Plan Status
+
+| Plan | Title | Status | Commit |
+|------|-------|--------|--------|
+| 41-single-pass | Distribution + Docs (DIST-01..03 + DOCS-01..03) | complete | eeb2058, 4303fd5, a76bfd2 |
 
 ### Phase 40 Plan Status
 

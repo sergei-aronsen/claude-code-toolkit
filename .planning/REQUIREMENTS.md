@@ -87,12 +87,12 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 
 ### Distribution + docs
 
-- [ ] **DIST-01**: `manifest.json` registers `scripts/lib/project-secrets.sh` under existing `files.libs[]` array. `update-claude.sh` auto-discovers it via the v4.4 LIB-01 D-07 jq path — zero code changes to `update-claude.sh` needed. Manifest version bumped to `5.0.0` (major bump justified by user-visible scope semantics change in TUI + new uninstall prompts).
-- [ ] **DIST-02**: `init-claude.sh` and `init-local.sh` `--version` outputs bump to `5.0.0` via the existing manifest-derivation path (single source of truth). 3 plugin.json files (`tk-skills`, `tk-commands`, `tk-framework-rules`) bump to `5.0.0` to keep version-align gate green.
-- [ ] **DIST-03**: `CHANGELOG.md [5.0.0]` consolidated entry covers SCOPE-01..03, TUI-SCOPE-01..05, SEC-01..06, DISP-01..04, UN-SEC-01..05, INT-13..14, plus the v4.9 → v5.0 rationale (per-row scope was originally a v4.9 follow-up but grew enough to warrant a major bump because it changes the secrets-handling boundary).
-- [ ] **DOCS-01**: New "Per-MCP Scope" section in `docs/INTEGRATIONS.md`. Documents the U/P/L semantics, where each scope's secrets live (`mcp-config.env` vs `<project>/.env`), the `${VAR}` substitution convention in `.mcp.json`, the `.gitignore` guard, and worked examples for both user-scope and project-scope flows.
-- [ ] **DOCS-02**: `docs/INSTALL.md` "Installer Flags" table extended with any new CLI flags emerging from planning (e.g., `--mcp-scope=user|project`, `--mcp-scope-<name>=<scope>` for per-MCP non-interactive force). README "Killer Features" grid mentions per-MCP scope control as a v5.0 highlight.
-- [ ] **DOCS-03**: `docs/UNINSTALL.md` (or the existing uninstall section in INSTALL.md) documents the new secret-cleanup prompts (`mcp-config.env` per-MCP and full-toolkit) and the explicit "project `.env` never touched" contract.
+- [x] **DIST-01**: `manifest.json` registers `scripts/lib/project-secrets.sh` under existing `files.libs[]` array. `update-claude.sh` auto-discovers it via the v4.4 LIB-01 D-07 jq path — zero code changes to `update-claude.sh` needed. Manifest version bumped to `5.0.0` (major bump justified by user-visible scope semantics change in TUI + new uninstall prompts).
+- [x] **DIST-02**: `init-claude.sh` and `init-local.sh` `--version` outputs bump to `5.0.0` via the existing manifest-derivation path (single source of truth). 3 plugin.json files (`tk-skills`, `tk-commands`, `tk-framework-rules`) bump to `5.0.0` to keep version-align gate green.
+- [x] **DIST-03**: `CHANGELOG.md [5.0.0]` consolidated entry covers SCOPE-01..03, TUI-SCOPE-01..05, SEC-01..06, DISP-01..04, UN-SEC-01..05, INT-13..14, plus the v4.9 → v5.0 rationale (per-row scope was originally a v4.9 follow-up but grew enough to warrant a major bump because it changes the secrets-handling boundary).
+- [x] **DOCS-01**: New "Per-MCP Scope" section in `docs/INTEGRATIONS.md`. Documents the U/P/L semantics, where each scope's secrets live (`mcp-config.env` vs `<project>/.env`), the `${VAR}` substitution convention in `.mcp.json`, the `.gitignore` guard, and worked examples for both user-scope and project-scope flows.
+- [x] **DOCS-02**: `docs/INSTALL.md` "Installer Flags" table extended with any new CLI flags emerging from planning (e.g., `--mcp-scope=user|project`, `--mcp-scope-<name>=<scope>` for per-MCP non-interactive force). README "Killer Features" grid mentions per-MCP scope control as a v5.0 highlight.
+- [x] **DOCS-03**: `docs/UNINSTALL.md` (or the existing uninstall section in INSTALL.md) documents the new secret-cleanup prompts (`mcp-config.env` per-MCP and full-toolkit) and the explicit "project `.env` never touched" contract.
 
 ## Future Requirements
 
@@ -148,11 +148,11 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 | TEST-04 | Phase 39 | complete (39-03 05cc01e) |
 | TEST-05 | Phase 40 | complete (40-05 d8d2fd9, b8d0771) |
 | TEST-06 | Phase 40 | complete (40-04 1be1ed4) |
-| DIST-01 | Phase 41 | not-started |
-| DIST-02 | Phase 41 | not-started |
-| DIST-03 | Phase 41 | not-started |
-| DOCS-01 | Phase 41 | not-started |
-| DOCS-02 | Phase 41 | not-started |
-| DOCS-03 | Phase 41 | not-started |
+| DIST-01 | Phase 41 | complete (41 eeb2058) |
+| DIST-02 | Phase 41 | complete (41 eeb2058) |
+| DIST-03 | Phase 41 | complete (41 4303fd5) |
+| DOCS-01 | Phase 41 | complete (41 a76bfd2) |
+| DOCS-02 | Phase 41 | complete (41 a76bfd2) |
+| DOCS-03 | Phase 41 | complete (41 a76bfd2) |
 
-**Total: 37 REQ-IDs.** All mapped to phases 36–41. Coverage: 37/37 (100%), 0 orphans.
+**Total: 37 REQ-IDs.** All mapped to phases 36–41. Coverage: 37/37 (100%), 0 orphans. **All complete.**
