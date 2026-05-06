@@ -7,106 +7,263 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — MCP scope toggle (Phase 37)
+## [5.0.0] - 2026-05-06
 
-User report 2026-05-02 flagged that the v4.9 install registered MCPs into the
-**project scope** of whatever directory the user happened to run install from
-(`~/.claude.json` → `projects.<cwd>.mcpServers`), making them invisible from
-every other working directory. The user expected "global" registration and
-the wizard never asked.
+**Per-MCP Scope + Project Secrets Boundary** — give the user granular per-MCP
+scope control (`user` vs `project`) with sensible per-MCP defaults baked into
+the catalog, treat secrets correctly per scope (`~/.claude/mcp-config.env` for
+user-scope, `<project>/.env` + `${VAR}` substitution in `.mcp.json` for
+project-scope, never literal secrets in shared files), close the secrets-leak
+gap on uninstall (per-MCP keys + full-toolkit `mcp-config.env` cleanup
+prompts; project `.env` files never touched), add Calendly to the catalog,
+and explicitly NOT add a Google Workspace MCP — claude.ai's built-in
+Gmail/Calendar/Drive connectors already cover that surface.
 
-- **`--scope user` is now the default** for every `claude mcp add`
-  invocation in `mcp_wizard_run`. Catalog stays scope-agnostic; the runtime
-  prepends the flag in `scripts/lib/mcp.sh` (`scoped_args=( "--scope" "$_scope"
-  "${install_args[@]}" )`). Pre-Phase 37 the toolkit left scope unset → claude
-  CLI defaulted to `local`.
-- **In-TUI radio toggle** — pressing `s` inside the MCP picker cycles
-  `◉ user (global)` ↔ `◉ local (this project)` without leaving the screen.
-  Banner color: bright-green for the active option (when color is enabled),
-  dim for the inactive. Default = user.
-- **`--mcp-scope=user|local|project` CLI flag** — non-interactive override
-  for headless installs. Invalid values exit 2 with a clear error.
-- **TUI library — generic header support** (`scripts/lib/tui.sh`):
-  - `TUI_HEADER_TEXT` — single-line banner rendered above the list. Caller
-    controls inline color codes.
-  - `TUI_HEADER_KEY` + `TUI_HEADER_FN` — opt-in key binding that calls a
-    caller-supplied function on press (uppercase variant matched too). The
-    function mutates state and re-renders the banner. Folded into the
-    existing `*)` catch-all branch so `b|B` (Back) is not shadowed.
-  - Footer hint advertises `<key> scope` only when both globals are set.
-- **Reinstall-path symmetry** — `claude mcp remove --scope $TK_MCP_SCOPE`
-  during the install↔reinstall toggle so the entry leaves the same scope
-  it will be re-added to.
-- **Tests** — `scripts/tests/test-mcp-wizard.sh` gains 5 new assertions
-  (T2/T2b/T2c/T2d/T2e) covering default scope, override, invalid fallback,
-  dry-run preview text, and the `mcp_render_scope_header`/`mcp_toggle_scope`
-  helpers.
+### v4.9 → v5.0 rationale
 
-Migration: existing MCPs registered to project scope before this PR remain
-where they are. To move them to user scope, run
-`claude mcp remove --scope local <name>` then re-install via the toolkit
-(or use `--mcp-scope=local` if the project-scope entry was intentional).
+Per-row MCP scope was originally a v4.9 follow-up — the v4.9 close shipped a
+single global `s` toggle (commit `fc000d5`, Phase 37) that flipped scope for
+the whole picker at once. User testing surfaced the friction: solo
+developers want a personal-tooling MCP (`context7`, `notebooklm`) installed
+once on their machine and a per-app infra MCP (`supabase`, `stripe`) wired
+into a single project's repo. One global flip makes the second case noisy.
 
-### Added
+The v5.0 release reframes the global toggle as a "set all" convenience and
+adds per-row indicators (`[U]`/`[P]`/`[L]`) plus a per-row hotkey. The
+implementation grew enough to warrant a major bump because it changes the
+secrets-handling boundary itself: user-scope keys still live in
+`~/.claude/mcp-config.env` (mode 0600), but project-scope writes land in
+`<project>/.env` (mode 0600, with `.gitignore` guard) while `.mcp.json`
+inside the repo carries only `${VAR}` substitution form — never literal
+values. Defense-in-depth: a literal-secret refusal regex (`^\$\{[A-Z_][A-Z0-9_]*\}$`)
+guards every code path that writes to `.mcp.json`. Uninstall gains paired
+`[y/N]` cleanup prompts for residual secrets; project `.env` files are
+**never** touched by `uninstall.sh`. The v4.9 behavior remains the
+default for users who never reach for the per-row toggle.
 
-- **MCP install↔reinstall toggle** (PR #32) — Space on a row already showing
+### Added — Catalog schema: `default_scope` (Phase 36)
+
+- **`default_scope: "user"|"project"` field** on every `components.mcp.<name>`
+  block in `scripts/lib/integrations-catalog.json` (SCOPE-01). Personal-tooling
+  MCPs default `user`: `firecrawl`, `notebooklm`, `notion`, `youtrack`,
+  `context7`, `openrouter`, `figma`, `playwright`, `magic`, `sentry`,
+  `calendly`. Per-app infra MCPs default `project`: `supabase`, `cloudflare`,
+  `stripe`, `slack`, `resend`, `aws-cost-explorer`, `aws-cloudwatch-logs`,
+  `jira`, `linear`, `telegram` (SCOPE-02).
+- **Validator enforcement** — `scripts/validate-integrations-catalog.py` fails
+  when any MCP entry omits `default_scope` or carries an invalid enum value;
+  wired into `make validate-catalog` and the `make check` quality gate.
+- **Backward-compat fallback** — `mcp_catalog_load` in `scripts/lib/mcp.sh`
+  silently treats absence as `user` (SCOPE-03). Pre-v5.0 catalogs and
+  pre-v5.0 user installs continue to work without warnings.
+
+### Added — Project secrets library `scripts/lib/project-secrets.sh` (Phase 37)
+
+New library owns the project-scope secrets boundary end-to-end:
+
+- **`project_secrets_write_env <project_root> <KEY> <VALUE>`** writes
+  `KEY=VALUE` to `<project>/.env`, mode 0600 enforced via `touch && chmod
+  0600` BEFORE first write. Idempotent merge: if `KEY` exists, prompts
+  `[y/N] Overwrite KEY in <project>/.env?` reusing the v4.3 UN-03 contract
+  (`< /dev/tty`, fail-closed N) (SEC-01, SEC-02).
+- **`project_secrets_ensure_gitignore <project_root>`** appends `.env\n`
+  with leading toolkit comment when `<project>/.gitignore` lacks an exact
+  `^\.env$` line; idempotent on re-run; never matches `*.env` or `# .env`
+  as "present"; creates `.gitignore` if missing (SEC-03).
+- **`project_secrets_render_mcp_env_block <KEY1> <KEY2> ...`** returns the
+  JSON object string `{"KEY1": "${KEY1}", "KEY2": "${KEY2}"}` for
+  embedding into `.mcp.json` as the `env` field — `claude` resolves the
+  vars from the environment at MCP launch (SEC-04).
+- **Defense-in-depth literal-secret refusal** — any code path that writes
+  to `.mcp.json` refuses string values that don't match
+  `^\$\{[A-Z_][A-Z0-9_]*\}$`. Refusal returns rc=1 with `✗ refusing to
+  write literal value into .mcp.json (use ${VAR} substitution)` to stderr.
+  `TK_PROJECT_SECRETS_ALLOW_LITERAL=1` test seam exists for hermetic
+  tests only and prints a one-line warning when honored (SEC-05).
+- **Metacharacter rejection** — `project_secrets_write_env` rejects values
+  containing `$`, backtick, backslash, double-quote, single-quote, or
+  newline. Same allow-list as `_mcp_validate_value` in `mcp.sh` — shared
+  helper across the secrets boundary (SEC-06).
+- **Test contract** — new `scripts/tests/test-project-secrets.sh` with
+  ≥18 hermetic, idempotent assertions covering all six SEC contracts.
+  PASS=42 at ship.
+
+### Added — Wizard dispatch integration (Phase 38)
+
+`mcp_wizard_run` in `scripts/lib/mcp.sh` learns per-MCP scope routing:
+
+- **`TK_MCP_SCOPE=project` branch** — wizard collects each env-var via the
+  existing v4.6 hidden-input prompt loop, calls `project_secrets_write_env`
+  per key (writes real values to `<project>/.env` mode 0600), calls
+  `project_secrets_ensure_gitignore` once before the first write, and
+  invokes `claude mcp add --scope project ...` with the env block rendered
+  as `${VAR}` substitution form — never literal values. SEC-05 verifier
+  refuses any literal in the resulting `.mcp.json` (DISP-01).
+- **`TK_MCP_SCOPE=user` (or unset) branch** preserves v4.6/v4.9 behavior
+  byte-identically: keys land in `~/.claude/mcp-config.env` via
+  `mcp_secrets_set`, `claude mcp add --scope user ...` is invoked with
+  literal env values exported via `env KEY=V`. No regression on existing
+  user-scope flow (DISP-02).
+- **Defer-secrets path extension** — `TK_MCP_DEFER_SECRETS=1` with
+  `TK_MCP_SCOPE=project` pre-creates blank stub entries in
+  `<project>/.env` (not `mcp-config.env`), triggers
+  `project_secrets_ensure_gitignore` once before the first stub write.
+  Deferred queue tuple grows from 3 to 4 fields
+  (`name\tkeys\tinstall_args\tscope`) so the post-install summary can print
+  scope-correct hints (DISP-03).
+- **Post-install summary printer** — prints per-MCP scope alongside the
+  existing keys-needed list. Project-scope rows additionally print
+  `→ Edit <project>/.env to fill values; ensure .env is in your .gitignore
+  (we appended it).` (DISP-04).
+- **Tests** — `scripts/tests/test-mcp-wizard.sh` extended from PASS=14 to
+  PASS=53 with DISP-01/02/03 happy paths and the DISP-04 summary-line
+  assertion. `scripts/tests/test-mcp-secrets.sh` extended with the shared
+  `_mcp_validate_value` boundary scenarios from SEC-06.
+
+### Added — TUI per-row scope toggle (Phase 39)
+
+- **Per-row scope indicator** — each MCP row in the integrations TUI
+  carries a scope indicator (`[U]`, `[P]`, or `[L]`) immediately after the
+  checkbox; the chosen scope is colored green when color is enabled.
+  `NO_COLOR=1` produces plain bracket form per [no-color.org](https://no-color.org)
+  (TUI-SCOPE-01).
+- **Per-row hotkey** — pressing the per-row scope hotkey on a highlighted
+  row cycles only that row's scope (`U → P → L → U`); other rows are
+  unaffected. Binding documented in the TUI hint footer (TUI-SCOPE-02).
+- **Global `s` repurposed as "set all"** — the v4.9 Phase 37 (`fc000d5`)
+  global toggle is repurposed: pressing `s` cycles a global scope value
+  and assigns it to every visible row in one stroke. Banner now reads
+  `s: set all to <scope>` (TUI-SCOPE-03).
+- **`MCP_SELECTED_SCOPE[]` parallel array** — Bash 3.2-compatible state
+  parallel to `MCP_NAMES`/`MCP_STATUS`/`MCP_HAS_CLI`, initialized from
+  each entry's `default_scope` via `mcp_status_array`. No associative
+  arrays, no `mapfile`, no `${var,,}` (TUI-SCOPE-04).
+- **Per-row dispatch** — the `install.sh` MCP install loop reads
+  `MCP_SELECTED_SCOPE[$i]` per row and exports `TK_MCP_SCOPE=<scope>` for
+  that single `mcp_wizard_run` invocation. The pre-v5.0 single-shell
+  `TK_MCP_SCOPE` global is retired in favor of per-call injection
+  (TUI-SCOPE-05).
+- **`--mcp-scope=user|project|local` CLI flag** — non-interactive
+  force-set still honored (`TK_MCP_SCOPE_CLI` broadcasts into every
+  `MCP_SELECTED_SCOPE[]` slot). Invalid values exit 2 with a clear
+  error.
+- **Tests** — `scripts/tests/test-mcp-selector.sh` extended from PASS=21
+  to PASS=36 with TUI-SCOPE-01..05 scenarios.
+
+### Added — Uninstall secret cleanup (Phase 40)
+
+- **Per-MCP secret cleanup** — `uninstall_prompt_mcp_keys <name>
+  [<key>...]` helper in `scripts/uninstall.sh`. Reads keys for the named
+  MCP from the catalog and prompts `[y/N] also remove keys K1, K2 from
+  ~/.claude/mcp-config.env?` via `< /dev/tty` (fail-closed N on no-TTY,
+  mirrors v4.3 UN-03). On Y: atomic `mktemp + mv + chmod 0600` rewrite
+  drops only the named MCP's keys; other MCPs' entries preserved
+  byte-identically. Mode 0600 enforced before AND after rewrite
+  (UN-SEC-01). Called immediately after each toolkit-driven `claude mcp
+  remove <name>` (UN-SEC-02).
+- **Full-toolkit secret cleanup** — full uninstall now prompts ONCE about
+  the entire `~/.claude/mcp-config.env`: `[y/N] also remove
+  ~/.claude/mcp-config.env (X keys for Y MCPs)?` via `< /dev/tty`
+  (fail-closed N). On Y the file is deleted before the LAST-step
+  `STATE_FILE` removal (v4.3 UN-05 D-06 ordering preserved). The base-plugin
+  `diff -q` invariant still runs and still wins (UN-SEC-03).
+- **Project `.env` files NEVER touched** — `uninstall.sh` is now an
+  explicit contract: project `.env` files outside `~/.claude/` are never
+  opened or modified. Verified by hermetic filesystem-fingerprint diff in
+  `test-uninstall-state-cleanup.sh`. Documented in `--help` output and
+  `docs/INSTALL.md` (UN-SEC-04).
+- **`--keep-state` implies `--keep-secrets`** — passing `--keep-state` (or
+  `TK_UNINSTALL_KEEP_STATE=1`) preserves both the per-MCP and full-toolkit
+  secret-cleanup paths along with the existing state file. Documented in
+  `--help` and `docs/INSTALL.md` (UN-SEC-05).
+- **Tests** — `scripts/tests/test-uninstall-state-cleanup.sh` extended
+  with UN-SEC-01-Y/N branches, UN-SEC-03-Y/N branches, UN-SEC-04 negative
+  fingerprint diff, UN-SEC-05 `--keep-state` preservation.
+
+### Added — Calendly MCP (INT-13)
+
+- **`calendly`** — official Calendly MCP server
+  (`developer.calendly.com/calendly-mcp-server`). Added to the catalog with
+  `display_name: "Calendly"`, `category: "workspace"`, `unofficial: false`,
+  `default_scope: "user"`, `requires_oauth: true`. CLI block omitted (no
+  companion CLI). Catalog count: 20 → 21 entries.
+
+### Removed — Google Workspace MCP locked out (INT-14)
+
+The catalog explicitly does **not** add a `google-workspace` MCP. Decision
+logged in `.planning/PROJECT.md` Key Decisions and here: claude.ai's built-in
+Gmail/Calendar/Drive connectors already cover that surface. Adding a
+community wrapper would duplicate Anthropic's official OAuth flow and break
+under upstream API changes. Re-evaluate only if Anthropic deprecates the
+connectors (`INT-FUT-05`).
+
+### Added — Distribution + docs (Phase 41)
+
+- **`manifest.json` 4.9.0 → 5.0.0** with `scripts/lib/project-secrets.sh`
+  registered under `files.libs[]` (alpha-ordered between `optional-plugins.sh`
+  and `skills.sh`). `update-claude.sh` auto-discovers via the v4.4 LIB-01
+  D-07 jq path — zero code changes (DIST-01).
+- **`init-claude.sh --version` and `init-local.sh --version` print
+  `5.0.0`** derived from manifest at runtime per v4.3 D-22. 3 plugin.json
+  files (`tk-skills`, `tk-commands`, `tk-framework-rules`) bumped from
+  4.8.0 → 5.0.0. `make version-align` green (DIST-02).
+- **`docs/INTEGRATIONS.md` Per-MCP Scope section** — documents `[U]`/`[P]`/
+  `[L]` semantics, where each scope's secrets live (`mcp-config.env` vs
+  `<project>/.env`), the `${VAR}` substitution convention in `.mcp.json`,
+  the `.gitignore` guard, and worked examples for both user-scope and
+  project-scope flows (DOCS-01).
+- **`docs/INSTALL.md` Installer Flags table** gains a row for
+  `--mcp-scope=user|project|local` (DOCS-02). README "Killer Features"
+  grid mentions per-MCP scope control as a v5.0 highlight.
+- **`docs/INSTALL.md` Uninstall section** documents the new secret-cleanup
+  prompts (per-MCP `[y/N]` and full-toolkit `[y/N]`), the explicit
+  "project `.env` never touched" contract, and the `--keep-state` implies
+  `--keep-secrets` rule (DOCS-03).
+
+### Carry-over from v4.9 close (Phase 36-A polish)
+
+The following Phase 36-A polish items were authored on the v4.9 release
+branch and ship as part of v5.0:
+
+- **MCP install↔reinstall toggle** — Space on a row already showing
   `[installed ✓]` toggles to `[reinstall ↻]` (light-green ANSI `\e[92m`).
-  Submit calls `claude mcp remove` then re-adds via `mcp_wizard_run`. Status
-  table differentiates `reinstalled ↻` from `installed ✓`. Skills surface
-  unaffected — `TUI_REINSTALLABLE[]` opt-in defaults to 0. Lets users refresh
-  installed MCPs from the integrations TUI without dropping to the shell.
+  Submit calls `claude mcp remove` then re-adds via `mcp_wizard_run`.
+  `TUI_REINSTALLABLE[]` opt-in defaults to 0; skills surface unaffected.
+- **Install transcript polish** — silenced `claude mcp add` chatter via
+  unified stderr+stdout capture wrapper; recolored `skipped` rows grey
+  (was yellow); dropped duplicate "Integrations Install Summary" matrix
+  table (-154 LOC in `lib/mcp.sh`); dropped trailing key-rotation explainer
+  + "To remove an MCP" line; renamed `To remove:` → `To uninstall:` in the
+  completion banner across 4 producers.
+- **mktemp template suffix collision on macOS BSD** —
+  `mcp-catalog-XXXXXX.json`, `integrations-catalog-XXXXXX.json`,
+  `gsd-installer.XXXXXX.sh` reduced to plain X-run templates; BSD mktemp
+  refused trailing chars and produced `mkstemp failed: File exists` on
+  second invocation.
+- **`test-mcp-wizard.sh`** — swapped removed `sequential-thinking` to
+  `playwright`.
+- **CI** — `actions/checkout` bumped from `v4` (Node 20) to `v6.0.2` (Node
+  24) per [GitHub deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/).
 
-### Changed — Install transcript polish (PR #33, Phase 36-A follow-up)
+### Migration
 
-User report 2026-05-02 flagged 5 install-output issues on the v4.9.0 MCP
-flow. All reduce signal-to-noise without changing logic.
-
-- **Silenced `claude mcp add` chatter** — the CLI writes "Added stdio MCP
-  server …" and "File modified: …" to STDOUT, escaping the existing stderr
-  capture wrapper at `scripts/install.sh:568`. Wrapper now redirects both
-  streams to the per-MCP tmpfile (`>"$stderr_tmp" 2>&1`) — silent on
-  success, kept for `COMPONENT_STDERR_TAIL` on failure.
-- **Skipped rows recolored grey** — was yellow, visually identical to
-  "needs API key" rows above. Added `_DRO_GREY='\033[90m'` constant in
-  `scripts/lib/dry-run-output.sh`; bare `skipped)` arm in
-  `print_install_status` now uses it. Compound `skipped:*` strings keep
-  the uncolored fallback.
-- **Dropped duplicate "Integrations Install Summary" matrix table** —
-  the Phase 34-03 `print_integrations_summary` call after the per-row
-  block re-rendered the same data as a wider Entry/MCP/CLI/Notes matrix
-  with its own totals line, confusing users. Removed the call, deleted
-  the function (-154 LOC in `scripts/lib/mcp.sh`), pruned 6 dependent
-  test assertions in `test-integrations-tui.sh` (A12 banner, A13 columns,
-  A14 MCPs/CLIs subset, A16/A17 Notes-column reasons).
-- **Dropped trailing key-rotation explainer + "To remove an MCP" line** —
-  three echo lines after the numbered 1)/2)/3) deferred-secrets block:
-  redundant prose + out-of-place single-MCP guidance in a bulk-install
-  completion banner.
-- **Renamed `To remove:` → `To uninstall:`** in completion banner across
-  all 4 producers (`install.sh`, `init-claude.sh`, `init-local.sh`,
-  `update-claude.sh`) + `test-install-banner.sh` BANNER constant. Verb
-  matches the script name (`uninstall.sh`) and the action.
-- **Aligned `bridge:` skip-message indent** (PR #33) — symlink-skip warning
-  had inconsistent indent (header at col 9, continuations at col 11).
-  Body prose now uniformly aligns under "skipped"; `rm` command keeps a
-  3-space inner indent so it stands out as a command.
-
-### Fixed
-
-- **mktemp template suffix collision on macOS BSD** — `scripts/install.sh`
-  and `scripts/lib/bootstrap.sh` passed templates with chars after the X-run
-  (`mcp-catalog-XXXXXX.json`, `integrations-catalog-XXXXXX.json`,
-  `gsd-installer.XXXXXX.sh`). BSD mktemp requires the X-run at the end of
-  the template — extensions kept the X's literal and produced
-  `mkstemp failed: File exists` on second invocation (user report
-  2026-05-02). Suffixes dropped; readers (`jq`, `bash`) ignore extension.
-- **`test-mcp-wizard.sh` referenced removed catalog entry** — Phase 33-04
-  dropped `sequential-thinking` from the integrations catalog but the test
-  still requested it, breaking CI. Swapped to `playwright` (the only
-  remaining zero-config MCP).
-- **CI: `actions/checkout` deprecation warning** — bumped from `v4`
-  (Node.js 20) to `v6.0.2` (Node.js 24) per
-  [GitHub deprecation notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/).
+- Existing v4.x users — re-run `update-claude.sh` to pick up the new
+  `project-secrets.sh` lib via the v4.4 LIB-01 D-07 auto-discovery path.
+  No manual fetch, no manifest edit, no code change.
+- Pre-v5.0 user-scope MCPs in `~/.claude/mcp-config.env` stay where they
+  are. Backward-compat fallback (SCOPE-03) ensures pre-v5.0 catalogs
+  without `default_scope` continue to work — the loader silently treats
+  absence as `user`.
+- To move an existing user-scope MCP to project-scope: re-run the
+  toolkit's MCP wizard, flip the row's scope indicator with the per-row
+  hotkey, and submit. The wizard writes to the project's `.env` and
+  registers `claude mcp add --scope project ...` with `${VAR}` substitution
+  form; the user-scope entry can be removed via `claude mcp remove --scope
+  user <name>` afterwards.
+- No interactive migration prompt — pre-v5.0 installs continue to work
+  unchanged. Out-of-scope: encrypt `mcp-config.env` at rest, auto-rotate
+  secrets, Windows-native scope semantics (carry-over per
+  REQUIREMENTS.md).
 
 ## [4.9.0] - 2026-05-02
 
