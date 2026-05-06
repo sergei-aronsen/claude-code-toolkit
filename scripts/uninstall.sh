@@ -6,10 +6,12 @@
 # are NEVER touched. v4.3.0 (HARDEN-C-04 closure).
 #
 # Usage:
-#   bash scripts/uninstall.sh               # interactive default
-#   bash scripts/uninstall.sh --dry-run     # preview only, no changes
-#   bash scripts/uninstall.sh --keep-state  # preserve toolkit-install.json + secrets (implies --keep-secrets)
-#   bash scripts/uninstall.sh --help        # show this usage block
+#   bash scripts/uninstall.sh                       # interactive default
+#   bash scripts/uninstall.sh --dry-run             # preview only, no changes
+#   bash scripts/uninstall.sh --keep-state          # preserve toolkit-install.json + secrets
+#   bash scripts/uninstall.sh --remove-hooks        # also tear down v6.1 advisory hooks (global)
+#   bash scripts/uninstall.sh --remove-cost-routing # also remove cost-routing block from ~/.claude/CLAUDE.md
+#   bash scripts/uninstall.sh --help                # show this usage block
 #
 # Secret cleanup (Phase 40 UN-SEC-01..05):
 #   When a registered MCP is removed, you are prompted [y/N] to also remove
@@ -18,6 +20,11 @@
 #   entire ~/.claude/mcp-config.env. Default N preserves the file.
 #   Project .env files are NEVER touched by this script.
 #   --keep-state implies --keep-secrets (no secret prompts surfaced).
+#
+# Global tear-down (v6.1 F-3):
+#   --remove-hooks and --remove-cost-routing are OPT-IN because both live in
+#   ~/.claude/ and are shared across every project. By default this script
+#   leaves them in place and prints a hint at the end.
 #
 # Safety invariants:
 #   - --no-backup flag does not exist (UN-04): backup before uninstall is mandatory
@@ -31,6 +38,11 @@ set -euo pipefail
 # ───────── flag parsing (before color constants) ─────────
 DRY_RUN=0
 KEEP_STATE=${TK_UNINSTALL_KEEP_STATE:-0}
+# v6.1 F-3: opt-in tear-down for global v6 advisory hooks + cost-routing block.
+# Default OFF — uninstall.sh is project-scoped and hooks/cost-routing live in
+# ~/.claude/settings.json + ~/.claude/CLAUDE.md (shared across all projects).
+REMOVE_HOOKS=${TK_UNINSTALL_REMOVE_HOOKS:-0}
+REMOVE_COST_ROUTING=${TK_UNINSTALL_REMOVE_COST_ROUTING:-0}
 for arg in "$@"; do
     case "$arg" in
         --dry-run)
@@ -39,8 +51,14 @@ for arg in "$@"; do
         --keep-state)
             KEEP_STATE=1
             ;;
+        --remove-hooks)
+            REMOVE_HOOKS=1
+            ;;
+        --remove-cost-routing)
+            REMOVE_COST_ROUTING=1
+            ;;
         --help|-h)
-            sed -n '3,27p' "${BASH_SOURCE[0]}"
+            sed -n '3,34p' "${BASH_SOURCE[0]}"
             exit 0
             ;;
         --no-backup)
@@ -53,14 +71,14 @@ for arg in "$@"; do
             # `--dry-runn` would have removed files instead of previewing.
             # Fail closed and tell the user what's supported.
             echo -e "\033[0;31m✗\033[0m unknown flag: $arg" >&2
-            echo "Supported flags: --dry-run, --keep-state, --no-backup (rejected), --help" >&2
+            echo "Supported flags: --dry-run, --keep-state, --remove-hooks, --remove-cost-routing, --no-backup (rejected), --help" >&2
             exit 1
             ;;
     esac
 done
-# DRY_RUN and KEEP_STATE are consumed downstream (dry-run output + state-delete gate);
+# DRY_RUN, KEEP_STATE, REMOVE_HOOKS, REMOVE_COST_ROUTING are consumed downstream;
 # reference here satisfies shellcheck SC2034 so flags are declared in argparse where they belong.
-: "$DRY_RUN" "$KEEP_STATE"
+: "$DRY_RUN" "$KEEP_STATE" "$REMOVE_HOOKS" "$REMOVE_COST_ROUTING"
 
 # ───────── ANSI color constants — gated by TTY + NO_COLOR ─────────
 # ANSI color gating: presence of NO_COLOR (any value, including empty string)
@@ -1163,6 +1181,44 @@ if [[ $KEEP_STATE -eq 0 ]]; then
     fi
 else
     log_info "State file preserved (--keep-state): $STATE_FILE"
+fi
+
+# ───────── v6.1 F-3: opt-in global tear-down (advisory hooks + cost routing) ─────────
+# Both targets live in ~/.claude/ (settings.json hooks block + CLAUDE.md routing
+# block) and are shared across every TK-installed project. Default behaviour is
+# to leave them alone and print a hint; only run the upstream --uninstall path
+# when the user explicitly opts in.
+if [[ $REMOVE_HOOKS -eq 1 ]]; then
+    if [[ $DRY_RUN -eq 1 ]]; then
+        log_info "[dry-run] would invoke: bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh) --uninstall"
+    else
+        log_info "Removing v6.1 advisory hooks (global)…"
+        if bash <(curl -sSLf -A "$TK_USER_AGENT" "${REPO_URL}/scripts/install-hooks.sh") --uninstall </dev/null; then
+            log_success "Advisory hooks removed from ~/.claude/settings.json"
+        else
+            log_warning "install-hooks.sh --uninstall exited non-zero — inspect ~/.claude/settings.json manually"
+        fi
+    fi
+fi
+
+if [[ $REMOVE_COST_ROUTING -eq 1 ]]; then
+    if [[ $DRY_RUN -eq 1 ]]; then
+        log_info "[dry-run] would invoke: bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh) --uninstall"
+    else
+        log_info "Removing v6.1 cost-routing block from ~/.claude/CLAUDE.md…"
+        if bash <(curl -sSLf -A "$TK_USER_AGENT" "${REPO_URL}/scripts/setup-cost-routing.sh") --uninstall </dev/null; then
+            log_success "Cost-routing block removed (better-model package preserved)"
+        else
+            log_warning "setup-cost-routing.sh --uninstall exited non-zero — inspect ~/.claude/CLAUDE.md manually"
+        fi
+    fi
+fi
+
+if [[ $REMOVE_HOOKS -eq 0 || $REMOVE_COST_ROUTING -eq 0 ]]; then
+    echo ""
+    log_info "Global v6.1 helpers preserved (shared across all projects). To remove:"
+    [[ $REMOVE_HOOKS -eq 0 ]]        && log_info "  bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh) --uninstall"
+    [[ $REMOVE_COST_ROUTING -eq 0 ]] && log_info "  bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh) --uninstall"
 fi
 
 echo ""

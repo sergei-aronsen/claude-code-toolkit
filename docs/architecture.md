@@ -88,6 +88,28 @@ Three reasons drove the v6.0 redesign:
 
 Each layer can be replaced independently. If GSD breaks tomorrow, swap to pure SP + `/gsd-plan-phase`-equivalent slash command derived from SP `writing-plans` skill. If Serena's LSP backend fails for a given language, fall back to native Edit + ripgrep. If TK hooks misfire, `export TK_HOOKS_DISABLE=1`.
 
+## PreToolUse Bash hook chain
+
+When Claude Code is about to run a `Bash` tool call, the PreToolUse Bash matcher fires every registered hook in declaration order. With a full v6.1 install the chain looks like this:
+
+```text
+1. pre-bash.sh                  (cc-safety-net + RTK rewrite — setup-security.sh)
+2. rtk-rewrite.sh               (cc-rtk; only if not already chained inside pre-bash.sh)
+3. gsd-validate-commit.sh       (GSD plugin; commit-message validation)
+4. tk-pre-ship-reality-check.sh (TK; ship-class operations only)
+```
+
+Ordering rules:
+
+- **safety-net runs first.** Destructive commands are blocked before any TK or GSD logic runs. Never reorder.
+- **RTK rewrite runs second.** It mutates the command string — anything downstream sees the rewritten command, which is what we want for ship-detection.
+- **GSD validate runs third.** Commit-message gating is independent of TK and short-circuits non-commit invocations.
+- **TK reality-check runs last.** Advisory-only by default (`exit 0`); opts into block-mode via `TK_HOOKS_BLOCK_SHIP=1`. Running last keeps it out of the critical path for non-ship commands.
+
+`scripts/install-hooks.sh` only manages the TK-owned entries (everything tagged `_tk_owned: true` with a `_tk_hook_id` matching one of the four TK hook ids); foreign and legacy entries are left in place. This is why `--uninstall` is safe to run independently of `setup-security.sh`.
+
+To bypass the entire TK chain at runtime: `export TK_HOOKS_DISABLE=1`. To enforce reality-check as a hard block: `export TK_HOOKS_BLOCK_SHIP=1`.
+
 ## Standalone mode
 
 TK still installs without SP or GSD. In standalone mode:

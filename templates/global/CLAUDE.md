@@ -284,7 +284,27 @@ Full guide: `components/supreme-council.md`
 
 ---
 
-## 16. USER PREFERENCES (customize this section)
+## 16. PreToolUse Bash hook chain (v6.1)
+
+When TK installs the v6.1 advisory hooks (`scripts/install-hooks.sh`), the PreToolUse Bash matcher in `~/.claude/settings.json` runs every registered entry in declaration order:
+
+1. `pre-bash.sh` — `cc-safety-net` + RTK rewrite (installed by `setup-security.sh`). **Blocks** destructive commands.
+2. `rtk-rewrite.sh` — `cc-rtk` standalone (only if not chained inside `pre-bash.sh`).
+3. `gsd-validate-commit.sh` — `get-shit-done` plugin commit-message gate.
+4. `tk-pre-ship-reality-check.sh` — TK; **advisory-only by default** (`exit 0`).
+
+Rules:
+
+- **safety-net runs first** — never reorder. It blocks destructive commands before TK/GSD logic touches the request.
+- **TK reality-check runs last** — advisory mode is the default and never blocks. Set `TK_HOOKS_BLOCK_SHIP=1` to enforce ship gating.
+- **`scripts/install-hooks.sh` only manages TK-owned entries** (`_tk_owned: true` + `_tk_hook_id` matching one of `tk-pre-gsd-plan-council.sh`, `tk-post-gsd-phase-audit.sh`, `tk-cost-warning.sh`, `tk-pre-ship-reality-check.sh`). Foreign and legacy entries are preserved verbatim.
+- **Disable TK hooks at runtime:** `export TK_HOOKS_DISABLE=1`.
+
+Full diagram: `docs/architecture.md` § "PreToolUse Bash hook chain".
+
+---
+
+## 17. USER PREFERENCES (customize this section)
 
 > Add your personal rules below. These apply to ALL projects on this machine.
 > Keep it short (under 20 lines) — this file loads into every message.

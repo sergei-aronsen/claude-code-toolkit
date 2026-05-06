@@ -87,6 +87,14 @@ while [[ $# -gt 0 ]]; do
             NO_BOOTSTRAP=true
             shift
             ;;
+        --skip-hooks)
+            SKIP_HOOKS=true
+            shift
+            ;;
+        --skip-cost-routing)
+            SKIP_COST_ROUTING=true
+            shift
+            ;;
         --no-bridges)
             NO_BRIDGES=true
             shift
@@ -117,7 +125,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --version, --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
+            echo -e "Flags: --version, --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --skip-hooks, --skip-cost-routing, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
             exit 1
             ;;
     esac
@@ -144,6 +152,12 @@ NO_BOOTSTRAP="${NO_BOOTSTRAP:-false}"
 NO_BRIDGES="${NO_BRIDGES:-false}"
 BRIDGES_FORCE="${BRIDGES_FORCE:-}"
 FAIL_FAST="${FAIL_FAST:-false}"
+SKIP_HOOKS="${SKIP_HOOKS:-false}"
+SKIP_COST_ROUTING="${SKIP_COST_ROUTING:-false}"
+# TK_SKIP_HOOKS=1 / TK_SKIP_COST_ROUTING=1 env equivalents (CI/scripted installs).
+if [[ "${TK_SKIP_HOOKS:-}" == "1" ]]; then SKIP_HOOKS=true; fi
+if [[ "${TK_SKIP_COST_ROUTING:-}" == "1" ]]; then SKIP_COST_ROUTING=true; fi
+export SKIP_HOOKS SKIP_COST_ROUTING
 
 # BRIDGE-UX-03 + BRIDGE-UX-04: --no-bridges and --bridges are mutually exclusive.
 if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
@@ -897,26 +911,60 @@ recommend_statusline() {
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
-# Show advisory hooks recommendation (v6.0)
-recommend_hooks() {
+# Auto-install advisory hooks (v6.1 — was recommend-only, F-3 fix).
+# Honours --skip-hooks flag, $TK_SKIP_HOOKS env, and gracefully degrades when
+# jq / python3 missing. Foreground install with prereq check; on failure prints
+# the manual curl invocation so the user can retry later.
+setup_hooks() {
+    if [[ "${SKIP_HOOKS:-false}" == "true" ]]; then
+        return 0
+    fi
     echo ""
-    echo -e "${CYAN}🪝 Advisory Hooks (optional, v6.0):${NC}"
+    echo -e "${CYAN}🪝 Advisory Hooks (v6.1):${NC}"
     echo -e "  Lightweight reminders for /council on auth/payments, /audit after GSD"
     echo -e "  phase, reality-check before ship, cost warning at heavy sessions."
-    echo -e "  Never blocks; opt-out via TK_HOOKS_DISABLE=1."
-    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh)${NC}"
-    echo -e "  Requires: jq, python3"
+    echo -e "  Never blocks by default; opt out at runtime via TK_HOOKS_DISABLE=1."
+
+    if ! command -v jq >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}⚠${NC} jq or python3 missing — skipping; rerun later with:"
+        echo -e "    ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh)${NC}"
+        return 0
+    fi
+
+    if bash <(curl -sSLf -A "$TK_USER_AGENT" "${REPO_URL}/scripts/install-hooks.sh") </dev/null; then
+        echo -e "  ${GREEN}✓${NC} Advisory hooks installed (4 hooks: pre-gsd-plan-council, post-gsd-phase-audit, cost-warning, pre-ship-reality-check)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} install-hooks.sh exited non-zero — retry with:"
+        echo -e "    ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh)${NC}"
+    fi
 }
 
-# Show cost-routing recommendation (v6.0 — better-model)
-recommend_cost_routing() {
+# Auto-install cost routing (v6.1 — was recommend-only, F-3 fix).
+# Honours --skip-cost-routing flag, $TK_SKIP_COST_ROUTING env, and gracefully
+# degrades when node missing. Backs up ~/.claude/CLAUDE.md before mutation
+# (delegated to setup-cost-routing.sh's own backup logic).
+setup_cost_routing() {
+    if [[ "${SKIP_COST_ROUTING:-false}" == "true" ]]; then
+        return 0
+    fi
     echo ""
-    echo -e "${CYAN}💰 Cost Routing (optional, v6.0):${NC}"
+    echo -e "${CYAN}💰 Cost Routing (v6.1):${NC}"
     echo -e "  Routes Sonnet 4.6 (60% of tasks), Opus 4.7 (architecture/security),"
     echo -e "  Haiku 4.5 (search/trivial) per slash command. Cuts ~50% off blended cost."
     echo -e "  Powered by talkstream/better-model (MIT, zero deps)."
-    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh)${NC}"
-    echo -e "  Requires: Node.js 18+"
+
+    if ! command -v node >/dev/null 2>&1 || ! command -v npx >/dev/null 2>&1; then
+        echo -e "  ${YELLOW}⚠${NC} Node.js / npx missing — skipping; rerun later with:"
+        echo -e "    ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh)${NC}"
+        return 0
+    fi
+
+    if bash <(curl -sSLf -A "$TK_USER_AGENT" "${REPO_URL}/scripts/setup-cost-routing.sh") </dev/null; then
+        echo -e "  ${GREEN}✓${NC} Cost routing installed (better-model + ~/.claude/CLAUDE.md routing block)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} setup-cost-routing.sh exited non-zero — retry with:"
+        echo -e "    ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-cost-routing.sh)${NC}"
+    fi
 }
 
 # Setup Supreme Council (integrated)
@@ -1396,8 +1444,8 @@ main() {
 
         recommend_security
         recommend_statusline
-        recommend_hooks
-        recommend_cost_routing
+        setup_hooks
+        setup_cost_routing
         recommend_optional_plugins
 
         # Supreme Council setup (integrated)

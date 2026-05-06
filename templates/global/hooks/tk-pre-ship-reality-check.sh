@@ -79,6 +79,18 @@ EOF
     exit 0
 fi
 
+# Resolve skill path: TK installs reality-check skill into the *project's*
+# .claude/skills/, not ~/.claude/skills/. Claude Code exposes the active project
+# directory via CLAUDE_PROJECT_DIR — fall back to $PWD when running outside CC.
+SKILL_REF=""
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -f "$CLAUDE_PROJECT_DIR/.claude/skills/reality-check/SKILL.md" ]; then
+    SKILL_REF="$CLAUDE_PROJECT_DIR/.claude/skills/reality-check/SKILL.md"
+elif [ -f "$PWD/.claude/skills/reality-check/SKILL.md" ]; then
+    SKILL_REF="$PWD/.claude/skills/reality-check/SKILL.md"
+else
+    SKILL_REF="<project>/.claude/skills/reality-check/SKILL.md (run init-claude.sh if missing)"
+fi
+
 # Advisory mode (default): print to stderr, allow command.
 cat >&2 <<EOF
 🚀 TK advisory: ship operation detected ($TRIGGERED).
@@ -86,7 +98,7 @@ cat >&2 <<EOF
       1. Playwright e2e against PROD URL (not staging)
       2. Sentry error baseline (last 1h vs last 24h)
       3. Posthog conversion funnel (post-ship 6h window)
-    See ~/.claude/skills/reality-check/SKILL.md
+    See $SKILL_REF
     Enforce-mode: export TK_HOOKS_BLOCK_SHIP=1
     Disable advisories: export TK_HOOKS_DISABLE=1
 EOF
