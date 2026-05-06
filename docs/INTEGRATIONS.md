@@ -1,6 +1,6 @@
 # Integrations Catalog
 
-The toolkit ships a curated catalog of **20 MCP servers** + **8 companion CLIs** across **10 categories**, installable via a single TUI page.
+The toolkit ships a curated catalog of **21 MCP servers** + **8 companion CLIs** across **10 categories**, installable via a single TUI page.
 
 This page is the reference for what's in the catalog, how install works, what `unofficial` means, where the toolkit's responsibilities end, and where to file your own SDKs.
 
@@ -48,6 +48,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 
 | Entry | MCP package | Companion CLI | Auth | Notes |
 | ----- | ----------- | ------------- | ---- | ----- |
+| Calendly | HTTP `https://mcp.calendly.com/` | — | OAuth DCR (browser) | official; user scope |
 | Notion | `@notionhq/notion-mcp-server` | — | OAuth (browser) | — |
 
 ### Project Management
@@ -174,6 +175,163 @@ Most integrations need credentials. The toolkit prints `→ Next: <hint>` to std
 - **Telegram**: app credentials from `my.telegram.org/apps` → `TG_APP_ID` + `TG_API_HASH`
 
 The toolkit writes API keys to `~/.claude/mcp-config.env` (mode 0600) and adds a one-line `set -a; . ~/.claude/mcp-config.env; set +a` to your shell rc on first install. After install, edit `~/.claude/mcp-config.env`, fill in the placeholders, and reload your shell.
+
+## Per-MCP scope
+
+Each MCP row in the integrations TUI carries its own scope indicator immediately
+after the checkbox. v5.0+ supports three scopes per MCP, configurable per row:
+
+| Indicator | Scope | Where keys live | `claude mcp add` flag | Use when |
+| --------- | ----- | --------------- | --------------------- | -------- |
+| `[U]` | user | `~/.claude/mcp-config.env` (mode 0600) | `--scope user` | Personal-tooling MCPs that follow you across all projects (e.g. `context7`, `notebooklm`, `figma`, `sentry`) |
+| `[P]` | project | `<project>/.env` (mode 0600) | `--scope project` | Per-app infra MCPs scoped to a single repository (e.g. `supabase`, `stripe`, `cloudflare`, `aws-*`) |
+| `[L]` | local | not persisted by toolkit | `--scope local` | Throw-away local-only experiments; the toolkit does not write a secrets file for `[L]` rows |
+
+The chosen scope renders green when color is enabled and falls back to plain
+brackets under `NO_COLOR=1` per [no-color.org](https://no-color.org).
+
+### Defaults
+
+Every catalog entry ships a `default_scope` field. Personal-tooling MCPs default
+to `user`; per-app infra MCPs default to `project`:
+
+```text
+user (default):    firecrawl, notebooklm, notion, youtrack, context7,
+                   openrouter, figma, playwright, magic, sentry, calendly
+project (default): supabase, cloudflare, stripe, slack, resend,
+                   aws-cost-explorer, aws-cloudwatch-logs, jira, linear, telegram
+```
+
+Override the default per-row before submit, or pass
+`--mcp-scope=user|project|local` for a non-interactive force-set across all
+rows in a single invocation.
+
+### TUI hotkeys
+
+| Key | Effect |
+| --- | ------ |
+| `Tab` (or `Shift-S`, see footer) | Cycle the **highlighted row's** scope: `U → P → L → U`. Other rows untouched. |
+| `s` | Cycle a **global** scope value and apply it to **every visible row** in one stroke. Banner reads `s: set all to <scope>`. |
+| `Space` | Toggle the row's checkbox (independent of the scope indicator). |
+
+### Project scope: where the secrets land
+
+When you submit a `[P]` row, the wizard:
+
+1. Prompts for each env-var with hidden input (`read -rs`, masked display, 3 attempts).
+2. Writes `KEY=value` lines to `<project>/.env` via `project_secrets_write_env`.
+   The file is created with mode 0600 (`touch && chmod 0600` BEFORE first write).
+   If `KEY` already exists, the wizard prompts `[y/N] Overwrite KEY in
+   <project>/.env?` and defaults to N.
+3. Ensures `<project>/.gitignore` contains an exact `.env` line (not `*.env`,
+   not `# .env`). If absent, appends `.env\n` with a leading toolkit comment:
+
+   ```text
+   # claude-code-toolkit: never commit project-scope MCP secrets
+   .env
+   ```
+
+4. Invokes `claude mcp add --scope project ...` with the env block rendered as
+   `${VAR}` substitution form — never literal values. The Claude CLI is
+   responsible for writing `.mcp.json` from those args; the toolkit verifies the
+   resulting file does not contain literal secrets via the SEC-05
+   defense-in-depth refusal regex (`^\$\{[A-Z_][A-Z0-9_]*\}$`).
+
+### `${VAR}` substitution in `.mcp.json`
+
+The `.mcp.json` file lives **inside the project repository** and is checked into
+version control. It must therefore never contain literal secrets. The toolkit
+writes `env` blocks in `${VAR}` form:
+
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-supabase"],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+`claude` resolves the variable at MCP launch time from the environment.
+`<project>/.env` is sourced into the shell before launching `claude` (or via a
+`direnv`/`dotenv` flow you already use). The toolkit's
+`project_secrets_render_mcp_env_block` helper produces this exact shape.
+
+If any code path attempts to write a literal value into a `.mcp.json` env block,
+the SEC-05 validator returns rc=1 with `✗ refusing to write literal value into
+.mcp.json (use ${VAR} substitution)` to stderr. The
+`TK_PROJECT_SECRETS_ALLOW_LITERAL=1` test seam exists for hermetic tests only
+and prints a one-line warning when honored.
+
+### Worked example: user scope (Context7)
+
+Personal docs-research MCP — install once, use everywhere:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --integrations
+```
+
+In the TUI:
+
+1. Highlight the `context7` row (defaults to `[U]`).
+2. Press `Space` to check it.
+3. Press `Submit`.
+4. The wizard prompts: `Enter CONTEXT7_API_KEY (input hidden):`
+5. Paste the key from `context7.com/dashboard`.
+6. The toolkit:
+   - Writes `MCP_CONTEXT7_CONTEXT7_API_KEY=<your-key>` to
+     `~/.claude/mcp-config.env` (mode 0600).
+   - Adds `set -a; . ~/.claude/mcp-config.env; set +a` to your shell rc (once).
+   - Runs `claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp`.
+7. Reload your shell (or open a new terminal). `context7` is now available in
+   every Claude session, every project.
+
+### Worked example: project scope (Supabase)
+
+Per-app database MCP — wire into one repo, keep secrets in the project:
+
+```bash
+cd ~/projects/my-saas-app
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --integrations
+```
+
+In the TUI:
+
+1. Highlight the `supabase` row (defaults to `[P]`).
+2. Press `Space` to check it.
+3. (Optional) Press `Tab` to flip the row to `[U]` if you'd rather keep the
+   token in `mcp-config.env` and use Supabase across all projects.
+4. Press `Submit`.
+5. The wizard prompts: `Enter SUPABASE_ACCESS_TOKEN (input hidden):`
+6. Paste the token from `supabase.com/dashboard/account/tokens`.
+7. The toolkit:
+   - Writes `SUPABASE_ACCESS_TOKEN=<your-token>` to `~/projects/my-saas-app/.env`
+     (creates the file mode 0600 if absent; idempotent merge prompt on
+     collision).
+   - Appends `.env` to `~/projects/my-saas-app/.gitignore` if not already
+     present (with leading toolkit comment).
+   - Writes `~/projects/my-saas-app/.mcp.json` with the
+     `"SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"` env block (literal
+     value refused by SEC-05).
+   - Runs `claude mcp add --scope project supabase -- npx -y @supabase/mcp-server-supabase`.
+8. Source the project's `.env` before launching `claude` (or use `direnv`).
+   Inside this repo, `supabase` is now available; outside it, it is not
+   registered. Different repos can keep different Supabase tokens without
+   collisions in `mcp-config.env`.
+
+### Project `.env` is never touched by uninstall
+
+`scripts/uninstall.sh` is an explicit contract: project `.env` files outside
+`~/.claude/` are **never** opened or modified by the toolkit, regardless of
+flags or prompts. The user's project owns its `.env`. See
+[INSTALL.md → Uninstall](INSTALL.md#uninstall) for the full secret-cleanup
+behavior, including the per-MCP `[y/N]` prompt and full-toolkit `[y/N]` prompt
+that target only `~/.claude/mcp-config.env`.
 
 ## Global vs per-project
 

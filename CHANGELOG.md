@@ -233,8 +233,8 @@ branch and ship as part of v5.0:
   unified stderr+stdout capture wrapper; recolored `skipped` rows grey
   (was yellow); dropped duplicate "Integrations Install Summary" matrix
   table (-154 LOC in `lib/mcp.sh`); dropped trailing key-rotation explainer
-  + "To remove an MCP" line; renamed `To remove:` → `To uninstall:` in the
-  completion banner across 4 producers.
+  plus "To remove an MCP" line; renamed `To remove:` → `To uninstall:` in
+  the completion banner across 4 producers.
 - **mktemp template suffix collision on macOS BSD** —
   `mcp-catalog-XXXXXX.json`, `integrations-catalog-XXXXXX.json`,
   `gsd-installer.XXXXXX.sh` reduced to plain X-run templates; BSD mktemp

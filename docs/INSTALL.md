@@ -75,6 +75,7 @@ Both `init-claude.sh` and `init-local.sh` accept the following flags. Run
 | `--mcps` | `install.sh` | DEPRECATED alias for `--integrations`. Still works, prints a one-line deprecation note to stderr; removed in v6.0. |
 | `--mcp-only` | `install.sh` | When used with `--integrations`, install only MCP servers from selected entries; skip companion CLIs. Mutually exclusive with `--cli-only`. |
 | `--cli-only` | `install.sh` | When used with `--integrations`, install only companion CLIs from selected entries; skip MCP server registration. Mutually exclusive with `--mcp-only` (passing both exits with rc=2). |
+| `--mcp-scope=<scope>` | `install.sh` | v5.0+ — non-interactive force-set the MCP scope for **every** selected row. Accepts `user`, `project`, `local`. Wins over the catalog's `default_scope` and the per-row TUI hotkey. Invalid value exits with rc=2. See [INTEGRATIONS.md → Per-MCP scope](INTEGRATIONS.md#per-mcp-scope) for the per-row TUI flow. |
 | `--break-bridge <target>` | `update-claude.sh` | Flip `user_owned: true` for the named bridge target. Subsequent `update-claude.sh` runs skip that bridge silently. |
 | `--restore-bridge <target>` | `update-claude.sh` | Reverse `--break-bridge`. Next `update-claude.sh` re-syncs the named bridge. |
 | `--no-council` | `init-claude.sh` | Skip Supreme Council setup |
@@ -343,6 +344,101 @@ any removal, three-column hash diff (TK template / on-disk copy / SP equivalent)
 
 The script rewrites `toolkit-install.json` to the new mode on completion. If interrupted, re-run
 is safe — already-removed files are detected as absent and skipped.
+
+---
+
+## Uninstall
+
+`scripts/uninstall.sh` removes the toolkit from `~/.claude/` with a `[y/N/d]`
+per-file prompt for any user-modified files. v4.3 UN-01..UN-08 invariants stand:
+full `cp -R` backup to `~/.claude-backup-pre-uninstall-<unix-ts>/` before any
+delete, sentinel block stripped from `~/.claude/CLAUDE.md`, base-plugin `diff -q`
+invariant fires last.
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)
+```
+
+Or from a local clone:
+
+```bash
+bash /path/to/claude-code-toolkit/scripts/uninstall.sh
+```
+
+### Secret cleanup (v5.0+)
+
+v5.0 closes the secrets-leak gap on uninstall with two paired `[y/N]` prompts.
+Both default to **N** and are fail-closed N on no-TTY (mirrors the v4.3 UN-03
+contract). Project `.env` files outside `~/.claude/` are **never** opened or
+modified — explicit contract.
+
+#### Per-MCP cleanup prompt
+
+For each toolkit-registered MCP that holds keys in `~/.claude/mcp-config.env`,
+after `claude mcp remove --scope user <name>` succeeds, you'll see:
+
+```text
+[y/N] also remove keys SUPABASE_ACCESS_TOKEN from ~/.claude/mcp-config.env?
+```
+
+- **Y** — atomic `mktemp + mv + chmod 0600` rewrite drops only the named MCP's
+  keys; other MCPs' entries are preserved byte-identically.
+- **N** (default) — keys remain in place. Reinstalling the same MCP later picks
+  them up without re-prompting.
+
+#### Full-toolkit cleanup prompt
+
+After all per-MCP prompts complete, the uninstaller asks once about the entire
+file:
+
+```text
+[y/N] also remove ~/.claude/mcp-config.env (3 keys for 2 MCPs)?
+```
+
+- **Y** — `rm -f ~/.claude/mcp-config.env` BEFORE the last-step `STATE_FILE`
+  removal (UN-05 D-06 ordering preserved).
+- **N** (default) — file preserved. Useful if you plan to reinstall the toolkit
+  later and don't want to re-enter every API key.
+
+#### Project `.env` files are NEVER touched
+
+`uninstall.sh` is an explicit contract: any `.env` file outside `~/.claude/`
+is owned by your project, not by the toolkit. The script never opens, reads, or
+deletes a project-side `.env` regardless of flags. If you want to clean up a
+project's `.env`, do it yourself (`rm <project>/.env` or remove specific keys
+manually).
+
+This contract is verified by a hermetic filesystem-fingerprint diff in
+`scripts/tests/test-uninstall-state-cleanup.sh` (UN-SEC-04).
+
+#### `--keep-state` implies `--keep-secrets`
+
+Passing `--keep-state` (or setting `TK_UNINSTALL_KEEP_STATE=1`) preserves
+**all** secret-bearing files alongside the existing state file:
+
+- `~/.claude/toolkit-install.json` is preserved (v4.4 KEEP-01 behavior).
+- The per-MCP secret cleanup helper is **skipped entirely** for every
+  registered MCP. `claude mcp remove` still runs (it removes only the MCP
+  registration, not any secret-bearing file), but residual keys remain in
+  `~/.claude/mcp-config.env`.
+- The full-toolkit `mcp-config.env` cleanup prompt does not fire; instead
+  the script logs `mcp-config.env preserved (--keep-state): <path>`.
+
+This is the recovery flag for partial-uninstall sessions. If you answered N to
+every modified-file prompt and want to re-run the uninstaller to finish the
+job, use `--keep-state` so the secrets and state file survive the partial pass.
+
+A subsequent `uninstall.sh` run (with or without the flag) proceeds normally —
+it is NOT a no-op, because the state file is still present.
+
+### Uninstall flags
+
+| Flag | Effect |
+| ---- | ------ |
+| `--dry-run` | Print intended actions without writing anything (UN-02 zero-mutation contract). |
+| `--keep-state` | Preserve `toolkit-install.json` AND all secret-bearing files (`~/.claude/mcp-config.env`). Equivalent env: `TK_UNINSTALL_KEEP_STATE=1`. v5.0+: implies `--keep-secrets`. |
+| `--no-banner` | Suppress the closing summary banner. Equivalent env: `NO_BANNER=1`. |
+| `--help` | Print usage and exit 0. |
 
 ---
 
