@@ -20,10 +20,8 @@ the full experience; TK will auto-detect them and skip duplicate files.
 | `get-shit-done` (gsd-build) | Phase-based workflow: `/gsd-plan-phase`, `/gsd-execute-phase`, and more | `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` |
 
 > **Without these plugins** TK still installs in `standalone` mode — you get every TK file,
-> but you'll miss SP's systematic debugging and GSD's phase workflow. See
-> [optional-plugins.md](https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/components/optional-plugins.md)
-> for the full rationale (components are repo-root assets — they are NOT installed into
-> `.claude/`, so use the absolute GitHub blob URL).
+> but you'll miss SP's systematic debugging and GSD's phase workflow. v6.0 redesign assumes
+> both plugins are installed; standalone mode supported but degraded.
 
 ---
 
@@ -165,7 +163,7 @@ git push origin main
    git reset --hard origin/main
    ```
 
-Full guide: `components/git-worktrees-guide.md`
+Worktree discipline: use Superpowers `using-git-worktrees` skill (auto-loads via plugin).
 
 ---
 
@@ -298,11 +296,11 @@ After UI changes, test with Playwright MCP: navigate, check errors, interact, sc
 | `api-design` | When designing REST APIs, endpoints, OpenAPI |
 | `database` | When writing migrations, indexes, ORM queries |
 | `docker` | When writing Dockerfiles or compose configs |
-| `testing` | When writing tests (TDD, mocking, e2e) |
 | `observability` | When adding logging, metrics, tracing |
 | `llm-patterns` | When integrating LLMs (RAG, streaming, tool use) |
 | `council-integration` | When using `/council` plan validation |
-| `debugging` | When hunting bugs (root-cause analysis) |
+
+> Testing and debugging skills moved to Superpowers plugin (v6.0): use `superpowers:test-driven-development` and `superpowers:systematic-debugging`.
 
 Marketplace skills (`firecrawl`, `shadcn`, `tailwind-design-system`,
 `i18n-localization`, `ai-models`, …) live in `~/.claude/skills/` and load

@@ -17,10 +17,8 @@ the full experience; TK will auto-detect them and skip duplicate files.
 | `get-shit-done` (gsd-build) | Phase-based workflow: `/gsd-plan-phase`, `/gsd-execute-phase`, and more | `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` |
 
 > **Without these plugins** TK still installs in `standalone` mode — you get every TK file,
-> but you'll miss SP's systematic debugging and GSD's phase workflow. See
-> [optional-plugins.md](https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/components/optional-plugins.md)
-> for the full rationale (components are repo-root assets — they are NOT installed into
-> `.claude/`, so use the absolute GitHub blob URL).
+> but you'll miss SP's systematic debugging and GSD's phase workflow. v6.0 redesign assumes
+> both plugins are installed; standalone mode supported but degraded.
 
 ---
 
@@ -81,7 +79,7 @@ the full experience; TK will auto-detect them and skip duplicate files.
 - **CHANGELOG** — update on `feat:`, `fix:`, breaking changes
 - **PARALLEL SESSIONS** — user may run multiple Claude sessions simultaneously. If you see commits you didn't make, that's normal — another session made them. Always `git pull` before commit/push. **Before build/deploy: `git fetch origin main && git merge origin/main`** to include changes from other sessions.
 - **BEFORE COMMIT** — run `./vendor/bin/pint`, then `git pull --rebase`, fix all errors
-- **WORKTREES** — if in branch `work-1`/`work-2`/etc., **always run `git status` first** before sync. If uncommitted changes — ask user! Then: `git fetch origin main && git reset --hard origin/main`. See `components/git-worktrees-guide.md`
+- **WORKTREES** — if in branch `work-1`/`work-2`/etc., **always run `git status` first** before sync. If uncommitted changes — ask user! Then: `git fetch origin main && git reset --hard origin/main`. Use Superpowers `using-git-worktrees` skill (auto-loads via plugin).
 
 ---
 

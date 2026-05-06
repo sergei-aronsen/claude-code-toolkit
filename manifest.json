@@ -3,8 +3,8 @@
   "version": "5.0.0",
   "updated": "2026-05-06",
   "description": "Claude Code Toolkit manifest for smart updates",
-  "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. D-71 escape hatch activated 2026-04-18: 6 of 7 TK→SP basenames do not match.",
-  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. Currently 7 entries declare conflicts_with: [\"superpowers\"] and 0 declare conflicts_with: [\"get-shit-done\"], so complement-sp and complement-full skip the same 7 files while complement-gsd skips none (≡ standalone). The 4-mode model is preserved for forward compatibility — when GSD overlaps are catalogued, add conflicts_with: [\"get-shit-done\"] entries (test fixture scripts/tests/fixtures/manifest-v2.json contains an example).",
+  "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
+  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. Future PRs add conflicts_with: [\"get-shit-done\"] entries when GSD overlaps are catalogued (test fixture scripts/tests/fixtures/manifest-v2.json contains an example).",
   "files": {
     "agents": [
       {
@@ -48,9 +48,6 @@
     ],
     "commands": [
       {
-        "path": "commands/api.md"
-      },
-      {
         "path": "commands/audit-restore.md"
       },
       {
@@ -60,105 +57,10 @@
         "path": "commands/audit.md"
       },
       {
-        "path": "commands/checkpoint.md"
-      },
-      {
-        "path": "commands/context-prime.md"
-      },
-      {
-        "path": "commands/debug.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/systematic-debugging/SKILL.md"
-      },
-      {
-        "path": "commands/deploy.md"
-      },
-      {
-        "path": "commands/design.md"
-      },
-      {
-        "path": "commands/deps.md"
-      },
-      {
-        "path": "commands/doc.md"
-      },
-      {
-        "path": "commands/docker.md"
-      },
-      {
-        "path": "commands/e2e.md"
-      },
-      {
-        "path": "commands/explain.md"
-      },
-      {
-        "path": "commands/find-function.md"
-      },
-      {
-        "path": "commands/find-script.md"
-      },
-      {
-        "path": "commands/fix-prod.md"
-      },
-      {
-        "path": "commands/fix.md"
-      },
-      {
-        "path": "commands/handoff.md"
-      },
-      {
-        "path": "commands/helpme.md"
-      },
-      {
         "path": "commands/learn.md"
       },
       {
-        "path": "commands/migrate.md"
-      },
-      {
-        "path": "commands/perf.md"
-      },
-      {
-        "path": "commands/plan.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/writing-plans/SKILL.md"
-      },
-      {
-        "path": "commands/refactor.md"
-      },
-      {
-        "path": "commands/rollback-update.md"
-      },
-      {
-        "path": "commands/tdd.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/test-driven-development/SKILL.md"
-      },
-      {
-        "path": "commands/test.md"
-      },
-      {
         "path": "commands/update-toolkit.md"
-      },
-      {
-        "path": "commands/verify.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/verification-before-completion/SKILL.md"
-      },
-      {
-        "path": "commands/worktree.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/using-git-worktrees/SKILL.md"
       }
     ],
     "skills": [
@@ -175,13 +77,6 @@
         "path": "skills/database/SKILL.md"
       },
       {
-        "path": "skills/debugging/SKILL.md",
-        "conflicts_with": [
-          "superpowers"
-        ],
-        "sp_equivalent": "skills/systematic-debugging/SKILL.md"
-      },
-      {
         "path": "skills/docker/SKILL.md"
       },
       {
@@ -189,9 +84,6 @@
       },
       {
         "path": "skills/observability/SKILL.md"
-      },
-      {
-        "path": "skills/testing/SKILL.md"
       }
     ],
     "rules": [
@@ -350,14 +242,6 @@
   "inventory": {
     "components": [
       {
-        "path": "components/optional-plugins.md",
-        "description": "Recommended optional plugins (rtk, caveman, superpowers, get-shit-done) with caveats; verified upstream 2026-04-18"
-      },
-      {
-        "path": "components/orchestration-pattern.md",
-        "description": "Generic orchestration pattern (lean-orchestrator + fat-subagents); cross-referenced from supreme-council.md and structured-workflow.md"
-      },
-      {
         "path": "components/skill-frontmatter-discipline.md",
         "description": "Authoring discipline for SKILL.md / commands / agents frontmatter — action-verb descriptions, third person, what+when triggers, naming conventions; distilled from Anthropic + Warp update-skill"
       }
@@ -401,12 +285,6 @@
     },
     "laravel": {
       "path": "templates/laravel"
-    },
-    "nextjs": {
-      "path": "templates/nextjs"
-    },
-    "nodejs": {
-      "path": "templates/nodejs"
     },
     "python": {
       "path": "templates/python"
