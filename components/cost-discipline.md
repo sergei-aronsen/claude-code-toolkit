@@ -66,15 +66,23 @@ Architecture/security    →  Opus 4.7 + max effort        ($5/$25 per Mtok)
 
 Default Anthropic UI sends EVERYTHING to Opus = 5-10× overpay.
 
-## Morph Fast Apply for edits
+## Apply / edit costs (Morph removed in v6.1)
 
-Edit operations through Morph MCP (`mcp__morph-fast-tools__edit_file`):
+We removed the Morph Fast Apply recommendation in v6.1 because the
+`@morphllm/morphsdk` and `@morphllm/morphmcp` npm packages have no
+public source repo and ship user code to a closed, paid SaaS — see
+`docs/research/morph-deep-dive-2026-05-06.md`.
 
-- ~5-10× cheaper than Claude rewriting full file
-- ~10× faster
-- Pay-per-use (no subscription)
+There is no plug-and-play replacement at the same maturity bar. Honest
+default: Claude Code's native `Edit` tool is sufficient for ~95% of
+edits. For symbol-level edits (replace symbol body, insert before/after
+symbol, rename across project) install Serena MCP — it ships precise
+LSP-driven mutations that are dramatically cheaper than full-file
+rewrites and never leave the machine.
 
-For projects with frequent edits (GSD heavy users): saves $20-50/month easy.
+If you genuinely need a hosted apply model, see
+`docs/research/fast-apply-replacement-2026-05-06.md` for the
+experimental Kortix FastApply + `tickernelz/fastapply-mcp` path.
 
 ## Reality check on cost
 

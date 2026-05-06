@@ -35,8 +35,21 @@ GSD SDK (CLI helper) — npm `get-shit-done-cc` → binary `/opt/homebrew/bin/gs
 
 | Item | Marketplace | Source repo | Installed version | Commit | Local path |
 |------|-------------|-------------|-------------------|--------|------------|
-| morph-compact (Morph Fast Apply + warpgrep) | `morph` | `https://github.com/morphllm/morph-claude-code-plugin` | 0.2.8 | `06f96f06e31f51838305b7498fe976f6909635c6` | `~/.claude/plugins/cache/morph/morph-compact/0.2.8` |
 | caveman | `caveman` | `https://github.com/JuliusBrussee/caveman` | (commit-pinned) | `c2ed24b3e5d412cd0c25197b2bc9af587621fd99` | `~/.claude/plugins/cache/caveman/caveman/c2ed24b3e5d4` |
+
+### Recommended MCP servers (from toolkit catalog)
+
+| Item | Source repo | License | Install |
+|------|-------------|---------|---------|
+| serena | `https://github.com/oraios/serena` | MIT | `uv tool install -p 3.13 serena-agent@latest --prerelease=allow` then `serena init`; toolkit MCP wizard registers it |
+| claude-context | `https://github.com/zilliztech/claude-context` (and `@zilliz/claude-context-mcp` on npm) | Apache-2.0 | toolkit MCP wizard with Milvus + OpenAI/Voyage env vars |
+
+**Removed in v6.1:** `morph-compact` plugin and `morph-fast-tools`
+catalog entry (`https://github.com/morphllm/morph-claude-code-plugin`,
+npm `@morphllm/morphmcp` / `@morphllm/morphsdk`). Closed-source SDK,
+no public source repo for the runtime, paid SaaS with no published
+privacy/retention policy. See
+`docs/research/morph-deep-dive-2026-05-06.md`.
 
 ### CLI hook / wrapper layer
 
@@ -82,8 +95,8 @@ git clone --depth 1 https://github.com/gsd-build/get-shit-done.git
 
 # Caveman, Morph plugin, ru-text marketplace — full / sparse as needed
 git clone --depth 1 https://github.com/JuliusBrussee/caveman.git
-git clone --depth 1 https://github.com/morphllm/morph-claude-code-plugin.git morph
 git clone --depth 1 https://github.com/anthropics/claude-plugins-community.git
+git clone --depth 1 https://github.com/oraios/serena.git
 ```
 
 `_external/` is in `.gitignore`. Never bundle vendor code in the toolkit

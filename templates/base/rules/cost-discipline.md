@@ -84,17 +84,25 @@ better-model auto-injects these into agent frontmatter, but override is sometime
 
 ## Edit tool hint
 
-If Morph MCP installed (`mcp__morph-fast-tools__edit_file` available):
+If Serena MCP installed (look for `mcp__serena__*` tools):
 
-- Prefer Morph Fast Apply for ALL edits (5-10× cheaper than native Edit)
-- Use native Edit only when Morph unavailable or for very simple single-line changes
+- Prefer Serena's symbol-level edits for refactors (rename, move,
+  replace symbol body) — local LSP, no network round-trips, no token
+  cost beyond the agent itself
+- Use native Edit for single-line text changes and non-symbolic edits
+
+Morph Fast Apply was removed in v6.1 (closed-source SDK piping code to
+paid SaaS). There is no plug-and-play equivalent — native Edit covers
+~95% of cases honestly.
 
 ## Search tool hint
 
 ```text
-< 50k LOC      →  ripgrep + Read
-50-100k LOC    →  Morph warpgrep_codebase_search
-> 100k LOC     →  claude-context MCP (if installed)
+< 10k LOC                          →  ripgrep + Read
+"find all callers of foo"          →  Serena (mcp__serena__*)
+"find code that handles auth"      →  claude-context MCP (if installed)
+exact-string searches              →  ripgrep
+> 100k LOC + frequent queries      →  claude-context MCP
 ```
 
 ## Budget alerts

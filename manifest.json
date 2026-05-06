@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.0.0",
+  "version": "6.1.0",
   "updated": "2026-05-06",
   "description": "Claude Code Toolkit manifest for smart updates",
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
@@ -282,11 +282,11 @@
       },
       {
         "path": "components/external-tools-recommended.md",
-        "description": "v6.0 — Install matrix for Morph + better-model + claude-context; install order, decision matrix per project size, exit plans"
+        "description": "v6.1 — Install matrix for Serena + better-model + claude-context; install order, decision matrix per project size, exit plans (Morph removed)"
       },
       {
         "path": "components/large-codebase-search.md",
-        "description": "v6.0 — claude-context vs Morph warpgrep decision; self-hosted Milvus setup; Voyage AI / Ollama embeddings for sensitive code"
+        "description": "v6.1 — Serena (symbolic) + ripgrep (textual) + claude-context (semantic vector) decision matrix; self-hosted Milvus setup; Voyage AI / Ollama embeddings for sensitive code"
       },
       {
         "path": "components/production-observability.md",

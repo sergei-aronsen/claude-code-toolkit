@@ -77,6 +77,7 @@ run_s1_catalog_correctness() {
     # Composition: 8 surviving Phase 32 entries (context7, firecrawl, magic,
     # notion, openrouter, playwright, resend, sentry) + 12 new INT-01..12 entries.
     # Phase 40 INT-13: +1 (Calendly added) = 21 entries; v6.0 INT-15: +2 (morph-fast-tools, claude-context) = 23.
+    # v6.1: morph-fast-tools replaced by serena (1-for-1) — count stays 23.
     assert_eq "23" "${#MCP_NAMES[@]}" "S1: catalog contains 23 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 

@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.1.0] - 2026-05-06
+
+**Drop Morph, add Serena, reposition claude-context.**
+
+The v6.0 catalog recommended `morph-fast-tools` (Morph Fast Apply +
+WarpGrep + Compact) as the default Layer-3 dev-tools MCP. v6.1 removes
+it and replaces it with `oraios/serena` — symbol-aware code retrieval
+and editing via LSP, MIT-licensed, 23.9k stars, runs locally.
+
+### Removed
+
+- `morph-fast-tools` catalog entry
+  (`scripts/lib/integrations-catalog.json`, lines 249-265 of v6.0).
+  The `@morphllm/morphmcp` and `@morphllm/morphsdk` npm packages had no
+  public source repository; the toolkit was piping user code to a
+  closed binary calling a paid SaaS, with no published privacy or
+  retention policy. Tier-3 vendor risk: too high to ship as a default
+  recommendation. Full rationale in
+  `docs/research/morph-deep-dive-2026-05-06.md`.
+
+### Added
+
+- `serena` catalog entry — LSP-driven semantic code retrieval, refactor
+  and symbol-level edit MCP (`https://github.com/oraios/serena`, MIT,
+  23.9k stars). Default Layer-3 dev-tools recommendation. Prerequisites
+  documented inline in the catalog description and in
+  `components/external-tools-recommended.md`.
+- `docs/research/morph-deep-dive-2026-05-06.md` — Morph product surface
+  audit, alternatives matrix, supply-chain assessment, removal
+  rationale.
+- `docs/research/fast-apply-replacement-2026-05-06.md` — apply-model
+  alternatives research (Anthropic native Edit, Relace, Mercury, OpenAI
+  Predicted Outputs, Aider udiff, Kortix FastApply). Conclusion: no
+  plug-and-play default replacement at the toolkit's "≥2k stars OR
+  known maintainer" bar; native Edit is honest enough for ~95% of
+  cases.
+- `docs/research/v6-post-ship-audit-2026-05-06.md` — post-ship audit of
+  v6.0 surface (15 findings, several CRITICAL/HIGH; tracked for
+  follow-up).
+- `docs/dependency-map.md` — full Layer 2 + Layer 3 dependency map
+  with versions, commits, install paths, hook ordering.
+
+### Changed
+
+- `components/external-tools-recommended.md` — Serena replaces Morph in
+  decision matrix and install order. Adds a "Why we dropped Morph"
+  section.
+- `components/large-codebase-search.md` — three-axis search model
+  (Serena symbolic + ripgrep textual + claude-context semantic)
+  replaces the old size-bucket model that pivoted on Morph WarpGrep.
+- `components/mcp-servers-guide.md` — Morph entry replaced with Serena
+  setup instructions.
+- `components/vendor-risk.md` — vendor table now lists Serena instead
+  of Morph; explicit removal rationale block.
+- `components/cost-discipline.md` — "Morph Fast Apply for edits"
+  section replaced with Serena (symbol-level edits) + native Edit
+  guidance.
+- `templates/base/rules/cost-discipline.md` and
+  `templates/base/skills/cost-routing-discipline/SKILL.md` — search
+  and edit hints now reference Serena MCP and the three-axis search
+  model.
+- `templates/base/rules/three-layer-bridge.md` — task-to-layer matrix
+  updated for Serena and the three-axis search model.
+- `docs/architecture.md` — Layer 3 ASCII diagram lists Serena instead
+  of Morph; runtime composition matrix updated; standalone fallback
+  notes Serena LSP behaviour.
+- `manifest.json` — file descriptions for `external-tools-recommended`
+  and `large-codebase-search` updated to reflect the swap.
+- `scripts/tests/test-mcp-selector.sh` and
+  `scripts/tests/test-integrations-catalog.sh` — comments document
+  the 1-for-1 swap; the catalog count stays at 23 entries (no schema
+  change).
+
+### Migration
+
+If you installed Morph via the v6.0 wizard, run:
+
+```bash
+claude mcp remove morph-fast-tools --scope user
+```
+
+Then re-run `bash <(curl -sSL .../init-claude.sh)` and pick Serena
+from the MCP catalog. Serena requires `uv` and `serena-agent`
+installed first — see `components/external-tools-recommended.md` for
+the exact prerequisite commands.
+
 ## [6.0.0] - 2026-05-06
 
 **Three-layer overlay redesign — TK on top of `superpowers` + `get-shit-done`,

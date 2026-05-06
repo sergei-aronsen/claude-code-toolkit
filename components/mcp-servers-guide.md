@@ -199,22 +199,35 @@ After launching Claude Code, you will be prompted to authenticate via OAuth with
 
 ---
 
-### 5. Morph Fast Tools — Fast Editing
+### 5. Serena — Symbol-aware code retrieval and editing
 
-Smart code search (WarpGrep) and fast file editing. Requires API key from [morph.sh](https://morph.sh).
+Open source ([oraios/serena](https://github.com/oraios/serena), MIT,
+23.9k stars). LSP-driven semantic code navigation, refactoring and
+symbol-level edits across 40+ languages. Replaces text-search-and-replace
+with structured operations (find references, rename, replace symbol body).
 
-```json
-{
-  "morph-fast-tools": {
-    "command": "npx",
-    "args": ["@morphllm/morphmcp"],
-    "env": {
-      "MORPH_API_KEY": "your-api-key",
-      "ALL_TOOLS": "true"
-    }
-  }
-}
+Prerequisites: `uv` (Python package manager) installed first, then:
+
+```bash
+uv tool install -p 3.13 serena-agent@latest --prerelease=allow
+serena init
 ```
+
+Register with Claude Code:
+
+```bash
+claude mcp add --scope user serena \
+  -- serena start-mcp-server --context claude-code --project-from-cwd
+```
+
+No API key required — runs locally via language servers. Toolkit's MCP
+wizard (`scripts/init-claude.sh`) handles registration automatically.
+
+> **Morph Fast Tools removed in v6.1.** The `@morphllm/morphmcp` and
+> `@morphllm/morphsdk` packages have no public source and ship user
+> code to a closed SaaS. Replacement guidance:
+> `docs/research/morph-deep-dive-2026-05-06.md` and
+> `components/external-tools-recommended.md`.
 
 ---
 

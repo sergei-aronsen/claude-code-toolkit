@@ -246,21 +246,21 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
-      "morph-fast-tools": {
-        "name": "morph-fast-tools",
-        "display_name": "Morph Fast Apply + Search",
+      "serena": {
+        "name": "serena",
+        "display_name": "Serena (semantic code IDE)",
         "category": "dev-tools",
-        "env_var_keys": [
-          "MORPH_API_KEY"
-        ],
+        "env_var_keys": [],
         "install_args": [
-          "morph-fast-tools",
+          "serena",
           "--",
-          "npx",
-          "-y",
-          "@morphllm/morphmcp"
+          "serena",
+          "start-mcp-server",
+          "--context",
+          "claude-code",
+          "--project-from-cwd"
         ],
-        "description": "Fast Apply diff edits + semantic codebase search (warpgrep). Token-efficient for large refactors. v6.0 recommended.",
+        "description": "LSP-driven symbol-aware code retrieval, editing and refactoring (oraios/serena, MIT, 23.9k stars). Default Layer-3 code-search and refactor MCP. Prerequisites: install uv (https://docs.astral.sh/uv/getting-started/installation/), then `uv tool install -p 3.13 serena-agent@latest --prerelease=allow` and `serena init`. v6.1 recommended.",
         "requires_oauth": false,
         "default_scope": "user"
       },

@@ -6,7 +6,8 @@
 #   - categories[] is the canonical 10-list (Phase 33 D-04 final order)
 #   - components.mcp has 23 entries (Phase 40 INT-13 added Calendly; v6.0 INT-15 added morph + claude-context:
 #     20 baseline + 1 = 21. Phase 33 math note: 21 - 1 (DROP-01
-#     sequential-thinking) + 0 = 20; Phase 40 INT-13 +1 = 21)
+#     sequential-thinking) + 0 = 20; Phase 40 INT-13 +1 = 21.
+#     v6.1: morph-fast-tools replaced by serena 1-for-1 — count stays 23.)
 #   - components.cli has 8 entries
 #   - every MCP entry has the required keys
 #   - every entry's category is in the top-level categories[] enum
@@ -114,7 +115,8 @@ else:
 # ─────────────────────────────────────────────────
 # A5 — components.mcp has 23 entries
 # (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21;
-#  v6.0 INT-15 added morph-fast-tools + claude-context = 23.)
+#  v6.0 INT-15 added morph-fast-tools + claude-context = 23;
+#  v6.1: morph-fast-tools replaced by serena 1-for-1, count unchanged.)
 # ─────────────────────────────────────────────────
 _pyq "A5: components.mcp has exactly 23 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
