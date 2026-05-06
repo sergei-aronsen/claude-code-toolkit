@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets test-catalog-serena test-install-hooks test-cost-routing test-migrate-v5-to-v6 test-init-skip-flags test-uninstall-remove-flags
 
 # Default target
 help:
@@ -227,6 +227,24 @@ test:
 	@echo "Test 49: project secrets library (Phase 37 / SEC-01..06, TEST-01)"
 	@bash scripts/tests/test-project-secrets.sh
 	@echo ""
+	@echo "Test 50: integrations-catalog serena entry shape (v6.1 / F-15 swap audit)"
+	@bash scripts/tests/test-catalog-serena.sh
+	@echo ""
+	@echo "Test 51: install-hooks.sh round-trip + foreign preservation (v6.1 / F-15)"
+	@bash scripts/tests/test-install-hooks.sh
+	@echo ""
+	@echo "Test 52: setup-cost-routing.sh block insert/remove + dry-run (v6.1 / F-15)"
+	@bash scripts/tests/test-cost-routing.sh
+	@echo ""
+	@echo "Test 53: migrate-v5-to-v6.sh dry-run preview + post-migration hints (v6.1 / F-15)"
+	@bash scripts/tests/test-migrate-v5-to-v6.sh
+	@echo ""
+	@echo "Test 54: init-claude.sh setup_hooks/setup_cost_routing skip-flag plumbing (v6.1 / F-3)"
+	@bash scripts/tests/test-init-skip-flags.sh
+	@echo ""
+	@echo "Test 55: uninstall.sh --remove-hooks/--remove-cost-routing opt-in flags (v6.1 / F-3)"
+	@bash scripts/tests/test-uninstall-remove-flags.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -272,6 +290,30 @@ test-catalog-scope-fallback:
 # Test 49 — project secrets library (Phase 37 / SEC-01..06, TEST-01), invokable standalone
 test-project-secrets:
 	@bash scripts/tests/test-project-secrets.sh
+
+# Test 50 — v6.1 catalog serena entry shape (F-15), invokable standalone
+test-catalog-serena:
+	@bash scripts/tests/test-catalog-serena.sh
+
+# Test 51 — v6.1 install-hooks.sh round-trip (F-15), invokable standalone
+test-install-hooks:
+	@bash scripts/tests/test-install-hooks.sh
+
+# Test 52 — v6.1 setup-cost-routing.sh contract (F-15), invokable standalone
+test-cost-routing:
+	@bash scripts/tests/test-cost-routing.sh
+
+# Test 53 — v6.1 migrate-v5-to-v6.sh dry-run (F-15), invokable standalone
+test-migrate-v5-to-v6:
+	@bash scripts/tests/test-migrate-v5-to-v6.sh
+
+# Test 54 — v6.1 init-claude.sh skip-flag plumbing (F-3), invokable standalone
+test-init-skip-flags:
+	@bash scripts/tests/test-init-skip-flags.sh
+
+# Test 55 — v6.1 uninstall.sh --remove-* opt-in flags (F-3), invokable standalone
+test-uninstall-remove-flags:
+	@bash scripts/tests/test-uninstall-remove-flags.sh
 
 # Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
 # from local $HOME/.claude/skills/. Not run by CI.
