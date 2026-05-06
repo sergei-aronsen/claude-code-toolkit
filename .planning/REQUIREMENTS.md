@@ -78,7 +78,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
   - TUI-SCOPE-03 global `s` flips all visible rows.
   - TUI-SCOPE-04 `MCP_SELECTED_SCOPE[]` initialized from `default_scope`.
   - TUI-SCOPE-05 dispatcher exports per-row `TK_MCP_SCOPE` to `mcp_wizard_run`.
-- [ ] **TEST-05**: Extend `scripts/tests/test-uninstall-state-cleanup.sh` (or sibling test as planning decides) with secret-cleanup prompt scenarios:
+- [x] **TEST-05**: Extend `scripts/tests/test-uninstall-state-cleanup.sh` (or sibling test as planning decides) with secret-cleanup prompt scenarios:
   - UN-SEC-01 single-MCP keys cleanup Y/N branches (file rewritten without those keys on Y, preserved on N).
   - UN-SEC-03 full-toolkit `mcp-config.env` cleanup Y/N branches.
   - UN-SEC-04 project `.env` is never opened/touched (negative assertion via filesystem fingerprint diff).
@@ -146,7 +146,7 @@ Requirements grouped by category. Each maps to exactly one phase via the Traceab
 | TEST-02 | Phase 38 | complete (38-03 92bd530) |
 | TEST-03 | Phase 38 | complete (38-03 92bd530) |
 | TEST-04 | Phase 39 | complete (39-03 05cc01e) |
-| TEST-05 | Phase 40 | not-started |
+| TEST-05 | Phase 40 | complete (40-05 d8d2fd9, b8d0771) |
 | TEST-06 | Phase 40 | complete (40-04 1be1ed4) |
 | DIST-01 | Phase 41 | not-started |
 | DIST-02 | Phase 41 | not-started |

@@ -22,7 +22,7 @@
 - [ ] **Phase 37: Project Secrets Library** — new `scripts/lib/project-secrets.sh` (`.env` writer, `.gitignore` guard, `${VAR}` renderer, defense-in-depth literal-secret refusal, metacharacter rejection) plus its hermetic test suite.
 - [ ] **Phase 38: Wizard Dispatch Integration** — `mcp_wizard_run` learns per-MCP scope routing, defer-secrets path extended to project scope, post-install summary printer updated, wizard tests extended.
 - [ ] **Phase 39: TUI Per-Row Scope Toggle** — per-row `[U]/[P]/[L]` indicator, single-row hotkey, global `s` repurposed as "set all", `MCP_SELECTED_SCOPE[]` parallel array, dispatcher per-row injection, selector tests extended.
-- [ ] **Phase 40: Uninstall Secret Cleanup + Calendly + Validator** — uninstall.sh per-MCP + full-toolkit secret-cleanup prompts, project `.env` never touched, `--keep-state` implies `--keep-secrets`, Calendly catalog entry, Google Workspace decision logged, validator + uninstall tests extended.
+- [x] **Phase 40: Uninstall Secret Cleanup + Calendly + Validator** — uninstall.sh per-MCP + full-toolkit secret-cleanup prompts, project `.env` never touched, `--keep-state` implies `--keep-secrets`, Calendly catalog entry, Google Workspace decision logged, validator + uninstall tests extended.
 - [ ] **Phase 41: Distribution + Docs** — manifest 5.0.0 + `project-secrets.sh` registration, version-align across init scripts + 3 plugin.json files, CHANGELOG `[5.0.0]` consolidated, `docs/INTEGRATIONS.md` Per-MCP Scope section, INSTALL.md flag rows, UNINSTALL.md secret-cleanup section.
 
 <details>
@@ -189,12 +189,12 @@
   3. Project `.env` files outside `~/.claude/` are **never** opened or modified by `uninstall.sh` — verified by hermetic filesystem-fingerprint diff in `test-uninstall-state-cleanup.sh`; `--keep-state` (and `TK_UNINSTALL_KEEP_STATE=1`) implies `--keep-secrets` — neither `mcp-config.env` nor any other secret-bearing file is touched; documented in `--help` and `docs/INSTALL.md`.
   4. `integrations-catalog.json` contains a `calendly` MCP entry with `display_name: "Calendly"`, `unofficial: false`, `default_scope: "user"`, `requires_oauth: true`, populated `install_args` per the official MCP server spec, no CLI block; the catalog explicitly does NOT contain any `google-workspace` entry, with the decision logged in PROJECT.md Key Decisions and CHANGELOG `[5.0.0]`.
   5. `scripts/validate-integrations-catalog.py` enforces SCOPE-01 (every MCP has `default_scope` with valid enum) — extends the existing validator, no new file; `scripts/tests/test-uninstall-state-cleanup.sh` extended with UN-SEC-01 / UN-SEC-03 Y/N branches, UN-SEC-04 negative assertion, and UN-SEC-05 `--keep-state` preservation; `test-integrations-catalog.sh` PASS≥10 stays green and gains the SCOPE-01 / Calendly assertions.
-**Plans**: 5 plans (3 complete, 2 pending)
+**Plans**: 5 plans (5 complete)
 - [x] 40-01-PLAN.md — uninstall_prompt_mcp_keys helper + per-MCP claude-mcp-remove loop in uninstall.sh (UN-SEC-01, UN-SEC-02)
 - [x] 40-02-PLAN.md — full-toolkit mcp-config.env cleanup prompt with D-06 ordering preservation (UN-SEC-03)
 - [x] 40-03-PLAN.md — `--keep-state` implies `--keep-secrets` + `.env` never touched contract (UN-SEC-04, UN-SEC-05)
 - [x] 40-04-PLAN.md — Calendly catalog entry + INT-14 Google Workspace lock + SCOPE-01 regression test (INT-13, INT-14, TEST-06)
-- [ ] 40-05-PLAN.md — test-uninstall-state-cleanup.sh extension (TEST-05)
+- [x] 40-05-PLAN.md — test-uninstall-state-cleanup.sh extension (TEST-05)
 **UI hint**: no
 
 ### Phase 41: Distribution + Docs
@@ -235,5 +235,5 @@
 | 37. Project Secrets Library | 2/2 | Complete   | 2026-05-05 |
 | 38. Wizard Dispatch Integration | 3/3 | Complete   | 2026-05-05 |
 | 39. TUI Per-Row Scope Toggle | 3/3 | Complete   | 2026-05-05 |
-| 40. Uninstall Secret Cleanup + Calendly + Validator | 4/5 | In Progress|  |
+| 40. Uninstall Secret Cleanup + Calendly + Validator | 5/5 | Complete   | 2026-05-06 |
 | 41. Distribution + Docs | 0/3 | Not started | - |
