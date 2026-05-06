@@ -14,7 +14,7 @@ the full experience; TK will auto-detect them and skip duplicate files.
 
 | Plugin | Purpose | Install |
 |--------|---------|---------|
-| `superpowers` (obra) | Skills (debugging, plans, TDD, verification, worktrees), `code-reviewer` agent | `claude plugin install superpowers@claude-plugins-official` |
+| `superpowers` (obra) | Skills (debugging, plans, TDD, verification, worktrees), `requesting-code-review` skill (SP 5.1+) | `claude plugin install superpowers@claude-plugins-official` |
 | `get-shit-done` (gsd-build) | Phase-based workflow: `/gsd-plan-phase`, `/gsd-execute-phase`, and more | `bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)` |
 
 > **Without these plugins** TK still installs in `standalone` mode — you get every TK file,

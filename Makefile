@@ -402,23 +402,40 @@ translation-drift:
 	if [ "$$ERRORS" -gt 0 ]; then exit 1; fi; \
 	echo "✅ All 8 translations within ±20% of README.md ($$README_LINES lines)"
 
-# Static agent-collision check (D-11 static layer — VALIDATE-03 precondition).
-# Asserts every agents/*.md in manifest that is shadowed by superpowers carries
-# conflicts_with: ["superpowers"] so the install-time skip-set filter catches it.
+# Static conflicts_with schema check (D-11 static layer — VALIDATE-03 precondition).
 # Pure jq — no install required.
+#
+# v6.1 — assertion rewritten. The original gate required at least 1 agent
+# entry annotated conflicts_with: ["superpowers"], a rule that became wrong
+# when SP 5.1.0 dropped the agents/ directory entirely (audit
+# docs/research/v6-post-ship-audit-2026-05-06.md, F-2). The annotation on
+# agents/code-reviewer.md was removed in v6.1.
+#
+# New gate: every conflicts_with present in manifest must be a non-empty
+# array of strings, and every string must be in the known plugin whitelist
+# {"superpowers", "get-shit-done"}. The skip-set is enforced by
+# scripts/lib/install.sh::compute_skip_set, which silently ignores unknown
+# plugin names; the static gate prevents that silent typo.
 agent-collision-static:
-	@echo "Checking agents/* conflicts_with annotations (VALIDATE-03 static gate)..."
-	@SP_CONFLICT_AGENTS=$$(jq -r '[.files.agents[] | select((.conflicts_with // []) | index("superpowers"))] | length' manifest.json); \
-	if [ -z "$$SP_CONFLICT_AGENTS" ] || [ "$$SP_CONFLICT_AGENTS" = "null" ]; then \
+	@echo "Checking conflicts_with schema integrity (VALIDATE-03 static gate)..."
+	@TOTAL=$$(jq -r '[.. | objects | select(has("conflicts_with"))] | length' manifest.json); \
+	if [ -z "$$TOTAL" ] || [ "$$TOTAL" = "null" ]; then \
 		echo "❌ jq query failed against manifest.json"; exit 1; \
 	fi; \
-	if [ "$$SP_CONFLICT_AGENTS" -lt 1 ]; then \
-		echo "❌ manifest.json has zero agents annotated conflicts_with: [\"superpowers\"] — VALIDATE-03 regression"; \
-		echo "   At minimum, agents/code-reviewer.md must be annotated (SP ships code-reviewer agent)."; \
+	BAD_TYPE=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select((.conflicts_with | type) != "array" or (.conflicts_with | length) == 0)] | length' manifest.json); \
+	if [ "$$BAD_TYPE" -gt 0 ]; then \
+		echo "❌ $$BAD_TYPE manifest entries have invalid conflicts_with shape (must be non-empty string array)"; \
 		exit 1; \
 	fi; \
-	SP_CONFLICT_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("superpowers")) | .path] | length' manifest.json); \
-	echo "✅ Static agent-collision check: $$SP_CONFLICT_FILES files annotated conflicts_with SP ($$SP_CONFLICT_AGENTS agents, others commands/skills)"
+	BAD_VALUE=$$(jq -r '[.. | objects | select(has("conflicts_with")) | .conflicts_with[] | select(. != "superpowers" and . != "get-shit-done")] | length' manifest.json); \
+	if [ "$$BAD_VALUE" -gt 0 ]; then \
+		echo "❌ $$BAD_VALUE conflicts_with values are not in known plugin set {superpowers, get-shit-done}"; \
+		jq -r '.. | objects | select(has("conflicts_with")) | .conflicts_with[] | select(. != "superpowers" and . != "get-shit-done")' manifest.json; \
+		exit 1; \
+	fi; \
+	SP_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("superpowers")) | .path] | length' manifest.json); \
+	GSD_FILES=$$(jq -r '[.. | objects | select(has("conflicts_with")) | select(.conflicts_with | index("get-shit-done")) | .path] | length' manifest.json); \
+	echo "✅ conflicts_with schema valid: $$TOTAL annotated entries (SP=$$SP_FILES, GSD=$$GSD_FILES)"
 
 # Validate commands/*.md for required ## Purpose and ## Usage headings (HARDEN-A-01 — derived from AUDIT-12)
 validate-commands:
