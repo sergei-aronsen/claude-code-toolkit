@@ -1,0 +1,41 @@
+<section id="council">
+  <h2><span class="section-icon">⚖️</span> Supreme Council <span class="section-tag">component</span></h2>
+  <p class="section-subtitle">Multi-AI plan review (<code>/council</code>). Sends a plan to Gemini and ChatGPT in parallel for independent review.</p>
+
+  <h3>Pick one route</h3>
+  <p>Council needs <em>either</em> the official CLI binaries <em>or</em> direct API keys. CLI route is cheaper (uses your existing CLI subscription); API route is faster to set up.</p>
+
+  <h3>Route A — via CLI binaries (recommended)</h3>
+  <ol>
+    <li>Install <strong>Gemini CLI</strong>: <code>npm install -g @google/gemini-cli</code></li>
+    <li>Install <strong>OpenAI Codex CLI</strong>: <code>npm install -g @openai/codex-cli</code> (or use any equivalent CLI you have).</li>
+    <li>Run each once interactively to authenticate (<code>gemini</code> opens an OAuth flow; <code>codex</code> needs <code>codex login</code>).</li>
+    <li>Council auto-detects both and uses them. No API keys needed.</li>
+  </ol>
+
+  <h3>Route B — direct API keys</h3>
+  <p>Get the keys:</p>
+  <ul>
+    <li>Gemini — <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a></li>
+    <li>OpenAI — <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a></li>
+  </ul>
+  <p>Set them in <code>~/.claude/council/config.json</code> (auto-created on first run):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>{
+  "gemini_api_key": "AIza…",
+  "openai_api_key": "sk-…",
+  "models": {
+    "gemini": "gemini-3-pro-preview",
+    "openai": "gpt-5.2"
+  },
+  "cost_gate_usd": 0.50
+}</code></pre></div>
+
+  <h3>Test</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>brain "ship a feature flag for new pricing tiers"</code></pre></div>
+  <p>Or from inside Claude Code:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>/council ship a feature flag for new pricing tiers</code></pre></div>
+
+  <div class="callout warn">
+    <strong>Cost gate.</strong> Council estimates the round-trip cost before each call and refuses if it exceeds <code>cost_gate_usd</code> (default $0.50). Bump it for larger plans.
+  </div>
+</section>

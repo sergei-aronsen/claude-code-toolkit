@@ -1,0 +1,18 @@
+<section id="toolkit">
+  <h2><span class="section-icon">🧰</span> Toolkit core <span class="section-tag done">no setup needed</span></h2>
+  <p class="section-subtitle">Templates + slash commands + skills + agents installed into <code>.claude/</code>.</p>
+
+  <h3>Daily commands</h3>
+  <ul>
+    <li><code>/update-toolkit</code> — pull the latest toolkit content into <code>.claude/</code>, preserving local edits.</li>
+    <li><code>/update-deps</code> — open the dependency dashboard (Layer 1/2/3 + MCP servers).</li>
+    <li><code>/audit</code> — run one of 7 framework-aware audits.</li>
+    <li><code>/debug</code> — 4-phase systematic debugger.</li>
+  </ul>
+
+  <h3>Commit <code>.claude/</code> to git</h3>
+  <p>The toolkit content is tracked per-project. Commit it so the same context follows the repo:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>git add .claude/ CLAUDE.md
+git commit -m "chore: install claude-code-toolkit"</code></pre></div>
+  <p>Exception: <code>.claude/settings.local.json</code> is auto-gitignored — it carries per-developer credentials and must NOT be committed.</p>
+</section>

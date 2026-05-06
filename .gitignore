@@ -28,3 +28,12 @@ _external/
 
 # Serena MCP runtime state (project.yml, memories cache, .serena/cache)
 .serena/
+
+# GSD scratchpad ephemera — per-task quick notes, codebase mapping cache,
+# and audit dumps. Active state (PROJECT.md, ROADMAP.md, MILESTONES.md,
+# STATE.md, RETROSPECTIVE.md, INBOX.md, config.json, research/) stays
+# tracked. Historical artifacts live in the claude-memo vault at
+# references/toolkit-history/ — see scripts/archive-planning-to-vault.sh.
+.planning/quick/
+.planning/codebase/
+.planning/audits/

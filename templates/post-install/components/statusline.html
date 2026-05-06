@@ -1,0 +1,12 @@
+<section id="statusline">
+  <h2><span class="section-icon">📊</span> Rate-limit Statusline <span class="section-tag done">no setup needed</span></h2>
+  <p class="section-subtitle">macOS-only. Reads the Claude Code OAuth token from Keychain and shows session + weekly usage in your status bar.</p>
+
+  <h3>Verify</h3>
+  <p>Open Claude Code in any terminal — the statusline shows session usage in real time. If it stays blank, force a refresh:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>bash ~/.claude/statusline-refresh.sh</code></pre></div>
+
+  <div class="callout warn">
+    <strong>macOS only.</strong> The statusline uses the macOS Keychain to read the OAuth token. Linux / Windows are not supported by this component.
+  </div>
+</section>

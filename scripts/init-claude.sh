@@ -709,13 +709,15 @@ download_files() {
         full_dest="$CLAUDE_DIR/$path"
         mkdir -p "$(dirname "$full_dest")"
         case "$bucket" in
-            scripts|libs|commands)
-                # Repo-root paths — commands/, scripts/, lib/ all live at repo
-                # root (NOT under templates/). Single attempt, no template
-                # fallback. Without this, ~30 commands like commands/api.md
-                # showed "download failed" because download_files tried
-                # templates/$FW/commands/api.md → templates/base/commands/api.md
-                # → both ENOENT (user report 2026-05-01).
+            scripts|libs|commands|post_install_templates)
+                # Repo-root paths — commands/, scripts/, lib/, and the
+                # templates/post-install/ HTML snippets all live at repo
+                # root (NOT under templates/<framework>/). Single attempt,
+                # no template fallback. Without this, ~30 commands like
+                # commands/api.md showed "download failed" because
+                # download_files tried templates/$FW/commands/api.md →
+                # templates/base/commands/api.md → both ENOENT (user
+                # report 2026-05-01).
                 if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/$path" -o "$full_dest" 2>/dev/null && [[ -s "$full_dest" ]]; then
                     echo -e "  ${GREEN}OK${NC} $path"
                     INSTALLED_PATHS+=("$full_dest")

@@ -2147,6 +2147,78 @@ echo ""
 printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
     "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
 
+# Post-install setup guide — generates a per-machine HTML page with
+# config instructions for everything that was actually installed (MCPs
+# need API keys, claude-memo needs Obsidian vault path, RTK needs hook
+# wiring, etc.). User feedback 2026-05-06: "После установки всех этих
+# MCP, скиллов их же еще нужно настраивать. Было бы круто открывать
+# локальную HTML-страницу с инструкциями по установке каждой из этих
+# зависимостей." Generated only when at least one component succeeded
+# AND the templates payload is on disk (manifest copied them as part of
+# this same install). Honours TK_NO_OPEN=1 to skip the auto-`open`.
+if [[ ${INSTALLED_COUNT:-0} -gt 0 && "${NO_BANNER:-0}" != "1" ]]; then
+    _guide_lib=".claude/scripts/lib/post-install-guide.sh"
+    _guide_templates=".claude/templates/post-install"
+    if [[ -f "$_guide_lib" && -d "$_guide_templates" ]]; then
+        # Component label list — only entries that ended in a "present"
+        # state. Skip rolled-up parents (mcp-servers, skills) and base
+        # plugins (superpowers, get-shit-done) — those don't have post-
+        # install setup pages.
+        _guide_installed=""
+        for ((_gi=0; _gi<${#COMPONENT_NAMES[@]}; _gi++)); do
+            _gn="${COMPONENT_NAMES[$_gi]:-}"
+            _gs="${COMPONENT_STATUS[$_gi]:-}"
+            [[ -z "$_gn" ]] && continue
+            case "$_gs" in
+                installed*|reinstalled*|"already installed"*)
+                    case "$_gn" in
+                        mcp-servers|skills|superpowers|get-shit-done) ;;
+                        *) _guide_installed+="$_gn " ;;
+                    esac
+                    ;;
+            esac
+        done
+
+        # MCP names from the child TSV the --mcps sub-installer wrote.
+        _guide_mcps=""
+        _mcp_tsv="${TK_CHILD_STATE_DIR:-}/mcp-servers.tsv"
+        if [[ -n "${TK_CHILD_STATE_DIR:-}" && -f "$_mcp_tsv" ]]; then
+            while IFS=$'\t' read -r _mname _mstate; do
+                [[ -z "$_mname" ]] && continue
+                case "$_mstate" in
+                    installed*|reinstalled*) _guide_mcps+="$_mname " ;;
+                esac
+            done < "$_mcp_tsv"
+        fi
+
+        _guide_ver="unknown"
+        if [[ -f "manifest.json" ]] && command -v jq >/dev/null 2>&1; then
+            _guide_ver="$(jq -r '.version // "unknown"' manifest.json 2>/dev/null)"
+        elif [[ -f ".claude/.toolkit-version" ]]; then
+            _guide_ver="$(cat .claude/.toolkit-version 2>/dev/null || echo unknown)"
+        fi
+
+        # shellcheck disable=SC1090
+        if TK_GUIDE_TEMPLATES="$_guide_templates" \
+           TK_GUIDE_INSTALLED="$_guide_installed" \
+           TK_GUIDE_MCPS="$_guide_mcps" \
+           TK_GUIDE_OUTPUT=".claude/setup-guide.html" \
+           TK_GUIDE_TOOLKIT_VER="$_guide_ver" \
+               bash -c 'source "'"$_guide_lib"'" && post_install_guide_generate' \
+               >/dev/null 2>&1; then
+            echo ""
+            echo -e "${CYAN}📘 Setup guide:${NC} .claude/setup-guide.html"
+            echo "   Per-MCP API-key + per-component config walkthroughs."
+            if [[ "$(uname)" == "Darwin" && "${TK_NO_OPEN:-0}" != "1" ]]; then
+                # Auto-open in default browser on macOS only — xdg-open
+                # on headless Linux often hangs / spawns chrome under root.
+                (open ".claude/setup-guide.html" >/dev/null 2>&1 &) || true
+            fi
+        fi
+        unset _guide_lib _guide_templates _guide_installed _guide_mcps _mcp_tsv _mname _mstate _guide_ver
+    fi
+fi
+
 # Consolidated finale — printed AFTER all dispatchers finish (user report
 # 2026-05-01: standalone init-claude.sh finale appeared mid-flow before
 # skills/mcp summaries). Sub-installers run with TK_DISPATCHED=1 so they

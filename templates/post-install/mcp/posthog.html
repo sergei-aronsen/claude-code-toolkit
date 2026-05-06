@@ -1,0 +1,26 @@
+<section id="mcp-posthog">
+  <h2><span class="section-icon">🔌</span> PostHog <span class="section-tag required">API key required</span></h2>
+  <p class="section-subtitle">Product analytics + error tracking + LLM cost tracking + feature flags. <a href="https://posthog.com/docs/model-context-protocol" target="_blank" rel="noopener">docs ↗</a></p>
+
+  <h3>1. Get a personal API key</h3>
+  <ol>
+    <li>Open <a href="https://app.posthog.com/settings/user-api-keys" target="_blank" rel="noopener">app.posthog.com/settings/user-api-keys</a>.</li>
+    <li>Click <strong>Create personal API key</strong>.</li>
+    <li>Scope: pick the projects + capabilities you want the AI to read (start with read-only).</li>
+    <li>Copy the <code>phx_…</code> token.</li>
+  </ol>
+
+  <h3>2. Set the env var</h3>
+  <p>Format MUST be <code>Bearer &lt;token&gt;</code> (the MCP sends it verbatim as the Authorization header):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>export POSTHOG_AUTH_HEADER="Bearer phx_…"</code></pre></div>
+  <p>Persist:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo 'export POSTHOG_AUTH_HEADER="Bearer phx_…"' &gt;&gt; ~/.zshrc
+source ~/.zshrc</code></pre></div>
+
+  <h3>3. Test</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>show me the last 10 errors from production</code></pre></div>
+
+  <div class="callout">
+    <strong>Free tier:</strong> 100k events/month at no cost. Cheap Sentry alternative for AI-focused apps.
+  </div>
+</section>

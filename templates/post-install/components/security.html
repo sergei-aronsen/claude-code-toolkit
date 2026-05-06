@@ -1,0 +1,19 @@
+<section id="security">
+  <h2><span class="section-icon">🛡️</span> Security Pack <span class="section-tag done">no setup needed</span></h2>
+  <p class="section-subtitle">Defense-in-depth: <code>cc-safety-net</code> blocks destructive commands at PreToolUse + global security rules in <code>~/.claude/CLAUDE.md</code>.</p>
+
+  <h3>What was wired up</h3>
+  <ul>
+    <li>Global rules merged into <code>~/.claude/CLAUDE.md</code> — applies to every project.</li>
+    <li><code>cc-safety-net</code> npm package installed globally — blocks <code>rm&nbsp;-rf&nbsp;/</code>, <code>git&nbsp;reset&nbsp;--hard</code>, <code>--no-verify</code>, etc.</li>
+    <li>If RTK is also installed, the <code>pre-bash.sh</code> hook runs both sequentially (no conflict).</li>
+  </ul>
+
+  <h3>Verify</h3>
+  <p>From inside Claude Code, run:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>/security-review</code></pre></div>
+
+  <h3>Update later</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>npm install -g cc-safety-net@latest</code></pre></div>
+  <p>Or run <code>/update-deps</code> to see installed-vs-latest.</p>
+</section>

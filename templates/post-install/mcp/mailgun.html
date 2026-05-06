@@ -1,0 +1,19 @@
+<section id="mcp-mailgun">
+  <h2><span class="section-icon">🔌</span> Mailgun <span class="section-tag required">API key required</span></h2>
+  <p class="section-subtitle">Transactional email — send, validate, query stats, manage suppressions. <a href="https://github.com/mailgun/mailgun-mcp-server" target="_blank" rel="noopener">repo ↗</a></p>
+
+  <h3>1. Get the API key</h3>
+  <ol>
+    <li>Open <a href="https://app.mailgun.com/app/account/security/api_keys" target="_blank" rel="noopener">app.mailgun.com/app/account/security/api_keys</a>.</li>
+    <li>Click <strong>Add new key</strong> → name it <code>claude-mcp</code>.</li>
+    <li>Copy the value — Mailgun shows it once.</li>
+  </ol>
+
+  <h3>2. Set env vars (project-scope by default)</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo 'MAILGUN_API_KEY=your-key-here' &gt;&gt; .env
+echo 'MAILGUN_API_REGION=us' &gt;&gt; .env  # or `eu` if you're on the EU plan
+echo '.env' &gt;&gt; .gitignore</code></pre></div>
+
+  <h3>3. Test</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>send a test email to me@example.com from the verified domain</code></pre></div>
+</section>
