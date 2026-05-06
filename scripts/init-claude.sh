@@ -897,6 +897,17 @@ recommend_statusline() {
     echo -e "  Requires: macOS, jq, Claude Max/Pro"
 }
 
+# Show advisory hooks recommendation (v6.0)
+recommend_hooks() {
+    echo ""
+    echo -e "${CYAN}🪝 Advisory Hooks (optional, v6.0):${NC}"
+    echo -e "  Lightweight reminders for /council on auth/payments, /audit after GSD"
+    echo -e "  phase, reality-check before ship, cost warning at heavy sessions."
+    echo -e "  Never blocks; opt-out via TK_HOOKS_DISABLE=1."
+    echo -e "  Install: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/install-hooks.sh)${NC}"
+    echo -e "  Requires: jq, python3"
+}
+
 # Setup Supreme Council (integrated)
 setup_council() {
     local council_dir="$HOME/.claude/council"
@@ -1374,6 +1385,7 @@ main() {
 
         recommend_security
         recommend_statusline
+        recommend_hooks
         recommend_optional_plugins
 
         # Supreme Council setup (integrated)
@@ -1430,6 +1442,16 @@ Requires: macOS, jq, Claude Max/Pro.
 \`\`\`bash
 bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/install-statusline.sh)
 \`\`\`
+
+🪝 **Advisory Hooks (v6.0)** — lightweight reminders for /council on high-stakes
+plans, /audit after GSD phases, reality-check before ship, cost warning at heavy
+sessions. Never blocks. Requires jq + python3.
+
+\`\`\`bash
+bash <(curl -sSL -A "$TK_USER_AGENT" $REPO_URL/scripts/install-hooks.sh)
+\`\`\`
+
+Disable advisories at runtime: \`export TK_HOOKS_DISABLE=1\`. Uninstall: \`bash <(curl -sSL $REPO_URL/scripts/install-hooks.sh) --uninstall\`.
 
 ## Supreme Council
 
