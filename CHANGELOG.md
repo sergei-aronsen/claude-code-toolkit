@@ -9,7 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [6.1.0] - 2026-05-06
 
-**Drop Morph, add Serena, reposition claude-context.**
+**Drop Morph, add Serena, reposition claude-context. Close five v6 audit
+findings (F-1 through F-5 + F-15). Wire advisory hooks and cost routing
+into the install lifecycle. Add 87 assertions of v6 surface coverage.**
+
+Five sequenced PRs (#49, #50, #51, #52, #53):
+
+1. **#49** — Catalog swap: drop `morph-fast-tools`, add `serena`.
+2. **#50** — Manifest `conflicts_with` annotations: F-1 schema-integrity
+   gate; F-2 broken `code-reviewer` annotation removed against SP 5.1+.
+3. **#51** — Auto-wire installers: `setup_hooks` + `setup_cost_routing`
+   in `init-claude.sh`; opt-in `--remove-hooks` / `--remove-cost-routing`
+   in `uninstall.sh`; sections 7 + 8 in `verify-install.sh`; PreToolUse
+   Bash hook chain ordering documented; advisory message path in
+   `tk-pre-ship-reality-check.sh` resolved via `$CLAUDE_PROJECT_DIR`.
+4. **#52** — F-15 closure: 8 standalone tests (catalog, install-hooks,
+   cost-routing, migrate-v5-to-v6, init-skip-flags, uninstall-remove-
+   flags, hook stdin replay, verify-install sections 7 + 8) — 87
+   assertions.
+5. **#53** — This release tag.
 
 The v6.0 catalog recommended `morph-fast-tools` (Morph Fast Apply +
 WarpGrep + Compact) as the default Layer-3 dev-tools MCP. v6.1 removes
@@ -92,6 +110,126 @@ Then re-run `bash <(curl -sSL .../init-claude.sh)` and pick Serena
 from the MCP catalog. Serena requires `uv` and `serena-agent`
 installed first — see `components/external-tools-recommended.md` for
 the exact prerequisite commands.
+
+### v6 audit closure (PRs #50, #51, #52)
+
+#### Manifest + duplication discipline (PR #50)
+
+- F-1 closure: replaced the "every TK file must be annotated against the
+  base it duplicates" envelope with a `Makefile` schema-integrity gate
+  on `manifest.json` `conflicts_with` entries (must be a non-empty
+  string array, each value in `{"superpowers", "get-shit-done"}`).
+- F-2 closure: dropped the `conflicts_with: ["superpowers"]` annotation
+  on `agents/code-reviewer.md` — Superpowers 5.1+ no longer ships an
+  `agents/` directory (equivalent now lives at
+  `skills/requesting-code-review/`), and TK's code-reviewer is
+  materially different in any case (different severity scheme, output
+  format, review framework). Annotation revived for
+  `skills/gsd-mode-selector/SKILL.md` against `get-shit-done` (the only
+  remaining true duplicate, against GSD's `gsd-help`).
+- Bats test helper `assert_no_agent_collision` retired to a no-op (its
+  contract was based on the F-2 broken annotation).
+- All five framework templates (`base`, `go`, `laravel`, `python`,
+  `rails`) updated their CLAUDE.md text from "code-reviewer agent" to
+  "requesting-code-review skill (SP 5.1+)".
+
+#### Install-lifecycle wiring (PR #51)
+
+- F-3 closure: `init-claude.sh` now AUTO-RUNS `install-hooks.sh` and
+  `setup-cost-routing.sh` after the main install (previously they were
+  recommended-only and most users never ran them). Behaviour mirrors
+  the existing `setup-security.sh` / `setup-council.sh` pattern:
+  prereq-check (`jq` + `python3` for hooks; `node` + `npx` for cost
+  routing), foreground curl-pipe install, graceful degrade on prereq
+  miss with a manual retry URL printed. New `--skip-hooks` /
+  `--skip-cost-routing` CLI flags and `TK_SKIP_HOOKS=1` /
+  `TK_SKIP_COST_ROUTING=1` env equivalents (mirrors the existing
+  `--no-bridges` / `TK_NO_BRIDGES=1` symmetry).
+- `uninstall.sh` gains opt-in `--remove-hooks` and
+  `--remove-cost-routing` flags (env equivalents:
+  `TK_UNINSTALL_REMOVE_HOOKS=1` / `TK_UNINSTALL_REMOVE_COST_ROUTING=1`).
+  Default OFF — both targets live in `~/.claude/` and are shared
+  across every project, so a project-scoped uninstall must not silently
+  break sibling projects. A trailing hint reminds users of the manual
+  `--uninstall` URLs whenever they don't opt in.
+- `verify-install.sh` gains sections 7 (advisory hooks) and 8 (cost
+  routing). Section 7 walks `_tk_hook_id` markers in
+  `~/.claude/settings.json` and confirms each of the four expected hook
+  files exists at `~/.claude/hooks/<basename>` and is executable.
+  Section 8 checks for the `BETTER-MODEL ROUTING START` marker in
+  `~/.claude/CLAUDE.md` plus `npx` availability.
+- F-4 closure: documented the canonical PreToolUse Bash hook chain
+  ordering in `docs/architecture.md` (new "PreToolUse Bash hook chain"
+  section) and `templates/global/CLAUDE.md` (new section 16):
+  `pre-bash.sh` (cc-safety-net + RTK rewrite) → `rtk-rewrite.sh` →
+  `gsd-validate-commit.sh` → `tk-pre-ship-reality-check.sh`. TK's
+  ship-check runs last and stays advisory-only by default; opt into
+  block-mode via `TK_HOOKS_BLOCK_SHIP=1`. Master switch:
+  `TK_HOOKS_DISABLE=1`.
+- F-5 closure: `tk-pre-ship-reality-check.sh` advisory message now
+  resolves the reality-check skill path through `$CLAUDE_PROJECT_DIR`
+  (Claude Code-injected) with `$PWD` and a `<project>/...` placeholder
+  fall-backs. The skill ships project-local under `.claude/skills/`,
+  not `~/.claude/skills/`, so the previous hint pointed at a path that
+  never existed.
+
+#### Test coverage (PR #52)
+
+F-15 closure adds eight standalone test scripts (87 total assertions)
+covering the v6 surface that shipped in v6.0 with zero coverage.
+
+- `scripts/tests/test-catalog-serena.sh` (8 asserts) — Morph→Serena
+  catalog swap shape: serena entry, install_args canonical tokens, uv
+  prereq + MIT in description, requires_oauth=false, no
+  morph-fast-tools remnants, mcp count remains 23.
+- `scripts/tests/test-install-hooks.sh` (14 asserts) — sandboxed
+  CLAUDE_DIR + TK_HOOKS_SOURCE; covers fresh install (4 hooks copied,
+  executable, registered with `_tk_owned` + `_tk_hook_id`),
+  idempotence, foreign-hook preservation, --uninstall TK-only removal,
+  --dry-run zero-mutation.
+- `scripts/tests/test-cost-routing.sh` (13 asserts; skipped if `node`
+  missing) — sandboxed CLAUDE_DIR; routing block insertion / removal
+  with foreign-content preservation; pre-uninstall backup; --dry-run
+  zero-mutation; missing-CLAUDE.md soft-exit.
+- `scripts/tests/test-migrate-v5-to-v6.sh` (9 asserts) — refuses
+  missing .claude/, dry-run emits Step 1 update preview + Step 3
+  advisory-hook + cost-routing URL hints, surfaces installed version
+  from `toolkit-install.json`, zero filesystem mutation in dry-run.
+- `scripts/tests/test-init-skip-flags.sh` (10 asserts) — static
+  plumbing on `init-claude.sh`: `setup_hooks` / `setup_cost_routing`
+  defined + invoked; `--skip-hooks` / `--skip-cost-routing` CLI;
+  `TK_SKIP_*=1` env; awk-extracted body harness verifies early-return
+  silence under `SKIP_*=true`.
+- `scripts/tests/test-uninstall-remove-flags.sh` (10 asserts) —
+  `--remove-hooks` / `--remove-cost-routing` opt-in flags;
+  `TK_UNINSTALL_REMOVE_*=1` env; dry-run "would invoke" preview; default
+  "Global v6.1 helpers preserved" hint with both manual URLs; hint
+  suppressed when both flags are set.
+- `scripts/tests/test-hook-replay.sh` (16 asserts) — fixture-based
+  stdin replay against all four advisory hooks: positive trigger +
+  silent negative for each, no `permissionDecision` payload in default
+  advisory mode, opt-in `TK_HOOKS_BLOCK_SHIP=1` flips
+  `tk-pre-ship-reality-check.sh` to emit `permissionDecision: deny`,
+  master switch `TK_HOOKS_DISABLE=1` silences all four.
+- `scripts/tests/test-verify-install-v6.sh` (7 asserts) — sections 7 +
+  8 headers render; bare host emits skip lines; settings.json with
+  four `_tk_hook_id` entries + matching hook files yields per-hook
+  PASS; routing block in CLAUDE.md flips section 8 to PASS;
+  settings.json marker but missing hook file surfaces "registered but
+  missing at" FAIL.
+
+Wired into `make test` as Tests 50-57; standalone targets exposed
+(`make test-catalog-serena`, `make test-install-hooks`, etc.).
+
+#### Other v6.1 changes
+
+- Lifted `uninstall.sh` v6.1 F-3 tear-down preview block above the
+  `--dry-run` early exit so dry-run users see what `--remove-hooks` /
+  `--remove-cost-routing` would do. Live tear-down at end-of-script
+  unchanged.
+- `manifest.json` — `mode_notes` rewritten to document the v6.1
+  conflicts_with audit (F-1 + F-2) outcomes; `version` bumped 6.0.0 →
+  6.1.0.
 
 ## [6.0.0] - 2026-05-06
 
