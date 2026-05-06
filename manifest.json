@@ -57,6 +57,9 @@
         "path": "commands/learn.md"
       },
       {
+        "path": "commands/setup-guide.md"
+      },
+      {
         "path": "commands/update-deps.md"
       },
       {
@@ -191,6 +194,9 @@
         "path": "scripts/lib/optional-plugins.sh"
       },
       {
+        "path": "scripts/lib/post-install-guide.sh"
+      },
+      {
         "path": "scripts/lib/project-secrets.sh"
       },
       {
@@ -201,6 +207,59 @@
       },
       {
         "path": "scripts/lib/tui.sh"
+      }
+    ],
+    "post_install_templates": [
+      {
+        "path": "templates/post-install/_skeleton.html"
+      },
+      {
+        "path": "templates/post-install/_styles.css"
+      },
+      {
+        "path": "templates/post-install/_script.js"
+      },
+      {
+        "path": "templates/post-install/components/bridges.html"
+      },
+      {
+        "path": "templates/post-install/components/claude-memo.html"
+      },
+      {
+        "path": "templates/post-install/components/council.html"
+      },
+      {
+        "path": "templates/post-install/components/rtk.html"
+      },
+      {
+        "path": "templates/post-install/components/security.html"
+      },
+      {
+        "path": "templates/post-install/components/statusline.html"
+      },
+      {
+        "path": "templates/post-install/components/toolkit.html"
+      },
+      {
+        "path": "templates/post-install/mcp/_generic.html"
+      },
+      {
+        "path": "templates/post-install/mcp/datadog.html"
+      },
+      {
+        "path": "templates/post-install/mcp/dbhub.html"
+      },
+      {
+        "path": "templates/post-install/mcp/mailgun.html"
+      },
+      {
+        "path": "templates/post-install/mcp/posthog.html"
+      },
+      {
+        "path": "templates/post-install/mcp/sentry.html"
+      },
+      {
+        "path": "templates/post-install/mcp/stripe.html"
       }
     ],
     "skills_marketplace": [
