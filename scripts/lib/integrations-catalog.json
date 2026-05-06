@@ -122,6 +122,21 @@
         "requires_oauth": false,
         "default_scope": "project"
       },
+      "datadog": {
+        "name": "datadog",
+        "display_name": "Datadog",
+        "category": "monitoring",
+        "env_var_keys": [],
+        "install_args": [
+          "--transport",
+          "http",
+          "datadog",
+          "https://app.datadoghq.com/api/v2/mcp/sse"
+        ],
+        "description": "APM + infra metrics + logs + dashboards + incidents. OAuth flow at first connect (no API key needed). EU users edit URL → datadoghq.eu. Heavy vendor lock-in; expensive at scale.",
+        "requires_oauth": true,
+        "default_scope": "user"
+      },
       "figma": {
         "name": "figma",
         "display_name": "Figma",
@@ -214,6 +229,25 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "mailgun": {
+        "name": "mailgun",
+        "display_name": "Mailgun",
+        "category": "email",
+        "env_var_keys": [
+          "MAILGUN_API_KEY",
+          "MAILGUN_API_REGION"
+        ],
+        "install_args": [
+          "mailgun",
+          "--",
+          "npx",
+          "-y",
+          "@mailgun/mcp-server"
+        ],
+        "description": "Transactional email — send, validate, query stats, manage suppressions. 50+ tools. MAILGUN_API_REGION = `us` or `eu` (default `us`). Resend alternative for users on Mailgun.",
+        "requires_oauth": false,
+        "default_scope": "project"
+      },
       "notebooklm": {
         "name": "notebooklm",
         "display_name": "NotebookLM",
@@ -262,6 +296,27 @@
           "openrouter-mcp"
         ],
         "description": "Multi-model LLM routing",
+        "requires_oauth": false,
+        "default_scope": "user"
+      },
+      "posthog": {
+        "name": "posthog",
+        "display_name": "PostHog",
+        "category": "monitoring",
+        "env_var_keys": [
+          "POSTHOG_AUTH_HEADER"
+        ],
+        "install_args": [
+          "posthog",
+          "--",
+          "npx",
+          "-y",
+          "mcp-remote@latest",
+          "https://mcp.posthog.com/sse",
+          "--header",
+          "Authorization:${POSTHOG_AUTH_HEADER}"
+        ],
+        "description": "Product analytics + error tracking + LLM cost tracking + feature flags + A/B testing. POSTHOG_AUTH_HEADER format: `Bearer phx_…` (personal API key). Free tier 100k events/mo. Cheap Sentry alternative for AI apps.",
         "requires_oauth": false,
         "default_scope": "user"
       },

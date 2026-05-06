@@ -135,6 +135,9 @@
     ],
     "scripts": [
       {
+        "path": "scripts/install-claude-memo.sh"
+      },
+      {
         "path": "scripts/install.sh"
       },
       {

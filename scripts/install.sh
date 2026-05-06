@@ -1290,6 +1290,20 @@ TUI_INSTALLED+=("$IS_COUNCIL")
 TUI_REQUIRED+=("0")
 TUI_DESCS+=("Multi-AI plan review (Gemini + ChatGPT) — needs CLI or API keys")
 
+# claude-memo: optional persistent engineering memory (vault + embeddings
+# + auto-capture hooks). Detect via the cloned skill dir AND a populated
+# vault — either alone is incomplete state. The wrapper is idempotent so
+# detection is a hint, not a hard gate.
+IS_MEMO=0
+if [[ -d "$HOME/.claude/skills/memo-skill/.git" ]] && [[ -f "$HOME/memo-vault/INDEX.md" ]]; then
+    IS_MEMO=1
+fi
+TUI_LABELS+=("claude-memo")
+TUI_GROUPS+=("Optional")
+TUI_INSTALLED+=("$IS_MEMO")
+TUI_REQUIRED+=("0")
+TUI_DESCS+=("Persistent engineering memory — vault + 4 hooks (downloads ~1.1GB embedding model)")
+
 # BRIDGE-UX-01 (Phase 30): conditional bridge rows. ONLY appear when the corresponding CLI
 # is detected; CLIs absent => row OMITTED entirely (no greyed-out [unavailable] line).
 # When NO_BRIDGES=true the rows are STILL omitted from arrays so default-set, TUI render,
@@ -1955,6 +1969,9 @@ _local_label_to_dispatch_name() {
         # Marketplace pickers — kebab-to-snake for the dispatch_ function name
         # (Bash function names cannot contain hyphens).
         mcp-servers)   echo "mcp_servers" ;;
+        # claude-memo → claude_memo (Bash function names cannot contain
+        # hyphens). dispatch_claude_memo lives in scripts/lib/dispatch.sh.
+        claude-memo)   echo "claude_memo" ;;
         # Bridges keep their kebab-case label — the dispatch loop has a
         # dedicated bridge branch (case "$local_name" in gemini-bridge|
         # codex-bridge) that handles them without invoking dispatch_*.
@@ -1991,6 +2008,7 @@ for ((i=0; i<_disp_count; i++)); do
         rtk)         is_rtk_installed         && local_re_installed=1 || true ;;
         statusline)  is_statusline_installed  && local_re_installed=1 || true ;;
         council)     [[ -f "$HOME/.claude/council/brain.py" ]] && local_re_installed=1 || true ;;
+        claude_memo) [[ -d "$HOME/.claude/skills/memo-skill/.git" && -f "$HOME/memo-vault/INDEX.md" ]] && local_re_installed=1 || true ;;
         gemini-bridge) : ;;  # Bridges have no idempotency probe — always re-write (state SHA tracks drift).
         codex-bridge)  : ;;
         mcp_servers) : ;;    # Marketplace pickers always run when checked — the sub-TUI handles its own idempotency.

@@ -97,7 +97,7 @@ if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
     # is the LAST thing on screen — that block contains action items the
     # user must execute, so keeping it terminal-final maximises its
     # visibility (user feedback 2026-05-01).
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council gemini-bridge codex-bridge skills mcp-servers)
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council claude-memo gemini-bridge codex-bridge skills mcp-servers)
 fi
 
 # Internal log helpers — underscore prefix.
@@ -412,6 +412,53 @@ dispatch_council() {
     else
         local sibling
         sibling="$(_dispatch_sibling_path setup-council.sh)"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+    fi
+}
+
+# dispatch_claude_memo — install-claude-memo.sh.
+# Wires sergei-aronsen/claude-memo (persistent engineering memory: vault +
+# SQLite/FTS5 + multilingual-e5-large embeddings + 4 SessionStart/End/
+# PreCompact/Stop hooks). Heavy: pulls a ~1.1 GB embedding model on first
+# run and merges hooks into ~/.claude/settings.json (shared global
+# config), so we always pass --yes through when the parent install.sh
+# is itself running --yes.
+#
+# Mirrors dispatch_council semantics: --dry-run is honoured at the
+# dispatcher level (prints "would run …" and returns 0).
+dispatch_claude_memo() {
+    local force=0 dry_run=0 yes=0
+    local pass_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)   force=1   ;;
+            --dry-run) dry_run=1 ; pass_args+=("--dry-run") ;;
+            --yes)     yes=1     ; pass_args+=("--yes") ;;
+            *) pass_args+=("$1") ;;
+        esac
+        shift
+    done
+    : "$force"
+
+    if [[ -n "${TK_DISPATCH_OVERRIDE_CLAUDE_MEMO:-}" && "${TK_TEST:-0}" == "1" ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
+            echo "[+ INSTALL] claude-memo (would run override: $TK_DISPATCH_OVERRIDE_CLAUDE_MEMO)"
+            return 0
+        fi
+        bash "$TK_DISPATCH_OVERRIDE_CLAUDE_MEMO" ${pass_args[@]+"${pass_args[@]}"}
+        return $?
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] claude-memo (would run: bash <(curl -sSL $TK_REPO_URL/scripts/install-claude-memo.sh)${pass_args[*]:+ ${pass_args[*]}})"
+        return 0
+    fi
+
+    if _dispatch_is_curl_pipe; then
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install-claude-memo.sh") ${pass_args[@]+"${pass_args[@]}"}
+    else
+        local sibling
+        sibling="$(_dispatch_sibling_path install-claude-memo.sh)"
         bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }

@@ -66,7 +66,7 @@ run_s1_catalog_correctness() {
     SANDBOX="$(mktemp -d /tmp/test-mcp-selector.XXXXXX)"
     # shellcheck disable=SC2064
     trap "rm -rf '${SANDBOX:?}'" RETURN
-    echo "  -- S1_catalog_correctness: 23 entries, alpha order, notion OAuth --"
+    echo "  -- S1_catalog_correctness: 26 entries, alpha order, notion OAuth --"
 
     MCP_NAMES=()
     # shellcheck source=/dev/null
@@ -78,8 +78,8 @@ run_s1_catalog_correctness() {
     # notion, openrouter, playwright, resend, sentry) + 12 new INT-01..12 entries.
     # Phase 40 INT-13: +1 (Calendly added) = 21 entries; v6.0 INT-15: +2 (morph-fast-tools, claude-context) = 23.
     # v6.1: morph-fast-tools replaced by serena (1-for-1) — count stays 23.
-    # v6.2 docs PR: +1 (dbhub) = 24.
-    assert_eq "24" "${#MCP_NAMES[@]}" "S1: catalog contains 24 entries"
+    # v6.2 docs PR added dbhub (+1 = 24); claude-memo PR added mailgun + datadog + posthog (+3 = 27).
+    assert_eq "27" "${#MCP_NAMES[@]}" "S1: catalog contains 27 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 
     # Find notion index and verify requires_oauth = 1

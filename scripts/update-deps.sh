@@ -389,6 +389,33 @@ upgrade_claude_context() {
     echo "Done. Restart Claude Code to load the new version."
 }
 
+# claude-memo probe — installed = short HEAD sha of the local clone;
+# latest  = short HEAD sha of origin/main (read via git ls-remote so we
+# don't mutate the working tree). Returns "—\t—" when the skill dir is
+# absent (claude-memo not installed) so the row is auto-hidden by the
+# render loop.
+probe_claude_memo() {
+    local skill_dir="$HOME/.claude/skills/memo-skill"
+    local installed="" latest=""
+    if [[ -d "$skill_dir/.git" ]]; then
+        installed=$(git -C "$skill_dir" rev-parse --short=12 HEAD 2>/dev/null)
+        latest=$(git -C "$skill_dir" ls-remote --quiet origin HEAD 2>/dev/null \
+            | awk '{print substr($1, 1, 12)}' | head -1)
+    fi
+    printf '%s\t%s\n' "${installed:-—}" "${latest:-—}"
+}
+
+upgrade_claude_memo() {
+    local skill_dir="$HOME/.claude/skills/memo-skill"
+    if [[ ! -d "$skill_dir/.git" ]]; then
+        echo "claude-memo not installed — run scripts/install-claude-memo.sh first" >&2
+        return 1
+    fi
+    echo "Pulling latest claude-memo..."
+    git -C "$skill_dir" pull --ff-only origin main
+    echo "Done. Restart Claude Code to pick up new hook code."
+}
+
 # ───────── register all deps ─────────
 # Note: the 4 anthropic-shipped plugins (code-review, commit-commands,
 # security-guidance, frontend-design) intentionally NOT registered here —
@@ -408,6 +435,7 @@ register_dep "better-model"     "External"  probe_better_model     upgrade_bette
 register_dep "get-shit-done-cc" "External"  probe_gsd_sdk          upgrade_gsd_sdk          "GSD SDK CLI helper"
 register_dep "serena"           "MCP"       probe_serena           upgrade_serena           "LSP code search/refactor (uv tool serena-agent)"
 register_dep "claude-context"   "MCP"       probe_claude_context   upgrade_claude_context   "Vector-DB semantic search (npx)"
+register_dep "claude-memo"      "Optional"  probe_claude_memo      upgrade_claude_memo      "Persistent engineering memory (vault + 4 hooks)"
 
 # ───────── --check single-dep ─────────
 
