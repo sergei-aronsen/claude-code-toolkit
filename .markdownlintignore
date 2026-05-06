@@ -31,3 +31,8 @@ plugins/
 # emphasis-as-heading and bare URLs by design (research log style, not user
 # docs). Excluded from lint; they're not part of the published toolkit.
 docs/research/
+
+# _external/ is a gitignored vendor-source dump for read-only analysis
+# of upstream plugins (superpowers, get-shit-done, etc.). Third-party
+# markdown is not lintable on our terms — excluded from local lint.
+_external/
