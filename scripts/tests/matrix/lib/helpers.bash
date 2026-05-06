@@ -213,31 +213,18 @@ assert_skiplist_clean() {
     fi
 }
 
-# ─── VALIDATE-03 runtime layer (D-11): no TK agent basename matches SP agent ─
-# assert_no_agent_collision <cell_home>
+# ─── VALIDATE-03 runtime layer (D-11) — RETIRED in v6.1 ────────────────────
+# Original: asserted no TK agent basename matched any SP agent. Premise was
+# that SP shipped agents/code-reviewer.md and TK should skip its own copy.
+# Audit docs/research/v6-post-ship-audit-2026-05-06.md (F-2) found that SP
+# 5.1.0 dropped agents/ entirely — the equivalent is now a skill, not an
+# agent. TK's code-reviewer is also materially different from SP's and is
+# correctly co-resident in v6.1. The assertion is therefore obsolete.
+# Function kept as a no-op for one release in case external callers source
+# this helper file; remove in v6.2.
 assert_no_agent_collision() {
-    local cell_home="$1"
-    local sp_agents="${cell_home}/.claude/plugins/cache/claude-plugins-official/superpowers"
-    local tk_agents="${cell_home}/.claude/agents"
-    if [ ! -d "$sp_agents" ] || [ ! -d "$tk_agents" ]; then
-        PASS=$((PASS + 1))
-        echo "  ✓ agent-collision check skipped (no SP cache or TK agents dir in sandbox)"
-        return
-    fi
-    local colliding=0
-    while IFS= read -r sp_agent; do
-        local base
-        base="$(basename "$sp_agent")"
-        if [ -f "${tk_agents}/${base}" ]; then
-            FAIL=$((FAIL + 1))
-            echo "  ✗ agent collision: ${base} present in both SP cache and TK agents/" >&2
-            colliding=1
-        fi
-    done < <(find "$sp_agents" -name '*.md' -mindepth 3 -maxdepth 3 2>/dev/null)
-    if [ "$colliding" = "0" ]; then
-        PASS=$((PASS + 1))
-        echo "  ✓ no TK↔SP agent basename collision"
-    fi
+    PASS=$((PASS + 1))
+    echo "  ✓ agent-collision check retired in v6.1 (SP 5.1+ ships skills, not agents; F-2 fix)"
 }
 
 # ─── Cell body functions (13 cells) ─────────────────────────────────────────

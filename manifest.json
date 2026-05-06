@@ -4,14 +4,11 @@
   "updated": "2026-05-06",
   "description": "Claude Code Toolkit manifest for smart updates",
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
-  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. Future PRs add conflicts_with: [\"get-shit-done\"] entries when GSD overlaps are catalogued (test fixture scripts/tests/fixtures/manifest-v2.json contains an example).",
+  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. v6.1 audit (docs/research/v6-post-ship-audit-2026-05-06.md, F-2) found that the surviving agents/code-reviewer.md annotation was broken against Superpowers 5.1.0+ (SP dropped agents/ directory; equivalent is now skills/requesting-code-review). TK's code-reviewer is also materially different from SP's — annotation removed in v6.1. v6.1 audit F-1 found that the only true duplication remaining is skills/gsd-mode-selector/SKILL.md against GSD's gsd-help skill — annotated.",
   "files": {
     "agents": [
       {
-        "path": "agents/code-reviewer.md",
-        "conflicts_with": [
-          "superpowers"
-        ]
+        "path": "agents/code-reviewer.md"
       },
       {
         "path": "agents/planner.md"
@@ -89,7 +86,10 @@
         "path": "skills/domain-expert-simulation/SKILL.md"
       },
       {
-        "path": "skills/gsd-mode-selector/SKILL.md"
+        "path": "skills/gsd-mode-selector/SKILL.md",
+        "conflicts_with": [
+          "get-shit-done"
+        ]
       },
       {
         "path": "skills/llm-patterns/SKILL.md"
