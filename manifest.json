@@ -61,6 +61,9 @@
       },
       {
         "path": "commands/update-toolkit.md"
+      },
+      {
+        "path": "commands/vendor-audit.md"
       }
     ],
     "skills": [
@@ -69,6 +72,9 @@
       },
       {
         "path": "skills/api-design/SKILL.md"
+      },
+      {
+        "path": "skills/cost-routing-discipline/SKILL.md"
       },
       {
         "path": "skills/council-integration/SKILL.md"
@@ -80,10 +86,22 @@
         "path": "skills/docker/SKILL.md"
       },
       {
+        "path": "skills/domain-expert-simulation/SKILL.md"
+      },
+      {
+        "path": "skills/gsd-mode-selector/SKILL.md"
+      },
+      {
         "path": "skills/llm-patterns/SKILL.md"
       },
       {
         "path": "skills/observability/SKILL.md"
+      },
+      {
+        "path": "skills/production-observability/SKILL.md"
+      },
+      {
+        "path": "skills/reality-check/SKILL.md"
       }
     ],
     "rules": [
@@ -97,7 +115,16 @@
         "path": "rules/audit-exceptions.md"
       },
       {
+        "path": "rules/cost-discipline.md"
+      },
+      {
+        "path": "rules/non-programmer-safeguards.md"
+      },
+      {
         "path": "rules/plan-md-anti-bloat.md"
+      },
+      {
+        "path": "rules/three-layer-bridge.md"
       }
     ],
     "scripts": [
@@ -244,6 +271,30 @@
       {
         "path": "components/skill-frontmatter-discipline.md",
         "description": "Authoring discipline for SKILL.md / commands / agents frontmatter — action-verb descriptions, third person, what+when triggers, naming conventions; distilled from Anthropic + Warp update-skill"
+      },
+      {
+        "path": "components/cost-discipline.md",
+        "description": "v6.0 — Mode selection per task size (gsd-fast/quick/plan-phase), trigger keywords, budget caps, subagent model routing via better-model"
+      },
+      {
+        "path": "components/domain-expert-simulation.md",
+        "description": "v6.0 — Pre-ship domain expert review for non-programmer profile; killer questions per domain (auth/payments/db/infra/privacy/UX)"
+      },
+      {
+        "path": "components/external-tools-recommended.md",
+        "description": "v6.0 — Install matrix for Morph + better-model + claude-context; install order, decision matrix per project size, exit plans"
+      },
+      {
+        "path": "components/large-codebase-search.md",
+        "description": "v6.0 — claude-context vs Morph warpgrep decision; self-hosted Milvus setup; Voyage AI / Ollama embeddings for sensitive code"
+      },
+      {
+        "path": "components/production-observability.md",
+        "description": "v6.0 — Sentry/Posthog/Playwright integration; closes GSD plan-vs-spec blind spot with product-vs-reality monitoring"
+      },
+      {
+        "path": "components/vendor-risk.md",
+        "description": "v6.0 — Quarterly external dependency review methodology; signals for maintainer drift, breaking change cadence, marketing pivots"
       }
     ]
   },
