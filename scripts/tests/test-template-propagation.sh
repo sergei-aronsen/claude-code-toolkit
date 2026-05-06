@@ -3,10 +3,10 @@
 # Test 20: idempotency + marker-presence regression for propagate-audit-pipeline-v42.sh.
 #
 # Runs the splice script TWICE on a scratch copy of templates/, asserts:
-#   1. Run 1 splices all 49 files (Processed line: "49 spliced, 0 already-spliced, 0 errors")
+#   1. Run 1 splices all 35 files (Processed line: "35 spliced, 0 already-spliced, 0 errors")
 #   2. Each spliced file carries exactly 4 v42-splice sentinels
 #   3. Each spliced file carries the 4 grep-verifiable contract markers
-#   4. Run 2 produces zero diff (diff -r empty) and reports "0 spliced, 49 already-spliced"
+#   4. Run 2 produces zero diff (diff -r empty) and reports "0 spliced, 35 already-spliced"
 #
 # Usage: bash scripts/tests/test-template-propagation.sh
 # Exit:  0 = all pass; 1 = any fail
@@ -40,21 +40,23 @@ fi
 # 1.2: copy templates/ to scratch
 cp -r "$REPO_ROOT/templates" "$SCRATCH/templates"
 
-# 1.3: count source files (must be 49 across the 7 prompt types)
+# 1.3: count source files (must be 35 across 5 frameworks × 7 prompt types).
+# v6.0: nextjs/ and nodejs/ removed (Next.js covered by GSD skills-marketplace,
+# nodejs merged into base). Frameworks remaining: base, laravel, rails, python, go.
 SRC_COUNT=$(find "$SCRATCH/templates" -path '*/prompts/*.md' \
     \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
        -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o -name 'DEPLOY_CHECKLIST.md' -o \
        -name 'DESIGN_REVIEW.md' \) | wc -l | tr -d ' ')
 
-if [ "$SRC_COUNT" = "49" ]; then
-    report_pass "source file count: 49 prompt files (7 frameworks x 7 types)"
+if [ "$SRC_COUNT" = "35" ]; then
+    report_pass "source file count: 35 prompt files (5 frameworks x 7 types)"
 else
-    report_fail "source file count: expected 49, got $SRC_COUNT"
+    report_fail "source file count: expected 35, got $SRC_COUNT"
 fi
 
 # =============================================================================
-# Test Group 2 — Run 1: splice all 49 files
+# Test Group 2 — Run 1: splice all 35 files
 # =============================================================================
 
 RUN1_LOG="$SCRATCH/run1.log"
@@ -65,12 +67,12 @@ else
     head -40 "$RUN1_LOG"
 fi
 
-# 2.1: run 1 must report all 49 files in a terminal state (either freshly
+# 2.1: run 1 must report all 35 files in a terminal state (either freshly
 #      spliced or already-spliced from a previous live-templates apply).
 #      The idempotency contract (run 2 byte-identical to run 1) is asserted
 #      separately below — what matters here is that no file errored.
-if grep -qE 'Processed 49 files: (49 spliced, 0 already-spliced|0 spliced, 49 already-spliced), 0 skipped' "$RUN1_LOG"; then
-    report_pass "run 1: 49 files terminal (spliced or already-spliced), 0 errors"
+if grep -qE 'Processed 35 files: (35 spliced, 0 already-spliced|0 spliced, 35 already-spliced), 0 skipped' "$RUN1_LOG"; then
+    report_pass "run 1: 35 files terminal (spliced or already-spliced), 0 errors"
 else
     report_fail "run 1: summary does not match expected terminal state"
     grep -F 'Processed' "$RUN1_LOG" | head -3 || true
@@ -127,13 +129,13 @@ done < <(find "$SCRATCH/templates" -path '*/prompts/*.md' \
        -name 'DESIGN_REVIEW.md' \) | sort)
 
 if [ "$SENTINEL_FAIL" -eq 0 ]; then
-    report_pass "sentinel invariants: all 49 files carry exactly 4 named v42-splice sentinels"
+    report_pass "sentinel invariants: all 35 files carry exactly 4 named v42-splice sentinels"
 fi
 if [ "$MARKER_FAIL" -eq 0 ]; then
-    report_pass "contract markers: all 49 files contain 'Council Handoff' + '1. **Read context**'"
+    report_pass "contract markers: all 35 files contain 'Council Handoff' + '1. **Read context**'"
 fi
 if [ "$SLOT_FAIL" -eq 0 ]; then
-    report_pass "em-dash slot: all 49 files contain '_pending — run /council audit-review_' (U+2014)"
+    report_pass "em-dash slot: all 35 files contain '_pending — run /council audit-review_' (U+2014)"
 fi
 
 # =============================================================================
@@ -150,11 +152,11 @@ else
     report_fail "run 2: splice script exited non-zero (see $RUN2_LOG)"
 fi
 
-# 4.1: run 2 must report "0 spliced, 49 already-spliced"
-if grep -qF '0 spliced, 49 already-spliced, 0 skipped' "$RUN2_LOG"; then
-    report_pass "run 2: summary reports 0 spliced, 49 already-spliced"
+# 4.1: run 2 must report "0 spliced, 35 already-spliced"
+if grep -qF '0 spliced, 35 already-spliced, 0 skipped' "$RUN2_LOG"; then
+    report_pass "run 2: summary reports 0 spliced, 35 already-spliced"
 else
-    report_fail "run 2: summary does not match '0 spliced, 49 already-spliced'"
+    report_fail "run 2: summary does not match '0 spliced, 35 already-spliced'"
     grep -F 'Processed' "$RUN2_LOG" | head -3 || true
 fi
 

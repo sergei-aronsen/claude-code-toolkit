@@ -154,10 +154,17 @@ assert_contains "scope user" "$DRY_OUTPUT" "T2d: dry-run preview shows '--scope 
 # and propagates the new value to every MCP_SELECTED_SCOPE[] slot. D-18: must
 # NOT export TK_MCP_SCOPE (the dispatcher in install.sh is the sole writer).
 _MCP_SETALL_SCOPE=user
+# shellcheck disable=SC2034
+# Below arrays are read by mcp_render_scope_header / mcp_toggle_scope (sourced functions
+# rely on these globals). Shellcheck cannot trace the cross-source usage.
 MCP_SELECTED_SCOPE=("user" "user")
+# shellcheck disable=SC2034
 TUI_LABELS=("a" "b")
+# shellcheck disable=SC2034
 TUI_TO_MCP_IDX=(0 0)
+# shellcheck disable=SC2034
 MCP_DISPLAY=("AA" "BB")
+# shellcheck disable=SC2034
 MCP_UNOFFICIAL=(0 0)
 mcp_render_scope_header
 HDR_BEFORE="${TUI_HEADER_TEXT:-}"

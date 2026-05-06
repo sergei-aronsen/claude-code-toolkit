@@ -344,14 +344,15 @@ validate:
 	@python3 scripts/validate-manifest.py
 	@echo "✅ Manifest schema valid"
 
-# Validate Required Base Plugins section presence across all 7 templates (Pitfall 10 drift guard)
+# Validate Required Base Plugins section presence across all 5 templates (Pitfall 10 drift guard)
+# v6.0: nextjs/ removed (GSD skills-marketplace covers Next.js stack), nodejs/ merged into base.
 validate-base-plugins:
-	@echo "Validating Required Base Plugins section across 7 templates..."
-	@MISSING=0; for f in templates/base/CLAUDE.md templates/laravel/CLAUDE.md templates/rails/CLAUDE.md templates/nextjs/CLAUDE.md templates/nodejs/CLAUDE.md templates/python/CLAUDE.md templates/go/CLAUDE.md; do \
+	@echo "Validating Required Base Plugins section across 5 templates..."
+	@MISSING=0; for f in templates/base/CLAUDE.md templates/laravel/CLAUDE.md templates/rails/CLAUDE.md templates/python/CLAUDE.md templates/go/CLAUDE.md; do \
 		grep -q "^## Required Base Plugins" "$$f" || { echo "❌ $$f missing Required Base Plugins section"; MISSING=$$((MISSING+1)); }; \
 	done; \
 	if [ $$MISSING -gt 0 ]; then exit 1; fi; \
-	echo "✅ All 7 templates carry ## Required Base Plugins"
+	echo "✅ All 5 templates carry ## Required Base Plugins"
 
 # Version alignment (D-09) — manifest.json == CHANGELOG.md top release == init-local.sh --version
 version-align:

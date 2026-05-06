@@ -25,3 +25,9 @@ templates/skills-marketplace/
 # the symlinked paths from lint to avoid double-processing content already
 # covered above (plugins/ are distribution artifacts, not authored markdown).
 plugins/
+
+# docs/research/ contains exploratory research documents (gsd-vs-alternatives,
+# toolkit-v6-redesign) authored quickly during analysis sessions. They use
+# emphasis-as-heading and bare URLs by design (research log style, not user
+# docs). Excluded from lint; they're not part of the published toolkit.
+docs/research/
