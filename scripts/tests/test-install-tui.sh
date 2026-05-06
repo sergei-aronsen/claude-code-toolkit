@@ -182,7 +182,8 @@ run_s3_yes() {
     mkdir -p "$FAKE_BIN"
     # No installed components in clean sandbox.
 
-    # Mock all seven dispatchers (council added in Phase v4.8.1 install-bug-fixes).
+    # Mock all eight dispatchers (council added in Phase v4.8.1 install-
+    # bug-fixes; claude-memo added in this PR).
     local MOCK_SP="$SANDBOX/mock-sp.sh"      ; mk_mock "$MOCK_SP"      "mock-sp-ran"      0
     local MOCK_GSD="$SANDBOX/mock-gsd.sh"    ; mk_mock "$MOCK_GSD"     "mock-gsd-ran"     0
     local MOCK_TK="$SANDBOX/mock-tk.sh"      ; mk_mock "$MOCK_TK"      "mock-tk-ran"      0
@@ -190,6 +191,7 @@ run_s3_yes() {
     local MOCK_RTK="$SANDBOX/mock-rtk.sh"    ; mk_mock "$MOCK_RTK"     "mock-rtk-ran"     0
     local MOCK_SL="$SANDBOX/mock-sl.sh"      ; mk_mock "$MOCK_SL"      "mock-sl-ran"      0
     local MOCK_COUNCIL="$SANDBOX/mock-council.sh" ; mk_mock "$MOCK_COUNCIL" "mock-council-ran" 0
+    local MOCK_MEMO="$SANDBOX/mock-memo.sh"  ; mk_mock "$MOCK_MEMO"    "mock-memo-ran"    0
 
     RC=0
     OUTPUT=$(
@@ -204,6 +206,7 @@ run_s3_yes() {
         TK_DISPATCH_OVERRIDE_RTK="$MOCK_RTK" \
         TK_DISPATCH_OVERRIDE_STATUSLINE="$MOCK_SL" \
         TK_DISPATCH_OVERRIDE_COUNCIL="$MOCK_COUNCIL" \
+        TK_DISPATCH_OVERRIDE_CLAUDE_MEMO="$MOCK_MEMO" \
         NO_COLOR=1 \
         bash "$REPO_ROOT/scripts/install.sh" --yes 2>&1
     ) || RC=$?
@@ -212,7 +215,8 @@ run_s3_yes() {
     assert_contains "mock-tk-ran"     "$OUTPUT" "S3_yes: toolkit dispatcher invoked"
     assert_contains "mock-sec-ran"    "$OUTPUT" "S3_yes: security dispatcher invoked"
     assert_contains "mock-council-ran" "$OUTPUT" "S3_yes: council dispatcher invoked (v4.8.1 7th component)"
-    assert_contains "Installed: 7"    "$OUTPUT" "S3_yes: summary shows 7 installed (council added in v4.8.1)"
+    assert_contains "mock-memo-ran"   "$OUTPUT" "S3_yes: claude-memo dispatcher invoked (8th component)"
+    assert_contains "Installed: 8"    "$OUTPUT" "S3_yes: summary shows 8 installed (claude-memo added in this PR)"
 }
 
 # ─────────────────────────────────────────────────
@@ -290,6 +294,7 @@ run_s5_force() {
         TK_DISPATCH_OVERRIDE_SECURITY="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_RTK="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_STATUSLINE="$_NOOP_SCRIPT" \
+        TK_DISPATCH_OVERRIDE_CLAUDE_MEMO="$_NOOP_SCRIPT" \
         NO_COLOR=1 \
         bash "$REPO_ROOT/scripts/install.sh" --yes --force 2>&1
     ) || RC=$?
