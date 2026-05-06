@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets test-catalog-serena test-install-hooks test-cost-routing test-migrate-v5-to-v6 test-init-skip-flags test-uninstall-remove-flags
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets test-catalog-serena test-install-hooks test-cost-routing test-migrate-v5-to-v6 test-init-skip-flags test-uninstall-remove-flags test-hook-replay test-verify-install-v6
 
 # Default target
 help:
@@ -245,6 +245,12 @@ test:
 	@echo "Test 55: uninstall.sh --remove-hooks/--remove-cost-routing opt-in flags (v6.1 / F-3)"
 	@bash scripts/tests/test-uninstall-remove-flags.sh
 	@echo ""
+	@echo "Test 56: tk-* hook fixture-based stdin replay — advisory mode + disable switch (v6.1 / F-15)"
+	@bash scripts/tests/test-hook-replay.sh
+	@echo ""
+	@echo "Test 57: verify-install.sh sections 7 + 8 (advisory hooks + cost routing) (v6.1 / F-15)"
+	@bash scripts/tests/test-verify-install-v6.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -314,6 +320,14 @@ test-init-skip-flags:
 # Test 55 — v6.1 uninstall.sh --remove-* opt-in flags (F-3), invokable standalone
 test-uninstall-remove-flags:
 	@bash scripts/tests/test-uninstall-remove-flags.sh
+
+# Test 56 — v6.1 advisory-hook stdin replay (F-15 item 1), invokable standalone
+test-hook-replay:
+	@bash scripts/tests/test-hook-replay.sh
+
+# Test 57 — v6.1 verify-install.sh sections 7+8 (F-15 item 5), invokable standalone
+test-verify-install-v6:
+	@bash scripts/tests/test-verify-install-v6.sh
 
 # Skills mirror re-sync (maintainer-only) — re-syncs templates/skills-marketplace/
 # from local $HOME/.claude/skills/. Not run by CI.
