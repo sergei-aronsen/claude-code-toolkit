@@ -199,3 +199,13 @@ Repository-Root-Assets — sie werden **nicht** in `.claude/` installiert; verwe
 **Orchestrierungsmuster** — siehe [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
 für das Design mit schlankem Orchestrator und leistungsfähigen Subagenten, das Council und GSD-Workflows nutzen.
 Hilft jedem benutzerdefinierten Slash-Befehl, über ein einzelnes Kontextfenster hinaus zu skalieren.
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).

@@ -199,3 +199,13 @@ your-project/
 **오케스트레이션 패턴** — Council과 GSD 워크플로가 모두 사용하는 린 오케스트레이터 + 풍부한 서브에이전트
 설계에 대해서는 [components/orchestration-pattern.md](../../components/orchestration-pattern.md)를 참조하세요.
 커스텀 슬래시 명령어가 단일 컨텍스트 윈도우를 넘어 확장할 수 있도록 도와줍니다.
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).
