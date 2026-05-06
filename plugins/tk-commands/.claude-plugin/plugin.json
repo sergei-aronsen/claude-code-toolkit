@@ -1,6 +1,6 @@
 {
   "name": "tk-commands",
-  "version": "4.8.0",
+  "version": "5.0.0",
   "description": "29 slash commands for Claude Code workflows — Code terminal only",
   "category": "commands",
   "tags": [
