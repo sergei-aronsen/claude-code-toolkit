@@ -25,3 +25,6 @@ __pycache__/
 
 # External vendor code for read-only analysis (never bundle/distribute)
 _external/
+
+# Serena MCP runtime state (project.yml, memories cache, .serena/cache)
+.serena/
