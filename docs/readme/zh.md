@@ -1,214 +1,101 @@
 # Claude Code Toolkit
 
-使用 Claude Code 进行 AI 辅助开发的综合指南。
-
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-6.2.0-blue.svg)](../../CHANGELOG.md)
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **中文** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 
-> 请先阅读完整的[分步安装指南](../howto/zh.md)。
-
 ---
 
-## 适用人群
+## 这是什么
 
-使用 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 构建产品的**独立开发者**。
+一个建立在 [**Superpowers**](https://github.com/obra/superpowers)（头脑风暴、子代理、TDD、调试）和 [**Get Shit Done**](https://github.com/gsd-build/get-shit-done)（Spec → Plan → Execute）之上的薄层覆盖，弥补这些插件为单兵开发者留下的空缺。
 
-支持的技术栈：**Laravel/PHP**、**Ruby on Rails**、**Next.js**、**Node.js**、**Python**、**Go**。
+**面向：** 使用 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 交付真实产品的独立创始人和单人工程团队。
 
-**30 个斜杠命令** | **7 种审计** | **29 个指南** | 查看[命令、模板、审计和组件的完整列表](../features.md#slash-commands-30-total)。
+**支持的技术栈：** Laravel · Rails · Next.js · Node.js · Python · Go。
 
----
+## 弥补哪些空缺
 
-## 快速开始
+| 空缺                              | toolkit 增加了什么                                                                                                                              |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| **多 AI 计划验证**                | `/council` —— 把你的计划同时发给 Gemini 和 ChatGPT 做独立评审。可走 CLI（`gemini`、`codex`）或直接 API 密钥。Persona 叠加、按 hash 缓存、成本闸门、ru locale。 |
+| **框架上下文**                    | 7 个现成 `CLAUDE.md` 模板（base + 6 个栈），通过 `artisan` / `next.config` / `go.mod` / `pyproject.toml` / `package.json` 自动检测。              |
+| **生产安全网**                    | `cc-safety-net` 在 PreToolUse 拦截破坏性命令（`rm -rf /`、`git reset --hard` 等）—— 即使被混淆。已接入安装器。                                  |
+| **Token 成本控制**                | RTK 重写冗长的开发命令输出（`git status`、测试运行器）—— 节省 60-90% token。与 `cc-safety-net` 共用合并 hook。                                   |
+| **成本路由**                      | `better-model` 把简单任务路由到更便宜的模型。自动安装并集成进安装生命周期。                                                                       |
+| **基于符号的代码搜索**            | [Serena](https://github.com/oraios/serena)（LSP，MIT，本地）+ ripgrep + claude-context（语义向量）。默认 Layer-3 检索栈。                       |
+| **多 CLI 桥接**                   | 自动同步 `CLAUDE.md` 到 `GEMINI.md`（Gemini CLI）和 `AGENTS.md`（OpenAI Codex）。每次安装做漂移检测。                                            |
+| **集成目录**                      | TUI 安装器，覆盖 24 个 MCP 服务器 + 8 个配套 CLI，分 10 个类别（Backend / Payments / Workspace / Project Management / …）。每行可选 scope。       |
+| **额度可见性（Pro/Max）**         | Statusline 显示会话/周用量 —— 你能看到什么时候要撞墙。                                                                                          |
+| **依赖看板（v6.2）**              | `/update-deps` —— 交互式 TUI 列出所有被追踪的依赖（Layer 1/2/3）和 installed-vs-latest。你挑选要更新的项。                                       |
+| **安装后引导（v6.3）**            | 生成本地 HTML 页面 (`.claude/setup-guide.html`)，包含每个 MCP 的 API key 上手和组件配置 —— 只列你实际安装了的部分。                              |
 
-### 1. 全局设置（仅需一次）
+核心价值是策展。一切都通过 TUI 复选框 opt-in —— 不强加任何东西。
 
-#### a) Security Pack
+## 安装
 
-纵深防御安全设置。完整指南请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-#### b) RTK — Token 优化器（推荐）
-
-[RTK](https://github.com/rtk-ai/rtk) 在开发命令（`git status`、`cargo test` 等）上减少 60-90% 的 Token 消耗。
-
-```bash
-brew install rtk
-rtk init -g
-```
-
-> **注意：** 如果 RTK 和 cc-safety-net 是独立的钩子，它们的结果会冲突。
-> Security Pack（步骤 1a）已配置组合钩子，按顺序运行两者。
-> 详情请参阅 [components/security-hardening.md](../../components/security-hardening.md)。
-
-#### c) Rate Limit Statusline（Claude Max / Pro，可选）
-
-在 Claude Code 状态栏中显示会话/周限额。更多信息：[components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
+一条命令。在项目目录里的**普通终端**（不要在 Claude Code 内）执行：
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
-## 安装模式
+安装器展示一个 TUI 检查列表（Toolkit、Security、RTK、Statusline、Council、Bridges、Integrations），并检测 `superpowers` 和 `get-shit-done` 是否已安装。如已安装，它会跳过那些插件已经提供的文件，只装 toolkit 独有的 ~47 项贡献。
 
-TK 会自动检测是否安装了 `superpowers`（obra）和 `get-shit-done`（gsd-build），并
-选择四种模式之一：`standalone`、`complement-sp`、`complement-gsd` 或 `complement-full`。
-每个框架模板在 `## Required Base Plugins` 中说明所需的基础插件 — 例如
-[templates/base/CLAUDE.md](../../templates/base/CLAUDE.md)。完整的 12 格安装矩阵
-和分步说明请参阅 [docs/INSTALL.md](../INSTALL.md)。
-
-### 独立安装
-
-您未安装 `superpowers` 或 `get-shit-done`（或已明确选择不使用）。
-TK 将安装全部 54 个文件 — 完整的默认配置。在常规终端（不是在
-Claude Code 内部！）中，从项目文件夹运行：
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-然后在该项目目录中启动 Claude Code。后续更新请使用 `/update-toolkit`。
-
-### 补充安装
-
-您已安装 `superpowers`（obra）和/或 `get-shit-done`（gsd-build）中的一个或两个。TK
-会自动检测并跳过与 SP 功能重复的 7 个文件，保留约 47 个 TK 独有贡献
-（Council、框架 CLAUDE.md 模板、组件库、cheatsheets、框架专属技能）。
-使用相同的安装命令 — TK 自动选择 `complement-*` 模式。如需覆盖，可传入
-`--mode standalone`（或其他模式名称）：
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) --mode complement-full
-```
-
-### 从 v3.x 升级
-
-在安装 TK 后再安装 SP 或 GSD 的 v3.x 用户，应运行 `scripts/migrate-to-complement.sh` 以
-逐文件确认的方式删除重复文件，并在迁移前进行完整备份。完整的 12 格矩阵和分步说明请参阅
-[docs/INSTALL.md](../INSTALL.md)。
-
-> **重要：** 项目模板仅适用于 `project/.claude/CLAUDE.md`。请勿将其复制到
-> `~/.claude/CLAUDE.md` — 该文件应仅包含全局安全规则和个人偏好设置（不超过 50 行）。
-> 详情请参阅 [components/claude-md-guide.md](../../components/claude-md-guide.md)。
-
----
-
-## 核心亮点
-
-| 功能 | 描述 |
-|------|------|
-| **自学习** | `/learn` 将解决方案保存为带 `globs:` 的规则文件 — 仅对相关文件自动加载 |
-| **自动激活钩子** | 钩子拦截提示，评估上下文（关键词、意图、文件路径），推荐相关技能 |
-| **知识持久化** | 项目事实存储在 `.claude/rules/` — 每次会话自动加载，提交到 git，在任何机器上可用 |
-| **系统化调试** | `/debug` 强制执行 4 个阶段：根因 → 模式 → 假设 → 修复。不靠猜测 |
-| **生产安全** | `/deploy` 带预/后检查，`/fix-prod` 用于热修复，增量部署，worker 安全 |
-| **Supreme Council** | `/council` 将计划发送给 Gemini + ChatGPT，在编码前进行独立审查 |
-| **结构化工作流** | 3 个必经阶段：研究（只读） → 计划（草稿本） → 执行（确认后） |
-
-查看[详细描述和示例](../features.md)。
-
----
-
-## MCP 服务器（推荐！）
-
-### 全局（所有项目）
-
-| 服务器 | 用途 |
-|--------|------|
-| `context7` | 库文档 |
-| `playwright` | 浏览器自动化、UI 测试 |
-| `sequential-thinking` | 逐步问题解决 |
-| `sentry` | 错误监控与问题排查 |
-
-```bash
-claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
-claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
-claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
-```
-
-### 每个项目（凭据）
-
-| 服务器 | 用途 |
-|--------|------|
-| `dbhub` | 通用数据库访问（PostgreSQL、MySQL、MariaDB、SQL Server、SQLite） |
-
-```bash
-claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:pass@localhost:5432/dbname"
-```
-
-> **安全：** 请始终使用**只读数据库用户** — 不要仅依赖 DBHub 应用层的 `--readonly` 标志（[已知绕过方式](https://github.com/bytebase/dbhub/issues/271)）。每个项目的服务器配置存入 `.claude/settings.local.json`（已加入 .gitignore，凭据安全）。完整详情请参阅 [mcp-servers-guide.md](../../components/mcp-servers-guide.md)。
-
----
-
-## 安装后的结构
-
-带 † 标记的文件与 `superpowers` 冲突 — 在 `complement-sp` 和 `complement-full` 模式下省略。
+Claude Desktop 用户 —— 通过 marketplace 安装：
 
 ```text
-your-project/
-└── .claude/
-    ├── CLAUDE.md              # 主要指令（根据项目调整）
-    ├── settings.json          # 钩子、权限
-    ├── commands/              # 斜杠命令
-    │   ├── verify.md          # † 在 complement-sp/full 中省略
-    │   ├── debug.md           # † 在 complement-sp/full 中省略
-    │   └── ...
-    ├── prompts/               # 审计
-    │   ├── SECURITY_AUDIT.md
-    │   ├── PERFORMANCE_AUDIT.md
-    │   ├── CODE_REVIEW.md
-    │   ├── DESIGN_REVIEW.md
-    │   ├── MYSQL_PERFORMANCE_AUDIT.md
-    │   └── POSTGRES_PERFORMANCE_AUDIT.md
-    ├── agents/                # 子代理
-    │   ├── code-reviewer.md   # † 在 complement-sp/full 中省略
-    │   ├── test-writer.md
-    │   └── planner.md
-    ├── skills/                # 框架专业知识
-    │   └── [framework]/SKILL.md
-    ├── rules/                 # 自动加载的项目信息
-    └── scratchpad/            # 工作笔记
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
 
----
+完整分步指南：[docs/howto/zh.md](../howto/zh.md)。
 
-## 支持的框架
+## 安装后
 
-| 框架 | 模板 | 技能 | 自动检测 |
-|------|------|------|----------|
-| Laravel | ✅ | ✅ | `artisan` 文件 |
-| Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
-| Next.js | ✅ | ✅ | `next.config.*` |
-| Node.js | ✅ | ✅ | `package.json`（不含 next.config） |
-| Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
-| Go | ✅ | ✅ | `go.mod` |
+| 命令               | 作用                                                                          |
+|--------------------|-------------------------------------------------------------------------------|
+| `/update-toolkit`  | 把最新 toolkit 内容拉到 `.claude/`，保留你的本地修改。                         |
+| `/update-deps`     | 打开依赖看板（Layer 1/2/3 + MCP），选择要更新哪些。                           |
+| `/council`         | 把方案发给 Gemini + ChatGPT 做独立评审。                                       |
+| `/learn`           | 把当前决策保存为 scoped rule，供未来会话使用。                                 |
+| `/audit`           | 运行 7 套框架感知审计中的一套（安全、性能等）。                                |
+| `/debug`           | 4 阶段系统化调试器：root-cause → pattern → hypothesis → fix。                  |
+| `/setup-guide`     | 重新生成本地 HTML 安装引导（针对已装 MCP/组件）。                              |
 
----
+完整命令清单：[docs/features.md](../features.md)。
 
-## 组件
+## 架构
 
-用于组合自定义 `CLAUDE.md` 文件的可复用 Markdown 片段。组件是仓库根目录的资源 —
-它们**不会**安装到 `.claude/` 中；请通过绝对 GitHub URL 引用它们。
+Toolkit v6.2 是一个**薄层覆盖**，分三层：
 
-**编排模式** — 请参阅 [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
-了解 Council 和 GSD 工作流均采用的精简编排器 + 重量级子代理设计。
-它可帮助任何自定义斜杠命令突破单个上下文窗口的限制。
+- **Layer 1** —— toolkit 内容（模板、slash 命令、组件、skill、agent）
+- **Layer 2** —— 免费基础插件（Superpowers、Get Shit Done、ru-text）
+- **Layer 3** —— 可选外部工具（cc-safety-net、RTK、Serena、claude-context、better-model）
 
----
+完整图：[docs/architecture.md](../architecture.md)。
+独立创始人 / 非开发者：[docs/non-programmer-mode.md](../non-programmer-mode.md)。
 
-## v6.1 Three-Layer Architecture
+## MCP 服务器目录
 
-Toolkit v6.1 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
-plus optional layer-3 external tools (Serena, claude-context, better-model).
-v6.1 dropped Morph (closed-source SDK + paid SaaS) for [oraios/serena](https://github.com/oraios/serena)
-(LSP-driven, MIT, runs locally) and now AUTO-WIRES `install-hooks.sh` and
-`setup-cost-routing.sh` from `init-claude.sh`.
-Full diagram: [docs/architecture.md](../architecture.md).
-Recommended setup for non-programmer / solo-founder profile:
-[docs/non-programmer-mode.md](../non-programmer-mode.md).
+`--integrations` flag（或首次安装后用 `/integrations`）打开一个 TUI 检查列表，含 24 个服务器，分 10 类。你只挑项目需要的。
+
+| 类别                   | 服务器                                                                                 |
+|------------------------|----------------------------------------------------------------------------------------|
+| **docs-research**      | `context7` · `firecrawl` · `notebooklm`                                                |
+| **backend**            | `aws-cloudwatch-logs` · `aws-cost-explorer` · `cloudflare` · `dbhub` · `supabase`      |
+| **payments**           | `stripe`                                                                               |
+| **email**              | `resend` · `mailgun`                                                                   |
+| **workspace**          | `calendly` · `notion`                                                                  |
+| **project-management** | `jira` · `linear` · `youtrack`                                                         |
+| **communication**      | `slack` · `telegram`                                                                   |
+| **design**             | `figma`                                                                                |
+| **dev-tools**          | `magic` · `openrouter` · `serena` · `claude-context` · `playwright`                    |
+| **monitoring**         | `sentry` · `datadog` · `posthog`                                                       |
+
+每个服务器安装时按行选择 scope（`[U]` user / `[P]` project / `[L]` local）。project scope 把凭证写入 `<project>/.env`（mode 0600）并自动加 `.gitignore`；`.mcp.json` 只保留 `${VAR}` 替换形式。详情：[docs/INTEGRATIONS.md](../INTEGRATIONS.md)。
+
+## 许可
+
+MIT —— 见 [LICENSE](../../LICENSE)。

@@ -1,215 +1,101 @@
 # Claude Code Toolkit
 
-Conjunto completo de instrucciones para el desarrollo asistido por IA con Claude Code.
-
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-6.2.0-blue.svg)](../../CHANGELOG.md)
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **Español** | **[Deutsch](de.md)** | **[Français](fr.md)** | **[中文](zh.md)** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 
-> Primero lea la [guía de instalación paso a paso](../howto/es.md) completa.
-
 ---
 
-## Para quién es esto
+## Qué es
 
-**Solo-desarrolladores** que crean productos con [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Una capa fina sobre [**Superpowers**](https://github.com/obra/superpowers) (brainstorming, subagentes, TDD, depuración) y [**Get Shit Done**](https://github.com/gsd-build/get-shit-done) (Spec → Plan → Execute) que cierra los huecos que esos plugins dejan abiertos para los desarrolladores en solitario.
 
-Stacks compatibles: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
+**Para:** fundadores en solitario y equipos de ingeniería de una sola persona que envían productos reales con [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
-**30 comandos slash** | **7 auditorías** | **29 guías** | Vea la [lista completa de comandos, plantillas, auditorías y componentes](../features.md#slash-commands-30-total).
+**Stacks soportados:** Laravel · Rails · Next.js · Node.js · Python · Go.
 
----
+## Huecos que cierra
 
-## Inicio rápido
+| Hueco                                | Lo que añade el toolkit                                                                                                                            |
+|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Validación multi-IA de planes**    | `/council` — envía tu plan a Gemini y ChatGPT en paralelo para revisión independiente. Funciona con CLI (`gemini`, `codex`) o claves API directas. Personas, caché por hash, control de coste, locale ru. |
+| **Contexto por framework**           | 7 plantillas `CLAUDE.md` listas (base + 6 stacks), autodetectadas vía `artisan` / `next.config` / `go.mod` / `pyproject.toml` / `package.json`.    |
+| **Red de seguridad en producción**   | `cc-safety-net` bloquea comandos destructivos (`rm -rf /`, `git reset --hard`, etc.) en PreToolUse — incluso ofuscados. Integrado en el instalador. |
+| **Control de coste de tokens**       | RTK reescribe la salida verbosa de comandos dev (`git status`, test runners) — ahorro del 60-90% en tokens. Hook combinado con `cc-safety-net`.    |
+| **Cost routing**                     | `better-model` enruta tareas simples a modelos más baratos. Auto-instalado e integrado en el ciclo de vida de la instalación.                      |
+| **Búsqueda de código por símbolos**  | [Serena](https://github.com/oraios/serena) (LSP, MIT, local) + ripgrep + claude-context (vector semántico). Stack Layer-3 por defecto.             |
+| **Multi-CLI bridges**                | Auto-sincroniza `CLAUDE.md` con `GEMINI.md` (Gemini CLI) y `AGENTS.md` (OpenAI Codex). Detección de drift en cada instalación.                     |
+| **Catálogo de integraciones**        | Instalador TUI para 24 servidores MCP + 8 CLIs complementarios en 10 categorías (Backend / Pagos / Workspace / Project Management / …). Scope por fila. |
+| **Visibilidad de límites (Pro/Max)** | La statusline muestra el uso por sesión/semanal — ves cuándo te vas a chocar contra el muro.                                                       |
+| **Dashboard de dependencias (v6.2)** | `/update-deps` — TUI interactivo que lista cada dependencia rastreada (Layer 1/2/3) con installed-vs-latest. Eliges qué actualizar.                |
+| **Guía post-install (v6.3)**         | Genera una página HTML local (`.claude/setup-guide.html`) con tutorial por MCP (API-key) y por componente — solo secciones para lo que instalaste. |
 
-### 1. Configuración global (una vez)
+El valor central es la curaduría. Todo es opt-in vía checkboxes TUI — nada se fuerza.
 
-#### a) Security Pack
+## Instalación
 
-Configuración de seguridad en profundidad. Vea [components/security-hardening.md](../../components/security-hardening.md) para la guía completa.
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-#### b) RTK — Optimizador de tokens (recomendado)
-
-[RTK](https://github.com/rtk-ai/rtk) reduce el consumo de tokens un 60-90% en comandos de desarrollo (`git status`, `cargo test`, etc.).
-
-```bash
-brew install rtk
-rtk init -g
-```
-
-> **Nota:** Si RTK y cc-safety-net son hooks separados, sus resultados entran en conflicto.
-> El Security Pack (paso 1a) ya configura un hook combinado que ejecuta ambos de forma secuencial.
-> Vea [components/security-hardening.md](../../components/security-hardening.md) para más detalles.
-
-#### c) Rate Limit Statusline (Claude Max / Pro, opcional)
-
-Muestra los límites de sesión/semana en la barra de estado de Claude Code. Más información: [components/rate-limit-statusline.md](../../components/rate-limit-statusline.md)
+Un comando. Ejecútalo en una terminal normal **dentro** de la carpeta de tu proyecto (no dentro de Claude Code):
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
-## Modos de instalación
+El instalador muestra una checklist TUI (Toolkit, Security, RTK, Statusline, Council, Bridges, Integrations) y detecta si `superpowers` y `get-shit-done` ya están instalados. Si lo están, omite los archivos que esos plugins ya proporcionan y solo instala las ~47 contribuciones únicas del toolkit.
 
-TK detecta automáticamente si `superpowers` (obra) y `get-shit-done` (gsd-build) están instalados y
-elige uno de cuatro modos: `standalone`, `complement-sp`, `complement-gsd` o `complement-full`.
-Cada plantilla de framework documenta sus plugins base requeridos en `## Required Base Plugins` — vea,
-por ejemplo, [templates/base/CLAUDE.md](../../templates/base/CLAUDE.md). Para la matriz de instalación
-completa de 12 celdas y la guía paso a paso, consulte [docs/INSTALL.md](../INSTALL.md).
-
-### Instalación independiente
-
-No tiene `superpowers` ni `get-shit-done` instalados (o ha optado por no usarlos).
-TK instala los 54 archivos completos — la opción predeterminada completa. Ejecute en su terminal
-habitual (¡no dentro de Claude Code!) en la carpeta del proyecto:
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-Luego inicie Claude Code en ese directorio del proyecto. Para futuras actualizaciones utilice `/update-toolkit`.
-
-### Instalación complementaria
-
-Tiene uno o ambos de `superpowers` (obra) y `get-shit-done` (gsd-build) instalados. TK
-los detecta automáticamente y omite los 7 archivos que duplicarían la funcionalidad de SP, conservando las
-~47 contribuciones únicas de TK (Council, plantillas CLAUDE.md por framework, biblioteca de componentes,
-cheatsheets, skills por framework). Use el mismo comando de instalación — TK selecciona automáticamente
-el modo `complement-*`. Para anularlo, pase `--mode standalone` (u otro nombre de modo):
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh) --mode complement-full
-```
-
-### Actualización desde v3.x
-
-Los usuarios de v3.x que instalaron SP o GSD después de TK deben ejecutar `scripts/migrate-to-complement.sh` para
-eliminar archivos duplicados con confirmación por archivo y una copia de seguridad completa previa a la migración.
-Vea [docs/INSTALL.md](../INSTALL.md) para la matriz completa de 12 celdas y la guía paso a paso.
-
-> **Importante:** La plantilla del proyecto es solo para `project/.claude/CLAUDE.md`. No la copie en
-> `~/.claude/CLAUDE.md` — ese archivo debe contener únicamente reglas de seguridad globales y preferencias
-> personales (menos de 50 líneas). Vea [components/claude-md-guide.md](../../components/claude-md-guide.md)
-> para más detalles.
-
----
-
-## Killer Features
-
-| Función | Descripción |
-|---------|-------------|
-| **Self-Learning** | `/learn` guarda soluciones como archivos de reglas con `globs:` — cargados automáticamente solo para archivos relevantes |
-| **Auto-Activation Hooks** | Hook intercepta prompts, evalúa el contexto (palabras clave, intención, rutas de archivos), recomienda skills relevantes |
-| **Knowledge Persistence** | Hechos del proyecto en `.claude/rules/` — cargados automáticamente en cada sesión, en git, disponibles en cualquier máquina |
-| **Systematic Debugging** | `/debug` aplica 4 fases: causa raíz → patrón → hipótesis → solución. Sin suposiciones |
-| **Production Safety** | `/deploy` con verificaciones pre/post, `/fix-prod` para hotfixes, despliegues incrementales, seguridad de workers |
-| **Supreme Council** | `/council` envía planes a Gemini + ChatGPT para revisión independiente antes de codificar |
-| **Structured Workflow** | 3 fases obligatorias: RESEARCH (solo lectura) → PLAN (borrador) → EXECUTE (tras confirmación) |
-
-Vea [descripciones detalladas y ejemplos](../features.md).
-
----
-
-## Servidores MCP (¡recomendado!)
-
-### Global (todos los proyectos)
-
-| Servidor | Propósito |
-|----------|-----------|
-| `context7` | Documentación de bibliotecas |
-| `playwright` | Automatización de navegador, pruebas de UI |
-| `sequential-thinking` | Resolución de problemas paso a paso |
-| `sentry` | Monitoreo de errores e investigación de incidencias |
-
-```bash
-claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
-claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
-claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
-```
-
-### Por proyecto (credenciales)
-
-| Servidor | Propósito |
-|----------|-----------|
-| `dbhub` | Acceso universal a bases de datos (PostgreSQL, MySQL, MariaDB, SQL Server, SQLite) |
-
-```bash
-claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:pass@localhost:5432/dbname"
-```
-
-> **Seguridad:** Utilice siempre un **usuario de base de datos de solo lectura** — no confíe únicamente en el flag `--readonly` de DBHub ([bypasses conocidos](https://github.com/bytebase/dbhub/issues/271)). Los servidores por proyecto van en `.claude/settings.local.json` (en .gitignore, seguro para credenciales). Vea [mcp-servers-guide.md](../../components/mcp-servers-guide.md) para todos los detalles.
-
----
-
-## Estructura después de la instalación
-
-Los archivos marcados con † entran en conflicto con `superpowers` — omitidos en los modos `complement-sp` y `complement-full`.
+Para usuarios de Claude Desktop — instalación vía marketplace:
 
 ```text
-your-project/
-└── .claude/
-    ├── CLAUDE.md              # Instrucciones principales (adapte para su proyecto)
-    ├── settings.json          # Hooks, permisos
-    ├── commands/              # Comandos slash
-    │   ├── verify.md          # † omitido en complement-sp/full
-    │   ├── debug.md           # † omitido en complement-sp/full
-    │   └── ...
-    ├── prompts/               # Auditorías
-    │   ├── SECURITY_AUDIT.md
-    │   ├── PERFORMANCE_AUDIT.md
-    │   ├── CODE_REVIEW.md
-    │   ├── DESIGN_REVIEW.md
-    │   ├── MYSQL_PERFORMANCE_AUDIT.md
-    │   └── POSTGRES_PERFORMANCE_AUDIT.md
-    ├── agents/                # Subagentes
-    │   ├── code-reviewer.md   # † omitido en complement-sp/full
-    │   ├── test-writer.md
-    │   └── planner.md
-    ├── skills/                # Experiencia de frameworks
-    │   └── [framework]/SKILL.md
-    ├── rules/                 # Hechos del proyecto cargados automáticamente
-    └── scratchpad/            # Notas de trabajo
+/plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
 
----
+Guía paso a paso completa: [docs/howto/es.md](../howto/es.md).
 
-## Frameworks compatibles
+## Después de instalar
 
-| Framework | Plantilla | Skills | Detección automática |
-|-----------|-----------|--------|----------------------|
-| Laravel | ✅ | ✅ | Archivo `artisan` |
-| Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
-| Next.js | ✅ | ✅ | `next.config.*` |
-| Node.js | ✅ | ✅ | `package.json` (sin next.config) |
-| Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
-| Go | ✅ | ✅ | `go.mod` |
+| Comando            | Qué hace                                                                       |
+|--------------------|--------------------------------------------------------------------------------|
+| `/update-toolkit`  | Descarga contenido fresco del toolkit a `.claude/` preservando ediciones locales. |
+| `/update-deps`     | Abre el dashboard de dependencias (Layer 1/2/3 + MCP). Eliges qué actualizar.  |
+| `/council`         | Envía un plan a Gemini + ChatGPT para revisión independiente.                  |
+| `/learn`           | Guarda la decisión actual como regla scoped para sesiones futuras.             |
+| `/audit`           | Ejecuta una de las 7 auditorías por framework (security, performance, etc.).   |
+| `/debug`           | Depurador sistemático de 4 fases: root-cause → pattern → hypothesis → fix.     |
+| `/setup-guide`     | Regenera la guía HTML local de configuración para los MCP/componentes.         |
 
----
+Lista completa de comandos: [docs/features.md](../features.md).
 
-## Componentes
+## Arquitectura
 
-Secciones de Markdown reutilizables para componer archivos `CLAUDE.md` personalizados. Los componentes son
-activos en la raíz del repositorio — **no** se instalan en `.claude/`; refiérase a ellos por URL absoluta de GitHub.
+El toolkit v6.2 es una **capa fina** organizada en tres niveles:
 
-**Patrón de orquestación** — vea [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
-para el diseño de orquestador ligero + subagentes robustos que usan tanto Council como los flujos de trabajo GSD.
-Ayuda a cualquier comando slash personalizado a escalar más allá de una única ventana de contexto.
+- **Layer 1** — contenido del toolkit (plantillas, slash commands, componentes, skills, agentes)
+- **Layer 2** — plugins base gratuitos (Superpowers, Get Shit Done, ru-text)
+- **Layer 3** — herramientas externas opcionales (cc-safety-net, RTK, Serena, claude-context, better-model)
 
----
+Diagrama completo: [docs/architecture.md](../architecture.md).
+Para fundadores en solitario / no-desarrolladores: [docs/non-programmer-mode.md](../non-programmer-mode.md).
 
-## v6.1 Three-Layer Architecture
+## Catálogo de servidores MCP
 
-Toolkit v6.1 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
-plus optional layer-3 external tools (Serena, claude-context, better-model).
-v6.1 dropped Morph (closed-source SDK + paid SaaS) for [oraios/serena](https://github.com/oraios/serena)
-(LSP-driven, MIT, runs locally) and now AUTO-WIRES `install-hooks.sh` and
-`setup-cost-routing.sh` from `init-claude.sh`.
-Full diagram: [docs/architecture.md](../architecture.md).
-Recommended setup for non-programmer / solo-founder profile:
-[docs/non-programmer-mode.md](../non-programmer-mode.md).
+El flag `--integrations` (o `/integrations` después de la primera instalación) abre una checklist TUI con 24 servidores en 10 categorías. Eliges solo lo que tu proyecto necesita.
+
+| Categoría              | Servidores                                                                             |
+|------------------------|----------------------------------------------------------------------------------------|
+| **docs-research**      | `context7` · `firecrawl` · `notebooklm`                                                |
+| **backend**            | `aws-cloudwatch-logs` · `aws-cost-explorer` · `cloudflare` · `dbhub` · `supabase`      |
+| **payments**           | `stripe`                                                                               |
+| **email**              | `resend` · `mailgun`                                                                   |
+| **workspace**          | `calendly` · `notion`                                                                  |
+| **project-management** | `jira` · `linear` · `youtrack`                                                         |
+| **communication**      | `slack` · `telegram`                                                                   |
+| **design**             | `figma`                                                                                |
+| **dev-tools**          | `magic` · `openrouter` · `serena` · `claude-context` · `playwright`                    |
+| **monitoring**         | `sentry` · `datadog` · `posthog`                                                       |
+
+Cada servidor se instala con elección de scope por fila (`[U]` user / `[P]` project / `[L]` local). El scope project escribe credenciales en `<project>/.env` (modo 0600) con auto-`.gitignore`; `.mcp.json` solo lleva la forma `${VAR}`. Más: [docs/INTEGRATIONS.md](../INTEGRATIONS.md).
+
+## Licencia
+
+MIT — ver [LICENSE](../../LICENSE).
