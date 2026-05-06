@@ -853,6 +853,17 @@ if [[ "$MCPS" -eq 1 ]]; then
         unset _last_mcp_state
     done
 
+    # Bubble per-item status up to the parent install.sh (if invoked under
+    # one) so the top-level summary can render an indented breakdown under
+    # the `mcp-servers` parent row instead of a single rolled-up "installed ✓".
+    if [[ -n "${TK_CHILD_STATE_DIR:-}" && -d "${TK_CHILD_STATE_DIR}" ]]; then
+        {
+            for ((j=0; j<${#COMPONENT_NAMES[@]}; j++)); do
+                printf '%s\t%s\n' "${COMPONENT_NAMES[$j]}" "${COMPONENT_STATUS[$j]:-unknown}"
+            done
+        } > "${TK_CHILD_STATE_DIR}/mcp-servers.tsv" 2>/dev/null || true
+    fi
+
     # Print MCP install summary.
     echo ""
     echo -e "${CYAN}MCP install summary:${NC}"
@@ -1168,6 +1179,16 @@ if [[ "$SKILLS" -eq 1 ]]; then
     # 2026-05-01: bright green right-aligned "installed ✓" rows were
     # too loud for a 22-row catalog. Compact left-aligned format with
     # subtle green checkmark reads as a list, not a billboard.
+    # Bubble per-skill status up to parent install.sh (see same block in --mcps
+    # mode for rationale). Parent reads this TSV and prints indented breakdown.
+    if [[ -n "${TK_CHILD_STATE_DIR:-}" && -d "${TK_CHILD_STATE_DIR}" ]]; then
+        {
+            for ((j=0; j<${#COMPONENT_NAMES[@]}; j++)); do
+                printf '%s\t%s\n' "${COMPONENT_NAMES[$j]}" "${COMPONENT_STATUS[$j]:-unknown}"
+            done
+        } > "${TK_CHILD_STATE_DIR}/skills.tsv" 2>/dev/null || true
+    fi
+
     echo ""
     echo -e "${CYAN}Marketplace skills install summary (~/.claude/skills/):${NC}"
     for ((i=0; i<${#COMPONENT_NAMES[@]}; i++)); do
@@ -1234,7 +1255,6 @@ TUI_GROUP_NAMES=(
     "Core"
     "Optional"
     "Bridges"
-    "Marketplace"
 )
 # shellcheck disable=SC2034
 TUI_GROUP_DESCS=(
@@ -1242,7 +1262,6 @@ TUI_GROUP_DESCS=(
     "The toolkit itself — commands, agents, prompts, skills, rules for the project. Required."
     "Add-ons: security rules, token saver, statusline, multi-AI council. Pick what you want."
     "Sync project CLAUDE.md → GEMINI.md / AGENTS.md so other AI CLIs read the same context."
-    "Curated catalogs — pick MCP servers and skills to install. Opens a sub-picker on Submit."
 )
 TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_SEC" "$IS_RTK" "$IS_SL")
 # TUI_REQUIRED: 1 = mandatory (always pre-checked, immutable, dim-rendered).
@@ -1298,22 +1317,12 @@ if [[ "$NO_BRIDGES" != "true" ]]; then
     fi
 fi
 
-# Marketplace pickers — entry rows for the MCP catalog and Skills catalog.
-# Checking these and pressing Submit re-invokes install.sh in --mcps / --skills
-# mode so the user sees the dedicated sub-TUI for that catalog. Embedding the
-# 9-MCP + 22-skill rows directly in the main TUI would push the row count past
-# 30 and crowd the screen — sub-pages are the cleaner UX.
-TUI_LABELS+=("skills")
-TUI_GROUPS+=("Marketplace")
-TUI_INSTALLED+=("0")
-TUI_REQUIRED+=("0")
-TUI_DESCS+=("Pick skills (22 in catalog: firecrawl, notebooklm, shadcn, ...). Sub-picker opens after main install.")
-
-TUI_LABELS+=("mcp-servers")
-TUI_GROUPS+=("Marketplace")
-TUI_INSTALLED+=("0")
-TUI_REQUIRED+=("0")
-TUI_DESCS+=("Pick MCP servers (9 in catalog: Sentry, Playwright, Context7, ...). Sub-picker opens after main install.")
+# Marketplace catalog pickers (skills, mcp-servers) are NOT shown in the main TUI
+# — the dedicated sub-pickers always run after main TUI Submit (interactive mode
+# only) and the user picks individual items there. We append the labels to the
+# parallel arrays AFTER tui_checklist returns so the dispatch loop processes
+# them with TUI_RESULTS=1. In --yes / headless mode these are NOT appended,
+# preserving the prior CI-safe behavior (no nested TUI in CI).
 
 # Dispatch name maps 1:1 to TK_DISPATCH_ORDER.
 
@@ -1626,17 +1635,12 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
             _redo_main_tui=0
         fi
 
-        # Re-derive sub-picker needs from current main-TUI state.
-        _need_mcp_pre=0
-        _need_skills_pre=0
-        _ux_flow_count=${#TUI_LABELS[@]}
-        for ((_ux_i=0; _ux_i<_ux_flow_count; _ux_i++)); do
-            case "${TUI_LABELS[$_ux_i]}" in
-                mcp-servers) [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_mcp_pre=1 ;;
-                skills)      [[ "${TUI_RESULTS[$_ux_i]:-0}" -eq 1 ]] && _need_skills_pre=1 ;;
-            esac
-        done
-        unset _ux_flow_count _ux_i
+        # Sub-pickers always run in interactive mode — the catalog rows
+        # were removed from main TUI per user request 2026-05-06 ("redundant
+        # info, the actual choice happens in next step anyway"). Sub-picker
+        # itself is the opt-out: Submit empty = skip catalog entirely.
+        _need_mcp_pre=1
+        _need_skills_pre=1
 
         # Inner state machine: skills → mcp → done. Back-jumps stay in this
         # inner loop unless they need the main TUI (skills→main, or
@@ -1884,6 +1888,40 @@ COMPONENT_NAMES=()
 # D-28 — per-component stderr tail buffer; populated only when dispatcher fails.
 # Tmpfile paths are added to CLEANUP_PATHS so the EXIT trap removes them.
 COMPONENT_STDERR_TAIL=()
+# Child-state directory (user feedback 2026-05-06: "want to see which MCP
+# servers actually got installed, not just the parent rolled-up row").
+# Sub-installers (--mcps / --skills) write TAB-separated `name<TAB>status`
+# lines to ${TK_CHILD_STATE_DIR}/${component}.tsv. Parent summary loop reads
+# the file and renders an indented breakdown under the parent row.
+TK_CHILD_STATE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/tk-children.XXXXXX") || TK_CHILD_STATE_DIR=""
+# CLEANUP_PATHS uses `rm -f` (file only); register dir cleanup separately.
+if [[ -n "$TK_CHILD_STATE_DIR" ]]; then
+    trap '[[ -d "$TK_CHILD_STATE_DIR" ]] && rm -rf "$TK_CHILD_STATE_DIR"; run_cleanup' EXIT
+fi
+export TK_CHILD_STATE_DIR
+
+# Append catalog labels (skills, mcp-servers) to parallel arrays in interactive
+# mode only — they are NOT shown in the main TUI, but the dispatch loop must
+# still process them when sub-pickers populated TK_*_PRE_SELECTED. In --yes /
+# headless mode (TK_TUI_CONFIRMED unset) we skip the append, preserving the
+# prior CI-safe behavior of NOT installing catalog items unattended.
+if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
+    TUI_LABELS+=("skills")
+    TUI_GROUPS+=("Catalogs")
+    TUI_INSTALLED+=("0")
+    TUI_REQUIRED+=("0")
+    TUI_DESCS+=("(skills sub-picker)")
+    TUI_RESULTS+=("1")
+    TUI_REINSTALLABLE+=("0")
+
+    TUI_LABELS+=("mcp-servers")
+    TUI_GROUPS+=("Catalogs")
+    TUI_INSTALLED+=("0")
+    TUI_REQUIRED+=("0")
+    TUI_DESCS+=("(mcp-servers sub-picker)")
+    TUI_RESULTS+=("1")
+    TUI_REINSTALLABLE+=("0")
+fi
 
 _disp_count=${#TUI_LABELS[@]}
 # Audit M-Install: TK_DISPATCH_ORDER comes from dispatch.sh which we control,
@@ -2074,6 +2112,34 @@ for ((i=0; i<_sum_count; i++)); do
                     printf '      %s\n' "$tail_line"
                 done <<< "$local_tail"
             fi
+            ;;
+    esac
+    # User feedback 2026-05-06: expand the rolled-up `mcp-servers` and `skills`
+    # parent rows with their per-item breakdown (sub-installer wrote a TSV file
+    # under TK_CHILD_STATE_DIR — see the bubble-up blocks in --mcps / --skills).
+    case "$local_name" in
+        mcp-servers|skills)
+            _child_tsv="${TK_CHILD_STATE_DIR:-}/${local_name}.tsv"
+            if [[ -n "${TK_CHILD_STATE_DIR:-}" && -f "$_child_tsv" ]]; then
+                while IFS=$'\t' read -r _child_name _child_state; do
+                    [[ -z "$_child_name" ]] && continue
+                    case "$_child_state" in
+                        "installed ✓"|installed|"reinstalled ↻")
+                            printf '  %b└ %-26s %b%s%b\n' "${GREEN:-}" "$_child_name" "${GREEN:-}" "$_child_state" "${NC:-}"
+                            ;;
+                        failed*)
+                            printf '  %b└ %-26s %b%s%b\n' "${RED:-}" "$_child_name" "${RED:-}" "$_child_state" "${NC:-}"
+                            ;;
+                        skipped*)
+                            printf '  %b└ %-26s %s%b\n' "${YELLOW:-}" "$_child_name" "$_child_state" "${NC:-}"
+                            ;;
+                        *)
+                            printf '  └ %-26s %s\n' "$_child_name" "$_child_state"
+                            ;;
+                    esac
+                done < "$_child_tsv"
+            fi
+            unset _child_tsv _child_name _child_state
             ;;
     esac
 done

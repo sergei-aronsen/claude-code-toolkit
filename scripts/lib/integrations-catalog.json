@@ -260,7 +260,7 @@
           "claude-code",
           "--project-from-cwd"
         ],
-        "description": "LSP-driven symbol-aware code retrieval, editing and refactoring (oraios/serena, MIT, 23.9k stars). Default Layer-3 code-search and refactor MCP. Prerequisites: install uv (https://docs.astral.sh/uv/getting-started/installation/), then `uv tool install -p 3.13 serena-agent@latest --prerelease=allow` and `serena init`. v6.1 recommended.",
+        "description": "LSP-driven symbol-aware code search/edit/refactor (MIT, 23.9k★). v6.1 default. Needs `uv` + `uv tool install -p 3.13 serena-agent@latest --prerelease=allow`.",
         "requires_oauth": false,
         "default_scope": "user"
       },
