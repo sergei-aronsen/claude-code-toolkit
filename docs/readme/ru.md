@@ -203,10 +203,13 @@ your-project/
 
 ---
 
-## v6.0 Three-Layer Architecture
+## v6.1 Three-Layer Architecture
 
-Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
-plus optional layer-3 external tools (Morph, claude-context, better-model).
+Toolkit v6.1 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Serena, claude-context, better-model).
+v6.1 dropped Morph (closed-source SDK + paid SaaS) for [oraios/serena](https://github.com/oraios/serena)
+(LSP-driven, MIT, runs locally) and now AUTO-WIRES `install-hooks.sh` and
+`setup-cost-routing.sh` from `init-claude.sh`.
 Full diagram: [docs/architecture.md](../architecture.md).
 Recommended setup for non-programmer / solo-founder profile:
 [docs/non-programmer-mode.md](../non-programmer-mode.md).
