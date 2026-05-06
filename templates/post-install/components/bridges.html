@@ -1,0 +1,16 @@
+<section id="bridges">
+  <h2><span class="section-icon">🌉</span> Multi-CLI Bridges <span class="section-tag done">no setup needed</span></h2>
+  <p class="section-subtitle">Auto-sync project <code>CLAUDE.md</code> → <code>GEMINI.md</code> (Gemini CLI) and <code>AGENTS.md</code> (OpenAI Codex CLI). Drift-detected on every install.</p>
+
+  <h3>Verify</h3>
+  <p>The bridges write <code>GEMINI.md</code> / <code>AGENTS.md</code> next to your <code>CLAUDE.md</code>. Open them in your project root and check the header line:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>head -3 GEMINI.md AGENTS.md 2&gt;/dev/null</code></pre></div>
+
+  <h3>Re-sync after a CLAUDE.md edit</h3>
+  <p>The next install / <code>/update-toolkit</code> run picks up changes automatically. To force-refresh now:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>bash &lt;(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --no-banner --bridges-only</code></pre></div>
+
+  <div class="callout">
+    <strong>Symlink users:</strong> if you symlinked <code>GEMINI.md</code> / <code>AGENTS.md</code> to <code>CLAUDE.md</code>, the bridges defensively skip — they will not overwrite your symlink. Remove the symlink to enable bridge-managed copies.
+  </div>
+</section>

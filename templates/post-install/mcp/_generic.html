@@ -1,0 +1,13 @@
+<section id="mcp-{{NAME}}">
+  <h2><span class="section-icon">🔌</span> {{DISPLAY_NAME}} <span class="section-tag">MCP</span></h2>
+  <p class="section-subtitle">{{DESCRIPTION}}</p>
+
+  <h3>What you need to configure</h3>
+  <ul>{{ENV_LIST}}</ul>
+  <p>{{OAUTH_NOTE}}</p>
+
+  <h3>Verify it's wired up</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>claude mcp list | grep {{NAME}}</code></pre></div>
+
+  <p>For per-MCP setup details, see <a href="{{DOC_URL}}" target="_blank" rel="noopener">official docs ↗</a>.</p>
+</section>

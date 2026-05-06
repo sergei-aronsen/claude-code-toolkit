@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Code Toolkit — Setup Guide</title>
+<style>{{STYLES}}</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <h1>🧰 Setup Guide</h1>
+    <div class="meta">
+      <span class="badge">Toolkit v{{VERSION}}</span>
+      <span class="meta-sep">·</span>
+      <span>Generated {{GENERATED_AT}}</span>
+      <span class="meta-sep">·</span>
+      <span>Host: <code>{{HOSTNAME}}</code></span>
+    </div>
+    <p class="lead">Below are setup steps for every component you installed. Click <kbd>📋</kbd> next to any code block to copy.</p>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc">
+    <div class="toc-header">Contents</div>
+    <ul>{{TOC}}</ul>
+    <div class="toc-footer">
+      <a href="https://github.com/sergei-aronsen/claude-code-toolkit" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </nav>
+
+  <main class="sections">
+    {{SECTIONS}}
+  </main>
+</div>
+
+<footer>
+  <p>Regenerate any time: <code>bash ~/.claude/post-install-regenerate.sh</code> (or re-run the toolkit installer).</p>
+</footer>
+
+<script>{{SCRIPT}}</script>
+</body>
+</html>

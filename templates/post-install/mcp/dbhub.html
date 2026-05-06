@@ -1,0 +1,25 @@
+<section id="mcp-dbhub">
+  <h2><span class="section-icon">🔌</span> DBHub <span class="section-tag required">DSN required</span></h2>
+  <p class="section-subtitle">Multi-DB MCP — Postgres / MySQL / MariaDB / MSSQL / SQLite. <a href="https://github.com/bytebase/dbhub" target="_blank" rel="noopener">repo ↗</a></p>
+
+  <div class="callout danger">
+    <strong>READ-ONLY DB USER MANDATORY.</strong> The <code>--readonly</code> flag is bypassable (see <a href="https://github.com/bytebase/dbhub/issues/271" target="_blank" rel="noopener">issue #271</a>). Always create a dedicated read-only Postgres / MySQL user for the DSN.
+  </div>
+
+  <h3>1. Create a read-only DB user</h3>
+  <p>Postgres example:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>CREATE USER ai_reader WITH PASSWORD 'long-random';
+GRANT CONNECT ON DATABASE my_app TO ai_reader;
+GRANT USAGE ON SCHEMA public TO ai_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO ai_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ai_reader;</code></pre></div>
+
+  <h3>2. Set the DSN env var</h3>
+  <p>For project-scope (default — credential lands in <code>.env</code>):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo 'DSN=postgresql://ai_reader:long-random@localhost:5432/my_app' &gt;&gt; .env
+echo '.env' &gt;&gt; .gitignore</code></pre></div>
+
+  <h3>3. Test</h3>
+  <p>Restart Claude Code in the project folder, then ask:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>list all tables in the public schema</code></pre></div>
+</section>

@@ -1,0 +1,24 @@
+<section id="mcp-stripe">
+  <h2><span class="section-icon">🔌</span> Stripe <span class="section-tag required">API key required</span></h2>
+  <p class="section-subtitle">Payments + subscriptions — query, create test customers, debug charges. <a href="https://github.com/stripe/agent-toolkit" target="_blank" rel="noopener">repo ↗</a></p>
+
+  <h3>1. Get a restricted API key</h3>
+  <ol>
+    <li>Open <a href="https://dashboard.stripe.com/apikeys/create" target="_blank" rel="noopener">dashboard.stripe.com/apikeys/create</a>.</li>
+    <li>Pick <strong>Restricted key</strong> (NOT the secret key).</li>
+    <li>Grant only the resources you want the AI to read/write — start with read-only on <code>customers</code>, <code>subscriptions</code>, <code>charges</code>.</li>
+    <li>Use the <strong>test-mode</strong> key first; switch to live only after you trust the prompts.</li>
+  </ol>
+
+  <h3>2. Set the env var</h3>
+  <p>Project-scope (default — lands in <code>.env</code>):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo 'STRIPE_SECRET_KEY=rk_test_…' &gt;&gt; .env
+echo '.env' &gt;&gt; .gitignore</code></pre></div>
+
+  <h3>3. Test</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>list the last 10 customers in test mode</code></pre></div>
+
+  <div class="callout danger">
+    <strong>Never use the unrestricted secret key</strong> (<code>sk_live_…</code>) with an AI agent. Restricted keys can be revoked granularly; secret keys can move money.
+  </div>
+</section>

@@ -1,0 +1,32 @@
+<section id="claude-memo">
+  <h2><span class="section-icon">🧠</span> claude-memo <span class="section-tag">component</span></h2>
+  <p class="section-subtitle">Persistent engineering memory — vault + 4 hooks. <a href="https://github.com/sergei-aronsen/claude-memo" target="_blank" rel="noopener">repo ↗</a></p>
+
+  <h3>1. Reload your shell</h3>
+  <p>The installer added <code>MEMO_VAULT_PATH</code> to your shell rc. Pick it up in the current terminal:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>source ~/.zshrc   # or open a new terminal</code></pre></div>
+
+  <h3>2. Optional: enable auto-classification (~$0.002 per session)</h3>
+  <p>Without this, manual <code>/memo</code> still works for free. With it, every session is auto-summarised by Claude Haiku and saved as a structured note.</p>
+  <p>Get an API key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a>, then export:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>export ANTHROPIC_API_KEY=sk-ant-…</code></pre></div>
+  <p>Persist it in your shell rc:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo 'export ANTHROPIC_API_KEY=sk-ant-…' &gt;&gt; ~/.zshrc
+source ~/.zshrc</code></pre></div>
+
+  <h3>3. Open the vault in Obsidian (optional, recommended)</h3>
+  <ol>
+    <li>Install <a href="https://obsidian.md/" target="_blank" rel="noopener">Obsidian</a> (free).</li>
+    <li>Launch Obsidian → <strong>Open folder as vault</strong>.</li>
+    <li>Pick <code>~/memo-vault</code> and click <strong>Open</strong>.</li>
+    <li>Enable the <strong>Graph view</strong> for [[wikilink]] navigation.</li>
+  </ol>
+
+  <h3>4. Test it</h3>
+  <p>Restart Claude Code in any project directory. The SessionStart hook injects relevant vault notes. Save a new note from inside Claude Code:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>/memo</code></pre></div>
+
+  <div class="callout">
+    <strong>Disable auto-classification later?</strong> Just <code>unset ANTHROPIC_API_KEY</code> (and remove from rc). All hooks stay; only the Haiku call is gated by the env var.
+  </div>
+</section>

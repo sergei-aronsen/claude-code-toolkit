@@ -1,0 +1,19 @@
+<section id="mcp-datadog">
+  <h2><span class="section-icon">🔌</span> Datadog <span class="section-tag">OAuth</span></h2>
+  <p class="section-subtitle">APM + infra metrics + logs + dashboards + incidents. <a href="https://docs.datadoghq.com/bits_ai/mcp_server/" target="_blank" rel="noopener">docs ↗</a></p>
+
+  <h3>1. EU users — edit the URL</h3>
+  <p>Default URL is the US region. If your Datadog account lives on <code>datadoghq.eu</code>, edit <code>~/.claude.json</code> and change the URL:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>jq '.mcpServers.datadog.url = "https://app.datadoghq.eu/api/v2/mcp/sse"' ~/.claude.json &gt; ~/.claude.json.tmp \
+  &amp;&amp; mv ~/.claude.json.tmp ~/.claude.json</code></pre></div>
+
+  <h3>2. Authenticate</h3>
+  <p>Restart Claude Code in any project. The first MCP call opens a browser tab — log into Datadog and approve the OAuth scope. The token is stored automatically.</p>
+
+  <h3>3. Test</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>show me the p99 latency of the api-gateway service in the last hour</code></pre></div>
+
+  <div class="callout warn">
+    <strong>Cost discipline.</strong> Datadog billing is per-metric + per-host. Heavy use of the MCP from an AI agent can blow your monthly budget — set custom-metric quotas in the Datadog UI before letting Claude loose.
+  </div>
+</section>
