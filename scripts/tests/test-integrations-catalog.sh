@@ -4,7 +4,7 @@
 # Locks the v4.9 contract for scripts/lib/integrations-catalog.json:
 #   - schema_version is the integer 2 (Phase 32 CAT-01 schema)
 #   - categories[] is the canonical 10-list (Phase 33 D-04 final order)
-#   - components.mcp has 21 entries (Phase 40 INT-13 added Calendly:
+#   - components.mcp has 23 entries (Phase 40 INT-13 added Calendly; v6.0 INT-15 added morph + claude-context:
 #     20 baseline + 1 = 21. Phase 33 math note: 21 - 1 (DROP-01
 #     sequential-thinking) + 0 = 20; Phase 40 INT-13 +1 = 21)
 #   - components.cli has 8 entries
@@ -112,15 +112,16 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A5 — components.mcp has 21 entries
-# (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21.)
+# A5 — components.mcp has 23 entries
+# (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21;
+#  v6.0 INT-15 added morph-fast-tools + claude-context = 23.)
 # ─────────────────────────────────────────────────
-_pyq "A5: components.mcp has exactly 21 entries" '
+_pyq "A5: components.mcp has exactly 23 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
-if isinstance(mcp, dict) and len(mcp) == 21:
+if isinstance(mcp, dict) and len(mcp) == 23:
     print("OK")
 else:
-    print("components.mcp count is " + str(len(mcp)) + ", expected 21")
+    print("components.mcp count is " + str(len(mcp)) + ", expected 23")
 '
 
 # ─────────────────────────────────────────────────
