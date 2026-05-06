@@ -1,262 +1,106 @@
 # Claude Code Toolkit
 
-Comprehensive instructions for AI-assisted development with Claude Code.
-
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-6.2.0-blue.svg)](CHANGELOG.md)
 
 **[English](README.md)** | **[Русский](docs/readme/ru.md)** | **[Español](docs/readme/es.md)** | **[Deutsch](docs/readme/de.md)** | **[Français](docs/readme/fr.md)** | **[中文](docs/readme/zh.md)** | **[日本語](docs/readme/ja.md)** | **[Português](docs/readme/pt.md)** | **[한국어](docs/readme/ko.md)**
 
-> Read full [step-by-step installation guide](docs/howto/en.md) first.
-
 ---
 
-## Who Is This For
+## What this is
 
-**Solo developers** building products with [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+A thin overlay that stacks on top of [**Superpowers**](https://github.com/obra/superpowers) (brainstorming, subagents, TDD, debugging) and [**Get Shit Done**](https://github.com/gsd-build/get-shit-done) (Spec → Plan → Execute) and closes the gaps those plugins leave open for solo product builders.
 
-Supported stacks: **Laravel/PHP**, **Ruby on Rails**, **Next.js**, **Node.js**, **Python**, **Go**.
+**For:** solo founders and one-person engineering teams shipping real products with [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
-**30 slash commands** | **7 audits** | **29 guides** | See [full list of commands, templates, audits, and components](docs/features.md#slash-commands-30-total).
+**Stacks supported:** Laravel · Rails · Next.js · Node.js · Python · Go.
 
----
+## Gaps it closes
 
-## Quick Start
+| Gap                                  | What the toolkit adds                                                                                                                                |
+|--------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Multi-AI plan validation**         | `/council` — sends plans to Gemini 3 Pro + GPT 5.2 in parallel for independent review (persona overlays, content-hash cache, cost gate, ru locale).  |
+| **Framework-specific context**       | 7 ready-made `CLAUDE.md` templates (base + 6 stacks) auto-detected from `artisan` / `next.config` / `go.mod` / `pyproject.toml` / `package.json`.    |
+| **Production safety net**            | `cc-safety-net` blocks destructive commands (`rm -rf /`, `git reset --hard`, etc.) at PreToolUse — even through obfuscation. Wired into the installer. |
+| **Token cost discipline**            | RTK rewrites verbose dev-command output (`git status`, test runners) to cut 60-90% tokens. Combined hook with `cc-safety-net` so neither blocks the other. |
+| **Cost routing**                     | `better-model` routes simple tasks to cheaper models. Auto-installed and wired into the lifecycle.                                                    |
+| **Symbol-aware code retrieval**      | [Serena](https://github.com/oraios/serena) (LSP-driven, MIT, local) + ripgrep + claude-context (semantic vector). The default Layer-3 search stack.   |
+| **Multi-CLI bridges**                | Auto-sync `CLAUDE.md` to Gemini CLI's `GEMINI.md` and OpenAI Codex's `AGENTS.md`. Drift-detected on every install.                                    |
+| **Integrations catalog**             | TUI installer for 23 MCP servers + 8 companion CLIs across 10 categories (Backend / Payments / Workspace / Project Management / …). Per-row scope.   |
+| **Self-learning rules**              | `/learn` saves recurring fixes as scoped rule files with `globs:` — auto-loaded only for relevant files. No prompt bloat.                            |
+| **Knowledge persistence**            | Project facts in `.claude/rules/` — auto-loaded each session, committed to git, follow you across machines.                                          |
+| **Rate-limit visibility (Pro/Max)**  | Statusline shows session and weekly usage so you know when you're about to hit the wall.                                                              |
+| **Dependency dashboard (v6.2)**      | `/update-deps` — interactive TUI listing every tracked dep across all 3 layers with installed-vs-latest version. You pick what to upgrade.            |
 
-### 1. Global Setup (once)
+The unique value is the curation. Everything is opt-in via TUI checkbox at install time — nothing is forced on you.
 
-#### a) Security Pack
+## Install
 
-Defense-in-depth security setup. See [components/security-hardening.md](components/security-hardening.md) for the full guide.
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-security.sh)
-```
-
-#### b) RTK — Token Optimizer (recommended)
-
-[RTK](https://github.com/rtk-ai/rtk) reduces token consumption by 60-90% on dev commands (`git status`, `cargo test`, etc.).
-
-```bash
-brew install rtk
-rtk init -g
-```
-
-> **Note:** If RTK and cc-safety-net are separate hooks, their results conflict.
-> The Security Pack (step 1a) already configures a combined hook that runs both sequentially.
-> See [components/security-hardening.md](components/security-hardening.md) for details.
-
-#### c) Rate Limit Statusline (Claude Max / Pro, optional)
-
-Shows session/weekly limits in the Claude Code status bar. More: [components/rate-limit-statusline.md](components/rate-limit-statusline.md)
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install-statusline.sh)
-```
-
-## Install Modes
-
-TK auto-detects whether `superpowers` (obra) and `get-shit-done` (gsd-build) are installed and
-chooses one of four modes: `standalone`, `complement-sp`, `complement-gsd`, or `complement-full`.
-Each framework template documents its required base plugins in `## Required Base Plugins` — see
-e.g. [templates/base/CLAUDE.md](templates/base/CLAUDE.md). For the full 12-cell install matrix
-and step-by-step guidance, see [docs/INSTALL.md](docs/INSTALL.md).
-
-## v6.1 Three-Layer Architecture
-
-Toolkit v6.1 positions itself as a **thin overlay** on Anthropic's plugin ecosystem
-plus optional external tools. See [docs/architecture.md](docs/architecture.md) for
-the full diagram. For solo founders / non-developer product builders, see
-[docs/non-programmer-mode.md](docs/non-programmer-mode.md) — recommended setup
-of advisory hooks, cost routing, and reality-check before ship.
-
-v6.1 dropped `morph-fast-tools` (closed-source SDK + paid SaaS, no public privacy
-policy) in favour of [oraios/serena](https://github.com/oraios/serena) — symbol-aware
-code retrieval and editing via LSP, MIT, runs locally. The default Layer-3 stack:
-Serena (symbolic) + ripgrep (textual) + claude-context (semantic vector search) +
-better-model (cost routing). v6.1 also wired `install-hooks.sh` and
-`setup-cost-routing.sh` into `init-claude.sh` so they no longer need a separate
-manual run.
-
-### Interactive install (recommended)
-
-The unified installer presents a TUI checklist with all components (Toolkit, Security, RTK,
-Statusline, Council, Bridges) and lets you opt in to each. Run in your regular terminal (not
-inside Claude Code!) in the project folder:
+One command. Run in your project folder, in a regular terminal (**not** inside Claude Code):
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh)
 ```
 
-Then start Claude Code in that project directory. For future updates use `/update-toolkit`.
+The installer presents a TUI checklist (Toolkit, Security, RTK, Statusline, Council, Bridges, Integrations) and auto-detects whether `superpowers` and `get-shit-done` are already installed — if so, it skips the files those plugins already provide and installs only the unique ~47 toolkit contributions.
 
-### Complement install
-
-You have one or both of `superpowers` (obra) and `get-shit-done` (gsd-build) installed. The
-installer auto-detects them and skips the 7 files that would duplicate SP functionality,
-keeping the ~47 unique TK contributions (Council, framework CLAUDE.md templates, components
-library, cheatsheets, framework-specific skills). Use the same install command — TK
-auto-selects the `complement-*` mode. To override, pass `--mode standalone` (or any other
-mode name):
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/install.sh) --yes --mode complement-full
-```
-
-> **Mode behavior today.** `manifest.json` currently catalogues 7 SP overlaps and 0 GSD
-> overlaps. `complement-sp` and `complement-full` skip the same 7 files; `complement-gsd`
-> skips none — i.e. it is functionally equivalent to `standalone` until GSD-specific
-> conflicts are catalogued. The 4-mode UX is preserved so the manifest can mark GSD
-> overlaps incrementally without an installer rewrite.
-
-### Direct install (scripted / CI)
-
-For non-interactive contexts, `init-claude.sh` is still supported and runs the toolkit
-install only (no Security / Statusline / Council prompts):
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/init-claude.sh)
-```
-
-### Install via marketplace
-
-For Claude Desktop users, the toolkit is available as a Claude Code plugin
-marketplace listing. From the Desktop Code tab, use the slash command:
+For Claude Desktop users, install via the marketplace instead:
 
 ```text
 /plugin marketplace add sergei-aronsen/claude-code-toolkit
 ```
 
-Or from a terminal with the `claude` CLI:
+Full step-by-step walkthrough (with screenshots): [docs/howto/en.md](docs/howto/en.md).
+
+## After install
+
+| Command | What it does |
+|---------|--------------|
+| `/update-toolkit`  | Pull latest toolkit content into `.claude/`, preserving your local edits. |
+| `/update-deps`     | Open the dependency dashboard (Layer 1/2/3 + MCPs). Pick what to upgrade. |
+| `/council`         | Send a plan to Gemini + ChatGPT for independent review.                     |
+| `/learn`           | Save the current solution as a scoped rule for future sessions.             |
+| `/audit`           | Run one of 7 framework-aware audits (security, performance, etc.).          |
+| `/debug`           | 4-phase systematic debugger: root-cause → pattern → hypothesis → fix.       |
+
+Full command list: [docs/features.md](docs/features.md).
+
+## Architecture
+
+Toolkit v6.2 is a **thin overlay** organized in three layers:
+
+- **Layer 1** — toolkit content (templates, slash commands, components, skills, agents)
+- **Layer 2** — free base plugins (Superpowers, Get Shit Done, ru-text)
+- **Layer 3** — optional external tools (cc-safety-net, RTK, Serena, claude-context, better-model)
+
+Full diagram: [docs/architecture.md](docs/architecture.md).
+For solo founders / non-developer product builders: [docs/non-programmer-mode.md](docs/non-programmer-mode.md).
+
+## Migrating from v3.x or earlier
+
+If you have an older toolkit install pre-dating Superpowers / GSD support, run the migration helper to remove duplicates with per-file confirmation and a full backup:
 
 ```bash
-claude plugin marketplace add sergei-aronsen/claude-code-toolkit
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/migrate-to-complement.sh)
 ```
 
-You will get three sub-plugins:
+Full migration matrix: [docs/INSTALL.md](docs/INSTALL.md).
 
-- `tk-skills` — 22 curated skills (Desktop-compatible)
-- `tk-commands` — 29 slash commands (terminal Code only)
-- `tk-framework-rules` — 7 framework CLAUDE.md fragments (terminal Code only)
+## Recommended MCP servers
 
-The marketplace install is **equivalent** to the curl-bash install for terminal
-Code users. For Desktop users, marketplace is the **only** install path — see
-[docs/CLAUDE_DESKTOP.md](docs/CLAUDE_DESKTOP.md) for the full capability matrix.
+The integrations catalog (`/integrations` after install) covers 23 servers. Minimum baseline:
 
-### Upgrading from v3.x
+| Server                  | Purpose                                       |
+|-------------------------|-----------------------------------------------|
+| `context7`              | Always-fresh library docs                     |
+| `playwright`            | Browser automation, UI testing                |
+| `sequential-thinking`   | Step-by-step problem solving                  |
+| `sentry`                | Error monitoring                              |
+| `dbhub` (per-project)   | Universal DB access — **read-only user only** |
 
-v3.x users who installed SP or GSD after TK should run `scripts/migrate-to-complement.sh` to
-remove duplicate files with per-file confirmation and a full pre-migration backup. See
-[docs/INSTALL.md](docs/INSTALL.md) for the full 12-cell matrix and step-by-step guidance.
+> **Security note on `dbhub`** — always connect with a read-only database user. Do not rely on DBHub's app-level `--readonly` flag ([known bypasses](https://github.com/bytebase/dbhub/issues/271)). Per-project credentials go in `.claude/settings.local.json` (gitignored).
 
-> **Important:** The project template is for `project/.claude/CLAUDE.md` only. Do not copy it
-> to `~/.claude/CLAUDE.md` — that file should contain only global security rules and personal
-> preferences (under 50 lines). See [components/claude-md-guide.md](components/claude-md-guide.md)
-> for details.
+## License
 
----
-
-## Killer Features
-
-| Feature | Description |
-|---------|-------------|
-| **Self-Learning** | `/learn` saves solutions as scoped rule files with `globs:` — auto-loaded only for relevant files |
-| **Auto-Activation Hooks** | Hook intercepts prompts, scores context (keywords, intent, file paths), recommends relevant skills |
-| **Knowledge Persistence** | Project facts in `.claude/rules/` — auto-loaded every session, committed to git, available on any machine |
-| **Systematic Debugging** | `/debug` enforces 4 phases: root cause → pattern → hypothesis → fix. No guessing |
-| **Production Safety** | `/deploy` with pre/post checks, `/fix-prod` for hotfixes, incremental deploys, worker safety |
-| **Supreme Council** | `/council` (global) sends plans to Gemini + ChatGPT for independent review with persona overlays, content-hash cache, cost gate, OpenRouter fallback, ru locale, and `--format json` output. Deep reference: [`docs/COUNCIL.md`](docs/COUNCIL.md) |
-| **Structured Workflow** | 3 mandatory phases: RESEARCH (read-only) → PLAN (scratchpad) → EXECUTE (after confirmation) |
-| **Multi-CLI Bridges** | Auto-sync `CLAUDE.md` to Gemini CLI's `GEMINI.md` and OpenAI Codex's `AGENTS.md`. Drift-detected, opt-out via `--no-bridges`. See [docs/BRIDGES.md](docs/BRIDGES.md) |
-| **Integrations Catalog** | `--integrations` opens a TUI for 21 MCP servers + 8 companion CLIs across 10 categories (Backend, Payments, Workspace, Project Management, etc.). Per-component install with `--mcp-only` / `--cli-only`. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) |
-| **Per-MCP Scope (v5.0)** | Per-row scope toggle in the integrations TUI: `[U]` user / `[P]` project / `[L]` local. Project-scope writes secrets to `<project>/.env` (mode 0600) with auto-`.gitignore` guard; `.mcp.json` carries only `${VAR}` substitution form. `--mcp-scope=<scope>` for non-interactive force-set. See [docs/INTEGRATIONS.md → Per-MCP scope](docs/INTEGRATIONS.md#per-mcp-scope) |
-
-See [detailed descriptions and examples](docs/features.md).
-
----
-
-## MCP Servers (recommended!)
-
-### Global (all projects)
-
-| Server | Purpose |
-|--------|---------|
-| `context7` | Library documentation |
-| `playwright` | Browser automation, UI testing |
-| `sequential-thinking` | Step-by-step problem solving |
-| `sentry` | Error monitoring and issue investigation |
-
-```bash
-claude mcp add -s user context7 -- npx -y @upstash/context7-mcp
-claude mcp add -s user playwright -- npx @playwright/mcp@latest --browser chromium
-claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
-claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
-```
-
-### Per-project (credentials)
-
-| Server | Purpose |
-|--------|---------|
-| `dbhub` | Universal database access (PostgreSQL, MySQL, MariaDB, SQL Server, SQLite) |
-
-```bash
-claude mcp add dbhub -- npx -y @bytebase/dbhub --dsn "postgresql://user:pass@localhost:5432/dbname"
-```
-
-> **Security:** Always use a **read-only database user** — do not rely on DBHub's app-level `--readonly` flag ([known bypasses](https://github.com/bytebase/dbhub/issues/271)). Per-project servers go to `.claude/settings.local.json` (gitignored, safe for credentials). See [mcp-servers-guide.md](components/mcp-servers-guide.md) for full details.
-
----
-
-## Structure After Installation
-
-Files marked † conflict with `superpowers` — omitted in `complement-sp` and `complement-full` modes.
-
-```text
-your-project/
-└── .claude/
-    ├── CLAUDE.md              # Main instructions (adapt for your project)
-    ├── settings.json          # Hooks, permissions
-    ├── commands/              # Slash commands
-    │   ├── verify.md          # † omitted in complement-sp/full
-    │   ├── debug.md           # † omitted in complement-sp/full
-    │   └── ...
-    ├── prompts/               # Audits
-    │   ├── SECURITY_AUDIT.md
-    │   ├── PERFORMANCE_AUDIT.md
-    │   ├── CODE_REVIEW.md
-    │   ├── DESIGN_REVIEW.md
-    │   ├── MYSQL_PERFORMANCE_AUDIT.md
-    │   └── POSTGRES_PERFORMANCE_AUDIT.md
-    ├── agents/                # Subagents
-    │   ├── code-reviewer.md   # † omitted in complement-sp/full
-    │   ├── test-writer.md
-    │   └── planner.md
-    ├── skills/                # Framework expertise
-    │   └── [framework]/SKILL.md
-    ├── rules/                 # Auto-loaded project facts
-    └── scratchpad/            # Working notes
-```
-
----
-
-## Supported Frameworks
-
-| Framework | Template | Skills | Auto-detection |
-|-----------|----------|--------|----------------|
-| Laravel | ✅ | ✅ | `artisan` file |
-| Ruby on Rails | ✅ | ✅ | `bin/rails` / `config/application.rb` |
-| Next.js | ✅ | ✅ | `next.config.*` |
-| Node.js | ✅ | ✅ | `package.json` (without next.config) |
-| Python | ✅ | ✅ | `pyproject.toml` / `requirements.txt` |
-| Go | ✅ | ✅ | `go.mod` |
-
----
-
-## Components
-
-Reusable Markdown sections for composing custom `CLAUDE.md` files. Components are repo-root
-assets — they are **not** installed into `.claude/`; reference them by absolute GitHub URL.
-
-**Orchestration pattern** — Superpowers plugin provides `dispatching-parallel-agents` and
-`subagent-driven-development` skills that handle the lean-orchestrator + fat-subagents
-design. v6.0 deprecates the standalone toolkit component in favor of the plugin skills.
+MIT — see [LICENSE](LICENSE).
