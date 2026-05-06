@@ -278,12 +278,17 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     fi
     export TK_GUIDE_MCPS="${mcps_csv}"
 
-    # Toolkit version.
+    # Toolkit version. Declare + assign separately to satisfy SC2155
+    # (otherwise `export $(...)` masks the cat/jq failure code).
+    # Top-level scope here (not inside a function), so no `local`.
+    _tk_ver=""
     if [[ -f "$HOME/.claude/.toolkit-version" ]]; then
-        export TK_GUIDE_TOOLKIT_VER="$(cat "$HOME/.claude/.toolkit-version" 2>/dev/null)"
+        _tk_ver="$(cat "$HOME/.claude/.toolkit-version" 2>/dev/null)"
     elif [[ -f "$(dirname "${BASH_SOURCE[0]}")/../../manifest.json" ]] && command -v jq >/dev/null 2>&1; then
-        export TK_GUIDE_TOOLKIT_VER="$(jq -r '.version' "$(dirname "${BASH_SOURCE[0]}")/../../manifest.json" 2>/dev/null)"
+        _tk_ver="$(jq -r '.version' "$(dirname "${BASH_SOURCE[0]}")/../../manifest.json" 2>/dev/null)"
     fi
+    export TK_GUIDE_TOOLKIT_VER="$_tk_ver"
+    unset _tk_ver
 
     : "${TK_GUIDE_OUTPUT:=$HOME/.claude/setup-guide.html}"
 

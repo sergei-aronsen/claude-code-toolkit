@@ -4,11 +4,19 @@ description: (Re)generate the local HTML post-install setup guide for installed 
 
 # /setup-guide
 
+## Purpose
+
 Regenerate `~/.claude/setup-guide.html` (or `.claude/setup-guide.html` if a project-local copy already exists) from the **current** state of installed toolkit components + MCP servers, then open it in the default browser.
 
-## Why
-
 The post-install guide is what an end user sees right after running `bash <(curl -sSL .../scripts/install.sh)`. It only lists sections for things they actually installed — but their setup drifts after the first install (they enable a new MCP, install claude-memo later, etc.). This command rebuilds the guide so the page reflects the **current** machine.
+
+## Usage
+
+```text
+/setup-guide
+```
+
+No arguments. Re-runs the generator and reopens the HTML in the browser. Honour `TK_NO_OPEN=1` to skip auto-open in headless contexts.
 
 ## What you should do
 
