@@ -203,6 +203,9 @@
       },
       {
         "path": "rules/audit-exceptions.md"
+      },
+      {
+        "path": "rules/plan-md-anti-bloat.md"
       }
     ],
     "scripts": [
@@ -353,6 +356,10 @@
       {
         "path": "components/orchestration-pattern.md",
         "description": "Generic orchestration pattern (lean-orchestrator + fat-subagents); cross-referenced from supreme-council.md and structured-workflow.md"
+      },
+      {
+        "path": "components/skill-frontmatter-discipline.md",
+        "description": "Authoring discipline for SKILL.md / commands / agents frontmatter — action-verb descriptions, third person, what+when triggers, naming conventions; distilled from Anthropic + Warp update-skill"
       }
     ]
   },
