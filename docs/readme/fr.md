@@ -200,3 +200,13 @@ actifs à la racine du dépôt — ils ne sont **pas** installés dans `.claude/
 **Schéma d'orchestration** — voir [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
 pour la conception orchestrateur léger + sous-agents robustes qu'utilisent Council et les workflows GSD.
 Aide toute commande slash personnalisée à passer à l'échelle au-delà d'une seule fenêtre de contexte.
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).

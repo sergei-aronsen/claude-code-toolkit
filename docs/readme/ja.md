@@ -199,3 +199,13 @@ your-project/
 **オーケストレーションパターン** — Council と GSD ワークフローが共に使用する、精瘦なオーケストレーター +
 リッチなサブエージェント設計については [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
 をご覧ください。カスタムスラッシュコマンドを単一のコンテキストウィンドウを超えてスケールさせるのに役立ちます。
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).

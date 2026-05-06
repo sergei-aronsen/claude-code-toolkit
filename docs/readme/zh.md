@@ -199,3 +199,13 @@ your-project/
 **编排模式** — 请参阅 [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
 了解 Council 和 GSD 工作流均采用的精简编排器 + 重量级子代理设计。
 它可帮助任何自定义斜杠命令突破单个上下文窗口的限制。
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).

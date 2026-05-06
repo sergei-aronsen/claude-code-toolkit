@@ -62,6 +62,14 @@ Each framework template documents its required base plugins in `## Required Base
 e.g. [templates/base/CLAUDE.md](templates/base/CLAUDE.md). For the full 12-cell install matrix
 and step-by-step guidance, see [docs/INSTALL.md](docs/INSTALL.md).
 
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 positions itself as a **thin overlay** on Anthropic's plugin ecosystem
+plus optional external tools. See [docs/architecture.md](docs/architecture.md) for
+the full diagram. For solo founders / non-developer product builders, see
+[docs/non-programmer-mode.md](docs/non-programmer-mode.md) — recommended setup
+of advisory hooks, cost routing, and reality-check before ship.
+
 ### Interactive install (recommended)
 
 The unified installer presents a TUI checklist with all components (Toolkit, Security, RTK,

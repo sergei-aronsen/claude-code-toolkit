@@ -200,3 +200,13 @@ your-project/
 **Паттерн оркестрации** — смотрите [components/orchestration-pattern.md](../../components/orchestration-pattern.md)
 для описания архитектуры «лёгкий оркестратор + полнофункциональные субагенты», которую используют как Council,
 так и рабочие процессы GSD. Помогает любой slash-команде масштабироваться за пределы одного контекстного окна.
+
+---
+
+## v6.0 Three-Layer Architecture
+
+Toolkit v6.0 acts as a thin overlay on top of `superpowers` and `get-shit-done`,
+plus optional layer-3 external tools (Morph, claude-context, better-model).
+Full diagram: [docs/architecture.md](../architecture.md).
+Recommended setup for non-programmer / solo-founder profile:
+[docs/non-programmer-mode.md](../non-programmer-mode.md).
