@@ -1,25 +1,50 @@
 name: Auto-pin vendors on release tag
 
+# Trigger on tag push OR GitHub Release published OR manual dispatch.
+# `release.published` is the most reliable trigger when releases are created
+# via `gh release create` (which is the maintainer's release flow). The
+# `push.tags` trigger is kept for direct `git push --tags` workflows.
+# Empirically, `on: push: tags:` alone produced 0-job startup-failures on
+# multiple recent commits — likely interaction with branch pushes that
+# share a head commit with the tag. The job-level `if:` guard ensures
+# pin-vendors only runs for tag refs regardless of which event fired.
 on:
+  release:
+    types: [published]
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to pin vendors at (e.g. v6.3.0). Defaults to current ref.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-pin-${{ github.ref }}
+  # Use `head_ref` (always set) or fall back to a static value to avoid
+  # slash-containing concurrency group names when ref is `refs/tags/...`.
+  group: release-pin-${{ github.event.release.tag_name || github.ref_name || 'manual' }}
   cancel-in-progress: false
 
 jobs:
   pin-vendors:
+    # Skip on push events that aren't tags (defensive — `on.push.tags` should
+    # already filter, but the empirical 0-job failures suggest GH treats
+    # branch-push + new-workflow-file edge cases inconsistently).
+    if: |
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     env:
       # Avoid using ${{ github.* }} directly in run scripts (workflow
       # injection guard). Surface the values via env vars first; run
       # scripts read $TAG / $REF.
-      TAG: ${{ github.ref_name }}
+      TAG: ${{ github.event.release.tag_name || github.ref_name }}
       REF: ${{ github.ref }}
     steps:
       - name: Checkout repo

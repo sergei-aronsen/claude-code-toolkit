@@ -68,7 +68,7 @@ while IFS= read -r name; do
         continue
     fi
 
-    head_commit=$(cd "$dir" && git rev-parse HEAD 2>/dev/null || echo "")
+    head_commit=$(git -C "$dir" rev-parse HEAD 2>/dev/null || echo "")
     if [[ -z "$head_commit" ]]; then
         echo -e "  ${YELLOW}⚠${NC} $name — could not read HEAD, skipping"
         skipped_count=$((skipped_count + 1))
@@ -76,8 +76,14 @@ while IFS= read -r name; do
     fi
 
     # Nearest tag (annotated or lightweight). Empty if no tag reachable.
-    head_tag=$(cd "$dir" && git describe --tags --exact-match 2>/dev/null || \
-                cd "$dir" && git describe --tags --abbrev=0 2>/dev/null || echo "")
+    # Use `git -C` instead of `cd && git` to avoid chained-cwd bugs in
+    # the `||` fallback path (first `cd` succeeds, leaving us inside
+    # $dir; second `cd "$dir"` then fails because it's evaluated as a
+    # relative path from inside $dir).
+    head_tag=$(git -C "$dir" describe --tags --exact-match 2>/dev/null || true)
+    if [[ -z "$head_tag" ]]; then
+        head_tag=$(git -C "$dir" describe --tags --abbrev=0 2>/dev/null || true)
+    fi
 
     short=$(printf '%s' "$head_commit" | cut -c1-12)
     tag_disp="${head_tag:-<no tag>}"
