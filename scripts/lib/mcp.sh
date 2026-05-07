@@ -599,6 +599,66 @@ mcp_secrets_set() {
 # Per-MCP install wizard (MCP-04)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# _mcp_project_slug — derive an UPPER_SNAKE slug from a project root path. Used
+# by the global-slot project-scope storage mode (TUI-SCOPE-05). The slug
+# becomes the suffix of every secret slot in ~/.claude/mcp-config.env (e.g.
+# basename "my-app" → "MY_APP" → STRIPE_SECRET_KEY_MY_APP). Empty input or a
+# non-letter leading character is normalized to keep the slot a valid POSIX
+# identifier (^[A-Z_][A-Z0-9_]*$).
+_mcp_project_slug() {
+    local root="${1:-}"
+    [[ -z "$root" ]] && root="$(pwd 2>/dev/null || echo project)"
+    local base
+    base="$(basename "$root" 2>/dev/null || echo project)"
+    [[ -z "$base" ]] && base="PROJECT"
+    awk -v s="$base" 'BEGIN {
+        s = toupper(s);
+        gsub(/[^A-Z0-9_]/, "_", s);
+        if (s !~ /^[A-Z_]/) s = "P_" s;
+        print s
+    }'
+}
+
+# _mcp_project_slot_name <generic_key> [<project_root>] — return the env-var
+# name where this MCP key's value is stored when the wizard is operating in
+# project scope. Two modes, branched by TK_MCP_PROJECT_STORAGE:
+#
+#   global-slot (default, v6.4+): secrets are stored centrally in
+#     ~/.claude/mcp-config.env using a per-project suffix
+#     (KEY_<PROJECT_SLUG>). The shell rc auto-source line already loads that
+#     file into every shell, so a simple `cd <project> && claude` Just Works
+#     without direnv / dotenv. The committed <project>/.mcp.json references
+#     the suffixed name via ${KEY_<SLUG>} substitution.
+#
+#   project-env (legacy v6.3 and earlier): secrets are written to
+#     <project>/.env (mode 0600) under their plain name. The user is
+#     expected to source .env before launching claude (direnv recommended).
+#     Kept for users who already wired direnv into their workflow.
+_mcp_project_slot_name() {
+    local generic_key="${1:-}"
+    if [[ -z "$generic_key" ]]; then
+        echo -e "${RED}✗${NC} _mcp_project_slot_name: missing generic_key" >&2
+        return 1
+    fi
+    local mode="${TK_MCP_PROJECT_STORAGE:-global-slot}"
+    case "$mode" in
+        global-slot)
+            local slug
+            slug="$(_mcp_project_slug "${2:-${TK_PROJECT_ROOT:-$(pwd)}}")"
+            printf '%s_%s\n' "$generic_key" "$slug"
+            ;;
+        project-env)
+            printf '%s\n' "$generic_key"
+            ;;
+        *)
+            echo -e "${YELLOW}⚠${NC} _mcp_project_slot_name: unknown TK_MCP_PROJECT_STORAGE='$mode' — falling back to global-slot" >&2
+            local slug
+            slug="$(_mcp_project_slug "${2:-${TK_PROJECT_ROOT:-$(pwd)}}")"
+            printf '%s_%s\n' "$generic_key" "$slug"
+            ;;
+    esac
+}
+
 # _mcp_resolve_claude_bin — echo path to claude binary (honors TK_MCP_CLAUDE_BIN seam).
 # Returns 1 if no binary is found (caller handles fail-soft warning + return 2).
 _mcp_resolve_claude_bin() {
@@ -773,40 +833,51 @@ mcp_wizard_run() {
         IFS="$IFS_SAVED2"
         local _stub_key
         if [[ "$_scope" == "project" ]]; then
-            # Phase 38 (D-09): project-scope mirror — gitignore guard ONCE,
-            # then per-key stub via printf '%s=\n' to <project>/.env. The
-            # Phase 37 lib's private helpers _project_secrets_load_env +
-            # _project_secrets_index drive the collision check
-            # (skip-if-present invariant).
-            if [[ "$_gi_done" -eq 0 ]]; then
-                if ! project_secrets_ensure_gitignore "$_project_root"; then
-                    return 1
+            local _project_storage_mode="${TK_MCP_PROJECT_STORAGE:-global-slot}"
+            if [[ "$_project_storage_mode" == "global-slot" ]]; then
+                # TUI-SCOPE-05 (v6.4+ default): project secrets live in
+                # ~/.claude/mcp-config.env under per-project suffixed names
+                # (KEY_<PROJECT_SLUG>). No <project>/.env, no direnv. The
+                # mcp_secrets_set helper handles 0600 + dedup; we only stub
+                # absent slots so a real key is never overwritten.
+                for _stub_key in "${_stub_keys[@]}"; do
+                    [[ -z "$_stub_key" ]] && continue
+                    [[ ! "$_stub_key" =~ ^[A-Z_][A-Z0-9_]*$ ]] && continue
+                    local _slot
+                    _slot="$(_mcp_project_slot_name "$_stub_key" "$_project_root")"
+                    mcp_secrets_load
+                    if ! _mcp_secrets_index "$_slot" >/dev/null 2>&1; then
+                        local _env_path
+                        _env_path="$(_mcp_config_path)"
+                        mkdir -p "$(dirname "$_env_path")" 2>/dev/null || true
+                        printf '%s=\n' "$_slot" >> "$_env_path" 2>/dev/null || true
+                        chmod 0600 "$_env_path" 2>/dev/null || true
+                    fi
+                done
+            else
+                # Legacy project-env: gitignore guard ONCE, then per-key stub
+                # via printf '%s=\n' to <project>/.env. Phase 37 lib helpers
+                # _project_secrets_load_env + _project_secrets_index drive the
+                # collision check (skip-if-present invariant).
+                if [[ "$_gi_done" -eq 0 ]]; then
+                    if ! project_secrets_ensure_gitignore "$_project_root"; then
+                        return 1
+                    fi
+                    _gi_done=1
                 fi
-                _gi_done=1
+                local _proj_env="${_project_root%/}/.env"
+                mkdir -p "$_project_root" 2>/dev/null || true
+                touch "$_proj_env" 2>/dev/null || true
+                chmod 0600 "$_proj_env" 2>/dev/null || true
+                for _stub_key in "${_stub_keys[@]}"; do
+                    [[ -z "$_stub_key" ]] && continue
+                    _project_secrets_load_env "$_proj_env"
+                    if ! _project_secrets_index "$_stub_key" >/dev/null 2>&1; then
+                        printf '%s=\n' "$_stub_key" >> "$_proj_env" 2>/dev/null || true
+                        chmod 0600 "$_proj_env" 2>/dev/null || true
+                    fi
+                done
             fi
-            local _proj_env="${_project_root%/}/.env"
-            mkdir -p "$_project_root" 2>/dev/null || true
-            touch "$_proj_env" 2>/dev/null || true
-            chmod 0600 "$_proj_env" 2>/dev/null || true
-            for _stub_key in "${_stub_keys[@]}"; do
-                [[ -z "$_stub_key" ]] && continue
-                # Skip if the key already has a non-stub value — never
-                # overwrite real secrets. _project_secrets_load_env populates
-                # the parallel arrays; _project_secrets_index returns 0 if
-                # found.
-                # Phase 38 (D-09): re-parse <project>/.env on every iteration
-                # so a stub we just appended is visible to the next
-                # iteration's collision check. DO NOT lift this load out of
-                # the loop — it is the cycle-breaker that preserves
-                # "see your own previous stubs" semantics within a single
-                # wizard run. User-scope sibling at line ~813 has the same
-                # load-per-iteration pattern via mcp_secrets_load.
-                _project_secrets_load_env "$_proj_env"
-                if ! _project_secrets_index "$_stub_key" >/dev/null 2>&1; then
-                    printf '%s=\n' "$_stub_key" >> "$_proj_env" 2>/dev/null || true
-                    chmod 0600 "$_proj_env" 2>/dev/null || true
-                fi
-            done
         else
             # User/local scope (UNCHANGED v4.9 behavior).
             for _stub_key in "${_stub_keys[@]}"; do
@@ -888,21 +959,33 @@ mcp_wizard_run() {
             # transits the user-scope path when scope=project (T2 mitigation —
             # wrong-scope leak prevented by strict per-scope dispatch).
             if [[ "$_scope" == "project" ]]; then
-                # Phase 38 (D-04): ensure .gitignore guard fires ONCE before the
-                # first project-scope write — the lib is idempotent, but the
-                # sentinel saves one grep -Fxq per subsequent key.
-                if [[ "$_gi_done" -eq 0 ]]; then
-                    if ! project_secrets_ensure_gitignore "$_project_root"; then
+                local _project_storage_mode="${TK_MCP_PROJECT_STORAGE:-global-slot}"
+                if [[ "$_project_storage_mode" == "global-slot" ]]; then
+                    # TUI-SCOPE-05 (v6.4+ default): write the suffixed slot to
+                    # ~/.claude/mcp-config.env via the same helper that handles
+                    # user scope. The shell rc auto-source line already loads
+                    # this file into every shell, so a fresh `claude` launch in
+                    # the project picks up the value without direnv.
+                    local _slot
+                    _slot="$(_mcp_project_slot_name "$env_key" "$_project_root")"
+                    if ! mcp_secrets_set "$_slot" "$collected_value"; then
                         return 1
                     fi
-                    _gi_done=1
+                else
+                    # Legacy project-env: write KEY=VALUE to <project>/.env.
+                    if [[ "$_gi_done" -eq 0 ]]; then
+                        if ! project_secrets_ensure_gitignore "$_project_root"; then
+                            return 1
+                        fi
+                        _gi_done=1
+                    fi
+                    if ! project_secrets_write_env "$_project_root" "$env_key" "$collected_value"; then
+                        return 1
+                    fi
                 fi
-                if ! project_secrets_write_env "$_project_root" "$env_key" "$collected_value"; then
-                    return 1
-                fi
-                # Phase 38 (D-08): project-scope does NOT populate exported_env[] —
-                # real values stay in <project>/.env; only ${VAR} substitution
-                # forms reach claude in the post-loop invocation below.
+                # project-scope does NOT populate exported_env[] — real values
+                # stay in their storage file; only ${VAR} substitution forms
+                # reach claude in the post-loop invocation below.
             else
                 # User/local scope (UNCHANGED v4.6/v4.9 contract).
                 if ! mcp_secrets_set "$env_key" "$collected_value"; then
@@ -930,26 +1013,39 @@ mcp_wizard_run() {
         # shellcheck disable=SC2206
         local _claude_env_keys=( $env_keys_csv )
         IFS="$IFS_SAVED3"
-        # Render the JSON env block once for the validator (defense-in-depth).
-        local _env_block
-        if ! _env_block="$(project_secrets_render_mcp_env_block "${_claude_env_keys[@]}")"; then
-            return 1
-        fi
-        if ! project_secrets_validate_mcp_env_block "$_env_block"; then
-            # validate prints `✗ refusing to write literal value into .mcp.json
-            # (use ${VAR} substitution)` to stderr — caller sees it.
-            return 1
-        fi
-        # Build repeated `-e KEY=${KEY}` flags. claude mcp add accepts -e env...
-        # (per `claude mcp add --help` line "-e, --env <env...>"). The literal
-        # ${KEY} substring (with $/{/} characters) reaches claude — claude
-        # writes .mcp.json with that as the env value and resolves it from the
-        # launched process environment at MCP launch.
-        local _env_flags=()
+        # Build the per-storage-mode slot list. For global-slot mode the .mcp.json
+        # value side becomes ${KEY_<SLUG>}; the JSON KEY (left side) stays the
+        # generic name because the MCP server itself expects KEY, not KEY_<SLUG>.
+        # For project-env mode both sides match the generic key (legacy).
+        local _claude_env_slots=()
         local _ek
         for _ek in "${_claude_env_keys[@]}"; do
             [[ -z "$_ek" ]] && continue
-            _env_flags+=( "-e" "${_ek}=\${${_ek}}" )
+            _claude_env_slots+=( "$(_mcp_project_slot_name "$_ek" "$_project_root")" )
+        done
+        # Defense-in-depth: render `{"SLOT":"${SLOT}"}` via the existing helper
+        # and run it through the literal-value validator. This catches the
+        # threat that an upstream change accidentally puts a real value in the
+        # substitution position; the validator's mockable-override is also the
+        # call-site assertion exercised by T12.
+        local _env_block
+        if ! _env_block="$(project_secrets_render_mcp_env_block "${_claude_env_slots[@]}")"; then
+            return 1
+        fi
+        if ! project_secrets_validate_mcp_env_block "$_env_block"; then
+            return 1
+        fi
+        # Build repeated `-e KEY=${SLOT}` flags. claude mcp add accepts -e env...
+        # The literal ${SLOT} substring (with $/{/} characters) reaches claude —
+        # claude writes .mcp.json with that as the env value and resolves it
+        # from the launched process environment at MCP launch.
+        local _env_flags=()
+        local _i=0
+        for _ek in "${_claude_env_keys[@]}"; do
+            [[ -z "$_ek" ]] && continue
+            local _slot="${_claude_env_slots[$_i]}"
+            _env_flags+=( "-e" "${_ek}=\${${_slot}}" )
+            _i=$((_i + 1))
         done
         "$claude_bin" mcp add "${_env_flags[@]}" "${scoped_args[@]}"
     elif [[ "${#exported_env[@]}" -gt 0 ]]; then

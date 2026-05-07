@@ -181,11 +181,20 @@ The toolkit writes API keys to `~/.claude/mcp-config.env` (mode 0600) and adds a
 Each MCP row in the integrations TUI carries its own scope indicator immediately
 after the checkbox. v5.0+ supports three scopes per MCP, configurable per row:
 
-| Indicator | Scope | Where keys live | `claude mcp add` flag | Use when |
+| Indicator | Scope | Where keys live (v6.4 default) | `claude mcp add` flag | Use when |
 | --------- | ----- | --------------- | --------------------- | -------- |
-| `[U]` | user | `~/.claude/mcp-config.env` (mode 0600) | `--scope user` | Personal-tooling MCPs that follow you across all projects (e.g. `context7`, `notebooklm`, `figma`, `sentry`) |
-| `[P]` | project | `<project>/.env` (mode 0600) | `--scope project` | Per-app infra MCPs scoped to a single repository (e.g. `supabase`, `stripe`, `cloudflare`, `aws-*`) |
+| `[U]` | user | `~/.claude/mcp-config.env` (mode 0600), plain `KEY=value` | `--scope user` | Personal-tooling MCPs that follow you across all projects (e.g. `context7`, `notebooklm`, `figma`, `sentry`) |
+| `[P]` | project | `~/.claude/mcp-config.env` under `KEY_<PROJECT_SLUG>=value`; `.mcp.json` references `${KEY_<SLUG>}` | `--scope project` | Per-app infra MCPs scoped to a single repository (e.g. `supabase`, `stripe`, `cloudflare`, `aws-*`) — restricted keys per project, single storage file |
 | `[L]` | local | not persisted by toolkit | `--scope local` | Throw-away local-only experiments; the toolkit does not write a secrets file for `[L]` rows |
+
+> **v6.4 change.** Project-scope `[P]` keys now live in the same
+> `~/.claude/mcp-config.env` as user-scope keys, just under a suffixed
+> slot name. The committed `<project>/.mcp.json` references the slot via
+> `${KEY_<PROJECT_SLUG>}` substitution. `cd <project> && claude` works
+> without direnv / dotenv because the shell rc auto-source line loads
+> `mcp-config.env` into every shell. To opt back into the v6.3 behavior
+> (keys in `<project>/.env`, requires direnv), export
+> `TK_MCP_PROJECT_STORAGE=project-env` before `install.sh`.
 
 The chosen scope renders green when color is enabled and falls back to plain
 brackets under `NO_COLOR=1` per [no-color.org](https://no-color.org).
@@ -214,28 +223,37 @@ rows in a single invocation.
 | `s` | Cycle a **global** scope value and apply it to **every visible row** in one stroke. Banner reads `s: set all to <scope>`. |
 | `Space` | Toggle the row's checkbox (independent of the scope indicator). |
 
-### Project scope: where the secrets land
+### Project scope: where the secrets land (v6.4 default — global-slot)
 
 When you submit a `[P]` row, the wizard:
 
-1. Prompts for each env-var with hidden input (`read -rs`, masked display, 3 attempts).
-2. Writes `KEY=value` lines to `<project>/.env` via `project_secrets_write_env`.
-   The file is created with mode 0600 (`touch && chmod 0600` BEFORE first write).
-   If `KEY` already exists, the wizard prompts `[y/N] Overwrite KEY in
-   <project>/.env?` and defaults to N.
-3. Ensures `<project>/.gitignore` contains an exact `.env` line (not `*.env`,
-   not `# .env`). If absent, appends `.env\n` with a leading toolkit comment:
+1. Computes a project slug from `basename($PWD)`: uppercases, replaces any
+   non-alphanumeric character with `_`, prefixes a leading-digit name with
+   `P_` so the result is a valid POSIX identifier. `my-app` → `MY_APP`;
+   `123-foo` → `P_123_FOO`.
+2. Prompts for each env-var with hidden input (`read -rs`, masked display,
+   3 attempts).
+3. Writes `KEY_<PROJECT_SLUG>=value` to `~/.claude/mcp-config.env` via
+   `mcp_secrets_set` (mode 0600, dedup with collision prompt). The shell rc
+   auto-source line installed at first toolkit install already loads this
+   file into every shell, so a fresh `claude` launch picks up the new
+   value without direnv.
+4. Invokes `claude mcp add --scope project ...` with the env block in
+   `${KEY_<SLUG>}` substitution form — never literal values. Result:
+   `<project>/.mcp.json` carries the suffixed slot reference and is safe
+   to commit.
+5. SEC-05 defense-in-depth still applies: the rendered env block is
+   validated against `^\$\{[A-Z_][A-Z0-9_]*\}$` BEFORE invoking claude;
+   any literal value in the substitution position triggers
+   `✗ refusing to write literal value` and rc=1.
 
-   ```text
-   # claude-code-toolkit: never commit project-scope MCP secrets
-   .env
-   ```
+### Legacy: project-env mode
 
-4. Invokes `claude mcp add --scope project ...` with the env block rendered as
-   `${VAR}` substitution form — never literal values. The Claude CLI is
-   responsible for writing `.mcp.json` from those args; the toolkit verifies the
-   resulting file does not contain literal secrets via the SEC-05
-   defense-in-depth refusal regex (`^\$\{[A-Z_][A-Z0-9_]*\}$`).
+Set `TK_MCP_PROJECT_STORAGE=project-env` to revert to v6.3 behavior:
+secrets land in `<project>/.env` under their plain name, `.mcp.json`
+references `${KEY}` (no suffix), and the wizard adds `.env` to
+`<project>/.gitignore`. This path requires direnv/dotenv to source
+`<project>/.env` before launching claude.
 
 ### `${VAR}` substitution in `.mcp.json`
 

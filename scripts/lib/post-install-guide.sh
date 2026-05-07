@@ -118,19 +118,18 @@ post_install_guide_render_generic_mcp() {
     # MCP actually consumes env vars. OAuth-only and no-key MCPs (Serena, the
     # Anthropic-hosted ones) get an empty block so the card stays compact.
     #
-    # The block embeds clickable `file://` links so a regular user can jump
-    # straight from the guide to the file that needs editing. Project root is
-    # supplied via TK_GUIDE_PROJECT_ROOT (install.sh passes $PWD); home dir via
-    # TK_GUIDE_HOME (defaults to $HOME). The HTML is intentionally one long
-    # line so the downstream sed-based substitution stays line-safe.
+    # v6.4+ default: ALL secrets — user-scope and project-scope alike — live
+    # in ~/.claude/mcp-config.env (auto-loaded from shell rc). Project-scope
+    # entries are suffixed with the project slug (KEY_<SLUG>) so multiple
+    # projects can hold different restricted keys without colliding. The
+    # block embeds a clickable `file://` link to that single file so a user
+    # never has to remember the path.
     local where_block=""
     if [[ "$has_keys" -eq 1 ]]; then
         local _home="${TK_GUIDE_HOME:-$HOME}"
-        local _proj_root="${TK_GUIDE_PROJECT_ROOT:-$PWD}"
         local _user_env="${_home}/.claude/mcp-config.env"
-        local _project_env="${_proj_root}/.env"
         local _user_disp="${_user_env/#$_home/~}"
-        where_block="<h3>Where to put the value</h3><p><strong>User scope (default):</strong> add <code>KEY=value</code> lines to <a href=\"file://${_user_env}\"><code>${_user_disp}</code></a> &mdash; the toolkit creates this file (mode 0600) at install time. A line like <code>set -a; [ -f ~/.claude/mcp-config.env ] &amp;&amp; . ~/.claude/mcp-config.env; set +a</code> is appended to your shell rc (<code>~/.zshrc</code> / <code>~/.bashrc</code> / <code>~/.bash_profile</code>) so a fresh shell auto-loads the values.</p><p><strong>Project scope:</strong> if you installed the MCP with <code>--scope project</code>, add <code>KEY=value</code> to <a href=\"file://${_project_env}\"><code>${_project_env}</code></a> instead. Project values override user scope when Claude Code runs from inside that project.</p><p>After editing, reload your shell (<code>exec \$SHELL</code>, or open a new terminal tab) and restart Claude Code so the MCP picks up the new value.</p>"
+        where_block="<h3>Where to put the value</h3><p>One file, mode 0600, auto-loaded by your shell rc — open <a href=\"file://${_user_env}\"><code>${_user_disp}</code></a> and add lines.</p><p><strong>User scope (single global key, used everywhere):</strong> add <code>KEY=value</code> with the plain catalog name (e.g. <code>CONTEXT7_API_KEY=ctx_…</code>). Best for personal-tooling MCPs that follow you across all projects.</p><p><strong>Project scope (per-app restricted keys):</strong> add <code>KEY_&lt;PROJECT_SLUG&gt;=value</code> — e.g. <code>STRIPE_SECRET_KEY_MY_APP=sk_restricted_…</code>. The toolkit's installer registers <code>&lt;project&gt;/.mcp.json</code> with <code>\${KEY_&lt;PROJECT_SLUG&gt;}</code> substitution so the right key reaches the right project. Slug = uppercased project folder name with dashes replaced by underscores.</p><p>After editing, reload your shell (<code>exec \$SHELL</code>, or open a new terminal tab) and restart Claude Code.</p>"
     fi
 
     # Substitute via python3: WHERE_BLOCK can contain almost any HTML and the
