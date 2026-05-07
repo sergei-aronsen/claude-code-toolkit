@@ -33,6 +33,8 @@
 | `/fix-prod` | Хотфикс продакшена: диагноз, фикс, проверка |
 | `/rollback-update` | Откатить тулкит до предыдущей версии |
 | `/council` | Мульти-AI ревью: Gemini + ChatGPT перед реализацией |
+| `/product-review` | Бизнес-gate: 4 персоны (skeptic + marketer + CFO + user-empath) перед кодингом |
+| `/vendor-changelog` | Дифф вендоров (HEAD vs пин в manifest); классы BREAKING/ADOPT/IGNORE/DEPRECATE |
 | `/helpme` | Шпаргалка (9 языков) |
 
 ---

@@ -47,6 +47,7 @@ SOURCE_MAP = {
     "prompts/": "templates/base/prompts/",
     "skills/": "templates/base/skills/",
     "rules/": "templates/base/rules/",
+    "hooks/": "templates/base/hooks/",
     "commands/": "commands/",
 }
 

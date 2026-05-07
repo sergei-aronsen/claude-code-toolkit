@@ -176,6 +176,10 @@ COUNCIL_PERSONAS=(
     "ux-pragmatist"
     "migration-skeptic"
     "migration-pragmatist"
+    "product-skeptic"
+    "marketer-pragmatist"
+    "cfo-pragmatist"
+    "user-empath"
 )
 
 # _fetch_council_persona <name> <dest>

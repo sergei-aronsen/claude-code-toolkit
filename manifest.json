@@ -1,8 +1,54 @@
 {
   "manifest_version": 2,
-  "version": "6.2.0",
-  "updated": "2026-05-06",
+  "version": "6.3.0",
+  "updated": "2026-05-07",
+  "build_date": "2026-05-07",
   "description": "Claude Code Toolkit manifest for smart updates",
+  "vendor_pins_note": "Pinned commits/tags of external vendors as of the toolkit release. Used by /vendor-changelog to diff vendor HEAD against these pins and surface BREAKING/ADOPT/IGNORE/DEPRECATE classifications. Auto-updated by .github/workflows/release-pin.yml on tag push.",
+  "vendor_pins": {
+    "superpowers": {
+      "repo": "https://github.com/obra/superpowers",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "get-shit-done": {
+      "repo": "https://github.com/gsd-build/get-shit-done",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "serena": {
+      "repo": "https://github.com/oraios/serena",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "better-model": {
+      "repo": "https://github.com/talkstream/better-model",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "claude-context": {
+      "repo": "https://github.com/zilliztech/claude-context",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "cc-safety-net": {
+      "repo": "https://github.com/sergei-aronsen/cc-safety-net",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    },
+    "rtk": {
+      "repo": "https://github.com/rtk-ai/rtk",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null
+    }
+  },
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
   "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. v6.1 audit (docs/research/v6-post-ship-audit-2026-05-06.md, F-2) found that the surviving agents/code-reviewer.md annotation was broken against Superpowers 5.1.0+ (SP dropped agents/ directory; equivalent is now skills/requesting-code-review). TK's code-reviewer is also materially different from SP's — annotation removed in v6.1. v6.1 audit F-1 found that the only true duplication remaining is skills/gsd-mode-selector/SKILL.md against GSD's gsd-help skill — annotated.",
   "files": {
@@ -57,6 +103,9 @@
         "path": "commands/learn.md"
       },
       {
+        "path": "commands/product-review.md"
+      },
+      {
         "path": "commands/setup-guide.md"
       },
       {
@@ -67,6 +116,9 @@
       },
       {
         "path": "commands/vendor-audit.md"
+      },
+      {
+        "path": "commands/vendor-changelog.md"
       }
     ],
     "skills": [
@@ -104,10 +156,24 @@
         "path": "skills/observability/SKILL.md"
       },
       {
+        "path": "skills/product-thinking/SKILL.md"
+      },
+      {
+        "path": "skills/product-thinking/config-template.json"
+      },
+      {
         "path": "skills/production-observability/SKILL.md"
       },
       {
         "path": "skills/reality-check/SKILL.md"
+      }
+    ],
+    "hooks": [
+      {
+        "path": "hooks/format-file.sh"
+      },
+      {
+        "path": "hooks/product-gate.sh"
       }
     ],
     "rules": [
@@ -154,6 +220,15 @@
       },
       {
         "path": "scripts/validate-skills-desktop.sh"
+      },
+      {
+        "path": "scripts/vendor/clone-pinned.sh"
+      },
+      {
+        "path": "scripts/vendor/diff-summary.sh"
+      },
+      {
+        "path": "scripts/vendor/pin-vendors.sh"
       }
     ],
     "libs": [
@@ -230,6 +305,12 @@
       },
       {
         "path": "templates/post-install/components/council.html"
+      },
+      {
+        "path": "templates/post-install/components/auto-format.html"
+      },
+      {
+        "path": "templates/post-install/components/product-thinking.html"
       },
       {
         "path": "templates/post-install/components/rtk.html"
@@ -363,6 +444,14 @@
       {
         "path": "components/vendor-risk.md",
         "description": "v6.0 — Quarterly external dependency review methodology; signals for maintainer drift, breaking change cadence, marketing pivots"
+      },
+      {
+        "path": "components/product-thinking-flow.md",
+        "description": "v6.3 — Product validation gate flow; decision tree for validated/needs-experiment/rejected/risk-accepted; integration with /gsd-discuss-phase, /gsd-plan-phase, /product-review"
+      },
+      {
+        "path": "components/vendor-pinning.md",
+        "description": "v6.3 — Vendor pinning architecture: manifest.json:vendor_pins schema, scripts/vendor/{clone-pinned,diff-summary,pin-vendors}.sh, /vendor-changelog command, .github/workflows/release-pin.yml auto-pin on tag"
       }
     ]
   },

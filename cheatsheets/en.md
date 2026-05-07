@@ -33,6 +33,8 @@
 | `/fix-prod` | Production hotfix: diagnose, fix, verify |
 | `/rollback-update` | Rollback to previous toolkit version |
 | `/council` | Multi-AI review: Gemini + ChatGPT pre-implementation check |
+| `/product-review` | Business gate: 4 personas (skeptic + marketer + CFO + user-empath) |
+| `/vendor-changelog` | Diff vendor HEAD vs pin; classify BREAKING/ADOPT/IGNORE/DEPRECATE |
 | `/helpme` | Quick reference cheatsheet (9 languages) |
 
 ---

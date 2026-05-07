@@ -744,6 +744,12 @@ download_files() {
                     FAILED_COUNT=$((FAILED_COUNT + 1))
                     FAILED_PATHS+=("$path")
                 fi
+                # Hooks bucket: shell scripts must be executable so the
+                # PostToolUse / UserPromptSubmit hook commands can invoke
+                # them directly. curl writes 0644 by default.
+                if [[ "$bucket" == "hooks" ]] && [[ -f "$full_dest" ]]; then
+                    chmod +x "$full_dest"
+                fi
                 ;;
         esac
     done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '

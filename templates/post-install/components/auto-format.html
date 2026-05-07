@@ -1,0 +1,104 @@
+<section id="auto-format">
+  <h2><span class="section-icon">🪄</span> Auto-format on edit <span class="section-tag">opt-in</span></h2>
+  <p class="section-subtitle">PostToolUse hook — runs prettier / eslint / pint / rubocop / ruff / gofmt / shfmt etc. after every Claude edit. Stack-aware via file extension. Silent on missing tools, never blocks Claude.</p>
+
+  <h3>1) Verify the hook script is installed</h3>
+  <p>The dispatcher lives at <code>.claude/hooks/format-file.sh</code> in every project (copied by <code>/update-toolkit</code>). Confirm it exists and is executable:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>ls -la .claude/hooks/format-file.sh
+# expected: -rwxr-xr-x ... format-file.sh</code></pre></div>
+
+  <h3>2) Wire it into <code>.claude/settings.json</code></h3>
+  <p>Add the second hook to the existing PostToolUse array (do NOT replace — the first hook handles activity logging):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v jq &gt;/dev/null 2&gt;&amp;1 || exit 0; f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] &amp;&amp; echo \"[$(date +%H:%M:%S)] File modified: $f\" &gt;&gt; .claude/activity.log"
+          },
+          {
+            "type": "command",
+            "command": "command -v jq &gt;/dev/null 2&gt;&amp;1 || exit 0; f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] &amp;&amp; [ -x .claude/hooks/format-file.sh ] &amp;&amp; .claude/hooks/format-file.sh \"$f\""
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre></div>
+
+  <h3>3) Verify formatters are installed for your stack</h3>
+  <p>The hook runs only the formatters present on PATH. Install the ones you need:</p>
+
+  <table>
+    <thead>
+      <tr><th>Stack</th><th>Install</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Next.js / Node.js / TypeScript</td>
+        <td><code>npm i -D prettier eslint</code></td>
+      </tr>
+      <tr>
+        <td>Laravel / PHP</td>
+        <td><code>composer require laravel/pint --dev</code></td>
+      </tr>
+      <tr>
+        <td>Rails / Ruby</td>
+        <td><code>gem install rubocop</code></td>
+      </tr>
+      <tr>
+        <td>Python</td>
+        <td><code>pip install ruff</code> (or <code>pip install black</code>)</td>
+      </tr>
+      <tr>
+        <td>Go</td>
+        <td>built-in <code>gofmt</code>; for imports: <code>go install golang.org/x/tools/cmd/goimports@latest</code></td>
+      </tr>
+      <tr>
+        <td>Rust</td>
+        <td><code>rustup component add rustfmt</code></td>
+      </tr>
+      <tr>
+        <td>Shell scripts</td>
+        <td><code>brew install shfmt</code></td>
+      </tr>
+      <tr>
+        <td>SQL</td>
+        <td><code>npm i -g sql-formatter</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>4) Disable globally or per-session</h3>
+  <p><strong>Globally:</strong></p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>export CLAUDE_FORMAT_HOOK=0</code></pre></div>
+
+  <p><strong>Fast mode</strong> (skip slow linters like eslint, run only formatters):</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>export CLAUDE_FORMAT_FAST=1</code></pre></div>
+
+  <h3>5) IDE conflict — important</h3>
+  <p>If your editor has <strong>format-on-save</strong> enabled on the same file Claude is editing, you can hit a race where one tool's output overwrites the other. The hook ships with a per-file lock to deduplicate, but the safest setup is to disable IDE format-on-save while Claude is working:</p>
+  <ul>
+    <li><strong>VS Code:</strong> <code>"editor.formatOnSave": false</code> in <code>.vscode/settings.json</code></li>
+    <li><strong>JetBrains (PhpStorm/IntelliJ/WebStorm):</strong> Preferences → Tools → Actions on Save → uncheck "Reformat code"</li>
+    <li><strong>Vim/Neovim:</strong> remove auto-format autocmds for the duration of the session</li>
+  </ul>
+  <p>Alternative: keep IDE format-on-save and disable the Claude hook (<code>CLAUDE_FORMAT_HOOK=0</code>). Either tool alone is fine — both at once causes thrash.</p>
+
+  <h3>6) Skipped paths</h3>
+  <p>The hook auto-skips files inside <code>node_modules/</code>, <code>vendor/</code>, <code>dist/</code>, <code>build/</code>, <code>.next/</code>, <code>coverage/</code>, <code>__pycache__/</code>, <code>.venv/</code>, <code>venv/</code> — Claude rarely edits there but if it does, formatting them produces noise.</p>
+
+  <h3>7) Cost trade-off</h3>
+  <p>For a typical 50-edit session:</p>
+  <ul>
+    <li><strong>Default mode:</strong> 25-100 seconds total formatter time (eslint dominates)</li>
+    <li><strong>Fast mode:</strong> 5-10 seconds total (prettier-only, no linter pass)</li>
+    <li><strong>Off:</strong> 0 seconds — but you must format manually before commit</li>
+  </ul>
+  <p>If your pre-commit hook also runs prettier+eslint, the in-session formatting is redundant — turn off <code>CLAUDE_FORMAT_HOOK</code> and let pre-commit handle it.</p>
+
+  <p class="section-footer"><a href="https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/templates/base/hooks/format-file.sh">Read the hook source →</a></p>
+</section>
