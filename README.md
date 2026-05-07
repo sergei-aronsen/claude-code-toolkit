@@ -54,7 +54,9 @@ For Claude Desktop users — install via marketplace:
 
 Full step-by-step guide (with the install TUI walkthrough): [docs/howto/en.md](docs/howto/en.md).
 
-## After install
+## Slash commands
+
+Use these from inside Claude Code after `/plugin marketplace add`:
 
 | Command            | What it does                                                                  |
 |--------------------|-------------------------------------------------------------------------------|
@@ -83,7 +85,7 @@ For solo founders / non-developer product builders: [docs/non-programmer-mode.md
 
 ## MCP server catalog
 
-The `--integrations` flag (or `/integrations` after the first install) opens a TUI checklist with 24 servers across 10 categories. Pick only what your project needs — the rest stays untouched.
+The `--integrations` flag (or `/integrations` after the first install) opens a TUI checklist with 27 servers across 10 categories. Pick only what your project needs — the rest stays untouched.
 
 | Category               | Servers                                                                                |
 |------------------------|----------------------------------------------------------------------------------------|

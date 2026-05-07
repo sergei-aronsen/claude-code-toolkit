@@ -322,7 +322,7 @@
       },
       "serena": {
         "name": "serena",
-        "display_name": "Serena (semantic code IDE)",
+        "display_name": "Serena",
         "category": "dev-tools",
         "env_var_keys": [],
         "install_args": [
@@ -340,7 +340,7 @@
       },
       "claude-context": {
         "name": "claude-context",
-        "display_name": "Claude Context (semantic search)",
+        "display_name": "Claude Context",
         "category": "dev-tools",
         "env_var_keys": [
           "MILVUS_TOKEN",

@@ -2230,12 +2230,19 @@ if [[ ${INSTALLED_COUNT:-0} -gt 0 && "${NO_BANNER:-0}" != "1" ]]; then
             done < "$_mcp_tsv"
         fi
 
-        _guide_ver="unknown"
-        if [[ -f "manifest.json" ]] && command -v jq >/dev/null 2>&1; then
-            _guide_ver="$(jq -r '.version // "unknown"' manifest.json 2>/dev/null)"
-        elif [[ -f ".claude/.toolkit-version" ]]; then
-            _guide_ver="$(cat .claude/.toolkit-version 2>/dev/null || echo unknown)"
+        _guide_ver="${TK_TOOLKIT_VERSION:-}"
+        if [[ -z "$_guide_ver" || "$_guide_ver" == "unknown" ]] && [[ -f ".claude/.toolkit-version" ]]; then
+            _guide_ver="$(head -n1 .claude/.toolkit-version 2>/dev/null || echo)"
         fi
+        if [[ -z "$_guide_ver" || "$_guide_ver" == "unknown" ]] && [[ -f "$HOME/.claude/.toolkit-version" ]]; then
+            _guide_ver="$(head -n1 "$HOME/.claude/.toolkit-version" 2>/dev/null || echo)"
+        fi
+        if [[ -z "$_guide_ver" || "$_guide_ver" == "unknown" ]] && [[ -f "manifest.json" ]] && command -v jq >/dev/null 2>&1; then
+            _guide_ver="$(jq -r '.version // "unknown"' manifest.json 2>/dev/null)"
+        fi
+        : "${_guide_ver:=unknown}"
+
+        _guide_project_name="$(basename "$PWD" 2>/dev/null || echo project)"
 
         # shellcheck disable=SC1090
         if TK_GUIDE_TEMPLATES="$_guide_templates" \
@@ -2243,6 +2250,8 @@ if [[ ${INSTALLED_COUNT:-0} -gt 0 && "${NO_BANNER:-0}" != "1" ]]; then
            TK_GUIDE_MCPS="$_guide_mcps" \
            TK_GUIDE_OUTPUT=".claude/setup-guide.html" \
            TK_GUIDE_TOOLKIT_VER="$_guide_ver" \
+           TK_GUIDE_PROJECT_NAME="$_guide_project_name" \
+           TK_GUIDE_PROJECT_ROOT="$PWD" \
                bash -c 'source "'"$_guide_lib"'" && post_install_guide_generate' \
                >/dev/null 2>&1; then
             echo ""
@@ -2254,7 +2263,7 @@ if [[ ${INSTALLED_COUNT:-0} -gt 0 && "${NO_BANNER:-0}" != "1" ]]; then
                 (open ".claude/setup-guide.html" >/dev/null 2>&1 &) || true
             fi
         fi
-        unset _guide_lib _guide_templates _guide_installed _guide_mcps _mcp_tsv _mname _mstate _guide_ver
+        unset _guide_lib _guide_templates _guide_installed _guide_mcps _mcp_tsv _mname _mstate _guide_ver _guide_project_name
     fi
 fi
 

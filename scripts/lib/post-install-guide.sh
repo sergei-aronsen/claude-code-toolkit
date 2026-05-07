@@ -93,6 +93,7 @@ post_install_guide_render_generic_mcp() {
     local env_list=""
     local oauth_note=""
     local doc_url="https://github.com/sergei-aronsen/claude-code-toolkit"
+    local has_keys=0
 
     if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
         display_name=$(jq -r --arg n "$name" '.components.mcp[$n].display_name // $n' "$catalog" 2>/dev/null)
@@ -105,6 +106,7 @@ post_install_guide_render_generic_mcp() {
         local keys
         keys=$(jq -r --arg n "$name" '.components.mcp[$n].env_var_keys[]?' "$catalog" 2>/dev/null)
         if [[ -n "$keys" ]]; then
+            has_keys=1
             while IFS= read -r k; do
                 env_list+="<li><code>${k}</code> — required env var, see official docs for the value format.</li>"
             done <<< "$keys"
@@ -112,14 +114,53 @@ post_install_guide_render_generic_mcp() {
     fi
     [[ -z "$env_list" ]] && env_list="<li>No env vars required.</li>"
 
-    sed \
-        -e "s|{{NAME}}|$name|g" \
-        -e "s|{{DISPLAY_NAME}}|$display_name|g" \
-        -e "s|{{DESCRIPTION}}|$description|g" \
-        -e "s|{{ENV_LIST}}|$env_list|g" \
-        -e "s|{{OAUTH_NOTE}}|$oauth_note|g" \
-        -e "s|{{DOC_URL}}|$doc_url|g" \
-        "$generic_tpl"
+    # WHERE_BLOCK: only render the "where to put the value" guidance when the
+    # MCP actually consumes env vars. OAuth-only and no-key MCPs (Serena, the
+    # Anthropic-hosted ones) get an empty block so the card stays compact.
+    #
+    # The block embeds clickable `file://` links so a regular user can jump
+    # straight from the guide to the file that needs editing. Project root is
+    # supplied via TK_GUIDE_PROJECT_ROOT (install.sh passes $PWD); home dir via
+    # TK_GUIDE_HOME (defaults to $HOME). The HTML is intentionally one long
+    # line so the downstream sed-based substitution stays line-safe.
+    local where_block=""
+    if [[ "$has_keys" -eq 1 ]]; then
+        local _home="${TK_GUIDE_HOME:-$HOME}"
+        local _proj_root="${TK_GUIDE_PROJECT_ROOT:-$PWD}"
+        local _user_env="${_home}/.claude/mcp-config.env"
+        local _project_env="${_proj_root}/.env"
+        local _user_disp="${_user_env/#$_home/~}"
+        where_block="<h3>Where to put the value</h3><p><strong>User scope (default):</strong> add <code>KEY=value</code> lines to <a href=\"file://${_user_env}\"><code>${_user_disp}</code></a> &mdash; the toolkit creates this file (mode 0600) at install time. A line like <code>set -a; [ -f ~/.claude/mcp-config.env ] &amp;&amp; . ~/.claude/mcp-config.env; set +a</code> is appended to your shell rc (<code>~/.zshrc</code> / <code>~/.bashrc</code> / <code>~/.bash_profile</code>) so a fresh shell auto-loads the values.</p><p><strong>Project scope:</strong> if you installed the MCP with <code>--scope project</code>, add <code>KEY=value</code> to <a href=\"file://${_project_env}\"><code>${_project_env}</code></a> instead. Project values override user scope when Claude Code runs from inside that project.</p><p>After editing, reload your shell (<code>exec \$SHELL</code>, or open a new terminal tab) and restart Claude Code so the MCP picks up the new value.</p>"
+    fi
+
+    # Substitute via python3: WHERE_BLOCK can contain almost any HTML and the
+    # other fields (display_name, description) are catalog-driven, so a literal
+    # str.replace pass is safer than chained sed (which would need each value
+    # escaped for `s` semantics).
+    PI_TPL="$generic_tpl" \
+    PI_NAME="$name" \
+    PI_DISPLAY="$display_name" \
+    PI_DESC="$description" \
+    PI_ENV_LIST="$env_list" \
+    PI_OAUTH="$oauth_note" \
+    PI_DOC="$doc_url" \
+    PI_WHERE="$where_block" \
+    python3 -c '
+import os
+with open(os.environ["PI_TPL"], "r", encoding="utf-8") as f:
+    out = f.read()
+for tok, key in (
+    ("{{NAME}}",         "PI_NAME"),
+    ("{{DISPLAY_NAME}}", "PI_DISPLAY"),
+    ("{{DESCRIPTION}}",  "PI_DESC"),
+    ("{{ENV_LIST}}",     "PI_ENV_LIST"),
+    ("{{OAUTH_NOTE}}",   "PI_OAUTH"),
+    ("{{DOC_URL}}",      "PI_DOC"),
+    ("{{WHERE_BLOCK}}",  "PI_WHERE"),
+):
+    out = out.replace(tok, os.environ.get(key, ""))
+print(out, end="")
+'
 }
 
 # Main entry point.
@@ -155,19 +196,19 @@ post_install_guide_generate() {
         fi
     fi
 
-    # Build TOC entries + section blocks.
-    local toc_html=""
+    # Build TOC entries + section blocks. The new layout drops the "Contents"
+    # wrapper header and per-item icons; group headers (Components, MCP Servers)
+    # carry the icons and items render as plain disc bullets.
+    local components_items=""
+    local mcps_items=""
     local sections_html=""
-    local label icon tpl
+    local label tpl
 
     if [[ -n "$installed" ]]; then
-        toc_html+="<li class=\"toc-section-title\">Components</li>"
         for label in $installed; do
             tpl="$templates_dir/components/${label}.html"
-            # Bridges: collapse gemini-bridge/codex-bridge → bridges.html.
             if [[ "$label" == "gemini-bridge" || "$label" == "codex-bridge" ]]; then
                 tpl="$templates_dir/components/bridges.html"
-                # Avoid duplicate TOC entry if both bridges installed.
                 if echo "$sections_html" | grep -q 'id="bridges"'; then
                     continue
                 fi
@@ -176,17 +217,20 @@ post_install_guide_generate() {
             if [[ ! -f "$tpl" ]]; then
                 continue
             fi
-            icon=$(post_install_guide_icon "$label")
             local title
             title=$(post_install_guide_titleize "$label")
-            toc_html+="<li><a href=\"#${label}\">${icon} ${title}</a></li>"
+            components_items+="<li><a href=\"#${label}\">${title}</a></li>"
             sections_html+=$'\n'
             sections_html+=$(cat "$tpl")
         done
     fi
 
+    # Track MCPs that need API keys so we can build an "Action required"
+    # banner at the top of the guide. The banner is the first thing a user
+    # sees after install — it answers "wait, do I need to do anything?"
+    # without forcing them to scroll the whole document.
+    local action_items=""
     if [[ -n "$mcps" ]]; then
-        toc_html+="<li class=\"toc-section-title\">MCP Servers</li>"
         for name in $mcps; do
             tpl="$templates_dir/mcp/${name}.html"
             local body
@@ -197,23 +241,79 @@ post_install_guide_generate() {
             fi
             [[ -z "$body" ]] && continue
             local display="$name"
+            local needs_keys=0
             if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
                 display=$(jq -r --arg n "$name" '.components.mcp[$n].display_name // $n' "$catalog" 2>/dev/null)
+                local _keycount
+                _keycount=$(jq -r --arg n "$name" '(.components.mcp[$n].env_var_keys // []) | length' "$catalog" 2>/dev/null)
+                local _oauth
+                _oauth=$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth // false' "$catalog" 2>/dev/null)
+                # OAuth-only MCPs technically have no keys to fill; skip them.
+                if [[ "${_keycount:-0}" -gt 0 && "$_oauth" != "true" ]]; then
+                    needs_keys=1
+                fi
             fi
-            toc_html+="<li><a href=\"#mcp-${name}\">🔌 ${display}</a></li>"
+            # Trim parenthetical disambiguators ("Serena (semantic code IDE)" →
+            # "Serena") to keep TOC entries scannable. Section subtitles still
+            # carry the full description.
+            display="${display%% (*}"
+            mcps_items+="<li><a href=\"#mcp-${name}\">${display}</a></li>"
+            if [[ "$needs_keys" -eq 1 ]]; then
+                action_items+="<li><a href=\"#mcp-${name}\">${display}</a></li>"
+            fi
             sections_html+=$'\n'
             sections_html+="$body"
         done
     fi
 
+    # Prepend the action-required banner to the section stream so it renders
+    # ABOVE every component card. Linked items jump to the relevant MCP's
+    # WHERE_BLOCK section so the user sees the exact file path.
+    if [[ -n "$action_items" ]]; then
+        local _home="${TK_GUIDE_HOME:-$HOME}"
+        local _user_env="${_home}/.claude/mcp-config.env"
+        local _user_env_disp="${_user_env/#$_home/~}"
+        local action_banner
+        action_banner=$(printf '<section class="action-required"><h2>🔑 You need to add API keys</h2><p>Some MCPs you just installed are wired up but inert until you add their API keys. The toolkit prepared <a href="file://%s"><code>%s</code></a> (chmod 0600) — open it, paste the keys, save, then run <code>exec $SHELL</code> and restart Claude Code.</p><p>Click any item below to jump to its setup card with copy-pastable keys:</p><ul>%s</ul></section>' \
+            "$_user_env" "$_user_env_disp" "$action_items")
+        sections_html="$action_banner$sections_html"
+    fi
+
+    local toc_html=""
+    if [[ -n "$components_items" ]]; then
+        toc_html+="<div class=\"toc-group\"><div class=\"toc-group-title\"><span class=\"toc-group-icon\">🧰</span>Components</div><ul>${components_items}</ul></div>"
+    fi
+    if [[ -n "$mcps_items" ]]; then
+        toc_html+="<div class=\"toc-group\"><div class=\"toc-group-title\"><span class=\"toc-group-icon\">🔌</span>MCP Servers</div><ul>${mcps_items}</ul></div>"
+    fi
+
     if [[ -z "$toc_html" ]]; then
-        toc_html='<li class="toc-section-title">Nothing to set up</li>'
+        toc_html='<div class="toc-group"><div class="toc-group-title">Nothing to set up</div></div>'
         sections_html='<section><h2>👍 No additional setup needed</h2><p>You did not install any component that requires post-install configuration. Run <code>/update-toolkit</code> or <code>/update-deps</code> from inside Claude Code to manage dependencies.</p></section>'
     fi
 
     local generated_at
     generated_at=$(date '+%Y-%m-%d %H:%M %Z')
     local hostname_str="${HOSTNAME:-$(hostname 2>/dev/null || echo localhost)}"
+
+    # Project name: prefer caller-provided TK_GUIDE_PROJECT_NAME; fall back to
+    # the basename of the project root (where install.sh / init-claude.sh ran
+    # from). The fallback intentionally uses $PWD because TK_GUIDE_PROJECT_ROOT
+    # is the project directory passed by install.sh; for ad-hoc CLI runs we
+    # take the current dir.
+    local project_name="${TK_GUIDE_PROJECT_NAME:-}"
+    if [[ -z "$project_name" ]]; then
+        local _pr="${TK_GUIDE_PROJECT_ROOT:-$PWD}"
+        project_name="$(basename "$_pr" 2>/dev/null || echo project)"
+    fi
+
+    # Version block: only render the Toolkit-version badge when we have a real
+    # version string. Empty / "unknown" → omit the badge so the header doesn't
+    # advertise "Toolkit vunknown".
+    local version_block=""
+    if [[ -n "$toolkit_ver" && "$toolkit_ver" != "unknown" ]]; then
+        version_block="<span class=\"meta-sep\">·</span><span class=\"badge\">Toolkit v${toolkit_ver}</span>"
+    fi
 
     # Use python3 for substitution — multi-line CSS / JS would need
     # awk's `-v` to embed newlines, which BSD awk on macOS rejects.
@@ -226,26 +326,30 @@ post_install_guide_generate() {
     PI_SCRIPT_FILE="$scriptjs" \
     PI_TOC="$toc_html" \
     PI_SECTIONS="$sections_html" \
-    PI_VERSION="$toolkit_ver" \
+    PI_VERSION_BLOCK="$version_block" \
+    PI_PROJECT_NAME="$project_name" \
     PI_GENERATED_AT="$generated_at" \
     PI_HOSTNAME="$hostname_str" \
     PI_OUTPUT="$output" \
     python3 - <<'PYEOF' || { echo "post-install-guide: substitution failed" >&2; return 2; }
-import os, sys
+import html, os, sys
 
 def read(path):
     with open(path, 'r', encoding='utf-8') as f:
         return f.read()
 
 skeleton = read(os.environ['PI_SKELETON'])
+project_raw = os.environ.get('PI_PROJECT_NAME', '')
+project_html = '<code>{}</code>'.format(html.escape(project_raw)) if project_raw else ''
 substitutions = {
-    '{{STYLES}}':       read(os.environ['PI_STYLES_FILE']),
-    '{{SCRIPT}}':       read(os.environ['PI_SCRIPT_FILE']),
-    '{{TOC}}':          os.environ.get('PI_TOC', ''),
-    '{{SECTIONS}}':     os.environ.get('PI_SECTIONS', ''),
-    '{{VERSION}}':      os.environ.get('PI_VERSION', ''),
-    '{{GENERATED_AT}}': os.environ.get('PI_GENERATED_AT', ''),
-    '{{HOSTNAME}}':     os.environ.get('PI_HOSTNAME', ''),
+    '{{STYLES}}':        read(os.environ['PI_STYLES_FILE']),
+    '{{SCRIPT}}':        read(os.environ['PI_SCRIPT_FILE']),
+    '{{TOC}}':           os.environ.get('PI_TOC', ''),
+    '{{SECTIONS}}':      os.environ.get('PI_SECTIONS', ''),
+    '{{VERSION_BLOCK}}': os.environ.get('PI_VERSION_BLOCK', ''),
+    '{{PROJECT_NAME}}':  project_html,
+    '{{GENERATED_AT}}':  os.environ.get('PI_GENERATED_AT', ''),
+    '{{HOSTNAME}}':      os.environ.get('PI_HOSTNAME', ''),
 }
 out = skeleton
 for k, v in substitutions.items():

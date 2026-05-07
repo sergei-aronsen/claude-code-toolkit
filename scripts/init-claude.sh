@@ -339,6 +339,14 @@ if [[ "$MANIFEST_VER" != "2" ]]; then
 fi
 MANIFEST_FILE="$MANIFEST_TMP"
 
+# Capture the toolkit version once we trust the manifest. Used to write
+# `.toolkit-version` markers below (read by setup-guide.html generation and
+# `--version` CLI). Falls back to "unknown" only if jq fails AFTER the
+# manifest_version guard has already passed — that combination is suspicious
+# enough to surface in the marker rather than silently masking it.
+TK_TOOLKIT_VERSION=$(jq -r '.version // "unknown"' "$MANIFEST_FILE" 2>/dev/null || echo unknown)
+export TK_TOOLKIT_VERSION
+
 # Audit LOG-MED-1 (2026-04-30 deep): compute manifest content-hash so the
 # subsequent write_state at the end of install carries it as the 9th arg.
 # Without this, the state file lands with manifest_hash="" and is_update_noop
@@ -770,6 +778,19 @@ download_files() {
     INSTALLED_CSV=$(IFS=,; echo "${INSTALLED_PATHS[*]:-}")
     SKIPPED_CSV=$(IFS=,; echo "${SKIPPED_PATHS[*]:-}")
     write_state "$MODE" "$HAS_SP" "${SP_VERSION:-}" "$HAS_GSD" "${GSD_VERSION:-}" "$INSTALLED_CSV" "$SKIPPED_CSV" "false" "${MANIFEST_HASH:-}"
+
+    # Persist a plain-text toolkit-version marker so install.sh's post-install
+    # guide and any future consumer (e.g. the `--version` CLI from a stale
+    # checkout) can resolve the version without re-fetching the manifest.
+    # Written to BOTH locations: project-local (CWD/.claude) and user-global
+    # (~/.claude). The user-global marker survives `rm -rf .claude` cycles in
+    # individual projects.
+    if [[ "$DRY_RUN" != true ]] && [[ -n "${TK_TOOLKIT_VERSION:-}" ]]; then
+        printf '%s\n' "$TK_TOOLKIT_VERSION" > "$CLAUDE_DIR/.toolkit-version" 2>/dev/null || true
+        mkdir -p "$HOME/.claude" 2>/dev/null || true
+        printf '%s\n' "$TK_TOOLKIT_VERSION" > "$HOME/.claude/.toolkit-version" 2>/dev/null || true
+    fi
+
     release_lock
     # Explicit release succeeded — flip flag off so run_cleanup does not call
     # release_lock again on EXIT (release_lock itself is idempotent, but the

@@ -9,25 +9,19 @@
 <body>
 <header>
   <div class="header-inner">
-    <h1>🧰 Setup Guide</h1>
-    <div class="meta">
-      <span class="badge">Toolkit v{{VERSION}}</span>
-      <span class="meta-sep">·</span>
-      <span>Generated {{GENERATED_AT}}</span>
-      <span class="meta-sep">·</span>
-      <span>Host: <code>{{HOSTNAME}}</code></span>
+    <div class="header-top">
+      <h1>🧰 Claude Code Toolkit</h1>
+      <a class="header-link" href="https://github.com/sergei-aronsen/claude-code-toolkit" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
-    <p class="lead">Below are setup steps for every component you installed. Click <kbd>📋</kbd> next to any code block to copy.</p>
+    <div class="header-sub">
+      <span class="project-name">{{PROJECT_NAME}}</span>{{VERSION_BLOCK}}
+    </div>
   </div>
 </header>
 
 <div class="layout">
   <nav class="toc">
-    <div class="toc-header">Contents</div>
-    <ul>{{TOC}}</ul>
-    <div class="toc-footer">
-      <a href="https://github.com/sergei-aronsen/claude-code-toolkit" target="_blank" rel="noopener">GitHub ↗</a>
-    </div>
+    {{TOC}}
   </nav>
 
   <main class="sections">
@@ -36,7 +30,7 @@
 </div>
 
 <footer>
-  <p>Regenerate any time: <code>bash ~/.claude/post-install-regenerate.sh</code> (or re-run the toolkit installer).</p>
+  <p>Regenerate any time: <code>bash ~/.claude/post-install-regenerate.sh</code> · Generated {{GENERATED_AT}} on <code>{{HOSTNAME}}</code></p>
 </footer>
 
 <script>{{SCRIPT}}</script>
