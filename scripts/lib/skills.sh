@@ -89,6 +89,11 @@ _skills_description() {
         echo "Senior-engineer planning + execution workflow (installed via npx)"
         return 0
     fi
+    # ai-models SKILL.md has no YAML frontmatter — use hardcoded blurb.
+    if [[ "$name" == "ai-models" ]]; then
+        echo "Current AI model IDs and pricing for Anthropic / OpenAI / Google APIs"
+        return 0
+    fi
     local mirror f
     mirror="$(_skills_default_mirror_path)"
     f="${mirror}/${name}/SKILL.md"
@@ -111,7 +116,13 @@ _skills_description() {
         fi
         if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
             val="${BASH_REMATCH[1]}"
+            # YAML block scalar marker (`|`, `>`, `>-`, `>+`) → continuation
             if [[ "$val" =~ ^[\|\>][-+]?$ ]]; then
+                cont=1
+                continue
+            fi
+            # Empty inline value → implicit multi-line plain scalar (indented next lines)
+            if [[ -z "$val" ]]; then
                 cont=1
                 continue
             fi

@@ -1037,7 +1037,7 @@ if [[ "$SKILLS" -eq 1 ]]; then
     local_total=${#SKILLS_CATALOG[@]}
     for ((i=0; i<local_total; i++)); do
         TUI_GROUPS+=("Skills")
-        TUI_DESCS+=("Curated skill mirrored from upstream")
+        TUI_DESCS+=("$(_skills_description "${SKILLS_CATALOG[$i]}")")
     done
 
     # Selection precedence (UX-FLOW-01 mirror of the MCP branch above):
@@ -1698,7 +1698,7 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                     TUI_REQUIRED=()
                     for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
                         TUI_GROUPS+=("Skills")
-                        TUI_DESCS+=("Curated skill mirrored from upstream")
+                        TUI_DESCS+=("$(_skills_description "${SKILLS_CATALOG[$_sk_i]}")")
                         TUI_REQUIRED+=(0)
                     done
                     unset _sk_i

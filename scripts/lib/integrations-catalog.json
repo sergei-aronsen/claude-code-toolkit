@@ -118,7 +118,7 @@
           "@bytebase/dbhub",
           "--readonly"
         ],
-        "description": "Multi-DB MCP — Postgres / MySQL / MariaDB / MSSQL / SQLite. Token-efficient (~1.4k tokens, 13× less than alternatives). DSN env var carries the connection string. ALWAYS use a read-only DB user — `--readonly` flag is bypassable (issue #271).",
+        "description": "Multi-DB MCP — Postgres, MySQL, MariaDB, MSSQL, SQLite",
         "requires_oauth": false,
         "default_scope": "project"
       },
@@ -133,7 +133,7 @@
           "datadog",
           "https://app.datadoghq.com/api/v2/mcp/sse"
         ],
-        "description": "APM + infra metrics + logs + dashboards + incidents. OAuth flow at first connect (no API key needed). EU users edit URL → datadoghq.eu. Heavy vendor lock-in; expensive at scale.",
+        "description": "APM + infra metrics + logs + dashboards + incidents",
         "requires_oauth": true,
         "default_scope": "user"
       },
@@ -244,7 +244,7 @@
           "-y",
           "@mailgun/mcp-server"
         ],
-        "description": "Transactional email — send, validate, query stats, manage suppressions. 50+ tools. MAILGUN_API_REGION = `us` or `eu` (default `us`). Resend alternative for users on Mailgun.",
+        "description": "Transactional email — send, validate, stats, suppressions",
         "requires_oauth": false,
         "default_scope": "project"
       },
@@ -316,7 +316,7 @@
           "--header",
           "Authorization:${POSTHOG_AUTH_HEADER}"
         ],
-        "description": "Product analytics + error tracking + LLM cost tracking + feature flags + A/B testing. POSTHOG_AUTH_HEADER format: `Bearer phx_…` (personal API key). Free tier 100k events/mo. Cheap Sentry alternative for AI apps.",
+        "description": "Product analytics + error tracking + feature flags + A/B testing",
         "requires_oauth": false,
         "default_scope": "user"
       },
