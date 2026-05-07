@@ -1291,13 +1291,18 @@ TUI_REQUIRED+=("0")
 TUI_DESCS+=("Multi-AI plan review (Gemini + ChatGPT) — needs CLI or API keys")
 
 # claude-memo: optional persistent engineering memory (vault + embeddings
-# + auto-capture hooks). Detect via the cloned skill dir AND a populated
-# vault — either alone is incomplete state. The wrapper is idempotent so
-# detection is a hint, not a hard gate.
+# + auto-capture hooks). Detect via the skill dir (SKILL.md present — works
+# for git clone OR manual copy) AND a populated vault. Vault location is
+# user-configurable via $MEMO_VAULT_PATH (set by claude-memo installer in
+# shell rc); fall back to the default path.  Either condition alone is
+# incomplete state. The wrapper is idempotent so detection is a hint, not
+# a hard gate.
 IS_MEMO=0
-if [[ -d "$HOME/.claude/skills/memo-skill/.git" ]] && [[ -f "$HOME/memo-vault/INDEX.md" ]]; then
+_memo_vault="${MEMO_VAULT_PATH:-$HOME/memo-vault}"
+if [[ -f "$HOME/.claude/skills/memo-skill/SKILL.md" ]] && [[ -f "$_memo_vault/INDEX.md" ]]; then
     IS_MEMO=1
 fi
+unset _memo_vault
 TUI_LABELS+=("claude-memo")
 TUI_GROUPS+=("Optional")
 TUI_INSTALLED+=("$IS_MEMO")
@@ -2008,7 +2013,9 @@ for ((i=0; i<_disp_count; i++)); do
         rtk)         is_rtk_installed         && local_re_installed=1 || true ;;
         statusline)  is_statusline_installed  && local_re_installed=1 || true ;;
         council)     [[ -f "$HOME/.claude/council/brain.py" ]] && local_re_installed=1 || true ;;
-        claude_memo) [[ -d "$HOME/.claude/skills/memo-skill/.git" && -f "$HOME/memo-vault/INDEX.md" ]] && local_re_installed=1 || true ;;
+        claude_memo) local_memo_vault="${MEMO_VAULT_PATH:-$HOME/memo-vault}"
+                     [[ -f "$HOME/.claude/skills/memo-skill/SKILL.md" && -f "$local_memo_vault/INDEX.md" ]] && local_re_installed=1 || true
+                     unset local_memo_vault ;;
         gemini-bridge) : ;;  # Bridges have no idempotency probe — always re-write (state SHA tracks drift).
         codex-bridge)  : ;;
         mcp_servers) : ;;    # Marketplace pickers always run when checked — the sub-TUI handles its own idempotency.
