@@ -63,13 +63,13 @@ echo ""
 # SKILL-01
 # ─────────────────────────────────────────────────
 run_s1_catalog_correctness() {
-    echo "  -- S1_catalog_correctness: 22 entries, alphabetical order, last is webapp-testing --"
+    echo "  -- S1_catalog_correctness: 23 entries, alphabetical order, last is webapp-testing --"
     SKILLS_CATALOG=()
     # shellcheck source=/dev/null
     source "${REPO_ROOT}/scripts/lib/skills.sh"
-    assert_eq "22" "${#SKILLS_CATALOG[@]}" "S1: catalog contains 22 entries"
+    assert_eq "23" "${#SKILLS_CATALOG[@]}" "S1: catalog contains 23 entries"
     assert_eq "ai-models" "${SKILLS_CATALOG[0]}" "S1: alphabetical first entry is ai-models"
-    assert_eq "webapp-testing" "${SKILLS_CATALOG[21]}" "S1: alphabetical last entry is webapp-testing"
+    assert_eq "webapp-testing" "${SKILLS_CATALOG[22]}" "S1: alphabetical last entry is webapp-testing"
 }
 
 # ─────────────────────────────────────────────────
@@ -217,7 +217,7 @@ run_s5_force_overwrite() {
 }
 
 # ─────────────────────────────────────────────────
-# S6_install_sh_dry_run — --skills --yes --dry-run: 22 would-install rows, zero mutations (SKILL-05)
+# S6_install_sh_dry_run — --skills --yes --dry-run: 23 would-install rows, zero mutations (SKILL-05)
 # ─────────────────────────────────────────────────
 run_s6_install_sh_dry_run() {
     local SANDBOX
@@ -240,7 +240,7 @@ run_s6_install_sh_dry_run() {
 
     local would_count
     would_count=$(printf '%s\n' "$output" | grep -c "would-install" || true)
-    assert_eq "22" "$would_count" "S6: dry-run prints 22 would-install rows"
+    assert_eq "23" "$would_count" "S6: dry-run prints 23 would-install rows"
 
     # Zero filesystem mutations: SKILLS_HOME should still be empty.
     local file_count

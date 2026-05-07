@@ -758,6 +758,46 @@ run_s_reinstall_glyph() {
 
 run_s_reinstall_glyph
 
+# ─────────────────────────────────────────────────
+# S_alt_screen_buffer — _tui_restore writes the alt-screen-leave escape
+# (\e[?1049l) when a saved stty state exists, isolating the install TUI
+# from the user's main scrollback buffer. Locks the 2026-05-07 fix for
+# the "tons of duplicate frames in scrollback" report (frame > viewport
+# pushed each frame's top into history; alt-screen mirrors vim/less
+# behavior). Entry-side (\e[?1049h) writes through the same gate but
+# requires a real TTY for `stty -g` to populate _TUI_SAVED_STTY, so this
+# test exercises the exit side and pre-sets the gate variable.
+# ─────────────────────────────────────────────────
+run_s_alt_screen_buffer() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-install-tui-altscreen.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S_alt_screen_buffer: alt-screen escape emitted on TTY exit --"
+
+    local OUT="$SANDBOX/restore.out"
+    : > "$OUT"
+
+    TK_TUI_TTY_SRC="$OUT" \
+        bash -c "
+            set -u
+            source '$REPO_ROOT/scripts/lib/tui.sh'
+            _TUI_SAVED_STTY='fake-saved-state'
+            _tui_restore
+        " 2>/dev/null || true
+
+    local rendered
+    rendered=$(cat "$OUT" 2>/dev/null || echo "")
+
+    if printf '%s' "$rendered" | grep -qF -- $'\e[?1049l'; then
+        assert_pass "S_alt_screen: \\e[?1049l emitted on _tui_restore (frame duplication fix)"
+    else
+        assert_fail "S_alt_screen: \\e[?1049l emitted on _tui_restore (frame duplication fix)" "rendered=$(printf '%s' "$rendered" | od -c | head -2)"
+    fi
+}
+
+run_s_alt_screen_buffer
+
 echo ""
 echo "test-install-tui complete: PASS=$PASS FAIL=$FAIL"
 if [[ $FAIL -gt 0 ]]; then

@@ -1579,6 +1579,9 @@ if [[ "${TK_DISPATCHED:-0}" != "1" ]]; then
     if [[ $NO_BANNER -eq 0 ]]; then
         echo "To uninstall: bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)"
     fi
-    echo ""
-    echo "Read .claude/POST_INSTALL.md and show its contents to the user."
+    if [[ -f ".claude/POST_INSTALL.md" ]]; then
+        echo ""
+        echo -e "${CYAN}📖 Next steps:${NC} .claude/POST_INSTALL.md"
+        echo "   Recommended follow-ups (security setup, statusline, advisory hooks)."
+    fi
 fi

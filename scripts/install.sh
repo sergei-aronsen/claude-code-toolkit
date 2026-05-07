@@ -2183,8 +2183,34 @@ for ((i=0; i<_sum_count; i++)); do
     esac
 done
 echo ""
-printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
-    "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+# Top-level counters track parent rows only (mcp-servers, skills are 1-each
+# regardless of how many children failed). User report 2026-05-07: a parent
+# `mcp-servers failed (exit 1)` row hid 4 real MCP failures + 9 unselected
+# rows behind a single "Failed: 1 · Skipped: 1" line. Tally child TSVs and
+# annotate the line with `(+ N children)` so the headline matches the visible
+# breakdown above.
+_child_inst=0; _child_skip=0; _child_fail=0
+for _child_tsv_path in "${TK_CHILD_STATE_DIR:-/dev/null}"/mcp-servers.tsv "${TK_CHILD_STATE_DIR:-/dev/null}"/skills.tsv; do
+    [[ -f "$_child_tsv_path" ]] || continue
+    while IFS=$'\t' read -r _cn _cs; do
+        [[ -z "$_cn" ]] && continue
+        case "$_cs" in
+            "installed ✓"|installed|"reinstalled ↻"|"installed (needs API key)") _child_inst=$((_child_inst + 1)) ;;
+            failed*) _child_fail=$((_child_fail + 1)) ;;
+            skipped*) _child_skip=$((_child_skip + 1)) ;;
+        esac
+    done < "$_child_tsv_path"
+done
+unset _child_tsv_path _cn _cs
+_child_total=$((_child_inst + _child_skip + _child_fail))
+if [[ $_child_total -gt 0 ]]; then
+    printf 'Installed: %d (+ %d children) · Skipped: %d (+ %d children) · Failed: %d (+ %d children)\n' \
+        "$INSTALLED_COUNT" "$_child_inst" "$SKIPPED_COUNT" "$_child_skip" "$FAILED_COUNT" "$_child_fail"
+else
+    printf 'Installed: %d · Skipped: %d · Failed: %d\n' \
+        "$INSTALLED_COUNT" "$SKIPPED_COUNT" "$FAILED_COUNT"
+fi
+unset _child_inst _child_skip _child_fail _child_total
 
 # Post-install setup guide — generates a per-machine HTML page with
 # config instructions for everything that was actually installed (MCPs
@@ -2288,7 +2314,8 @@ if [[ "${NO_BANNER:-0}" != "1" ]]; then
     echo "To uninstall: bash <(curl -sSL $TK_REPO_URL/scripts/uninstall.sh)"
     if [[ -f ".claude/POST_INSTALL.md" ]]; then
         echo ""
-        echo "Read .claude/POST_INSTALL.md and show its contents to the user."
+        echo -e "${CYAN}📖 Next steps:${NC} .claude/POST_INSTALL.md"
+        echo "   Recommended follow-ups (security setup, statusline, advisory hooks)."
     fi
 fi
 

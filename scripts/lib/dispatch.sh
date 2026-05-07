@@ -491,16 +491,16 @@ dispatch_mcp_servers() {
     fi
 
     if [[ "$dry_run" -eq 1 ]]; then
-        echo "[+ INSTALL] mcp-servers (would run: bash <(curl -sSL $TK_REPO_URL/scripts/install.sh) --mcps${pass_args[*]:+ ${pass_args[*]}})"
+        echo "[+ INSTALL] mcp-servers (would run: bash <(curl -sSL $TK_REPO_URL/scripts/install.sh) --integrations${pass_args[*]:+ ${pass_args[*]}})"
         return 0
     fi
 
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --mcps ${pass_args[@]+"${pass_args[@]}"}
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --integrations ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install.sh)"
-        bash "$sibling" --mcps ${pass_args[@]+"${pass_args[@]}"}
+        bash "$sibling" --integrations ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 

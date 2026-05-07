@@ -76,6 +76,25 @@ _TUI_SAVED_STTY=""
 _tui_enter_raw() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
     _TUI_SAVED_STTY=$(stty -g <"$tty_target" 2>/dev/null || echo "")
+    # Enter alternate screen buffer when target appears to be a real TTY.
+    # Bug 2026-05-07: frames > viewport height (27 MCPs × ~2 lines + headers
+    # + footer ≈ 70 rows in a 30-row terminal) caused `\e[H\e[J` per-frame
+    # clears to leave the previous frame's top in scrollback, so each
+    # keypress duplicated the header/category banner. Alt screen isolates
+    # the TUI from the user's scrollback — same pattern vim/less/htop use.
+    #
+    # Gating: was originally guarded by `_TUI_SAVED_STTY` non-empty, but a
+    # user reported the dup persisting after that gate (2026-05-07 angry
+    # report) — likely their `stty -g` returned empty for some shell-mode
+    # reason and the gate suppressed the escape. The escape is harmless
+    # bytes if the target isn't a real TTY (test seam files just gain a
+    # `\e[?1049h` prefix), so widen the gate to "tty_target is a character
+    # device OR is /dev/tty". Tests routing TK_TUI_TTY_SRC to a regular
+    # file or named pipe still skip the escape so output assertions stay
+    # clean. The matching `_tui_restore` exit-side is widened the same way.
+    if [[ -n "$_TUI_SAVED_STTY" || -c "$tty_target" || "$tty_target" == /dev/tty ]]; then
+        printf '\e[?1049h' >> "$tty_target" 2>/dev/null || true
+    fi
     printf '\e[?25l' >> "$tty_target" 2>/dev/null || true   # hide cursor
     stty -icanon -echo <"$tty_target" 2>/dev/null || true
 }
@@ -86,6 +105,12 @@ _tui_enter_raw() {
 # test seam consistently.
 _tui_restore() {
     local tty_target="${TK_TUI_TTY_SRC:-/dev/tty}"
+    # Leave alternate screen FIRST so any subsequent install output goes to the
+    # main screen (where the user's scrollback lives). Mirror the entry-side
+    # widened gate so symmetry holds even when stty -g returned empty.
+    if [[ -n "$_TUI_SAVED_STTY" || -c "$tty_target" || "$tty_target" == /dev/tty ]]; then
+        printf '\e[?1049l' >> "$tty_target" 2>/dev/null || true
+    fi
     if [[ -n "$_TUI_SAVED_STTY" ]]; then
         stty "$_TUI_SAVED_STTY" <"$tty_target" 2>/dev/null || \
             stty sane <"$tty_target" 2>/dev/null || true
@@ -229,27 +254,35 @@ _tui_render() {
             box="[x]"
         fi
 
-        # Numbered prefix + label row. Immutable rows (installed/required) render dim
-        # so they read as "disabled" — user knows space won't toggle them.
-        # Exception: reinstall state is bright light-green (call-out, not dim) so
-        # the user can pick out pending re-adds at a glance.
+        # Numbered prefix + label + inline description. Pre-2026-05-07 the
+        # description was a SECOND line under each row, but with 27 MCPs ×
+        # 2 lines + headers + footer the frame easily exceeded a 30-row
+        # terminal. The taller-than-viewport frame interacted badly with
+        # the per-render `\e[H\e[J` clear (clears only the visible viewport
+        # → when the new frame scrolls, the prior frame's TOP rows leaked
+        # into scrollback above the viewport, producing visible duplication
+        # on every keypress). Single-line rows roughly halve the frame
+        # height and fit a 27-MCP picker into ~32 rows even with category
+        # banners — well inside any modern terminal.
+        local _label_render="${row_num}. ${box} ${label}"
+        if [[ -n "$desc" ]]; then
+            _label_render+=" — ${desc}"
+        fi
+        # Immutable rows (installed/required) render dim so they read as
+        # "disabled" — user knows space won't toggle them. Exception:
+        # reinstall state is bright light-green (call-out, not dim) so
+        # the user can pick out pending re-adds at a glance. Description
+        # always inherits the row's brightness — no separate dim styling
+        # for the inline tail since the whole row is one stylistic unit.
         if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && [[ "$_reinstall" -eq 1 ]]; then
             # \e[92m — bright (light) green. \e[0m resets all attrs.
-            _frame+="$arrow"$'\e[92m'"${row_num}. ${box} ${label}"$'\e[0m\n'
+            _frame+="$arrow"$'\e[92m'"${_label_render}"$'\e[0m\n'
         elif [[ "${_TUI_COLOR:-0}" -eq 1 ]] && { [[ "$installed" -eq 1 ]] || [[ "$required" -eq 1 ]]; }; then
-            _frame+="$arrow"$'\e[2m'"${row_num}. ${box} ${label}"$'\e[0m\n'
+            _frame+="$arrow"$'\e[2m'"${_label_render}"$'\e[0m\n'
         else
-            _frame+="${arrow}${row_num}. ${box} ${label}"$'\n'
+            _frame+="${arrow}${_label_render}"$'\n'
         fi
-
-        # Inline dimmed description under EVERY row (was previously focus-only at file bottom).
-        if [[ -n "$desc" ]]; then
-            if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-                _frame+=$'       \e[2m'"$desc"$'\e[0m\n'
-            else
-                _frame+="       $desc"$'\n'
-            fi
-        fi
+        unset _label_render
     done
 
     # Synthetic Submit row at FOCUS_IDX == total (one past last item). Always renderable;
