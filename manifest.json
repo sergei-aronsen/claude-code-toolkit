@@ -343,6 +343,9 @@
         "path": "templates/post-install/mcp/sentry.html"
       },
       {
+        "path": "templates/post-install/mcp/serena.html"
+      },
+      {
         "path": "templates/post-install/mcp/stripe.html"
       }
     ],

@@ -1,0 +1,42 @@
+<section id="mcp-serena">
+  <h2><span class="section-icon">🔌</span> Serena <span class="section-tag">MCP</span></h2>
+  <p class="section-subtitle">Symbol-aware code retrieval, refactoring and editing via LSP. Replaces text-search-and-replace with structured operations. <a href="https://github.com/oraios/serena" target="_blank" rel="noopener">oraios/serena</a> — MIT, 23.9k stars.</p>
+
+  <h3>What you need to configure</h3>
+  <p>Nothing — Serena runs entirely locally with no API keys. The LSP servers download on first use per language.</p>
+
+  <h3>⚠️ Disable the auto-opening dashboard tab</h3>
+  <p>By default Serena spawns a web dashboard at <code>http://127.0.0.1:24282/dashboard/</code> and opens it in your browser <strong>every time</strong> a Claude Code session starts. Combined with stale-process leaks (each session binds the next free port: 24282 → 24283 → 24284…), you end up with dozens of dashboard tabs after a day of work.</p>
+
+  <p><strong>Fix once</strong> — edit <code>~/.serena/serena_config.yml</code>:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code># Disable both flags. Belt-and-suspenders: web_dashboard: false stops the
+# server from starting at all; web_dashboard_open_on_launch: false ensures
+# even if you re-enable the server later, it won't auto-open a tab.
+web_dashboard: false
+web_dashboard_open_on_launch: false</code></pre></div>
+
+  <p><strong>Or via sed</strong>:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>sed -i.bak 's/^web_dashboard: true/web_dashboard: false/' ~/.serena/serena_config.yml
+sed -i.bak 's/^web_dashboard_open_on_launch: true/web_dashboard_open_on_launch: false/' ~/.serena/serena_config.yml</code></pre></div>
+
+  <p>If you ever want the dashboard for debugging, set <code>web_dashboard: true</code> but keep <code>web_dashboard_open_on_launch: false</code> — server runs, you open the tab manually only when needed.</p>
+
+  <h3>Kill leaked Serena processes</h3>
+  <p>Serena leaves zombies after Claude sessions. To clear them:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>lsof -i -P 2>/dev/null | awk '/:2428[0-9]/ {print $2}' | sort -u | xargs -r kill</code></pre></div>
+
+  <p>Worth running periodically (or in a SessionEnd hook).</p>
+
+  <h3>Verify it's wired up</h3>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>claude mcp list | grep serena</code></pre></div>
+
+  <p>Then in a Claude Code session, ask "show me the Serena tools available" — you should see <code>find_symbol</code>, <code>replace_symbol_body</code>, <code>find_referencing_symbols</code>, <code>list_dir</code>, etc.</p>
+
+  <h3>Per-project setup</h3>
+  <p>The first time Serena touches a project, it creates <code>.serena/</code> there with cached LSP indices. The directory grows, so add to <code>.gitignore</code>:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>echo '.serena/' >> .gitignore</code></pre></div>
+
+  <p>For per-project config (override defaults like <code>language_backend</code>, <code>ignored_paths</code>, <code>read_only_memory_patterns</code>), edit <code>.serena/project.yml</code> after first run.</p>
+
+  <p class="section-footer"><a href="https://oraios.github.io/serena/02-usage/060_dashboard.html" target="_blank" rel="noopener">Serena dashboard docs ↗</a> · <a href="https://github.com/oraios/serena" target="_blank" rel="noopener">Serena repo ↗</a></p>
+</section>

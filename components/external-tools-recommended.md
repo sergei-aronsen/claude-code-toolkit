@@ -85,6 +85,30 @@ Serena tool usage:
 claude --system-prompt="$(serena prompts print-cc-system-prompt-override)"
 ```
 
+### Disable the auto-opening dashboard tab
+
+Serena spawns a web dashboard at `http://127.0.0.1:24282/dashboard/` and
+opens it in the browser **on every server start**. Combined with stale-
+process leaks (each Claude session binds the next free port: 24282 →
+24283 → 24284…), this produces dozens of tabs after a day of work,
+especially after deploys or scripts that touch project state.
+
+**Disable globally** in `~/.serena/serena_config.yml`:
+
+```yaml
+web_dashboard: false
+web_dashboard_open_on_launch: false
+```
+
+If you want the dashboard available for debugging but not auto-opened:
+keep `web_dashboard: true` and set `web_dashboard_open_on_launch: false`.
+
+**Periodic zombie cleanup:**
+
+```bash
+lsof -i -P 2>/dev/null | awk '/:2428[0-9]/ {print $2}' | sort -u | xargs -r kill
+```
+
 ## better-model
 
 **Purpose:** Routes subagent tasks to the right model (Sonnet for coding,
