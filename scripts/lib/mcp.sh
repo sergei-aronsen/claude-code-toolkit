@@ -1076,11 +1076,12 @@ mcp_wizard_run() {
 # callers can invoke mcp_render_scope_header at any time to refresh.
 
 mcp_render_scope_header() {
-    # Phase 39 (TUI-SCOPE-03 D-11): banner repurposed from Phase 37's
-    # 2-state user/local toggle copy to "Set all to: [U] · press s to cycle". Reads
-    # module-local _MCP_SETALL_SCOPE — the "global pending" value mcp_toggle_scope
-    # will write to every MCP_SELECTED_SCOPE slot on the next `s` press.
-    # Width budget: 36 chars plain, well under 80-col after tui.sh:153 indent.
+    # Banner copy carries the active set-all scope glyph PLUS a one-line legend
+    # so the row-side single-bracket glyph is self-explanatory. Pre-2026-05-07
+    # the rows themselves rendered "[U] [P] [L]" triple-bracket to telegraph
+    # the choice set; user feedback flagged that as visual noise (27 rows ×
+    # 3 brackets each), so the row glyph collapsed to one active bracket and
+    # the legend moved here.
     local _cur="${_MCP_SETALL_SCOPE:-user}"
     local _glyph
     case "$_cur" in
@@ -1090,10 +1091,9 @@ mcp_render_scope_header() {
         *)       _glyph="[U]" ;;
     esac
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]] && [[ -z "${NO_COLOR+x}" ]]; then
-        # Bold "Set all to:" label + bright green active bracket + dim hint.
-        TUI_HEADER_TEXT=$'\e[1mSet all to:\e[0m '$'\e[1;32m'"${_glyph}"$'\e[0m  \e[2m· press s to cycle\e[0m'
+        TUI_HEADER_TEXT=$'\e[1mScope:\e[0m '$'\e[1;32m'"${_glyph}"$'\e[0m all  \e[2m· [U]ser \e[0m·\e[2m [P]roject \e[0m·\e[2m [L]ocal \e[0m·\e[2m [!] community \e[0m·\e[2m s=cycle all · Tab=cycle row\e[0m'
     else
-        TUI_HEADER_TEXT="Set all to: ${_glyph}  · press s to cycle"
+        TUI_HEADER_TEXT="Scope: ${_glyph} all  · [U]ser · [P]roject · [L]ocal · [!] community · s=cycle all · Tab=cycle row"
     fi
 }
 
@@ -1260,28 +1260,28 @@ mcp_cycle_row_scope() {
 # TUI page assembly helper (MCP-03)
 # ─────────────────────────────────────────────────
 
-# _mcp_render_scope_glyph <scope> — Phase 39 (TUI-SCOPE-01): print the 3-bracket
-# scope-indicator fragment "[U] [P] [L]" with the active bracket green-wrapped
-# and the inactive ones plain. Active scope is the first argument
-# ("user"|"project"|"local"); unknown values fall back to "user" active.
+# _mcp_render_scope_glyph <scope> — render a SINGLE active-scope bracket like
+# `[U]`, `[P]`, or `[L]`, green-wrapped via _c_scope_active. Active scope is
+# the first argument ("user"|"project"|"local"); unknown values fall back to
+# "user". The pre-2026-05-07 form rendered all three brackets ("[U] [P] [L]")
+# in every row to telegraph the available choices, but user feedback flagged
+# that as noise — three brackets per row × 27 MCPs is visually overwhelming
+# and the legend lives in the footer banner already (Tab/s hints + the
+# `Scope: …` legend in TUI_HEADER_TEXT).
 #
 # Reads module-locals _c_scope_active / _c_nc set by the caller
 # (mcp_status_array / mcp_cycle_row_scope) so color resolution stays in
 # one place — caller checks TTY+NO_COLOR ONCE per array build per D-04.
-#
-# Output is exactly three space-separated tokens; widths stay predictable
-# under NO_COLOR (no embedded ANSI escapes when caller leaves _c_*
-# strings empty). KISS — no looping, no growth path beyond U/P/L.
 _mcp_render_scope_glyph() {
     local _scope="${1:-user}"
-    local _u="[U]" _p="[P]" _l="[L]"
+    local _glyph="[U]"
     case "$_scope" in
-        user)    _u="${_c_scope_active}[U]${_c_nc}" ;;
-        project) _p="${_c_scope_active}[P]${_c_nc}" ;;
-        local)   _l="${_c_scope_active}[L]${_c_nc}" ;;
-        *)       _u="${_c_scope_active}[U]${_c_nc}" ;;  # fallback active=user
+        user)    _glyph="[U]" ;;
+        project) _glyph="[P]" ;;
+        local)   _glyph="[L]" ;;
+        *)       _glyph="[U]" ;;
     esac
-    printf '%s %s %s' "$_u" "$_p" "$_l"
+    printf '%s%s%s' "${_c_scope_active:-}" "$_glyph" "${_c_nc:-}"
 }
 
 # mcp_status_array — populate TUI_LABELS/GROUPS/INSTALLED/DESCS for the MCP page.

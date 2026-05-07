@@ -40,6 +40,7 @@ SKILLS_CATALOG=(
   find-skills
   firecrawl
   i18n-localization
+  impeccable
   memo-skill
   next-best-practices
   notebooklm
@@ -72,6 +73,80 @@ _skills_default_mirror_path() {
 # skills_catalog_names — print all 22 skill names from SKILLS_CATALOG, one per line.
 skills_catalog_names() {
     printf '%s\n' "${SKILLS_CATALOG[@]}"
+}
+
+# _skills_description <name> — extract one-line description from SKILL.md frontmatter.
+# Reads `description:` from the YAML frontmatter block (between `---` markers).
+# Handles inline string + YAML block scalars (`|`, `>`, `>-`, `>+`).
+# Returns first sentence (truncated at ". "), capped at 95 chars on word boundary.
+# Empty output when SKILL.md missing or no description field — caller renders no line.
+# impeccable is special-cased: not vendored under templates/skills-marketplace/, so
+# we hardcode a short blurb. Other skills read from the mirror dir.
+_skills_description() {
+    local name="${1:-}"
+    [[ -z "$name" ]] && return 0
+    if [[ "$name" == "impeccable" ]]; then
+        echo "Senior-engineer planning + execution workflow (installed via npx)"
+        return 0
+    fi
+    # ai-models SKILL.md has no YAML frontmatter — use hardcoded blurb.
+    if [[ "$name" == "ai-models" ]]; then
+        echo "Current AI model IDs and pricing for Anthropic / OpenAI / Google APIs"
+        return 0
+    fi
+    local mirror f
+    mirror="$(_skills_default_mirror_path)"
+    f="${mirror}/${name}/SKILL.md"
+    [[ ! -f "$f" ]] && return 0
+
+    local in_fm=0 cont=0 line val desc=""
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "---" ]]; then
+            if [[ $in_fm -eq 0 ]]; then in_fm=1; continue; else break; fi
+        fi
+        [[ $in_fm -eq 0 ]] && continue
+        if [[ $cont -eq 1 ]]; then
+            if [[ "$line" =~ ^[[:space:]]+ ]]; then
+                local trimmed="${line#"${line%%[![:space:]]*}"}"
+                desc="${desc:+${desc} }${trimmed}"
+                continue
+            else
+                cont=0
+            fi
+        fi
+        if [[ "$line" =~ ^description:[[:space:]]*(.*)$ ]]; then
+            val="${BASH_REMATCH[1]}"
+            # YAML block scalar marker (`|`, `>`, `>-`, `>+`) → continuation
+            if [[ "$val" =~ ^[\|\>][-+]?$ ]]; then
+                cont=1
+                continue
+            fi
+            # Empty inline value → implicit multi-line plain scalar (indented next lines)
+            if [[ -z "$val" ]]; then
+                cont=1
+                continue
+            fi
+            val="${val#\"}"; val="${val%\"}"
+            val="${val#\'}"; val="${val%\'}"
+            desc="$val"
+        fi
+    done < "$f"
+
+    [[ -z "$desc" ]] && return 0
+
+    if [[ "$desc" == *". "* ]]; then
+        desc="${desc%%. *}."
+    fi
+    if [[ ${#desc} -gt 95 ]]; then
+        desc="${desc:0:95}"
+        if [[ "$desc" == *" "* ]]; then
+            desc="${desc% *}…"
+        else
+            desc+="…"
+        fi
+    fi
+
+    echo "$desc"
 }
 
 # is_skill_installed <name> — directory probe.
@@ -131,6 +206,30 @@ skills_install() {
         echo -e "${RED}✗${NC} skills_install: missing skill name" >&2
         return 1
     fi
+
+    # impeccable carries ~250KB of payload + ~25 .mjs scripts that need
+    # node at runtime, so it's not vendored under templates/skills-marketplace/.
+    # Delegate to install-impeccable.sh which wraps the upstream
+    # `npx impeccable@latest skills install` CLI and writes
+    # ~/.claude/skills/impeccable/ from a $HOME cwd. Test seam
+    # TK_SKILLS_INSTALL_IMPECCABLE_CMD lets hermetic tests stub the wrapper.
+    if [[ "$name" == "impeccable" ]]; then
+        local impeccable_cmd="${TK_SKILLS_INSTALL_IMPECCABLE_CMD:-}"
+        if [[ -z "$impeccable_cmd" ]]; then
+            local skills_dir
+            skills_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd || pwd)"
+            impeccable_cmd="${skills_dir}/../install-impeccable.sh"
+        fi
+        if [[ ! -f "$impeccable_cmd" ]]; then
+            echo -e "${RED}✗${NC} skills_install: install-impeccable.sh not found at $impeccable_cmd" >&2
+            return 1
+        fi
+        local impeccable_args=()
+        [[ "$force" -eq 1 ]] && impeccable_args+=("--yes")
+        bash "$impeccable_cmd" "${impeccable_args[@]+"${impeccable_args[@]}"}" || return 1
+        return 0
+    fi
+
     local mirror src target home
     mirror="$(_skills_default_mirror_path)"
     src="${mirror}/${name}"

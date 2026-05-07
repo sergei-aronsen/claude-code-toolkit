@@ -204,6 +204,9 @@
         "path": "scripts/install-claude-memo.sh"
       },
       {
+        "path": "scripts/install-impeccable.sh"
+      },
+      {
         "path": "scripts/install.sh"
       },
       {

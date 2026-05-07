@@ -559,9 +559,12 @@ run_s11_global_set_all() {
     assert_eq "1" "$_uniform" \
         "S11: every MCP_SELECTED_SCOPE slot equals _MCP_SETALL_SCOPE after toggle"
 
-    # Banner copy assertion — D-11.
-    assert_contains "Set all to:" "${TUI_HEADER_TEXT:-}" \
-        "S11: TUI_HEADER_TEXT contains 'Set all to:' after toggle"
+    # Banner copy assertion — 2026-05-07: header was "Set all to: [U] · press
+    # s to cycle"; user feedback flagged the per-row "[U] [P] [L]" triple as
+    # noise, so the row glyph dropped to a single active bracket and the
+    # legend moved into this banner. New copy starts with "Scope:".
+    assert_contains "Scope:" "${TUI_HEADER_TEXT:-}" \
+        "S11: TUI_HEADER_TEXT contains 'Scope:' after toggle"
 }
 
 # ─────────────────────────────────────────────────
