@@ -7,6 +7,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.3.0] - 2026-05-07
+
+**Three solo-founder gaps closed: product validation gate + vendor
+functional changelog + per-stack auto-format hook.**
+
+### Added
+
+- **Product Thinking skill** (`templates/base/skills/product-thinking/`)
+  — RIGID validation gate before code: 8-question interview covering
+  target user + JTBD, current alternative, pain intensity, success
+  metric, cheapest experiment with decision rule, distribution channel,
+  competition with structural advantage, ICP + unit economics with
+  SaaS-graveyard floor, top risk. Status enum:
+  `validated` / `needs-experiment` / `rejected` / `risk-accepted` /
+  `validated-lite`. Idempotent: if `.planning/product/<slug>.md`
+  exists, reads it instead of re-interviewing. History prefill: scans
+  last 3 product files to default target user + channel (anti-fatigue).
+  Domain-configurable via `~/.claude/product-config.json` (target
+  market, B2B price floor, B2C ceiling, LTV/CAC minimum, structural
+  advantages). Anti-overengineering pushback for RAG / multi-agent /
+  microservices at MVP stage.
+- **`/product-review` slash command** — multi-persona business review
+  with 4 personas: `product-skeptic` (devil's advocate),
+  `marketer-pragmatist` (channel + message + acquisition velocity),
+  `cfo-pragmatist` (LTV/CAC + payback + SaaS graveyard check),
+  `user-empath` (would I actually use this on Tuesday?). Aggregated
+  status: `validated` / `needs-revision` / `needs-experiment` /
+  `rejected`. `--lite` for trivial work, `--persona <name>` for one
+  perspective, `--council` to combine with technical review.
+- **Product gate hook** (`templates/base/hooks/product-gate.sh`) —
+  UserPromptSubmit hook that detects feature-related keywords
+  (build/ship/MVP/launch/pivot/pricing) and injects a soft reminder to
+  run product-thinking first. Anti-trigger keywords (bug/fix/refactor/
+  typo/lint) auto-skip. Disable via `CLAUDE_PRODUCT_GATE=0` or
+  `(no-product-gate)` in prompt.
+- **Vendor changelog system** — closes the gap where the agent
+  reasons about external vendor APIs from stale memorized knowledge.
+  Critical for solo founders building on AI-assisted toolchains
+  (Superpowers, GSD, Serena, better-model, claude-context,
+  cc-safety-net, RTK).
+- `manifest.json:vendor_pins` — pins each external vendor's repo +
+  commit + tag + pinned_at. 7 vendors registered.
+- `scripts/vendor/clone-pinned.sh` — shallow-clones (depth 200) or
+  fetches each pinned vendor into `_external/<name>/`. Idempotent.
+- `scripts/vendor/diff-summary.sh` — per-vendor commits + diff stat +
+  CHANGELOG excerpt + BREAKING marker detection. Output consumed by
+  `/vendor-changelog` analysis prompt.
+- `scripts/vendor/pin-vendors.sh` — captures HEAD of every vendor,
+  updates `manifest.json:vendor_pins` atomically (temp file + jq
+  validation). DRY_RUN=1 mode for previews.
+- `commands/vendor-changelog.md` — slash command with explicit
+  ANALYSIS_DATE / TOOLKIT_VERSION / TOOLKIT_BUILD_DATE /
+  DAYS_SINCE_BUILD prompt injection. Forbids memorized knowledge.
+  Classifies each change: BREAKING / ADOPT / IGNORE / DEPRECATE.
+  Output: `.planning/audits/vendor-changelog-YYYY-MM-DD.md`.
+- `.github/workflows/release-pin.yml` — auto-pin on `v*` tag push.
+  Clones fresh vendor sources, captures pins, commits to
+  `chore/pin-vendors-<tag>` branch, pushes for maintainer review.
+  Workflow injection guard: vars surfaced via `env:` not inline `${{
+  github.* }}` interpolation.
+- **Auto-format PostToolUse hook** (`templates/base/hooks/format-file.sh`)
+  — universal dispatcher routing edited files to per-stack formatter +
+  linter (TypeScript/JavaScript: prettier + eslint, Markdown/YAML/JSON/
+  CSS/HTML: prettier, PHP: pint, Ruby: rubocop, Python: ruff format +
+  ruff check, Go: gofmt + goimports, Rust: rustfmt, Shell: shfmt, SQL:
+  sql-formatter). Per-file lock to prevent IDE-format-on-save dual-
+  format storms. Auto-skips `node_modules/`, `vendor/`, `dist/`,
+  `build/`, `.next/`, `coverage/`, `__pycache__/`, `.venv/`. Disable
+  via `CLAUDE_FORMAT_HOOK=0`. Fast-mode (skip linters) via
+  `CLAUDE_FORMAT_FAST=1`.
+- **4 new Council personas**: `product-skeptic`,
+  `marketer-pragmatist`, `cfo-pragmatist`, `user-empath`.
+  Auto-installed via `scripts/lib/council-prompts.sh`.
+- **2 new post-install setup-guide sections**:
+  `templates/post-install/components/product-thinking.html` (config
+  customization, pushback rules, SaaS graveyard tuning, hook opt-in)
+  and `templates/post-install/components/auto-format.html` (per-stack
+  install commands, IDE conflict warning, env-var disable).
+- **2 new components docs**: `components/product-thinking-flow.md`
+  (decision tree + integration with /gsd-discuss-phase + lifecycle)
+  and `components/vendor-pinning.md` (architecture, schema, scripts,
+  CI workflow, comparison with /vendor-audit).
+
+### Changed
+
+- `manifest.json` — added top-level `build_date` field (distinct from
+  `updated`); new `files.hooks[]` section auto-discovered by
+  `init-claude.sh` / `init-local.sh` / `update-claude.sh` (jq
+  iterates all `files.*` keys).
+- `scripts/validate-manifest.py` — `SOURCE_MAP["hooks/"] =
+  "templates/base/hooks/"` so manifest validator finds the new
+  bucket.
+- `scripts/init-claude.sh` — `chmod +x` on hooks bucket files after
+  curl download (curl writes 0644 by default).
+- `scripts/init-local.sh` — same chmod for `cp`-driven local install.
+- `scripts/lib/council-prompts.sh` — `COUNCIL_PERSONAS` extended
+  from 8 to 12 personas (4 new product personas).
+- `scripts/lib/post-install-guide.sh` — icon + titleize + auto-detect
+  for `product-thinking` (🧭) and `auto-format` (🪄) sections.
+- `README.md` — new "Product validation gate" + "Vendor functional
+  changelog" rows in killer features table; `/product-review` and
+  `/vendor-changelog` rows in After Install commands table.
+- `cheatsheets/{en,ru}.md` — added `/product-review` and
+  `/vendor-changelog` commands.
+
+### Architecture notes
+
+- **TUI checkbox for product-thinking deferred**: skill is bundled with
+  toolkit core (no opt-in needed, pattern matches existing skills like
+  `api-design`, `database`). Opt-in for the gate hook documented in
+  `setup-guide.html` instead of separate TUI row. Revisit if user
+  feedback shows discoverability issue.
+- **Auto-format is opt-in via setup-guide walkthrough**, NOT default
+  in `templates/base/settings.json` PostToolUse array. Reason:
+  formatter ecosystem varies wildly per project; defaulting on causes
+  noise. User opts in by adding the second hook entry per the guide.
+- **Vendor pinning is null-initialized** (`commit: null`,
+  `pinned_at: null`). Workflow auto-fills on first `v*` tag. To
+  bootstrap: maintainer runs `scripts/vendor/pin-vendors.sh` locally
+  after merging this PR.
+
+### Files
+
+- 9 modified (`README.md`, `cheatsheets/{en,ru}.md`, `manifest.json`,
+  `scripts/init-claude.sh`, `scripts/init-local.sh`,
+  `scripts/lib/council-prompts.sh`,
+  `scripts/lib/post-install-guide.sh`,
+  `scripts/validate-manifest.py`, `CHANGELOG.md`)
+- ~30 new files across `templates/base/skills/product-thinking/`,
+  `templates/base/hooks/`, `commands/`, `components/`,
+  `scripts/vendor/`, `templates/council-prompts/personas/`,
+  `templates/post-install/components/`, `.github/workflows/`
+- ~3000 LOC added
+
+### Lint
+
+`make check` rc=0 — shellcheck clean, markdownlint clean, manifest
+schema valid, all command files have required headings.
+
 ## [6.2.0] - 2026-05-06
 
 **`/update-deps` dependency dashboard + v6.1 install TUI fixes + Russian

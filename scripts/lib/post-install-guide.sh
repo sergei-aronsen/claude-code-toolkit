@@ -47,12 +47,14 @@ post_install_guide_resolve_templates_dir() {
 post_install_guide_titleize() {
     local raw="$1"
     case "$raw" in
-        toolkit)        echo "Toolkit core" ;;
-        security)       echo "Security Pack" ;;
-        statusline)     echo "Statusline" ;;
-        rtk)            echo "RTK" ;;
-        council)        echo "Supreme Council" ;;
-        claude-memo)    echo "claude-memo" ;;
+        toolkit)         echo "Toolkit core" ;;
+        security)        echo "Security Pack" ;;
+        statusline)      echo "Statusline" ;;
+        rtk)             echo "RTK" ;;
+        council)         echo "Supreme Council" ;;
+        claude-memo)     echo "claude-memo" ;;
+        product-thinking) echo "Product Thinking" ;;
+        auto-format)     echo "Auto-format on edit" ;;
         bridges|gemini-bridge|codex-bridge) echo "Multi-CLI Bridges" ;;
         *)
             # Default: kebab-to-Title-Case.
@@ -64,12 +66,14 @@ post_install_guide_titleize() {
 # Section icon (single emoji) for the TOC + section header.
 post_install_guide_icon() {
     case "$1" in
-        toolkit)      echo "🧰" ;;
-        security)     echo "🛡️" ;;
-        statusline)   echo "📊" ;;
-        rtk)          echo "⚡" ;;
-        council)      echo "⚖️" ;;
-        claude-memo)  echo "🧠" ;;
+        toolkit)         echo "🧰" ;;
+        security)        echo "🛡️" ;;
+        statusline)      echo "📊" ;;
+        rtk)             echo "⚡" ;;
+        council)         echo "⚖️" ;;
+        claude-memo)     echo "🧠" ;;
+        product-thinking) echo "🧭" ;;
+        auto-format)     echo "🪄" ;;
         bridges|gemini-bridge|codex-bridge) echo "🌉" ;;
         *)            echo "🔌" ;;
     esac
@@ -266,6 +270,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     command -v rtk >/dev/null 2>&1 && detected+=("rtk")
     [[ -f "$HOME/.claude/council/brain.py" ]] && detected+=("council")
     [[ -d "$HOME/.claude/skills/memo-skill/.git" ]] && detected+=("claude-memo")
+    [[ -f "$HOME/.claude/skills/product-thinking/SKILL.md" || -f ".claude/skills/product-thinking/SKILL.md" ]] && detected+=("product-thinking")
+    [[ -x "$HOME/.claude/hooks/format-file.sh" || -x ".claude/hooks/format-file.sh" ]] && detected+=("auto-format")
     if [[ -f "GEMINI.md" || -f "AGENTS.md" ]]; then
         detected+=("bridges")
     fi

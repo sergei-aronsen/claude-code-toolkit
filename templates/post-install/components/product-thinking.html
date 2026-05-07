@@ -1,0 +1,67 @@
+<section id="product-thinking">
+  <h2><span class="section-icon">🧭</span> Product Thinking <span class="section-tag">customize</span></h2>
+  <p class="section-subtitle">Validation gate skill: forces you to answer who/why/metric/channel/economics BEFORE writing code. Auto-triggers on "build/MVP/ship/pricing/launch/pivot" prompts.</p>
+
+  <h3>1) Customize your domain config</h3>
+  <p>The skill reads <code>~/.claude/product-config.json</code> for ICP-specific gates. Without it, generic gates apply (B2B floor $1000/yr, LTV/CAC ≥ 3). With it, gates match your real market.</p>
+  <p>Copy the template and edit:</p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>cp ~/.claude/skills/product-thinking/config-template.json ~/.claude/product-config.json
+$EDITOR ~/.claude/product-config.json</code></pre></div>
+
+  <p>Key fields:</p>
+  <ul>
+    <li><code>target_market</code> — e.g. "Nordic SMB", "US SMB", "EU SMB", "LatAm SMB", "Global"</li>
+    <li><code>b2b_price_floor_usd_yearly</code> — if a B2B feature prices below this, the skill blocks with a "SaaS graveyard" pushback. Default 1000.</li>
+    <li><code>b2c_price_ceiling_usd_monthly</code> — high-friction gate for B2C. Default 100.</li>
+    <li><code>ltv_cac_minimum</code> — economics gate. Default 3.0.</li>
+    <li><code>structural_advantages</code> — list of structural wedges (BankID, EU residency, local language, etc.) that the skill suggests during the competitor question.</li>
+  </ul>
+
+  <h3>2) Tune the pushback rules</h3>
+  <p>The skill ships with universal pushbacks ("marketing later", "no competitors", "MVP without metric", etc.). You can edit them inside <code>~/.claude/skills/product-thinking/SKILL.md</code> at the section <strong>"Pushback Rules"</strong>. Add your own based on past mistakes.</p>
+  <p>Common edits:</p>
+  <ul>
+    <li>Add a row for your specific anti-pattern (e.g. "let's use RAG" → "RAG isn't required for MVP, ship simpler").</li>
+    <li>Soften the SaaS graveyard gate if you sell to a niche where $300/yr is normal (e.g. consumer prosumer).</li>
+    <li>Tighten the channel pushback list — add platforms you've personally seen fail.</li>
+  </ul>
+
+  <h3>3) Tune the SaaS graveyard gate</h3>
+  <p>The hardest gate is the B2B SMB pricing floor. Two ways to tune:</p>
+  <ul>
+    <li><strong>Adjust threshold</strong> in <code>~/.claude/product-config.json</code> → <code>b2b_price_floor_usd_yearly</code>. Lower for vertical niches, raise for enterprise.</li>
+    <li><strong>Disable per-feature</strong> by adding an exception to the feature's <code>.planning/product/&lt;slug&gt;.md</code> with <code>status: risk-accepted</code> and a written acknowledgment of the unit-economics risk.</li>
+  </ul>
+
+  <h3>4) UserPromptSubmit hook (optional but recommended)</h3>
+  <p>The skill ships with a soft reminder hook at <code>.claude/hooks/product-gate.sh</code>. When you type a feature-related prompt, it injects a one-line nudge to run product-thinking first.</p>
+
+  <p><strong>Disable globally:</strong></p>
+  <div class="codeblock"><button class="copy-btn">📋 copy</button><pre><code>export CLAUDE_PRODUCT_GATE=0</code></pre></div>
+
+  <p><strong>Skip per-prompt:</strong> add <code>(no-product-gate)</code> to your message — the hook detects it and stays silent.</p>
+
+  <p><strong>Make it stricter (block instead of suggest):</strong> route the same script through PreToolUse on Edit|Write and exit non-zero when <code>.planning/product/&lt;slug&gt;.md</code> is missing for the current feature.</p>
+
+  <h3>5) Daily commands</h3>
+  <ul>
+    <li><code>/product-review "feature description"</code> — runs 4 personas (skeptic + marketer + CFO + user-empath) on a draft.</li>
+    <li><code>/product-review --lite "small change"</code> — 3-question fast review for trivial work.</li>
+    <li><code>/product-review --persona cfo "..."</code> — only one persona (skeptic / marketer / cfo / user-empath).</li>
+    <li><code>/product-review --council "..."</code> — combined business + technical review (uses the Supreme Council infrastructure).</li>
+  </ul>
+
+  <h3>6) Where outputs land</h3>
+  <p>Validation gate output: <code>.planning/product/&lt;feature-slug&gt;.md</code></p>
+  <p>Multi-persona review output: <code>.planning/product/review-&lt;slug&gt;-YYYY-MM-DD.md</code></p>
+  <p>Both files become input context for <code>/gsd-discuss-phase</code> and <code>/gsd-plan-phase</code> — your business answers persist into technical planning.</p>
+
+  <h3>Hidden risks</h3>
+  <ul>
+    <li><strong>Validation theater</strong> — filling the markdown gives false confidence. Real validation = paying customer. The file is hypothesis, not proof.</li>
+    <li><strong>Prompt fatigue</strong> — after 2 weeks you may resent the gate. Use <code>--lite</code> for trivial work; the skill auto-skips bug fixes / refactors / docs / lint via anti-trigger keywords.</li>
+    <li><strong>Bypass abuse</strong> — if every feature ends up <code>risk-accepted</code>, the gate becomes noise. Track frequency manually or add a probe to <code>/vendor-audit</code>.</li>
+  </ul>
+
+  <p class="section-footer"><a href="https://github.com/sergei-aronsen/claude-code-toolkit/blob/main/components/product-thinking-flow.md">Full flow + decision tree →</a></p>
+</section>

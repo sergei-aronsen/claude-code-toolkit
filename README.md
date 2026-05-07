@@ -2,7 +2,7 @@
 
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-6.2.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](CHANGELOG.md)
 
 **English** | **[Русский](docs/readme/ru.md)** | **[Español](docs/readme/es.md)** | **[Deutsch](docs/readme/de.md)** | **[Français](docs/readme/fr.md)** | **[中文](docs/readme/zh.md)** | **[日本語](docs/readme/ja.md)** | **[Português](docs/readme/pt.md)** | **[한국어](docs/readme/ko.md)**
 
@@ -21,6 +21,7 @@ A thin overlay on top of [**Superpowers**](https://github.com/obra/superpowers) 
 | Gap                                  | What the toolkit adds                                                                                                                              |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Multi-AI plan validation**         | `/council` — sends your plan to Gemini and ChatGPT in parallel for independent review. Works through CLI (`gemini`, `codex`) or direct API keys. Persona overlays, content-hash cache, cost gate, ru locale. |
+| **Product validation gate**          | `product-thinking` skill + `/product-review` — RIGID gate before code: target user, JTBD, pain intensity, success metric, distribution channel, structural advantage, unit economics with SaaS-graveyard floor, cheapest experiment with decision rule, top risk. Domain-configurable via `~/.claude/product-config.json`. |
 | **Framework context**                | 7 ready-made `CLAUDE.md` templates (base + 6 stacks), auto-detected via `artisan` / `next.config` / `go.mod` / `pyproject.toml` / `package.json`. |
 | **Production safety net**            | `cc-safety-net` blocks destructive commands (`rm -rf /`, `git reset --hard`, etc.) at PreToolUse — even through obfuscation. Wired into the installer. |
 | **Token-cost control**               | RTK rewrites verbose dev-command output (`git status`, test runners) — 60-90% token savings. Combined hook with `cc-safety-net`.                  |
@@ -31,6 +32,7 @@ A thin overlay on top of [**Superpowers**](https://github.com/obra/superpowers) 
 | **Limit visibility (Pro/Max)**       | Statusline shows session/weekly usage — you can see when you're about to hit the wall.                                                              |
 | **Dependency dashboard (v6.2)**      | `/update-deps` — interactive TUI listing every tracked dependency (Layer 1/2/3) with installed-vs-latest. You pick what to update.                |
 | **Post-install setup guide (v6.3)**  | Generates a local HTML page (`/.claude/setup-guide.html`) with per-MCP API-key walkthroughs and per-component config — only sections for what you actually installed. |
+| **Vendor functional changelog (v6.3)** | `/vendor-changelog` — pins external vendors (Superpowers, GSD, Serena, RTK, …) at every release; diffs HEAD vs pin; classifies changes BREAKING/ADOPT/IGNORE/DEPRECATE. Auto-pin on release via `.github/workflows/release-pin.yml`. |
 
 The headline value is curation. Everything is opt-in via TUI checkboxes — nothing is forced.
 
@@ -59,6 +61,8 @@ Full step-by-step guide (with the install TUI walkthrough): [docs/howto/en.md](d
 | `/update-toolkit`  | Pull fresh toolkit content into `.claude/` while preserving local edits.       |
 | `/update-deps`     | Open the dependency dashboard (Layer 1/2/3 + MCP). Pick what to update.        |
 | `/council`         | Send a plan to Gemini + ChatGPT for independent review.                        |
+| `/product-review`  | 4-persona business review (skeptic + marketer + CFO + user-empath) — runs **before** technical planning.|
+| `/vendor-changelog`| Diff pinned external vendors against HEAD; classify changes BREAKING/ADOPT/IGNORE/DEPRECATE.        |
 | `/learn`           | Save the current decision as a scoped rule for future sessions.                |
 | `/audit`           | Run one of the 7 framework-aware audits (security, performance, etc.).        |
 | `/debug`           | 4-phase systematic debugger: root-cause → pattern → hypothesis → fix.         |

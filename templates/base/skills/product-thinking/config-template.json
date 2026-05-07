@@ -1,0 +1,30 @@
+{
+  "$comment": "Copy this to ~/.claude/product-config.json and customize. The product-thinking skill reads this for domain-specific gates.",
+  "target_market": "Nordic SMB",
+  "b2b_price_floor_usd_yearly": 1000,
+  "b2c_price_ceiling_usd_monthly": 100,
+  "ltv_cac_minimum": 3.0,
+  "structural_advantages": [
+    "BankID / national-ID integration",
+    "Norwegian / Nordic accounting standards (NRS, IFRS-N)",
+    "EU data residency (GDPR Art. 44+ compliance)",
+    "Local language nuances (Bokmål / Nynorsk / Swedish / Danish)",
+    "SMB procurement trust (existing Nordic SaaS ecosystem)",
+    "Existing consulting client base for initial distribution",
+    "Personal brand / inbound traffic in target niche"
+  ],
+  "examples_of_other_markets": {
+    "US SMB": {
+      "b2b_price_floor_usd_yearly": 500,
+      "structural_advantages": ["industry vertical expertise", "compliance (HIPAA/SOC2)", "integrations with US-specific tools"]
+    },
+    "EU SMB": {
+      "b2b_price_floor_usd_yearly": 1000,
+      "structural_advantages": ["GDPR / DSA compliance", "VAT handling per country", "EU data residency"]
+    },
+    "LatAm SMB": {
+      "b2b_price_floor_usd_yearly": 600,
+      "structural_advantages": ["local payment methods (PIX, MercadoPago)", "Spanish/Portuguese-first UX", "regulatory expertise"]
+    }
+  }
+}

@@ -358,6 +358,13 @@ while IFS= read -r entry; do
         cp "$src_local" "$full_dest"
         echo -e "  ${GREEN}OK${NC} $path"
         INSTALLED_PATHS+=("$full_dest")
+        # Hooks bucket: shell scripts must be executable so PostToolUse /
+        # UserPromptSubmit hook commands can invoke them directly. cp
+        # preserves source mode but if the source bit was lost in a clone
+        # (e.g. zip download), force +x.
+        case "$path" in
+            hooks/*.sh) chmod +x "$full_dest" 2>/dev/null || true ;;
+        esac
     else
         echo -e "  ${YELLOW}!!${NC} $path (not found)"
     fi
