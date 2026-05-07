@@ -316,17 +316,19 @@ tui_checklist() {
 
     _tui_init_colors
 
-    # Pre-selection per D-12: pre-check uninstalled items, leave installed unchecked.
-    # Required items always pre-checked (immutable, can't be deselected).
+    # Pre-selection: only required items are pre-checked (they cannot be
+    # deselected anyway). Everything else — installed AND uninstalled — starts
+    # unchecked so the user makes an explicit opt-in choice. Pre-checking
+    # uninstalled rows used to default to "install everything new" but produced
+    # accidental installs of features the user never asked for; the new policy
+    # ("you mark what you want") matches direct user feedback (2026-05-07).
     TUI_RESULTS=()
     local i
     for (( i=0; i<total; i++ )); do
         if [[ "${TUI_REQUIRED[$i]:-0}" -eq 1 ]]; then
             TUI_RESULTS[$i]=1
-        elif [[ "${TUI_INSTALLED[$i]:-0}" -eq 1 ]]; then
-            TUI_RESULTS[$i]=0
         else
-            TUI_RESULTS[$i]=1
+            TUI_RESULTS[$i]=0
         fi
     done
 
