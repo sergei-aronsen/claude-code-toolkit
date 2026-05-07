@@ -263,6 +263,10 @@ USER_CFG="$SANDBOX/.claude/mcp-config.env"
 PRE_HASH_USER="$([ -f "$USER_CFG" ] && shasum "$USER_CFG" | awk '{print $1}' || echo 'MISSING')"
 
 printf 'tk_proj_secret_ctx7\n' > "$SANDBOX/tty.fix.proj"
+# T7 asserts the legacy project-env storage path (writes to <project>/.env).
+# v6.4 default is global-slot; opt back into project-env to keep this test's
+# original contract intact.
+TK_MCP_PROJECT_STORAGE=project-env \
 TK_MCP_SCOPE=project TK_PROJECT_ROOT="$PROJECT" \
 TK_MCP_TTY_SRC="$SANDBOX/tty.fix.proj" \
     mcp_wizard_run context7 >/dev/null 2>&1
@@ -359,6 +363,10 @@ mkdir -p "$PROJECT"
 QUEUE9="$(mktemp "$SANDBOX/queue9.XXXXXX")"
 
 DEFER_RC=0
+# T9 asserts the legacy project-env defer-stub path (blank stub in
+# <project>/.env, .gitignore guard fired). v6.4 default is global-slot which
+# stubs in ~/.claude/mcp-config.env instead — opt-in to project-env here.
+TK_MCP_PROJECT_STORAGE=project-env \
 TK_MCP_DEFERRED_QUEUE="$QUEUE9" \
 TK_MCP_DEFER_SECRETS=1 \
 TK_MCP_SCOPE=project \
@@ -531,6 +539,10 @@ ERR=$( (
         printf '{"CONTEXT7_API_KEY":"plain-literal-not-substitution"}'
         return 0
     }
+    # T12 mocks project_secrets_render_mcp_env_block so behavior is mode-agnostic;
+    # set project-env explicitly to keep the test's path-of-execution unchanged
+    # in case future global-slot work skips the helper.
+    TK_MCP_PROJECT_STORAGE=project-env \
     TK_MCP_SCOPE=project TK_PROJECT_ROOT="$PROJECT" \
     TK_MCP_TTY_SRC="$SANDBOX/tty.fix.poison" \
         mcp_wizard_run context7 2>&1 1>/dev/null
@@ -549,6 +561,85 @@ else
 fi
 
 rm -f "$SANDBOX/claude.argv"
+
+# ── Test 13 (TUI-SCOPE-05): global-slot project storage (v6.4 default) ────────
+# Project-scope wizard with the new default storage mode must:
+#   - write KEY_<SLUG>=value to ~/.claude/mcp-config.env (NOT <project>/.env)
+#   - leave <project>/.env untouched
+#   - leave <project>/.gitignore untouched (no .env entry needed)
+#   - register .mcp.json env block as ${KEY_<SLUG>} substitution form
+rm -rf "$PROJECT"
+mkdir -p "$PROJECT"
+PROJECT_BASENAME_T13="t13-myapp-mcp"
+T13_PROJECT="$SANDBOX/$PROJECT_BASENAME_T13"
+mkdir -p "$T13_PROJECT"
+EXPECTED_SLUG="T13_MYAPP_MCP"  # uppercase + hyphens→underscores
+
+USER_CFG_T13="$SANDBOX/.claude/mcp-config.env"
+
+printf 'tk_t13_global_slot\n' > "$SANDBOX/tty.fix.t13"
+T13_RC=0
+TK_MCP_SCOPE=project TK_PROJECT_ROOT="$T13_PROJECT" \
+TK_MCP_TTY_SRC="$SANDBOX/tty.fix.t13" \
+    mcp_wizard_run context7 >/dev/null 2>&1
+T13_RC=$?
+
+assert_eq "0" "$T13_RC" "T13 (global-slot): wizard returns rc=0"
+
+# Suffixed slot CONTEXT7_API_KEY_T13_MYAPP_MCP must be in ~/.claude/mcp-config.env.
+EXPECTED_SLOT="CONTEXT7_API_KEY_${EXPECTED_SLUG}"
+if [[ -f "$USER_CFG_T13" ]] && grep -qE "^${EXPECTED_SLOT}=" "$USER_CFG_T13"; then
+    assert_pass "T13 (global-slot): suffixed slot ${EXPECTED_SLOT} written to mcp-config.env"
+else
+    assert_fail "T13 (global-slot): suffixed slot ${EXPECTED_SLOT} written to mcp-config.env" \
+                "$(awk -F= '/^[A-Z]/ {print $1"=<set>"}' "$USER_CFG_T13" 2>/dev/null || echo 'mcp-config.env missing')"
+fi
+
+# <project>/.env must NOT be touched.
+if [[ ! -f "$T13_PROJECT/.env" ]]; then
+    assert_pass "T13 (global-slot): <project>/.env UNTOUCHED (no project-env file written)"
+else
+    assert_fail "T13 (global-slot): <project>/.env UNTOUCHED" \
+                "found: $(cat "$T13_PROJECT/.env")"
+fi
+
+# <project>/.gitignore must NOT have a forced .env line written by the wizard.
+if [[ ! -f "$T13_PROJECT/.gitignore" ]] || ! grep -Fxq '.env' "$T13_PROJECT/.gitignore" 2>/dev/null; then
+    assert_pass "T13 (global-slot): <project>/.gitignore not modified by wizard"
+else
+    assert_fail "T13 (global-slot): <project>/.gitignore not modified by wizard" \
+                "found .env line — global-slot mode should not write it"
+fi
+
+# claude argv must reference ${SUFFIXED_SLOT}, not ${CONTEXT7_API_KEY}.
+if [[ -f "$SANDBOX/claude.argv" ]]; then
+    if grep -qE "CONTEXT7_API_KEY=\\\$\\{${EXPECTED_SLOT}\\}" "$SANDBOX/claude.argv"; then
+        assert_pass "T13 (global-slot): claude argv carries -e CONTEXT7_API_KEY=\${${EXPECTED_SLOT}}"
+    else
+        assert_fail "T13 (global-slot): claude argv carries -e CONTEXT7_API_KEY=\${${EXPECTED_SLOT}}" \
+                    "$(cat "$SANDBOX/claude.argv")"
+    fi
+else
+    assert_fail "T13 (global-slot): claude was invoked" "claude.argv missing"
+fi
+
+rm -f "$SANDBOX/claude.argv"
+
+# ── Test 14 (TUI-SCOPE-05): _mcp_project_slug edge cases ──────────────────────
+SLUG_RESULT=$(_mcp_project_slug "/tmp/my-app")
+assert_eq "MY_APP" "$SLUG_RESULT" "T14: hyphen → underscore + uppercase"
+
+SLUG_RESULT=$(_mcp_project_slug "/tmp/Some.Project_v2")
+assert_eq "SOME_PROJECT_V2" "$SLUG_RESULT" "T14: dots/underscores normalized + uppercase"
+
+SLUG_RESULT=$(_mcp_project_slug "/tmp/123-leading-digit")
+assert_eq "P_123_LEADING_DIGIT" "$SLUG_RESULT" "T14: leading-digit slugs gain P_ prefix (POSIX identifier)"
+
+SLUG_RESULT=$(_mcp_project_slot_name "STRIPE_KEY" "/tmp/my-app")
+assert_eq "STRIPE_KEY_MY_APP" "$SLUG_RESULT" "T14: slot name = KEY_<SLUG>"
+
+SLUG_RESULT=$(TK_MCP_PROJECT_STORAGE=project-env _mcp_project_slot_name "STRIPE_KEY" "/tmp/my-app")
+assert_eq "STRIPE_KEY" "$SLUG_RESULT" "T14: legacy project-env mode → slot name = generic key"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 printf "\n=== Results: %s passed, %s failed ===\n" "$PASS" "$FAIL"

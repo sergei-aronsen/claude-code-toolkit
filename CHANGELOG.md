@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-05-07
+
+**Project-scope MCP UX overhaul: one-file secrets storage with per-project
+suffixes (no `<project>/.env`, no direnv).**
+
+### Changed
+
+- **`mcp_wizard_run` project-scope default** (`scripts/lib/mcp.sh`) — when
+  the user picks `[P]` in the integrations TUI, the wizard now writes the
+  collected secret to `~/.claude/mcp-config.env` under a per-project
+  suffixed slot name (`KEY_<PROJECT_SLUG>`) instead of `<project>/.env`.
+  The committed `<project>/.mcp.json` references the suffixed slot via
+  `${KEY_<SLUG>}` substitution. Result: `cd <project> && claude` Just
+  Works without direnv / dotenv setup, because the shell rc auto-source
+  line already loads `mcp-config.env` into every shell. Per-project
+  restricted keys and central-storage convenience in one move.
+- **Slug derivation** (`_mcp_project_slug`) — `basename($PWD)` →
+  uppercased + non-alphanumeric replaced with underscore + `P_` prefix
+  on leading-digit names so the resulting slot is a valid POSIX
+  identifier. `my-app` → `MY_APP`; `123-foo` → `P_123_FOO`.
+- **Setup-guide WHERE_BLOCK** (`scripts/lib/post-install-guide.sh`) —
+  rewritten to describe one storage file with two slot-naming conventions
+  (plain `KEY=` for user scope, suffixed `KEY_<PROJECT_SLUG>=` for
+  project scope) and a clickable `file://` link to `mcp-config.env`. No
+  more "open `<project>/.env`" guidance.
+
+### Added
+
+- **`TK_MCP_PROJECT_STORAGE` env var** — `global-slot` (new default) or
+  `project-env` (legacy). Existing users with a direnv-based workflow
+  can opt back into the v6.3 behavior via
+  `TK_MCP_PROJECT_STORAGE=project-env`.
+- **New tests**: T13 (global-slot defaults — slot name, untouched
+  `<project>/.env`, claude argv carries `${SLOT}` substitution), T14
+  (slug edge cases — hyphens, dots, leading digits, env-var override).
+
+### Migration
+
+If you already have project-scope MCPs registered the v6.3 way (keys
+in `<project>/.env`):
+
+1. Run the toolkit's wizard again (`bash install.sh --integrations`)
+   — it will write the suffixed slot to `mcp-config.env` and rewrite
+   `.mcp.json` to reference `${KEY_<SLUG>}`. Old `<project>/.env` can
+   then be deleted.
+2. Or leave them on the legacy path by exporting
+   `TK_MCP_PROJECT_STORAGE=project-env` before `install.sh`.
+
 ## [6.3.0] - 2026-05-07
 
 **Three solo-founder gaps closed: product validation gate + vendor
