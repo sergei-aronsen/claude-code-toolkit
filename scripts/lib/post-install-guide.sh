@@ -128,7 +128,11 @@ post_install_guide_render_generic_mcp() {
     if [[ "$has_keys" -eq 1 ]]; then
         local _home="${TK_GUIDE_HOME:-$HOME}"
         local _user_env="${_home}/.claude/mcp-config.env"
-        local _user_disp="${_user_env/#$_home/~}"
+        # Use literal `~` via prefix-strip + concat. `${var/#pat/~}` triggers
+        # bash tilde expansion in the replacement when the script runs as a
+        # subprocess (bash -c / `bash file.sh`), turning `~` back into $HOME
+        # and showing the full path to users.
+        local _user_disp="~${_user_env#$_home}"
         where_block="<h3>Where to put the value</h3><p>One file, mode 0600, auto-loaded by your shell rc — open <a href=\"file://${_user_env}\"><code>${_user_disp}</code></a> and add lines.</p><p><strong>User scope (single global key, used everywhere):</strong> add <code>KEY=value</code> with the plain catalog name (e.g. <code>CONTEXT7_API_KEY=ctx_…</code>). Best for personal-tooling MCPs that follow you across all projects.</p><p><strong>Project scope (per-app restricted keys):</strong> add <code>KEY_&lt;PROJECT_SLUG&gt;=value</code> — e.g. <code>STRIPE_SECRET_KEY_MY_APP=sk_restricted_…</code>. The toolkit's installer registers <code>&lt;project&gt;/.mcp.json</code> with <code>\${KEY_&lt;PROJECT_SLUG&gt;}</code> substitution so the right key reaches the right project. Slug = uppercased project folder name with dashes replaced by underscores.</p><p>After editing, reload your shell (<code>exec \$SHELL</code>, or open a new terminal tab) and restart Claude Code.</p>"
     fi
 
@@ -156,6 +160,62 @@ for tok, key in (
     ("{{OAUTH_NOTE}}",   "PI_OAUTH"),
     ("{{DOC_URL}}",      "PI_DOC"),
     ("{{WHERE_BLOCK}}",  "PI_WHERE"),
+):
+    out = out.replace(tok, os.environ.get(key, ""))
+print(out, end="")
+'
+}
+
+# Render a "not installed" stub for catalog MCPs the user has not yet
+# enabled. Mirrors render_generic_mcp's catalog-driven approach but
+# produces a compact card with a one-liner install command instead of
+# full setup steps.
+post_install_guide_render_not_installed_mcp() {
+    local name="$1"
+    local stub_tpl="$2"             # path to _not_installed.html
+    local catalog="$3"              # path to integrations-catalog.json
+    [[ -f "$stub_tpl" ]] || return 1
+
+    local display_name="$name"
+    local description=""
+    local install_cmd="$name"
+    local post_install="After install, add the API key (if any) to <code>~/.claude/mcp-config.env</code> and reload your shell with <code>exec \$SHELL</code>."
+
+    if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
+        display_name=$(jq -r --arg n "$name" '.components.mcp[$n].display_name // $n' "$catalog" 2>/dev/null)
+        description=$(jq -r --arg n "$name" '.components.mcp[$n].description // ""' "$catalog" 2>/dev/null)
+        # install_args is the argv array passed to `claude mcp add` —
+        # render it space-joined for the copy block. Some entries already
+        # start with the MCP name; others need it prepended. The catalog
+        # convention is "name first", so we just join.
+        local raw_install
+        raw_install=$(jq -r --arg n "$name" '.components.mcp[$n].install_args // [] | join(" ")' "$catalog" 2>/dev/null)
+        if [[ -n "$raw_install" && "$raw_install" != "null" ]]; then
+            install_cmd="$raw_install"
+        fi
+        local oauth
+        oauth=$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth // false' "$catalog" 2>/dev/null)
+        if [[ "$oauth" == "true" ]]; then
+            post_install="After install, the first call to this MCP from inside Claude Code opens a browser tab for OAuth — no env var setup needed."
+        fi
+    fi
+
+    PI_TPL="$stub_tpl" \
+    PI_NAME="$name" \
+    PI_DISPLAY="$display_name" \
+    PI_DESC="$description" \
+    PI_INSTALL="$install_cmd" \
+    PI_POSTINSTALL="$post_install" \
+    python3 -c '
+import os
+with open(os.environ["PI_TPL"], "r", encoding="utf-8") as f:
+    out = f.read()
+for tok, key in (
+    ("{{NAME}}",              "PI_NAME"),
+    ("{{DISPLAY_NAME}}",      "PI_DISPLAY"),
+    ("{{DESCRIPTION}}",       "PI_DESC"),
+    ("{{INSTALL_CMD}}",       "PI_INSTALL"),
+    ("{{POST_INSTALL_NOTE}}", "PI_POSTINSTALL"),
 ):
     out = out.replace(tok, os.environ.get(key, ""))
 print(out, end="")
@@ -224,46 +284,81 @@ post_install_guide_generate() {
         done
     fi
 
+    # Build alphabetical union of (installed MCPs ∪ catalog MCPs). Display
+    # all of them so the user can discover what's available, with a status
+    # badge separating installed from not-installed. Installed MCPs render
+    # with their full setup card; not-installed get a compact stub with a
+    # one-liner install command.
+    local stub_tpl="$templates_dir/mcp/_not_installed.html"
+    local installed_set=" $mcps "       # space-padded for word-boundary lookup
+    local all_names=""
+    if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
+        all_names=$(jq -r '.components.mcp | keys[]' "$catalog" 2>/dev/null)
+    fi
+    # Add any installed MCPs that are NOT in the catalog (rare — typically
+    # user-added one-offs) so they aren't dropped.
+    for n in $mcps; do
+        if ! grep -qx "$n" <<<"$all_names"; then
+            all_names+=$'\n'"$n"
+        fi
+    done
+    # Sort case-insensitive alphabetical.
+    all_names=$(printf '%s\n' "$all_names" | awk 'NF' | sort -f -u)
+
     # Track MCPs that need API keys so we can build an "Action required"
-    # banner at the top of the guide. The banner is the first thing a user
-    # sees after install — it answers "wait, do I need to do anything?"
-    # without forcing them to scroll the whole document.
+    # banner at the top of the guide. Only flagged for INSTALLED MCPs —
+    # not-installed ones can't have inert keys.
     local action_items=""
-    if [[ -n "$mcps" ]]; then
-        for name in $mcps; do
+    local name
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        local is_installed=0
+        [[ "$installed_set" == *" $name "* ]] && is_installed=1
+
+        local body
+        if [[ "$is_installed" -eq 1 ]]; then
             tpl="$templates_dir/mcp/${name}.html"
-            local body
             if [[ -f "$tpl" ]]; then
                 body=$(cat "$tpl")
             else
                 body=$(post_install_guide_render_generic_mcp "$name" "$generic_tpl" "$catalog")
             fi
-            [[ -z "$body" ]] && continue
-            local display="$name"
-            local needs_keys=0
-            if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
-                display=$(jq -r --arg n "$name" '.components.mcp[$n].display_name // $n' "$catalog" 2>/dev/null)
-                local _keycount
-                _keycount=$(jq -r --arg n "$name" '(.components.mcp[$n].env_var_keys // []) | length' "$catalog" 2>/dev/null)
-                local _oauth
-                _oauth=$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth // false' "$catalog" 2>/dev/null)
-                # OAuth-only MCPs technically have no keys to fill; skip them.
-                if [[ "${_keycount:-0}" -gt 0 && "$_oauth" != "true" ]]; then
-                    needs_keys=1
-                fi
+        else
+            body=$(post_install_guide_render_not_installed_mcp "$name" "$stub_tpl" "$catalog")
+        fi
+        [[ -z "$body" ]] && continue
+
+        local display="$name"
+        local needs_keys=0
+        if [[ -f "$catalog" ]] && command -v jq >/dev/null 2>&1; then
+            display=$(jq -r --arg n "$name" '.components.mcp[$n].display_name // $n' "$catalog" 2>/dev/null)
+            local _keycount _oauth
+            _keycount=$(jq -r --arg n "$name" '(.components.mcp[$n].env_var_keys // []) | length' "$catalog" 2>/dev/null)
+            _oauth=$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth // false' "$catalog" 2>/dev/null)
+            if [[ "${_keycount:-0}" -gt 0 && "$_oauth" != "true" ]]; then
+                needs_keys=1
             fi
-            # Trim parenthetical disambiguators ("Serena (semantic code IDE)" →
-            # "Serena") to keep TOC entries scannable. Section subtitles still
-            # carry the full description.
-            display="${display%% (*}"
-            mcps_items+="<li><a href=\"#mcp-${name}\">${display}</a></li>"
-            if [[ "$needs_keys" -eq 1 ]]; then
-                action_items+="<li><a href=\"#mcp-${name}\">${display}</a></li>"
-            fi
-            sections_html+=$'\n'
-            sections_html+="$body"
-        done
-    fi
+        fi
+        # Trim parenthetical disambiguators ("Serena (semantic code IDE)" →
+        # "Serena") to keep TOC entries scannable.
+        display="${display%% (*}"
+
+        local toc_class=""
+        local toc_marker=""
+        if [[ "$is_installed" -eq 1 ]]; then
+            toc_class=" class=\"installed\""
+            toc_marker="<span class=\"toc-marker\" aria-label=\"installed\">✓</span>"
+        else
+            toc_class=" class=\"available\""
+            toc_marker="<span class=\"toc-marker toc-marker-empty\"></span>"
+        fi
+        mcps_items+="<li${toc_class}>${toc_marker}<a href=\"#mcp-${name}\">${display}</a></li>"
+        if [[ "$is_installed" -eq 1 && "$needs_keys" -eq 1 ]]; then
+            action_items+="<li><a href=\"#mcp-${name}\">${display}</a></li>"
+        fi
+        sections_html+=$'\n'
+        sections_html+="$body"
+    done <<<"$all_names"
 
     # Prepend the action-required banner to the section stream so it renders
     # ABOVE every component card. Linked items jump to the relevant MCP's
@@ -271,7 +366,7 @@ post_install_guide_generate() {
     if [[ -n "$action_items" ]]; then
         local _home="${TK_GUIDE_HOME:-$HOME}"
         local _user_env="${_home}/.claude/mcp-config.env"
-        local _user_env_disp="${_user_env/#$_home/~}"
+        local _user_env_disp="~${_user_env#$_home}"
         local action_banner
         action_banner=$(printf '<section class="action-required"><h2>🔑 You need to add API keys</h2><p>Some MCPs you just installed are wired up but inert until you add their API keys. The toolkit prepared <a href="file://%s"><code>%s</code></a> (chmod 0600) — open it, paste the keys, save, then run <code>exec $SHELL</code> and restart Claude Code.</p><p>Click any item below to jump to its setup card with copy-pastable keys:</p><ul>%s</ul></section>' \
             "$_user_env" "$_user_env_disp" "$action_items")
@@ -380,11 +475,21 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     fi
     export TK_GUIDE_INSTALLED="${detected[*]}"
 
-    # MCPs — read from ~/.claude.json mcpServers.
-    mcps_csv=""
-    if [[ -f "$HOME/.claude.json" ]] && command -v jq >/dev/null 2>&1; then
-        mcps_csv=$(jq -r '(.mcpServers // {}) | keys[]' "$HOME/.claude.json" 2>/dev/null | tr '\n' ' ')
+    # MCPs — merge user-scope (~/.claude.json) and project-scope (.mcp.json
+    # in cwd). Project-level entries (DBHub/Stripe/Mailgun/etc.) live in
+    # the per-project file, not the global config, so without this merge
+    # they were silently dropped from the setup guide.
+    mcps_list=""
+    if command -v jq >/dev/null 2>&1; then
+        if [[ -f "$HOME/.claude.json" ]]; then
+            mcps_list+=$(jq -r '(.mcpServers // {}) | keys[]' "$HOME/.claude.json" 2>/dev/null)
+            mcps_list+=$'\n'
+        fi
+        if [[ -f ".mcp.json" ]]; then
+            mcps_list+=$(jq -r '(.mcpServers // {}) | keys[]' ".mcp.json" 2>/dev/null)
+        fi
     fi
+    mcps_csv=$(printf '%s\n' "$mcps_list" | awk 'NF && !seen[$0]++' | tr '\n' ' ')
     export TK_GUIDE_MCPS="${mcps_csv}"
 
     # Toolkit version. Declare + assign separately to satisfy SC2155

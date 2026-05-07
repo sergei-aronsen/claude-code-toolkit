@@ -93,17 +93,18 @@ nav.toc {
 nav.toc .toc-group { margin: 0 0 22px; }
 nav.toc .toc-group:last-child { margin-bottom: 0; }
 nav.toc .toc-group-title {
-  font-size: 14px; font-weight: 700;
-  color: var(--fg); margin: 0 0 8px; padding: 0 10px;
+  font-size: 16px; font-weight: 700;
+  color: var(--fg); margin: 0 0 10px; padding: 0 10px;
   display: flex; align-items: center; gap: 8px;
 }
-nav.toc .toc-group-title .toc-group-icon { font-size: 16px; }
+nav.toc .toc-group-title .toc-group-icon { font-size: 18px; }
 nav.toc ul {
-  list-style: disc; padding-left: 26px; margin: 0;
+  list-style: none; padding-left: 8px; margin: 0;
 }
 nav.toc li {
   margin: 0; padding: 0;
   color: var(--fg-muted);
+  display: flex; align-items: baseline; gap: 6px;
 }
 nav.toc a {
   display: inline-block; padding: 3px 0;
@@ -112,7 +113,24 @@ nav.toc a {
 }
 nav.toc a:hover { color: var(--fg); text-decoration: underline; }
 nav.toc a.active { color: var(--accent); font-weight: 500; }
+nav.toc li .toc-marker {
+  display: inline-block;
+  width: 12px; flex: 0 0 12px;
+  font-size: 11px; line-height: 1;
+  text-align: center;
+  color: var(--green);
+  font-weight: 700;
+}
+nav.toc li.available a { color: var(--fg-muted); }
+nav.toc li.available a:hover { color: var(--fg-dim); }
+nav.toc li .toc-marker-empty { color: transparent; }
 
+main.sections {
+  /* Without `min-width: 0`, the 1fr grid track expands to its content's
+     intrinsic width — long URLs, inline <code>, or wide <pre> push the
+     whole column past the viewport and cause horizontal scroll. */
+  min-width: 0;
+}
 main.sections section {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -120,6 +138,8 @@ main.sections section {
   padding: 24px 28px;
   margin-bottom: 24px;
   scroll-margin-top: 130px;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 main.sections section.action-required {
   border-left: 4px solid var(--yellow);
@@ -149,6 +169,10 @@ main.sections section .section-tag {
 }
 main.sections section .section-tag.required { color: var(--accent-warm); border-color: var(--accent-warm); }
 main.sections section .section-tag.done { color: var(--green); border-color: var(--green); }
+main.sections section .section-tag.muted { color: var(--fg-muted); border-color: var(--border); background: transparent; }
+main.sections section.not-installed { opacity: 0.78; }
+main.sections section.not-installed:hover { opacity: 1; transition: opacity 0.15s; }
+main.sections section.not-installed h2 { color: var(--fg-dim); }
 main.sections section .section-subtitle {
   color: var(--fg-dim); margin: 0 0 16px; font-size: 14px;
 }
