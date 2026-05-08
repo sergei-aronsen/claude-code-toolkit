@@ -115,6 +115,30 @@ test -f ~/.claude/council/brain.py && echo "Installed" || echo "Not installed"
 
 ---
 
+## Model Selection
+
+The Council ships with `"model": "auto"` in `~/.claude/council/config.json`.
+At runtime `auto` resolves to the toolkit-tracked latest IDs:
+
+- `openai` → `gpt-5.5`
+- `gemini` → `gemini-3-pro-preview`
+
+Pin a specific ID by editing `~/.claude/council/config.json`:
+
+```json
+{
+  "openai": { "model": "gpt-5.5-pro" },
+  "gemini": { "model": "gemini-3-pro-preview" }
+}
+```
+
+When a known-stale ID (e.g., `gpt-5.2`) is detected, brain.py emits a one-line
+WARN at startup but does NOT silently rewrite the file — explicit pins are
+respected. The `LATEST_MODELS` map in `scripts/council/brain.py` is bumped per
+toolkit release.
+
+---
+
 ## Process
 
 ### Step 1 — Create Plan

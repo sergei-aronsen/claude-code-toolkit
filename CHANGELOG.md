@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Council `"model": "auto"` sentinel + GPT-5.5 default bump
+
+- New `LATEST_MODELS` constant in `scripts/council/brain.py` (`openai →
+  gpt-5.5`, `gemini → gemini-3-pro-preview`) — single source of truth, no
+  sidecar JSON file.
+- `load_config()` resolves `"model": "auto"` (and missing model field)
+  against `LATEST_MODELS` once, writes back resolved ID into runtime config.
+  Cost gates, dry-run output, saved reports, pricing labels all see one
+  coherent value.
+- New installs ship `"model": "auto"` in all three install paths
+  (`config.json.template`, inline heredocs in `setup-council.sh`,
+  `init-claude.sh`).
+- Existing pinned configs are preserved as-is — Council emits a one-line
+  `⚠️` WARN at startup if a known-stale ID is detected
+  (`KNOWN_STALE_MODELS`: `gpt-5.2`, `gpt-5.2-pro`, `o3*`, `gemini-2.5-pro`,
+  `gemini-2.0-flash`, `gemini-1.5-pro`) but does NOT silently rewrite the
+  file. User controls migration.
+- Default `gpt-5.2` → `gpt-5.5` everywhere (DEFAULT_PRICING,
+  REASONING_MODELS, `templates/council-pricing.json`,
+  fallback strings, dry-run print). Old `gpt-5.2` entries kept for
+  backcompat with explicit pins.
+- `commands/council.md` — new `## Model Selection` section documenting the
+  `auto` sentinel, override pattern, WARN behavior.
+
+### Background
+
+User-owned `~/.claude/council/config.json` is intentionally not overwritten
+on toolkit updates (protects API keys), so any model ID hardcoded at install
+time stays pinned forever. Without `auto`, every release that bumps
+provider versions silently breaks Council for users who don't manually edit
+their config. Council validation (Skeptic + Pragmatist, both gpt-5.5 +
+gemini-3-pro-preview) approved the SIMPLIFY plan.
+
 ## [6.4.0] - 2026-05-07
 
 **Project-scope MCP UX overhaul: one-file secrets storage with per-project

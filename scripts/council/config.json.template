@@ -2,13 +2,13 @@
   "gemini": {
     "mode": "cli",
     "api_key": "",
-    "model": "gemini-3-pro-preview",
+    "model": "auto",
     "thinking_budget": 32768
   },
   "openai": {
     "mode": "api",
     "api_key": "",
-    "model": "gpt-5.2",
+    "model": "auto",
     "reasoning_effort": "high",
     "cli_reasoning_effort": "high"
   },

@@ -1199,13 +1199,13 @@ setup_council() {
   "gemini": {
     "mode": "cli",
     "api_key": "",
-    "model": "gemini-3-pro-preview",
+    "model": "auto",
     "thinking_budget": 32768
   },
   "openai": {
     "mode": "api",
     "api_key": "",
-    "model": "gpt-5.2",
+    "model": "auto",
     "reasoning_effort": "high",
     "cli_reasoning_effort": "high"
   },
@@ -1349,13 +1349,13 @@ CONFIGEOF
   "gemini": {
     "mode": $gemini_mode_json,
     "api_key": $gemini_key_json,
-    "model": "gemini-3-pro-preview",
+    "model": "auto",
     "thinking_budget": 32768
   },
   "openai": {
     "mode": $openai_mode_json,
     "api_key": $openai_key_json,
-    "model": "gpt-5.2",
+    "model": "auto",
     "reasoning_effort": "high",
     "cli_reasoning_effort": "high"
   },
