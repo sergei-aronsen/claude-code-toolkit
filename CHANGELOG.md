@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.5.0] - 2026-05-08
+
 ### Added — Council `"model": "auto"` sentinel + GPT-5.5 default bump
 
 - New `LATEST_MODELS` constant in `scripts/council/brain.py` (`openai →
