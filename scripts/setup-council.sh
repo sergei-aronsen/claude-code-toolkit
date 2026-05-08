@@ -436,13 +436,13 @@ else
   "gemini": {
     "mode": $GEMINI_MODE_JSON,
     "api_key": $GEMINI_KEY_JSON,
-    "model": "gemini-3-pro-preview",
+    "model": "auto",
     "thinking_budget": 32768
   },
   "openai": {
     "mode": $OPENAI_MODE_JSON,
     "api_key": $OPENAI_KEY_JSON,
-    "model": "gpt-5.2",
+    "model": "auto",
     "reasoning_effort": "high",
     "cli_reasoning_effort": "high"
   },

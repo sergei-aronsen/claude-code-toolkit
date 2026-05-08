@@ -778,10 +778,11 @@ def load_config():
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    # Validate required config structure
+    # Validate required config structure. Missing model field is OK now \u2014
+    # treated as "auto" and resolved against LATEST_MODELS below.
     for key in ("gemini", "openai"):
-        if key not in config or "model" not in config.get(key, {}):
-            print(f"\n\u274c Invalid config: missing '{key}.model' in {CONFIG_PATH}")
+        if key not in config:
+            print(f"\n\u274c Invalid config: missing '{key}' section in {CONFIG_PATH}")
             sys.exit(1)
 
     # Environment variables override config file
@@ -789,6 +790,21 @@ def load_config():
         config["openai"]["api_key"] = os.getenv("OPENAI_API_KEY")
     if os.getenv("GEMINI_API_KEY"):
         config["gemini"]["api_key"] = os.getenv("GEMINI_API_KEY")
+
+    # Resolve "auto" / missing model \u2192 LATEST_MODELS. Always pass an explicit
+    # ID downstream (CLI + API) so cost gates, dry-runs, reports, and pricing
+    # labels see one coherent value. Existing pinned IDs (e.g., "gpt-5.5",
+    # "gpt-5.2") pass through untouched.
+    for provider in ("openai", "gemini"):
+        current = config[provider].get("model", "auto")
+        if current == "auto" or not current:
+            config[provider]["model"] = LATEST_MODELS[provider]
+            config[provider]["_model_resolved_from"] = "auto"
+        elif current in KNOWN_STALE_MODELS.get(provider, set()):
+            print(
+                f"\u26a0\ufe0f  {provider}.model='{current}' is a known stale ID. "
+                f"Latest: '{LATEST_MODELS[provider]}'. Set '\"model\": \"auto\"' to auto-track."
+            )
 
     # Phase 24 SP5 defaults \u2014 additive, do not require config.json rewrite.
     config["gemini"].setdefault("thinking_budget", 32768)
@@ -1367,6 +1383,8 @@ PRICING_PATH = Path.home() / ".claude" / "council" / "pricing.json"
 DEFAULT_PRICING = {
     "gemini-3-pro-preview": {"input_per_1m": 1.25, "output_per_1m": 10.0},
     "gemini-2.5-pro": {"input_per_1m": 1.25, "output_per_1m": 10.0},
+    "gpt-5.5-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
+    "gpt-5.5": {"input_per_1m": 1.25, "output_per_1m": 10.0},
     "gpt-5.2-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
     "gpt-5.2": {"input_per_1m": 1.25, "output_per_1m": 10.0},
     "o3-pro": {"input_per_1m": 15.0, "output_per_1m": 60.0},
@@ -1376,6 +1394,21 @@ DEFAULT_PRICING = {
     "codex-cli": {"input_per_1m": 0.0, "output_per_1m": 0.0},
     # OpenRouter free tier
     "openrouter-free": {"input_per_1m": 0.0, "output_per_1m": 0.0},
+}
+
+# Auto-resolved "latest" model IDs. Used when config has model: "auto" or the
+# field is missing. Bumped per toolkit release to track ai-models skill (the
+# canonical SoT). Existing configs with explicit IDs are preserved as-is.
+LATEST_MODELS = {
+    "openai": "gpt-5.5",
+    "gemini": "gemini-3-pro-preview",
+}
+
+# Known stale model IDs — emit a one-line WARN at startup. Existing pinned
+# configs are NOT silently rewritten; the user controls migration.
+KNOWN_STALE_MODELS = {
+    "openai": {"gpt-5.2", "gpt-5.2-pro", "gpt-5", "gpt-5-pro", "o3", "o3-pro", "o3-mini"},
+    "gemini": {"gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-pro"},
 }
 
 _PRICING_CACHE = None
@@ -1817,6 +1850,7 @@ def ask_gemini(prompt, config, file_paths=None):
 # ─────────────────────────────────────────────────
 
 REASONING_MODELS = {
+    "gpt-5.5", "gpt-5.5-pro",
     "gpt-5.2", "gpt-5.2-pro",
     "o3", "o3-pro", "o3-mini",
 }
@@ -2020,7 +2054,7 @@ def ask_chatgpt(prompt, config, system_prompt=None):
         ],
         "temperature": 0.2
     }
-    # Phase 24 SP5 — pin reasoning effort to max for the gpt-5.2 / o3 family.
+    # Phase 24 SP5 — pin reasoning effort to max for the gpt-5.5 / gpt-5.2 / o3 family.
     # Older models that don't accept the field are silently skipped.
     if model in REASONING_MODELS:
         payload["reasoning"] = {"effort": reasoning_effort}
@@ -2564,7 +2598,7 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
     if config.get("_openai_available", True):
         openai_model_eff = (
             "codex-cli" if config["openai"].get("mode") == "cli"
-            else config["openai"].get("model", "gpt-5.2")
+            else config["openai"].get("model", "gpt-5.5")
         )
         if not cost_confirm_gate(pragmatist_prompt, openai_model_eff, label="Pragmatist"):
             gpt_verdict = "Error: Pragmatist call declined by cost-confirm gate"
@@ -2839,7 +2873,7 @@ PLAN:
         return (tokens_in / 1_000_000.0) * rate, rate
 
     sk_cost, sk_rate = _estimate_cost("gemini-3-pro-preview", skeptic_tokens)
-    pr_cost, pr_rate = _estimate_cost("gpt-5.2", pragmatist_tokens)
+    pr_cost, pr_rate = _estimate_cost("gpt-5.5", pragmatist_tokens)
 
     print("=" * 60)
     print("🌵 SUPREME COUNCIL DRY-RUN — no API calls will be made")
@@ -2847,7 +2881,7 @@ PLAN:
     print(f"Plan length:  {len(plan)} chars")
     print(f"Domain:       {domain}")
     print(f"Skeptic ~tok: {skeptic_tokens}  (gemini-3-pro-preview @ ${sk_rate:.2f}/M in -> ~${sk_cost:.4f})")
-    print(f"Pragmatist ~tok: {pragmatist_tokens}  (gpt-5.2 @ ${pr_rate:.2f}/M in -> ~${pr_cost:.4f})")
+    print(f"Pragmatist ~tok: {pragmatist_tokens}  (gpt-5.5 @ ${pr_rate:.2f}/M in -> ~${pr_cost:.4f})")
     print(f"Estimated input cost: ~${sk_cost + pr_cost:.4f} (output not estimated)")
     print("=" * 60)
     print("\n--- SKEPTIC PROMPT ---\n")
