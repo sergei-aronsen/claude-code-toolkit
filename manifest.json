@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.8.0",
+  "version": "6.9.0",
   "updated": "2026-05-09",
   "build_date": "2026-05-09",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -110,6 +110,9 @@
       },
       {
         "path": "commands/product-review.md"
+      },
+      {
+        "path": "commands/prompt-audit.md"
       },
       {
         "path": "commands/research.md"
@@ -474,6 +477,10 @@
       {
         "path": "components/comet-research.md",
         "description": "v6.6 — Threat model and isolation requirements for the comet-bridge MCP (Perplexity Pro research backend); dedicated profile, CDP localhost-only, OTP login, kill switch; backs /research /lookup /factcheck slash commands"
+      },
+      {
+        "path": "components/system-prompt-architecture.md",
+        "description": "v6.6 — 7-block reusable system prompt template (IDENTITY, CAPABILITIES, PRIORITY, BEHAVIOR, TOOLS, SAFETY, OUTPUT) + drop-in Reusable Blocks A-E (anti-injection, citation, refusal, output discipline, skill registry); distilled from leaked production prompts; backs /prompt-audit slash command"
       }
     ]
   },
