@@ -29,6 +29,9 @@ _external/
 # Serena MCP runtime state (project.yml, memories cache, .serena/cache)
 .serena/
 
+# Personal MCP config (Comet bridge experiment) — not toolkit content
+.mcp.json
+
 # GSD scratchpad ephemera — per-task quick notes, codebase mapping cache,
 # and audit dumps. Active state (PROJECT.md, ROADMAP.md, MILESTONES.md,
 # STATE.md, RETROSPECTIVE.md, INBOX.md, config.json, research/) stays

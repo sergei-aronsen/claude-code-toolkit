@@ -35,6 +35,9 @@
 | `/council` | Multi-AI review: Gemini + ChatGPT pre-implementation check |
 | `/product-review` | Business gate: 4 personas (skeptic + marketer + CFO + user-empath) |
 | `/vendor-changelog` | Diff vendor HEAD vs pin; classify BREAKING/ADOPT/IGNORE/DEPRECATE |
+| `/research` | Deep web research via Perplexity Pro (no API costs) — needs `comet-bridge` MCP |
+| `/lookup` | Fast web search via Perplexity Pro (~15s) — needs `comet-bridge` MCP |
+| `/factcheck` | Verify a claim with sources via Perplexity Pro — needs `comet-bridge` MCP |
 | `/helpme` | Quick reference cheatsheet (9 languages) |
 
 ---

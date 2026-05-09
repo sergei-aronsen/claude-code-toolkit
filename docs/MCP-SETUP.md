@@ -95,6 +95,45 @@ follow the rotation recipe below.
 Automated wizard integration with secret managers is tracked as MCP-FUT-01 (registry in
 `.planning/STATE.md`).
 
+## Comet Research Bridge (Perplexity Pro)
+
+`comet-bridge` is an **opt-in** MCP that routes `/research`, `/lookup`, and
+`/factcheck` through your Perplexity Pro subscription instead of the paid
+Sonar API. It talks to a locally-running Comet browser over CDP.
+
+Setup is more involved than the standard catalog flow because it requires a
+browser install and an isolated profile. Use the dedicated installer:
+
+```bash
+bash scripts/setup-comet.sh
+```
+
+This script:
+
+1. Installs Comet via `brew install --cask comet` (idempotent).
+2. Creates `~/comet-profiles/mcp-only` with mode `0700`.
+3. Generates `~/comet-mcp/launch.sh` and `~/comet-mcp/stop.sh`.
+4. Registers `comet-bridge` MCP project-scope with `COMET_PORT=9223`.
+5. Prints the operational security checklist.
+
+After setup:
+
+1. Run `~/comet-mcp/launch.sh` to start the isolated Comet.
+2. In Comet, sign in to perplexity.ai with email + OTP (do not use Google
+   SSO; do not import settings from Chrome).
+3. Restart Claude Code in the project. `/mcp` should show
+   `comet-bridge ✔ connected · 8 tools`.
+4. Try `/lookup current Node.js LTS version`.
+
+Threat model and isolation requirements live in
+`components/comet-research.md` — read before using.
+
+> Note: until upstream PR
+> [RapierCraft/Perplexity-Comet-MCP#9](https://github.com/RapierCraft/Perplexity-Comet-MCP/pull/9)
+> merges (i18n completion-detector fix), the catalog points at the fork
+> branch directly: `github:sergei-aronsen/Perplexity-Comet-MCP#feat/i18n-completion-detection`.
+> Once merged, switch back to `perplexity-comet-mcp@latest` from npm.
+
 ## Troubleshooting
 
 - **"claude CLI not found"** — install Claude CLI from the Anthropic documentation and re-run.

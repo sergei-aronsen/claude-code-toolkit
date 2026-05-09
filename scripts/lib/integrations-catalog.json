@@ -103,6 +103,27 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "comet-bridge": {
+        "name": "comet-bridge",
+        "display_name": "Comet Research Bridge (Perplexity Pro)",
+        "category": "docs-research",
+        "env_var_keys": [],
+        "install_args": [
+          "comet-bridge",
+          "--scope",
+          "project",
+          "--env",
+          "COMET_PORT=9223",
+          "--",
+          "npx",
+          "-y",
+          "github:sergei-aronsen/Perplexity-Comet-MCP#feat/i18n-completion-detection"
+        ],
+        "description": "Research/lookup/factcheck via Perplexity Pro subscription (no API costs). Requires Comet browser + isolated profile. Run scripts/setup-comet.sh first.",
+        "requires_oauth": false,
+        "default_scope": "project",
+        "preflight_script": "scripts/setup-comet.sh"
+      },
       "dbhub": {
         "name": "dbhub",
         "display_name": "DBHub",
