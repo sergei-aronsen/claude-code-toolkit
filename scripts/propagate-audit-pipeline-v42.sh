@@ -60,6 +60,26 @@ OUTPUT_FORMAT_BODY="$(awk 'found || /^## /{found=1; print}' "$OUTPUT_FORMAT_SOT"
 [[ "$FP_RECHECK_BODY"    == "## "* ]] || { echo "ERROR: FP-recheck body does not start with ##" >&2;    exit 1; }
 [[ "$OUTPUT_FORMAT_BODY" == "## "* ]] || { echo "ERROR: OUTPUT FORMAT body does not start with ##" >&2; exit 1; }
 
+# F-006: SOT body H2 (## Procedure / ## Skipped … / ## Report Path / ## Full
+# Report Skeleton …) collides with the outer wrapper H2 (## <N>. SELF-CHECK
+# … / ## <N>. OUTPUT FORMAT …) inserted by write_spliced_file. Demote every
+# heading in the SOT body by one level (H2→H3, H3→H4, …) so it nests
+# semantically under the wrapper instead of breaking out of it. Code-fenced
+# regions are skipped — they contain illustrative markdown that must render
+# verbatim.
+demote_headings_one_level() {
+    awk '
+        /^```/ { infence = !infence; print; next }
+        !infence && /^#+ / { print "#" $0; next }
+        { print }
+    '
+}
+FP_RECHECK_BODY="$(printf '%s\n' "$FP_RECHECK_BODY" | demote_headings_one_level)"
+OUTPUT_FORMAT_BODY="$(printf '%s\n' "$OUTPUT_FORMAT_BODY" | demote_headings_one_level)"
+
+[[ "$FP_RECHECK_BODY"    == "### "* ]] || { echo "ERROR: FP-recheck body does not start with ### after demote" >&2;    exit 1; }
+[[ "$OUTPUT_FORMAT_BODY" == "### "* ]] || { echo "ERROR: OUTPUT FORMAT body does not start with ### after demote" >&2; exit 1; }
+
 # ─────────────────────────────────────────────────
 # write_spliced_file() — emit the rewritten file to a given output path
 #

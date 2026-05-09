@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.13.0] - 2026-05-09
+
+### Fixed — F-006 propagator demote H2→H3
+
+`scripts/propagate-audit-pipeline-v42.sh` now demotes every heading in
+the SOT body (`components/audit-fp-recheck.md` and
+`components/audit-output-format.md`) one level on inject. Previously the
+SOT body H2 (`## Procedure`, `## Skipped (FP recheck) Entry Format`,
+`## Report Path`, `## Full Report Skeleton`) collided with the outer
+wrapper H2 (`## <N>. SELF-CHECK …` / `## <N>. OUTPUT FORMAT …`),
+breaking the visual hierarchy in spliced files. Demote walks plain
+markdown only — H2 lines inside code fences (illustrative example
+output) are preserved verbatim.
+
+Re-spliced all 35 framework prompt files via `--force`. Strip logic
+unchanged (uses `parent_h2()` walk-back from sentinel, which still
+correctly lands on the outer wrapper after demote).
+
+### Fixed — meta-audit on remaining 5 base prompts
+
+Continued the v6.12.1 self-audit pattern across `PERFORMANCE_AUDIT`,
+`MYSQL_PERFORMANCE_AUDIT`, `POSTGRES_PERFORMANCE_AUDIT`,
+`DEPLOY_CHECKLIST`, `DESIGN_REVIEW`. Findings:
+
+- **F-001 (PERFORMANCE_AUDIT)** — `## 0.2 SEVERITY LEVELS` redefined
+  the rubric with latency thresholds. Renamed to
+  `## 0.2 SEVERITY THRESHOLDS (Performance-Specific Calibration)`,
+  added explicit reference to `components/severity-levels.md` as the
+  rubric SOT, kept latency thresholds as domain calibration (CRITICAL
+  at > 5s end-to-end, HIGH at > 2s p95, MEDIUM at > 1s p95, LOW at
+  < 1s).
+- **F-001 (DESIGN_REVIEW)** — `## Issue Triage Matrix` used
+  non-standard labels (`Blocker`, `High`, `Medium`, `Nitpick`) with
+  emoji prefixes, redefining the rubric. Renamed to
+  `## Issue Triage Matrix (Design-Specific Labels)`, added explicit
+  SOT mapping (`Blocker → CRITICAL`, `High → HIGH`,
+  `Medium → MEDIUM`, `Nitpick → LOW`) and a `SOT severity` column to
+  the table for unambiguous report serialization.
+- **F-004 (5 prompts)** — `## UNCERTAINTY DISCIPLINE` was absent from
+  `PERFORMANCE_AUDIT`, `MYSQL_PERFORMANCE_AUDIT`,
+  `POSTGRES_PERFORMANCE_AUDIT`, `DEPLOY_CHECKLIST`, `DESIGN_REVIEW`.
+  All 5 now carry the section before SELF-CHECK, with the same body
+  used in `CODE_REVIEW.md` (audit-agnostic — "evidence",
+  "Non-Blocking Observations", "weasel words").
+
+### Known limitation — framework prompt drift
+
+`templates/{laravel,rails,python,go}/prompts/*.md` (28 files) carry
+substantially older content than `templates/base/prompts/*.md`. The
+v42 splice pipeline propagates only the four splice blocks (callout,
+fp-recheck, output-format, council-handoff), not the surrounding body.
+Today's base-prompt fixes (PERFORMANCE F-001, DESIGN F-001,
+UNCERTAINTY DISCIPLINE x5) are present in `templates/base/` only;
+framework prompts will inherit them when they're regenerated.
+Tracking work for v6.14: either (a) regenerate framework prompts
+from base + framework-specific delta, or (b) extend the splice
+pipeline to a true sentinel-based base→framework section sync.
+
+### Carry-over from v6.12.1
+
+`F-007` / `F-008` / `F-010` were marked "cosmetic — deferred" in the
+v6.12.1 CHANGELOG, but the original conversation that produced those
+finding IDs was compacted before the specifics were saved. They are
+unrecoverable; future audit passes should rediscover and assign new
+IDs. `F-003` (Category enum wider than effective audit-type scope)
+remains deferred.
+
 ## [6.12.1] - 2026-05-09
 
 ### Fixed — meta-audit cleanup of audit prompts
