@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.10.0] - 2026-05-09
+
+### Added — Open Design installer (optional add-on)
+
+`scripts/setup-open-design.sh`: thin wrapper that installs the
+[nexu-io/open-design](https://github.com/nexu-io/open-design) local-first
+prototyping web app (Apache-2.0). Open Design ships its own agent runtime
+plus 122 in-repo skills and 149 brand design systems and emits HTML / PDF /
+PPTX / MP4 from prompts. It is **not** an MCP and does not register with
+`claude mcp` — it runs as a standalone web UI on `http://localhost:<port>`
+(default 7456).
+
+- New `scripts/setup-open-design.sh`:
+  - `--mode docker` (default): pulls `vanjayak/open-design:latest` via the
+    upstream `deploy/docker-compose.yml`. Honors `--port` by writing
+    `deploy/.env` (only when port differs from the 7456 default).
+  - `--mode source`: clones the repo, runs `corepack enable` + `pnpm
+    install`. Caller starts `pnpm tools-dev` themselves to keep the dev
+    server in the foreground.
+  - `--dry-run`, `--port`, `--dir`, `--stop`, `--help` flags.
+  - Path-traversal guard on `--dir`; numeric + range validation on
+    `--port`; explicit pre-flight for `git`, `docker compose v2` (docker
+    mode), or Node 24 + `corepack` (source mode). Pre-flight is gating
+    even under `--dry-run` — missing-tool errors fail fast.
+  - Idempotent: re-runs fast-forward an existing clone instead of cloning
+    again; `docker compose up -d` is idempotent on its own.
+  - `OPEN_DESIGN_PORT` and `OPEN_DESIGN_DIR` env overrides.
+- New `components/open-design.md`: prerequisites, security notes (host
+  port mapping on multi-user hosts, BYOK key separation), why skills are
+  NOT mirrored into `~/.claude/skills/` (tightly coupled to the upstream
+  runtime), and a stop/remove command matrix.
+- New `scripts/tests/test-setup-open-design.sh` — 10 PASS:
+  arg parsing (`--help`, unknown flag, bad `--mode`, bad `--port`
+  non-numeric and out-of-range, path-traversal `--dir`), `--stop` no-op
+  on missing clone, `OPEN_DESIGN_DIR` env override, missing-docker
+  pre-flight under `--dry-run`, default-port-no-`.env`-write guard.
+- `manifest.json`: added `scripts/setup-open-design.sh` to
+  `files.scripts`; bumped version 6.9.0 → 6.10.0.
+
+### Why no catalog entry
+
+Open Design speaks neither the MCP protocol nor a CLI tool surface. It is
+a long-running web app. The toolkit's `scripts/lib/integrations-catalog.json`
+schema models `components.mcp` (registered via `claude mcp add`) and
+`components.cli` (detect-by-binary tools). Open Design fits neither. It
+ships standalone like `setup-security.sh` and the existing `setup-comet.sh`
+script.
+
 ## [6.9.0] - 2026-05-09
 
 ### Added — GSD planning fact-check hook (PR-3 of 3)
