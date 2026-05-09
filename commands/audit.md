@@ -157,10 +157,14 @@ TIMESTAMP="$(date '+%Y-%m-%d-%H%M')"
 REPORT_PATH=".claude/audits/${TYPE_SLUG}-${TIMESTAMP}.md"
 ```
 
-Use the schema documented in `components/audit-output-format.md` — YAML frontmatter (7 keys), fixed section order (Summary → Findings → Skipped (allowlist) → Skipped (FP recheck) → Council verdict), 9-field finding entries, verbatim 10-lines-each-side code blocks with HTML range comments, byte-exact Council slot string `_pending — run /council audit-review_`. Do NOT redefine the schema here — the component is the SOT.
+Use the schema documented in `components/audit-output-format.md` — YAML frontmatter (7 keys), fixed section order (Summary → Findings → Skipped (allowlist) → Skipped (FP recheck) → Council verdict), 11-field finding entries (ID, Severity, Confidence, Category, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix), verbatim 10-lines-each-side code blocks with HTML range comments, byte-exact Council slot string `_pending — run /council audit-review_`. Do NOT redefine the schema here — the component is the SOT.
 
 - Report filename always uses the canonical slug: even if the user typed `/audit code`, the report is `.claude/audits/code-review-<timestamp>.md`.
 - Reports are NOT auto-added to `.gitignore`; this repo's blanket `.claude/` exclusion already covers them.
+
+### Phase 4.5 — Cross-Audit Recommendations
+
+Inspect the audit's actual scope against the patterns in `## Cross-Audit Recommendations` below. For each match, append a single `- Cross-audit:` bullet to the report's `## Non-Blocking Observations` section. Skip any trigger whose target file/glob is allowlisted with rule `CROSS-AUDIT-SUPPRESS-<TYPE>` in `.claude/rules/audit-exceptions.md`. This phase is non-blocking — recommendations are informational only, the user decides whether to run a follow-up audit.
 
 ### Phase 5 — Council Pass (Mandatory)
 
@@ -172,7 +176,42 @@ After writing the report, invoke `/council audit-review --report <path-to-report
 
 ## Output Format
 
-The structured report schema is defined once in `components/audit-output-format.md`. That component is the source of truth for: report path, YAML frontmatter (7 fields), fixed section order, finding entry schema (9 fields), verbatim code block layout (extension → language fence map), and the byte-exact Council verdict slot. Do not duplicate the schema here.
+The structured report schema is defined once in `components/audit-output-format.md`. That component is the source of truth for: report path, YAML frontmatter (7 fields), fixed section order, finding entry schema (11 fields), verbatim code block layout (extension → language fence map), and the byte-exact Council verdict slot. Do not duplicate the schema here.
+
+---
+
+## Cross-Audit Recommendations
+
+Each audit type covers ONE concern (CODE_REVIEW = correctness/regressions, SECURITY_AUDIT = vulnerabilities, PERFORMANCE_AUDIT = throughput/latency, etc.). When a `code-review` run touches files in adjacent concern domains, recommend the matching audit type as a follow-up — but NEVER inline its findings into the current report. Each audit produces its own typed report under `.claude/audits/`.
+
+### Recommendation Triggers
+
+After Phase 4 (Structured Report) and before Phase 5 (Council), inspect the audit's actual scope (changed files OR explicit scope argument) against these patterns. For each pattern that matches, append a one-line recommendation to the report's `## Non-Blocking Observations` section.
+
+| If `code-review` touches paths matching… | Recommend |
+|---|---|
+| `auth/`, `*Login*`, `*Password*`, `*Token*`, `*Csrf*`, `*Cors*`, `*Oauth*`, middleware on guarded routes, JWT/session code | `/audit security` |
+| Raw SQL strings (`DB::raw`, `cursor.execute(f"…`), template literals in queries, ORM `.raw()` | `/audit security` AND `/audit <db>-performance` |
+| Schema migrations, new indexes, column type changes | `/audit mysql-performance` OR `/audit postgres-performance` (whichever matches the project) |
+| Crypto / hashing / token generation (`bcrypt`, `argon2`, `crypto.randomBytes`, `secrets.token_hex`) | `/audit security` |
+| File upload, path-handling, `file_get_contents`, `requests.get` with user-controlled URLs | `/audit security` |
+| `Dockerfile*`, `docker-compose*`, `.github/workflows/*`, `Procfile`, deployment scripts | `/audit deploy-checklist` |
+| Hot-path code, N+1 risk, large list iterations, sync/await patterns in request flow | `/audit performance` |
+| Public API surface change (route handler signature, response shape) | `/audit security` AND `/audit design-review` |
+
+### Recommendation Format
+
+Append one bullet per matched trigger to `## Non-Blocking Observations` in the same report. Keep wording uniform so users can grep for "Cross-audit:" across past reports.
+
+```text
+- Cross-audit: this diff touches `<glob/pattern>` — run `/audit security` to cover authorization/secret/injection surface not in scope here.
+```
+
+DO NOT auto-invoke the recommended audit. DO NOT inline its findings. DO NOT block Phase 5 on it. The recommendation is informational; the user decides whether to run the follow-up audit. Rationale: each audit type has its own FP-recheck calibration, severity rubric, and Council pass cost — auto-chaining would multiply Council invocations and dilute per-type signal quality.
+
+### Suppressing a Recommendation
+
+If a project explicitly opts out of a follow-up (e.g. dedicated security review handled outside `/audit`), add an entry to `.claude/rules/audit-exceptions.md` with rule `CROSS-AUDIT-SUPPRESS-<TYPE>` and the file/glob being suppressed. Phase 0 reads it; Phase 4.5 honors it.
 
 ---
 

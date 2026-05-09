@@ -488,46 +488,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 - Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
 - Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
 
----
-
-## 12. REPORT FORMAT
-
-Create file `.claude/reports/SECURITY_AUDIT_[DATE].md`:
-
-```markdown
-# Security Audit Report — [Project Name]
-Date: [date]
-Auditor: Claude (Senior Security Engineer)
-
-## Executive Summary
-
-| Severity | Count | Status |
-|----------|-------|--------|
-| Critical | X | X fixed |
-| High | X | X fixed |
-| Medium | X | X fixed |
-| Low | X | - |
-
-**Overall Risk Level**: [Critical/High/Medium/Low]
-
-## Critical Vulnerabilities
-[Details...]
-
-## High Severity Issues
-[Details...]
-
-## Security Controls in Place
-[What's already good...]
-
-## Remediation Checklist
-[What to fix...]
-```
-
----
-
-## 13. ACTIONS
-
-## 14. OUTPUT FORMAT (Structured Report Schema — Phase 14)
+## 12. OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
 
 ## Report Path
@@ -609,21 +570,29 @@ The Summary table has columns `severity | count_reported | count_skipped_allowli
 
 ## Finding Entry Schema (### Finding F-NNN)
 
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 9 fields appear in this exact order:
+Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
 
 1. **ID** — the `F-NNN` identifier matching the H3 heading.
 2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`).
-4. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
-5. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
-6. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
-7. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
-8. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
-9. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
+3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty.
+4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure.
+5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
+6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
+7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
+8. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
+9. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
+10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
+11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
-See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all 9 fields).
+Field omission rules:
 
-The bullet labels (`**Severity:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
+- **CRITICAL / HIGH** — all 11 fields required.
+- **MEDIUM** — MAY omit Confidence, Data flow, and Suggested fix when they add no value.
+- **LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code/Data flow/Why it is real/Suggested fix sections may be merged into the Claim).
+
+See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
+
+The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
 
 ---
 
@@ -729,6 +698,8 @@ council_pass: pending
 ### Finding F-001
 
 - **Severity:** HIGH
+- **Confidence:** HIGH
+- **Category:** Security
 - **Rule:** SEC-SQL-INJECTION
 - **Location:** src/users.ts:42
 - **Claim:** User-supplied id flows into a string-concatenated SQL query without parameterization.
@@ -769,22 +740,6 @@ _pending — run /council audit-review_
 ```
 
 </output_format>
-
-1. **Define strategy** — SMALL/MEDIUM/LARGE codebase
-2. **Quick Check** — go through 5 critical points
-3. **Context** — understand architecture BEFORE finding bugs
-4. **Scan** — go through all sections by Risk Level
-5. **Sharp Edges** — check API footguns
-6. **Classify** — Critical → Low
-7. **Self-check** — filter false positives
-8. **Document** — file, line, code
-9. **Fix** — suggest specific fix
-
-Start audit. First Quick Check, then Executive Summary.
-
----
-
-*Inspired by [Trail of Bits Security Skills](https://github.com/trailofbits/skills)*
 
 ## Council Handoff
 <!-- v42-splice: council-handoff -->

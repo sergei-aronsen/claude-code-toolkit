@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.11.0] - 2026-05-09
+
+### Changed — CODE_REVIEW.md base prompt: regression-focused rewrite
+
+`templates/base/prompts/CODE_REVIEW.md` rebuilt around production
+regression review (correctness, reliability, business logic) with
+explicit signal-quality rails. The Quick-Check / Architecture /
+Code-Quality / DRY checklist style was replaced with diff-aware,
+evidence-grounded review rules that target high-impact real issues over
+checkbox coverage.
+
+Key additions:
+
+- **VERIFICATION HONESTY** — every Quick-Check row is labeled
+  `Verified` / `Failed` / `Not verified` / `Not applicable`. Build /
+  tests / lint / type-check status MUST NOT be inferred from code
+  inspection alone.
+- **GOLDEN RULE** — explicit goal is highest-impact real issues at the
+  lowest false-positive rate. A single precise finding outranks 20
+  speculative comments.
+- **DIFF AWARENESS** — review depth decreases rapidly outside changed
+  execution paths. Legacy issues only reported when the current change
+  worsens them, touches them directly, or creates immediate risk.
+- **EVIDENCE RULES + LOW-VALUE REVIEW FILTER** — every finding must
+  reference concrete tokens visible in source; no findings on hypothetical
+  consumers / undocumented integrations / future scaling. No
+  documentation / typing / abstraction asks without concrete uncovered
+  risk.
+- **SECURITY BOUNDARY** — generic security audit is out of scope (the
+  separate `SECURITY_AUDIT.md` prompt covers it). Carve-out for
+  correctness-breaking authorization, unsafe state transitions, and
+  destructive data exposure within the modified flow.
+- **PROJECT SPECIFICS moved to top** — context now read before review
+  rules instead of buried mid-document.
+
+### Changed — Finding entry schema: 9 fields → 11 fields
+
+`components/audit-output-format.md` (SOT) extended:
+
+- New required field **Confidence** (HIGH / MEDIUM / LOW) on CRITICAL +
+  HIGH findings. Severity and Confidence are now orthogonal axes.
+- New required field **Category** (Correctness, Business Logic,
+  Reliability, Concurrency, Performance, Operational Reliability,
+  Operational Maintainability Risk, API Contract, Data Integrity,
+  Security, Data Exposure).
+- Field omission rules: MEDIUM MAY omit Confidence + Data flow +
+  Suggested fix; LOW MAY collapse to ID + Severity + Confidence +
+  Location + Claim + one-line evidence.
+- `commands/audit.md` updated to "11-field finding entries".
+- `scripts/council/prompts/audit-review.md` updated to navigate by
+  label match, not position — Confidence and Category are documented
+  as optional bullets that may be absent on MEDIUM and lower findings.
+
+### Added — Cross-Audit Recommendations (Phase 4.5)
+
+`commands/audit.md` adds a non-blocking Phase 4.5 between the
+Structured Report write and the mandatory Council pass. When a
+`code-review` run touches files in adjacent concern domains
+(auth/SQL/crypto/deployment/perf), it appends a `- Cross-audit:` bullet
+to the report's `## Non-Blocking Observations` recommending the matching
+audit type as a follow-up. Recommendations are advisory — they never
+auto-invoke the recommended audit, never inline its findings, never
+block Phase 5. Each audit type keeps its own FP-recheck calibration,
+severity rubric, and Council pass.
+
+Trigger taxonomy and suppression mechanism (`CROSS-AUDIT-SUPPRESS-<TYPE>`
+allowlist rule) are documented in the new `## Cross-Audit Recommendations`
+section.
+
+### Changed — propagate-audit-pipeline-v42.sh: `--force` re-splice
+
+`scripts/propagate-audit-pipeline-v42.sh` gains a `--force` flag that
+strips existing splice regions before re-splicing. Required because the
+v4.2 splice was previously one-way (already-spliced files were skipped),
+which made SOT updates unable to propagate to existing prompt files.
+
+- New `strip_splice_regions()` Python helper. Region boundaries are
+  derived from the four `<!-- v42-splice: ... -->` sentinels themselves
+  (using `parent_h2` of the next sentinel as the END of the current
+  region) — this avoids the trap where the SOT body's own H2 headings
+  (such as Procedure / Skipped FP recheck / Anti-Patterns) would
+  otherwise be mistaken for region boundaries.
+- `--dry-run --force` reports what would be re-spliced without writing.
+- Partial-splice (1-3 sentinels) under `--force` strips and re-splices
+  cleanly instead of erroring.
+
+### Propagated
+
+35 framework prompt files re-spliced under the new `audit-output-format.md`
+SOT (FP-recheck + OUTPUT-FORMAT + Council Handoff regions). Net delta
+across all spliced files: -477 lines (more concise schema + omission rules
+removed boilerplate from MEDIUM/LOW examples).
+
 ## [6.10.0] - 2026-05-09
 
 ### Added — Open Design installer (optional add-on)
