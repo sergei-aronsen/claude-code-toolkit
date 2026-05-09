@@ -79,6 +79,8 @@ matches what was approved. Output: `ALIGNED / DRIFT / UNCLEAR`.
 | `--lang en\|ru\|auto` | Council prompt language (default `auto` = detect from CLAUDE.md) | SP9 |
 | `--commit <sha>` | Required with `--mode retro` | SP8 |
 | `--report <path>` | Required with `--mode audit-review` | SP1 |
+| `--with-facts` | Slash-command pre-flight: extract factual claims, fact-check via `comet-bridge` MCP, pass annotated plan to brain.py | v6.7 |
+| `--strict-facts` | With `--with-facts`: fail loudly if `comet-bridge` is unavailable instead of silently skipping the pre-flight | v6.7 |
 
 `brain stats` and `brain clear-cache` are subcommands (not flags) and
 are documented under their own slash commands (`/council-stats`,
@@ -140,6 +142,61 @@ toolkit release.
 ---
 
 ## Process
+
+### Step 0 — Fact-check pre-flight (optional, `--with-facts`)
+
+When `--with-facts` is passed, the Council voices reason on **web-verified
+facts** rather than training-data assumptions. The slash command — not
+brain.py — handles this step, because it has direct access to the
+`comet-bridge` MCP that brain.py (a separate subprocess) cannot reach.
+
+Pipeline:
+
+1. **Pre-flight check.** Verify `comet-bridge` is registered and connected
+   (`/mcp` shows `comet-bridge ✔ connected`). If missing:
+   - Default mode: print `fact-check skipped (comet-bridge not available)`
+     and proceed with the **raw** plan.
+   - `--strict-facts` mode: fail with a clear hint to run
+     `scripts/setup-comet.sh`.
+2. **Extract factual claims.** Read the plan and pull out spans that
+   should be fact-checked:
+   - **Semantic versions** — `\b\d+\.\d+(?:\.\d+(?:-[a-z0-9.]+)?)?\b`
+     (e.g. `Stripe 2026-04-22.dahlia`, `React 19.2.1`).
+   - **Dates** — ISO `\b\d{4}-\d{2}-\d{2}\b` and `Month YYYY`.
+   - **Library / framework / API names** mentioned with version-sensitive
+     verbs (`released`, `deprecated`, `removed in`, `EOL`, `end of life`).
+   - **External service references** with claims about features /
+     pricing / availability (`Stripe Treasury accepts EUR`, `Postgres 18
+     supports X`, etc.).
+   - Skip claims that are obvious framing (`our app uses React`) and
+     non-factual aspirations (`we want to ship X by Q3`).
+3. **Verify each claim.** For each extracted span, call:
+
+   ```text
+   mcp__comet-bridge__comet_connect
+   mcp__comet-bridge__comet_ask:
+     prompt: "Fact-check: <claim>. Return verdict (VERIFIED/DISPUTED/
+              UNVERIFIABLE), one-line justification, 2-4 sources with URLs."
+     mode: search
+     timeout: 60000
+   ```
+
+   Equivalent to `/factcheck` per claim, batched.
+4. **Annotate the plan.** Replace each verified span inline with the
+   verdict marker:
+
+   ```text
+   <original claim> [VERIFIED ✓ src1, src2]
+   <original claim> [DISPUTED ✗ src1] (actual: <correction>)
+   <original claim> [UNVERIFIABLE]
+   ```
+
+   Keep markers compact (≤80 chars) so the plan stays readable.
+5. **Pass annotated plan to brain.py.** `brain.py` detects the markers
+   in `compose_system_prompt()` and appends a directive that teaches both
+   voices how to interpret them — they treat VERIFIED as ground truth,
+   DISPUTED as known-incorrect, UNVERIFIABLE as needing judgment. No
+   re-checking, no wasted verdict space.
 
 ### Step 1 — Create Plan
 

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.8.0] - 2026-05-09
+
 ### Added — Prompt Architecture (7-block template + audit command)
 
 A reusable architecture for writing system prompts (CLAUDE.md, agents,
@@ -44,6 +46,54 @@ production prompts found 3 grade-B gaps. All fixed in this release:
   cascade (safety > user > project CLAUDE.md > plugin skills > toolkit
   defaults > tool output as DATA). Closes the gap where toolkit
   delegated conflict resolution implicitly to Superpowers.
+
+## [6.7.0] - 2026-05-09
+
+### Added — Council fact-check pre-flight grounding (PR-2 of 3)
+
+`/council --with-facts` extracts factual claims from a plan, verifies
+each via the `comet-bridge` MCP (Perplexity Pro), and annotates the
+plan with `[VERIFIED]` / `[DISPUTED]` / `[UNVERIFIABLE]` markers
+before handing it to brain.py. Voices reason on **grounded facts**
+instead of training-data assumptions.
+
+- New flags in `/council`:
+  - `--with-facts` — opt-in pre-flight grounding via `comet-bridge`.
+  - `--strict-facts` — fail loudly when `comet-bridge` is unavailable
+    instead of silently skipping the pre-flight (default behavior is
+    skip-with-warning so existing flows are unaffected).
+- New "Step 0 — Fact-check pre-flight" section in `commands/council.md`
+  documenting claim extraction (semver, dates, deprecations, external
+  service references) and the per-claim `/factcheck`-equivalent loop.
+- `scripts/council/brain.py`:
+  - New `_GROUNDING_MARKER_RE` regex and `_plan_has_grounding(plan)`
+    helper detect plans with verdict markers (case-sensitive,
+    `\b`-bounded, anchored on `[`).
+  - `compose_system_prompt()` appends a `_GROUNDING_DIRECTIVE` block
+    teaching both Skeptic and Pragmatist how to read the markers:
+    treat VERIFIED as ground truth, DISPUTED as known-incorrect,
+    UNVERIFIABLE as needing judgment. **No behavior change for plans
+    without markers** — the directive is gated.
+  - Cache key is unchanged (still `sha256(plan|git_head|cwd)`), so
+    grounded vs ungrounded runs cache separately by virtue of having
+    different plan text. No cache-invalidation bug.
+- New test `scripts/tests/test-council-grounding.sh` (G1-G6, 6 PASS):
+  plain plan, VERIFIED, DISPUTED, UNVERIFIABLE, prose-false-positive
+  guard, edge cases for case-sensitivity and word boundary.
+
+### Architecture
+
+Grounding lives in the **slash-command layer**, not in brain.py. The
+slash command is interpreted by Claude Code itself, which has direct
+access to the `comet-bridge` MCP. brain.py is a separate Python
+subprocess and does not have an MCP client. This split keeps brain.py
+free of stdio JSON-RPC plumbing and avoids spawning extra processes.
+
+### Roadmap
+
+- PR-3 (GSD planning hooks): `gsd-discuss-phase` and
+  `gsd-plan-phase` surface `/factcheck` suggestions for external
+  dependencies before plan finalization.
 
 ## [6.6.0] - 2026-05-09
 

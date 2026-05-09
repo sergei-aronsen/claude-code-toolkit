@@ -49,6 +49,12 @@ jobs:
           globs: '**/*.md'
           config: '.markdownlint-cli2.jsonc'
 
+  # Fast template/marker validation. Pure greps + small validators.
+  # Split out from the legacy monolithic validate-templates job (~6 min) — the
+  # bulk of that runtime was bash integration tests for install/uninstall/MCP
+  # that have no relationship to template structure. Those moved to the
+  # test-install-suite and test-orphan-secrets jobs below, which run in
+  # parallel with this one.
   validate-templates:
     name: Validate Templates
     runs-on: ubuntu-latest
@@ -121,6 +127,29 @@ jobs:
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh
 
+      - name: HARDEN-A-01 — validate commands/*.md required headings
+        run: make validate-commands
+
+      - name: CAT-03 — validate integrations-catalog.json schema v2
+        run: make validate-catalog
+
+      - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
+        run: make validate-skills-desktop
+
+      - name: MKT-03 — marketplace structural smoke (skipped without TK_HAS_CLAUDE_CLI)
+        run: make validate-marketplace
+
+      - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
+        run: make cell-parity
+
+  # Install/uninstall/MCP/skills/bridges/integrations integration tests.
+  # Split out from validate-templates so it runs in parallel.
+  test-install-suite:
+    name: Test Install Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Tests 21-47 — uninstall + banner suite + bootstrap + lib coverage + TUI orchestrator + MCP selector + Skills selector + bridges aggregate + integrations foundation + v4.9 schema/cli/tui (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, TUI-01..09, MCP-01..05, MCP-SEC-01..02, SKILL-03..05, BRIDGE-TEST-01, CAT-01..04, CLI-01..04, TEST-01..03)
         run: |
           bash scripts/tests/test-uninstall-dry-run.sh
@@ -143,6 +172,14 @@ jobs:
           bash scripts/tests/test-cli-installer.sh
           bash scripts/tests/test-integrations-tui.sh
 
+  # Backup/orphan-triage/secrets/migrate/update integration tests.
+  # Split out from validate-templates so it runs in parallel.
+  test-orphan-secrets:
+    name: Test Orphan Triage + Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Tests 35-49 — orphan triage + Phase 37 project secrets library (audit INF-MED-1, SEC-01..06, TEST-01)
         run: |
           bash scripts/tests/test-backup-lib.sh
@@ -155,21 +192,6 @@ jobs:
           bash scripts/tests/test-migrate-dry-run.sh
           bash scripts/tests/test-update-dry-run.sh
           bash scripts/tests/test-project-secrets.sh
-
-      - name: HARDEN-A-01 — validate commands/*.md required headings
-        run: make validate-commands
-
-      - name: CAT-03 — validate integrations-catalog.json schema v2
-        run: make validate-catalog
-
-      - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
-        run: make validate-skills-desktop
-
-      - name: MKT-03 — marketplace structural smoke (skipped without TK_HAS_CLAUDE_CLI)
-        run: make validate-marketplace
-
-      - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
-        run: make cell-parity
 
   test-init-script:
     # Audit T-05: matrix across Linux + macOS so BSD-vs-GNU divergence in
