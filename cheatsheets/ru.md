@@ -35,6 +35,9 @@
 | `/council` | Мульти-AI ревью: Gemini + ChatGPT перед реализацией |
 | `/product-review` | Бизнес-gate: 4 персоны (skeptic + marketer + CFO + user-empath) перед кодингом |
 | `/vendor-changelog` | Дифф вендоров (HEAD vs пин в manifest); классы BREAKING/ADOPT/IGNORE/DEPRECATE |
+| `/research` | Глубокий веб-ресёрч через Perplexity Pro (без API-токенов) — нужен MCP `comet-bridge` |
+| `/lookup` | Быстрый веб-поиск через Perplexity Pro (~15с) — нужен MCP `comet-bridge` |
+| `/factcheck` | Проверка факта с источниками через Perplexity Pro — нужен MCP `comet-bridge` |
 | `/helpme` | Шпаргалка (9 языков) |
 
 ---

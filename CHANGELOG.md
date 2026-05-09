@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-05-09
+
+### Added — Comet Research Bridge (foundation, PR-1 of 3)
+
+Slash-command research routed through the user's Perplexity Pro
+subscription instead of paying per-token for the Sonar API. Routes through
+the optional `comet-bridge` MCP that talks to a locally-running Comet
+browser over CDP. Costs $0 in API tokens; reuses the $20/mo Pro session.
+
+- New slash commands:
+  - `/research <query>` — deep multi-source research, `mode=research`,
+    60-180s, 15-30 sources with citations.
+  - `/lookup <query>` — fast single-pass search, `mode=search`, 15-20s.
+  - `/factcheck <claim>` — structured verification with VERIFIED /
+    DISPUTED / UNVERIFIABLE verdict.
+  - All three pre-flight check the MCP, fall back to `WebSearch` +
+    `context7` if `comet-bridge` is not configured.
+- New `scripts/setup-comet.sh` — one-shot installer:
+  - `brew install --cask comet` (idempotent).
+  - `~/comet-profiles/mcp-only` with mode 0700.
+  - Generates `~/comet-mcp/launch.sh` + `~/comet-mcp/stop.sh` (CDP
+    bound to `127.0.0.1:9223` only, kill-switch filtered by port).
+  - `claude mcp add comet-bridge --scope project`.
+  - Prints operational security checklist.
+  - `--dry-run` preview, `--scope project|user` selector.
+- New catalog entry `comet-bridge` in
+  `scripts/lib/integrations-catalog.json` (category `docs-research`).
+  Pinned to fork branch
+  `github:sergei-aronsen/Perplexity-Comet-MCP#feat/i18n-completion-detection`
+  until upstream PR
+  [RapierCraft/Perplexity-Comet-MCP#9](https://github.com/RapierCraft/Perplexity-Comet-MCP/pull/9)
+  merges (i18n completion-detector fix that brought search latency from
+  ~93s to ~18s on Russian UI).
+- New `components/comet-research.md` — threat model and isolation
+  requirements: dedicated Comet profile, CDP localhost-only, email-OTP
+  login (no Google SSO), Password Manager / Autofill / Sync disabled,
+  project-scope MCP, kill switch after each session.
+- `docs/MCP-SETUP.md` — new section "Comet Research Bridge (Perplexity Pro)"
+  with setup/login/troubleshooting flow.
+- `cheatsheets/{en,ru}.md` — added the three slash commands.
+- `manifest.json` — registered new commands + script + component.
+
+### Roadmap
+
+- PR-2 (Council fact-check pre-flight grounding): Council voices reason on
+  Pplx-verified facts instead of training-data assumptions.
+- PR-3 (GSD planning hooks): `gsd-discuss-phase` and `gsd-plan-phase`
+  surface fact-check suggestions for external dependencies.
+
 ## [6.5.0] - 2026-05-08
 
 ### Added — Council `"model": "auto"` sentinel + GPT-5.5 default bump

@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "version": "6.5.0",
-  "updated": "2026-05-08",
-  "build_date": "2026-05-08",
+  "version": "6.6.0",
+  "updated": "2026-05-09",
+  "build_date": "2026-05-09",
   "description": "Claude Code Toolkit manifest for smart updates",
   "vendor_pins_note": "Pinned commits/tags of external vendors as of the toolkit release. Used by /vendor-changelog to diff vendor HEAD against these pins and surface BREAKING/ADOPT/IGNORE/DEPRECATE classifications. Auto-updated by .github/workflows/release-pin.yml on tag push.",
   "vendor_pins": {
@@ -100,10 +100,19 @@
         "path": "commands/audit.md"
       },
       {
+        "path": "commands/factcheck.md"
+      },
+      {
         "path": "commands/learn.md"
       },
       {
+        "path": "commands/lookup.md"
+      },
+      {
         "path": "commands/product-review.md"
+      },
+      {
+        "path": "commands/research.md"
       },
       {
         "path": "commands/setup-guide.md"
@@ -208,6 +217,9 @@
       },
       {
         "path": "scripts/install.sh"
+      },
+      {
+        "path": "scripts/setup-comet.sh"
       },
       {
         "path": "scripts/uninstall.sh"
@@ -458,6 +470,10 @@
       {
         "path": "components/vendor-pinning.md",
         "description": "v6.3 — Vendor pinning architecture: manifest.json:vendor_pins schema, scripts/vendor/{clone-pinned,diff-summary,pin-vendors}.sh, /vendor-changelog command, .github/workflows/release-pin.yml auto-pin on tag"
+      },
+      {
+        "path": "components/comet-research.md",
+        "description": "v6.6 — Threat model and isolation requirements for the comet-bridge MCP (Perplexity Pro research backend); dedicated profile, CDP localhost-only, OTP login, kill switch; backs /research /lookup /factcheck slash commands"
       }
     ]
   },
