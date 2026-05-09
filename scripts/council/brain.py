@@ -363,6 +363,34 @@ def load_persona(domain, role):
     return text
 
 
+# Plan-grounding markers added by the /council slash-command Step 0
+# (--with-facts pre-flight). Detected here so voices reason on verified
+# facts instead of training-data assumptions. Markers are language-agnostic.
+_GROUNDING_MARKER_RE = re.compile(r"\[(?:VERIFIED|DISPUTED|UNVERIFIABLE)\b")
+
+_GROUNDING_DIRECTIVE = """\
+Note: this plan has been pre-verified against current web sources via
+Perplexity Pro. Inline `[VERIFIED]`, `[DISPUTED]`, and `[UNVERIFIABLE]`
+markers reflect that pre-flight check:
+
+- `[VERIFIED ✓ <sources>]` — multiple authoritative sources confirm the
+  adjacent claim. Treat as ground truth; do not contradict it.
+- `[DISPUTED ✗ <sources>]` — at least one authoritative source contradicts
+  the adjacent claim. Treat the claim as wrong; build your verdict on the
+  corrected fact described next to the marker.
+- `[UNVERIFIABLE]` — no public sources address the claim within reasonable
+  search depth. Apply your own judgment, but explicitly flag the claim as
+  unverified in your verdict if it materially affects the recommendation.
+
+Do not waste verdict space re-checking VERIFIED facts. Focus on reasoning,
+trade-offs, and risks given the grounded fact base.
+"""
+
+
+def _plan_has_grounding(plan):
+    return bool(_GROUNDING_MARKER_RE.search(plan or ""))
+
+
 def compose_system_prompt(role, plan, domain=None):
     """Build the full system prompt for `role`.
 
@@ -370,16 +398,30 @@ def compose_system_prompt(role, plan, domain=None):
     into a non-general domain, prepends the matching persona overlay
     separated by a `---` divider. Falls through to the base prompt when no
     overlay exists.
+
+    When the plan carries `[VERIFIED]` / `[DISPUTED]` / `[UNVERIFIABLE]`
+    markers (added by the `/council` slash command's Step 0 fact-check
+    pre-flight), an extra directive is appended teaching the voice how to
+    interpret those annotations. No behavior change for plans without
+    markers — the directive is gated on `_plan_has_grounding(plan)`.
     """
     base = load_prompt(f"{role}-system")
     if domain is None:
         domain = detect_domain(plan)
     overlay = load_persona(domain, role)
+    grounded = _plan_has_grounding(plan)
+    grounding_block = f"\n\n---\n\n{_GROUNDING_DIRECTIVE}" if grounded else ""
     if not overlay:
-        _debug(f"persona: role={role} domain={domain} overlay=none")
-        return base
-    _debug(f"persona: role={role} domain={domain} overlay=loaded ({len(overlay)} chars)")
-    return f"{overlay}\n\n---\n\n{base}"
+        _debug(
+            f"persona: role={role} domain={domain} overlay=none "
+            f"grounded={grounded}"
+        )
+        return f"{base}{grounding_block}"
+    _debug(
+        f"persona: role={role} domain={domain} overlay=loaded "
+        f"({len(overlay)} chars) grounded={grounded}"
+    )
+    return f"{overlay}\n\n---\n\n{base}{grounding_block}"
 
 
 # Council audit-review constants
