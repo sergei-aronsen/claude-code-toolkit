@@ -73,6 +73,14 @@ Reference materials for Claude Code. Loaded on demand or embedded in CLAUDE.md.
 
 ---
 
+## Prompt Engineering
+
+| Component | Description |
+|-----------|-------------|
+| [system-prompt-architecture.md](./system-prompt-architecture.md) | 7-block reusable template for system prompts (IDENTITY, CAPABILITIES, PRIORITY, BEHAVIOR, TOOLS, SAFETY, OUTPUT) + drop-in Blocks A-E (anti-injection, citation, refusal, output discipline, skill registry). Backs `/prompt-audit`. |
+
+---
+
 ## Git & Version Control
 
 | Component | Description |
