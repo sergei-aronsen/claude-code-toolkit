@@ -20,9 +20,11 @@ set -euo pipefail
 # CLI flag parsing
 # ─────────────────────────────────────────────────
 DRY_RUN=0
+FORCE=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
+        --force)   FORCE=1;   shift ;;
         -h|--help)
             sed -n '2,15p' "$0" | sed 's/^# \?//'
             exit 0
@@ -289,6 +291,147 @@ PYEOF
 }
 
 # ─────────────────────────────────────────────────
+# strip_splice_regions() — remove all 4 splice blocks from a previously-spliced
+# file IN-PLACE. Used by --force mode so re-splicing is possible after SOT
+# updates. Idempotent on virgin files (no sentinels → no-op).
+#
+# Stripping logic:
+#   - callout: remove `<!-- v42-splice: callout -->` line + following HTML
+#     comment block (`<!-- Audit exceptions allowlist...-->`).
+#   - fp-recheck-section: walk back from sentinel to the parent `## ` heading,
+#     forward through next `## ` (top-level) or EOF. Drop the whole region.
+#   - output-format-section: same shape.
+#   - council-handoff: walk back to `## Council Handoff` heading, forward to
+#     EOF (always last block).
+# ─────────────────────────────────────────────────
+strip_splice_regions() {
+    local f="$1"
+    python3 - "$f" <<'PYEOF'
+import sys
+
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as fh:
+    lines = fh.readlines()
+
+def find_line(needle):
+    for i, ln in enumerate(lines):
+        if needle in ln:
+            return i
+    return -1
+
+def parent_h2(idx):
+    """Walk back from idx (inclusive) to the nearest line starting with '## '."""
+    j = idx
+    while j >= 0 and not lines[j].startswith('## '):
+        j -= 1
+    return j
+
+# Region boundaries are derived from the FOUR splice sentinels themselves.
+# The SOT body inside fp-recheck and output-format regions contains its own
+# '## ' headings (e.g. '## Procedure', '## Skipped (FP recheck) Entry Format'),
+# so we cannot use "next ## heading" as a boundary. Instead we use the next
+# splice region's parent_h2 line as the END of the current region.
+#
+# Layout in a properly-spliced file:
+#
+#   <H1>
+#   <!-- v42-splice: callout -->
+#   <!-- Audit exceptions allowlist: ... -->
+#
+#   ... outer prompt content ...
+#
+#   ## <N>. SELF-CHECK (FP Recheck — 6-Step Procedure)   ← parent of fp sentinel
+#   <!-- v42-splice: fp-recheck-section -->
+#
+#   ## Procedure
+#   ...SOT body (contains '## ' headings)...
+#
+#   ## <N+1>. OUTPUT FORMAT (...)                         ← parent of of sentinel
+#   <!-- v42-splice: output-format-section -->
+#
+#   ## Report Path
+#   ...SOT body...
+#
+#   ## Council Handoff                                    ← parent of council sentinel
+#   <!-- v42-splice: council-handoff -->
+#
+#   ...footer text...EOF
+
+callout_idx = find_line('<!-- v42-splice: callout -->')
+fp_idx      = find_line('<!-- v42-splice: fp-recheck-section -->')
+of_idx      = find_line('<!-- v42-splice: output-format-section -->')
+ch_idx      = find_line('<!-- v42-splice: council-handoff -->')
+
+ranges = []  # list of (start, end) line-index pairs to delete (end exclusive)
+
+# ─── callout: sentinel + immediately-following HTML comment block ───
+if callout_idx >= 0:
+    end = callout_idx + 1
+    if end < len(lines) and lines[end].startswith('<!--'):
+        while end < len(lines):
+            end += 1
+            if end > 0 and '-->' in lines[end - 1]:
+                break
+    # Eat one trailing blank line if present
+    if end < len(lines) and lines[end].strip() == '':
+        end += 1
+    ranges.append((callout_idx, end))
+
+# ─── fp-recheck region: parent_h2(fp) → parent_h2(of) - 1 ───
+if fp_idx >= 0:
+    start = parent_h2(fp_idx)
+    if of_idx > fp_idx:
+        end = parent_h2(of_idx)
+    elif ch_idx > fp_idx:
+        end = parent_h2(ch_idx)
+    else:
+        end = len(lines)
+    if start >= 0 and end > start:
+        ranges.append((start, end))
+
+# ─── output-format region: parent_h2(of) → parent_h2(council) - 1 ───
+if of_idx >= 0:
+    start = parent_h2(of_idx)
+    if ch_idx > of_idx:
+        end = parent_h2(ch_idx)
+    else:
+        end = len(lines)
+    if start >= 0 and end > start:
+        ranges.append((start, end))
+
+# ─── council-handoff region: parent_h2(council) → EOF ───
+if ch_idx >= 0:
+    start = parent_h2(ch_idx)
+    end = len(lines)
+    if start >= 0:
+        ranges.append((start, end))
+
+# Apply deletions in reverse-line order (so earlier indices stay valid)
+ranges.sort(key=lambda r: r[0], reverse=True)
+for start, end in ranges:
+    del lines[start:end]
+
+# Collapse multiple consecutive blank lines into one
+out = []
+prev_blank = False
+for ln in lines:
+    is_blank = ln.strip() == ''
+    if is_blank and prev_blank:
+        continue
+    out.append(ln)
+    prev_blank = is_blank
+
+# Trim trailing blanks; ensure exactly one trailing newline
+while out and out[-1].strip() == '':
+    out.pop()
+out.append('\n')
+
+with open(path, 'w', encoding='utf-8') as fh:
+    fh.writelines(out)
+PYEOF
+}
+
+# ─────────────────────────────────────────────────
 # insert_blocks() — rewrite a single prompt file in-place
 # Arguments: $1 = path to prompt file
 # ─────────────────────────────────────────────────
@@ -375,14 +518,46 @@ while IFS= read -r f; do
     total=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
 
     if [ "$total" -eq 4 ]; then
-        echo "[skip] already-spliced: ${f#"$REPO_ROOT/"}"
-        ALREADY_SPLICED=$((ALREADY_SPLICED + 1))
-        continue
+        if [ "$FORCE" -eq 1 ]; then
+            if [ "$DRY_RUN" -eq 1 ]; then
+                echo "[dry-run] would re-splice (force): ${f#"$REPO_ROOT/"}"
+                SPLICED=$((SPLICED + 1))
+                continue
+            fi
+            strip_splice_regions "$f"
+            # Recompute sentinel count after strip — must be 0 for normal splice path
+            total=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
+            if [ "$total" -ne 0 ]; then
+                echo "ERROR: strip left $total sentinels behind: ${f#"$REPO_ROOT/"}" >&2
+                ERRORS=$((ERRORS + 1))
+                continue
+            fi
+            # Fall through to normal splice path below
+        else
+            echo "[skip] already-spliced: ${f#"$REPO_ROOT/"}"
+            ALREADY_SPLICED=$((ALREADY_SPLICED + 1))
+            continue
+        fi
     fi
     if [ "$total" -gt 0 ] && [ "$total" -lt 4 ]; then
-        echo "ERROR: partial-splice ($total/4 sentinels): ${f#"$REPO_ROOT/"}" >&2
-        ERRORS=$((ERRORS + 1))
-        continue
+        if [ "$FORCE" -eq 1 ]; then
+            if [ "$DRY_RUN" -eq 1 ]; then
+                echo "[dry-run] would strip+splice (force, partial $total/4): ${f#"$REPO_ROOT/"}"
+                SPLICED=$((SPLICED + 1))
+                continue
+            fi
+            strip_splice_regions "$f"
+            total=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
+            if [ "$total" -ne 0 ]; then
+                echo "ERROR: strip left $total sentinels behind: ${f#"$REPO_ROOT/"}" >&2
+                ERRORS=$((ERRORS + 1))
+                continue
+            fi
+        else
+            echo "ERROR: partial-splice ($total/4 sentinels): ${f#"$REPO_ROOT/"}" >&2
+            ERRORS=$((ERRORS + 1))
+            continue
+        fi
     fi
 
     # Pitfall 2: CRLF guard

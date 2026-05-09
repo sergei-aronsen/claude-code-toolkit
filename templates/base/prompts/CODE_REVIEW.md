@@ -5,27 +5,29 @@
      Consult this file before reporting any finding. Use /audit-skip to add
      an entry, /audit-restore to remove one. -->
 
-## Goal
+## GOAL
 
-Comprehensive code review of a web application. Act as a Senior Tech Lead.
+Act as a regression-focused production reviewer. Identify realistic
+correctness, reliability, and business-logic defects introduced or exposed
+by the diff.
 
-> **Recommended model:** Use **Claude Opus 4.5** (`claude-opus-4-5-20251101`) for code review — works better with code analysis.
+The objective is NOT to maximize the number of findings. The objective is to
+identify the highest-impact real issues with the lowest possible
+false-positive rate. A single precise, high-confidence finding is more
+valuable than 20 speculative comments.
+
+Avoid academic or purely stylistic feedback. Security auditing is handled by
+`SECURITY_AUDIT.md`; do not perform speculative security analysis here
+unless the diff directly introduces correctness-breaking authorization,
+unsafe state transitions, or destructive data exposure within the modified
+execution flow.
 
 ---
 
-## 0. QUICK CHECK (5 minutes)
+## PROJECT SPECIFICS — [Project Name]
 
-| # | Check | Expected |
-| --- | ------- | ---------- |
-| 1 | Syntax errors | None |
-| 2 | Linter passes | No errors |
-| 3 | Build succeeds | Success |
-| 4 | Tests pass | All green |
-| 5 | No debug code | No dd/dump/console.log |
-
----
-
-## 0.1 PROJECT SPECIFICS — [Project Name]
+Optional project-specific guidance. If this section is not filled in, ignore
+it. Do not mention placeholder content in the final report.
 
 **Accepted decisions (no need to fix):**
 
@@ -43,134 +45,171 @@ Comprehensive code review of a web application. Act as a Senior Tech Lead.
 
 ---
 
-## 0.2 SEVERITY LEVELS
+## 0. QUICK CHECK (5 minutes)
 
-| Level | Description | Action |
-| ------- | ---------- | ---------- |
-| CRITICAL | Bug, security issue, data loss | **BLOCKER** — fix now |
-| HIGH | Serious logic problem | Fix before merge |
-| MEDIUM | Code smell, maintainability | Fix in this PR |
-| LOW | Style, nice-to-have | Can defer |
+Report only checks that were actually performed. Do not infer
+test/build/lint status from code inspection alone.
 
----
+| Check | Status |
+| ------- | -------- |
+| Syntax errors | Verified / Failed / Not verified / Not applicable |
+| Linter | Verified / Failed / Not verified / Not applicable |
+| Build | Verified / Failed / Not verified / Not applicable |
+| Tests | Verified / Failed / Not verified / Not applicable |
+| Debug code present | Verified / Failed / Not verified / Not applicable |
 
-## 1. SCOPE REVIEW
+Status labels:
 
-### 1.1 Define scope
+- **Verified** — command was actually executed and passed.
+- **Failed** — command was executed and failed.
+- **Not verified** — command was not run.
+- **Not applicable** — check does not apply to this diff.
 
-- [ ] Which files are changed
-- [ ] Which files are created
-- [ ] Relationship between changes
-
-### 1.2 Categorization
-
-- [ ] Business logic changes
-- [ ] UI changes
-- [ ] Database changes
-- [ ] Config changes
+Never claim verification of build, tests, linting, type checking,
+migrations, or runtime behavior unless the relevant command was actually
+executed in the session.
 
 ---
 
-## 2. ARCHITECTURE & STRUCTURE
+## SEVERITY AND CONFIDENCE
 
-### 2.1 Single Responsibility
+Severity and confidence are orthogonal axes. Both are required on every
+HIGH or CRITICAL finding.
 
-```text
-Bad: Controller 300+ lines with all logic
-Good: Controller coordinates, Service contains logic
-```
+### Severity
 
-- [ ] Files < 300 lines
-- [ ] Methods < 20 lines
-- [ ] One class/component — one responsibility
+| Level | Description |
+| ------- | ---------- |
+| CRITICAL | Production outage, severe data corruption, irreversible state inconsistency, critical runtime failure. |
+| HIGH | Serious correctness or reliability issue with realistic production impact. |
+| MEDIUM | Moderate reliability, scalability, or operational concern with realistic impact. |
+| LOW | Minor issue with limited operational impact. |
 
-### 2.2 Dependency Injection
+Do not inflate severity. Re-rate using the actual exploit/failure scenario,
+not the rule label.
 
-- [ ] Dependencies are injected, not created inside
-- [ ] No static service calls
+### Confidence
 
-### 2.3 Proper Placement
+| Level | Description |
+| ------- | ---------- |
+| HIGH | Directly observable in code with a clear execution path. |
+| MEDIUM | Strong evidence exists, some assumptions are inferred. |
+| LOW | Weak signal or incomplete evidence. |
 
-- [ ] Files in correct directories
-- [ ] No God-classes
-- [ ] Logic in correct layer
-
----
-
-## 3. CODE QUALITY
-
-### 3.1 Naming
-
-- [ ] Variables — nouns, camelCase
-- [ ] Methods — verbs, camelCase
-- [ ] Boolean — is/has/can/should prefix
-
-### 3.2 Complexity
-
-- [ ] Nesting < 3 levels
-- [ ] Early returns are used
-- [ ] Complex logic split into methods
-
-### 3.3 DRY
-
-- [ ] No copy-paste code
-- [ ] Common logic extracted
-
-### 3.4 Type Safety
-
-- [ ] Types specified
-- [ ] Nullable explicitly marked
+Avoid reporting LOW-confidence findings unless impact could be severe AND
+the uncertainty is explicitly stated.
 
 ---
 
-## 4. ERROR HANDLING
+## DIFF AWARENESS
 
-### 4.1 Exceptions
+Assume unchanged code is stable unless the diff introduces or exposes a
+failure path. Review depth decreases rapidly outside the changed execution
+paths. Do not perform broad repository audits unrelated to the diff.
 
-- [ ] Specific exception types
-- [ ] Logging with context
-- [ ] No empty catch blocks
+Treat newly introduced issues as higher priority than pre-existing code
+quality problems. Do not aggressively report legacy issues unless:
 
-### 4.2 User-Facing
-
-- [ ] Clear messages to user
-- [ ] Technical details only in logs
-
----
-
-## 5. DOCUMENTATION
-
-### 5.1 Code Comments
-
-- [ ] Public methods documented
-- [ ] Comments explain "why", not "what"
-- [ ] No commented-out code
-
-### 5.2 Project Docs
-
-- [ ] README updated if needed
-- [ ] INDEX updated if needed
+- the current change worsens them
+- the change directly touches the affected area
+- the issue creates immediate risk
 
 ---
 
-## 6. SECURITY & PERFORMANCE
+## SCOPE, PRIORITIES, AND APPROACH
 
-### 6.1 Security Quick Check
+Identify the actual execution paths affected by the diff. Focus depth on:
 
-- [ ] No SQL injection
-- [ ] No XSS
-- [ ] Authorization checked
-- [ ] No debug code in production
+- modified logic
+- affected call chains
+- changed state transitions and async flows
+- changed persistence or API boundaries
 
-### 6.2 Performance Quick Check
+Prioritize findings in this order:
 
-- [ ] No N+1 queries
-- [ ] Pagination for lists
-- [ ] Heavy operations async
+1. Correctness bugs
+2. Invalid state transitions or data consistency risks
+3. Concurrency / async issues
+4. Architecture-related correctness or reliability risks
+5. Performance issues with realistic production impact
+6. Operational maintainability risks with measurable support or reliability cost
+
+Before reporting any finding: understand the intent of the change, trace
+affected execution paths, validate assumptions against actual code, and
+estimate realistic production impact.
 
 ---
 
-## 7. SELF-CHECK (FP Recheck — 6-Step Procedure)
+## EVIDENCE RULES
+
+Do not assume hidden consumers, undocumented integrations, future scaling
+requirements, external dependencies, or implicit contracts unless directly
+evidenced in the reviewed code or diff.
+
+Only report an issue if:
+
+- the execution path is observable in code
+- the execution flow is concrete
+- the claim references actual tokens from source
+- the issue is realistically reachable
+
+Never speculate about missing code, assumed runtime behavior, hypothetical
+future usage, or external integrations not present in the diff.
+
+---
+
+## BUSINESS LOGIC VALIDATION
+
+Check the directly affected execution flow for:
+
+- inverted conditions
+- missing edge cases
+- invalid state transitions
+- race conditions
+- partial updates
+- transactional inconsistencies
+- stale cache flows
+- async ordering issues
+
+Prioritize logic correctness over style.
+
+---
+
+## LOW-VALUE REVIEW FILTER
+
+Do not generate findings merely because a review category exists. Every
+finding must justify realistic impact AND why resolving the issue is worth
+the cost.
+
+Do not request:
+
+- additional tests without identifying a concrete uncovered risk
+- documentation updates without missing operationally important behavior
+- stronger typing unless type weakness creates realistic defects
+- abstractions unless duplication or coupling creates measurable maintenance cost
+
+Do not report:
+
+- purely stylistic preferences
+- naming alternatives without semantic benefit
+- framework preference debates
+- speculative micro-optimizations
+- comments without measurable impact
+- premature abstractions
+- unnecessary architectural generalization
+- refactors without measurable benefit
+
+---
+
+## UNCERTAINTY HANDLING
+
+If evidence is incomplete: lower confidence, reduce severity, move the
+observation into Non-Blocking Observations, and explicitly state the
+uncertainty. Do not present assumptions as facts.
+
+---
+
+## 1. SELF-CHECK (FP Recheck — 6-Step Procedure)
 <!-- v42-splice: fp-recheck-section -->
 
 ## Procedure
@@ -216,52 +255,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 - Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
 - Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
 
----
-
-## 8. REPORT FORMAT
-
-```markdown
-# Code Review Report — [Project]
-Date: [date]
-Scope: [files/commits]
-
-## Summary
-
-| Category | Issues | Critical |
-|-----------|---------|-----------|
-| Architecture | X | X |
-| Code Quality | X | X |
-| Security | X | X |
-| Performance | X | X |
-
-## CRITICAL Issues
-
-| # | File | Line | Issue | Solution |
-|---|------|--------|----------|---------|
-| 1 | file.ext | 45 | [Description] | [Solution] |
-
-## Code Suggestions
-
-### 1. [Title]
-```language
-// Before
-[code]
-
-// After
-[code]
-```
-
-## Good Practices Found
-
-- [What's good]
-
-```text
-
----
-
-## 9. ACTIONS
-
-## 8. OUTPUT FORMAT (Structured Report Schema — Phase 14)
+## 2. OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
 
 ## Report Path
@@ -343,21 +337,29 @@ The Summary table has columns `severity | count_reported | count_skipped_allowli
 
 ## Finding Entry Schema (### Finding F-NNN)
 
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 9 fields appear in this exact order:
+Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
 
 1. **ID** — the `F-NNN` identifier matching the H3 heading.
 2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`).
-4. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
-5. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
-6. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
-7. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
-8. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
-9. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
+3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty.
+4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure.
+5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
+6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
+7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
+8. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
+9. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
+10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
+11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
-See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all 9 fields).
+Field omission rules:
 
-The bullet labels (`**Severity:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
+- **CRITICAL / HIGH** — all 11 fields required.
+- **MEDIUM** — MAY omit Confidence, Data flow, and Suggested fix when they add no value.
+- **LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code/Data flow/Why it is real/Suggested fix sections may be merged into the Claim).
+
+See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
+
+The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
 
 ---
 
@@ -463,6 +465,8 @@ council_pass: pending
 ### Finding F-001
 
 - **Severity:** HIGH
+- **Confidence:** HIGH
+- **Category:** Security
 - **Rule:** SEC-SQL-INJECTION
 - **Location:** src/users.ts:42
 - **Claim:** User-supplied id flows into a string-concatenated SQL query without parameterization.
@@ -503,14 +507,6 @@ _pending — run /council audit-review_
 ```
 
 </output_format>
-
-1. **Quick Check** — basic checks
-2. **Define scope** — what to check
-3. **Go through categories** — Architecture → Performance
-4. **Self-check** — filter false positives
-5. **Show fixes** — specific code before/after
-
-Start review. Show scope and summary first.
 
 ## Council Handoff
 <!-- v42-splice: council-handoff -->

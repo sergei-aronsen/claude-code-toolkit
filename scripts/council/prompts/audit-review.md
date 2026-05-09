@@ -14,10 +14,11 @@ is to read each finding's embedded verbatim code block and decide whether the is
 FALSE_POSITIVE, or NEEDS_MORE_CONTEXT — then list any real issues the auditor missed.
 
 You receive the entire audit report as input. Read every `### Finding F-NNN` block, navigate the
-bullet labels (`**Severity:**`, `**Rule:**`, `**Location:**`, `**Claim:**`, `**Code:**`,
-`**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`), and reason from the verbatim code
-shown in the `<!-- File: <path> Lines: <start>-<end> -->` block — never paraphrase the file from
-imagined memory.
+bullet labels (`**Severity:**`, `**Confidence:**` (optional), `**Category:**` (optional),
+`**Rule:**`, `**Location:**`, `**Claim:**`, `**Code:**`, `**Data flow:**`, `**Why it is real:**`,
+`**Suggested fix:**`), and reason from the verbatim code shown in the
+`<!-- File: <path> Lines: <start>-<end> -->` block — never paraphrase the file from imagined
+memory.
 
 ---
 
@@ -54,8 +55,11 @@ The auditor follows the schema in `components/audit-output-format.md`. Key contr
   literal placeholder `_pending — run /council audit-review_` (em-dash U+2014). Do NOT modify this
   slot — the orchestrator overwrites it with your collated output.
 - **Finding entries** are H3 blocks `### Finding F-NNN` with these bullet labels in order:
-  `**ID:**`, `**Severity:**`, `**Rule:**`, `**Location:**`, `**Claim:**`, then sections `**Code:**`,
-  `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`.
+  `**ID:**`, `**Severity:**`, `**Confidence:**` (optional, may be omitted on MEDIUM and lower),
+  `**Category:**` (optional, same omission rule), `**Rule:**`, `**Location:**`, `**Claim:**`, then
+  sections `**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`. Walk by label
+  match, not by position — Confidence and Category may be absent on MEDIUM/LOW findings per
+  `components/audit-output-format.md` field omission rules.
 - **Verbatim code block** sits under `**Code:**` with the layout:
 
   ```text

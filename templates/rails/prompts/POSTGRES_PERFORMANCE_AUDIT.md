@@ -713,21 +713,29 @@ The Summary table has columns `severity | count_reported | count_skipped_allowli
 
 ## Finding Entry Schema (### Finding F-NNN)
 
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 9 fields appear in this exact order:
+Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
 
 1. **ID** — the `F-NNN` identifier matching the H3 heading.
 2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`).
-4. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
-5. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
-6. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
-7. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
-8. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
-9. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
+3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty.
+4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure.
+5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
+6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
+7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
+8. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
+9. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
+10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
+11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
-See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all 9 fields).
+Field omission rules:
 
-The bullet labels (`**Severity:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
+- **CRITICAL / HIGH** — all 11 fields required.
+- **MEDIUM** — MAY omit Confidence, Data flow, and Suggested fix when they add no value.
+- **LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code/Data flow/Why it is real/Suggested fix sections may be merged into the Claim).
+
+See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
+
+The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
 
 ---
 
@@ -833,6 +841,8 @@ council_pass: pending
 ### Finding F-001
 
 - **Severity:** HIGH
+- **Confidence:** HIGH
+- **Category:** Security
 - **Rule:** SEC-SQL-INJECTION
 - **Location:** src/users.ts:42
 - **Claim:** User-supplied id flows into a string-concatenated SQL query without parameterization.
