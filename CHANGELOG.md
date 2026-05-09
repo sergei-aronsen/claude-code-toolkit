@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.12.0] - 2026-05-09
+
+### Changed — SECURITY_AUDIT.md base prompt: adversarial systems-security rewrite
+
+`templates/base/prompts/SECURITY_AUDIT.md` rebuilt around offensive
+systems-security reasoning, replacing the OWASP-style numbered checklist
+(`1. INJECTION ATTACKS` ... `9. SHARP EDGES` plus duplicate
+`10. INJECTION ATTACKS`) with threat-modeling, attacker-class reasoning,
+and exploit-chain analysis. Compliance theatre dropped: `X-XSS-Protection`
+(legacy dead header), specific bcrypt round counts, OS-specific chmod
+values, HSTS max-age arithmetic.
+
+New phases and reasoning rails:
+
+- **PHASE 0 — THREAT MODEL** — trust boundaries, attacker-controlled
+  inputs, privilege boundaries, persistence layers, external
+  integrations, multi-tenant boundaries identified before vulnerability
+  search.
+- **PHASE 1 — ATTACK SURFACE MAP** — public/auth/admin endpoints,
+  webhooks, file uploads, URL fetchers, OAuth flows, queue consumers,
+  scheduled jobs, AI/LLM integrations enumerated.
+- **ATTACKER MODEL** — every finding classified by required actor
+  (unauthenticated / authenticated / tenant admin / compromised
+  third-party / internal operator / adversarial AI input). Severity
+  calibrated against actor capability.
+- **DEEP EXPLOIT ANALYSIS** modules (reasoning prompts, not checklists):
+  Authentication & Session Lifecycle, Authorization (UI/API/job/cache
+  parity), Multi-Tenant Isolation, Injection Sinks, File Handling +
+  Object Storage, Webhook Security, Async/Queue/Job Security, Cache/CDN,
+  AI/LLM/RAG Security, Business Logic, Economic Abuse, Crypto & Secrets,
+  Dependency Risk, Transport/Headers/TLS, SSRF/Open Redirect/Host
+  Injection.
+- **EXPLOIT CHAINS & BLAST RADIUS** — low+low+medium combine into
+  CRITICAL via concrete chain examples (webhook + SSRF + metadata =
+  RCE; missing tenant filter + cache = cross-tenant exfil; RAG injection
+  combined with tool authz miss = cross-user exfil).
+- **EXPLOIT PRECONDITIONS** — actor / privileges / timing / user
+  interaction / environmental assumptions / external compromise required
+  to reach the sink, used to calibrate severity.
+- **DATA CLASSIFICATION** — severity scales with sensitivity (secrets =
+  CRITICAL floor, PII regulated = HIGH floor, public-by-design =
+  INFO/non-finding).
+- **REALISTIC EXPLOITABILITY FILTER** — drop findings requiring
+  unrealistic attacker control / impossible timing / privileged infra
+  access already / dev-only environments.
+- **FRAMEWORK GUARANTEES** — React/Vue/Prisma/SQLAlchemy/Rails/Laravel/
+  Next.js defaults internalized; only flag bypassed defaults or
+  dangerous escape hatches (`raw`, framework-specific raw-HTML
+  props/directives, `unsafe-*`).
+- **DEFAULT DEPLOYMENT ASSUMPTION** — no findings premised on
+  hypothetical infra misconfiguration.
+- **SOURCE-OF-TRUTH RULE** — never infer hidden routes/middleware/auth
+  that "probably exists somewhere".
+- **SECURITY RELEVANCE FILTER** — only confidentiality / integrity /
+  availability / authorization impact reported. Stylistic / clean-code /
+  performance-without-DoS routed elsewhere.
+- **QUALITY OVER QUANTITY** — five weak speculative MEDIUMs are worse
+  than one verified CRITICAL.
+- **UNCERTAINTY DISCIPLINE** — weasel words ("could potentially", "in
+  theory") forbidden as report-length inflation.
+- **ADVERSARIAL SELF-REVIEW** — mandatory for HIGH/CRITICAL: attempt to
+  disprove the finding before reporting (upstream sanitization, framework
+  guarantees, dead-code paths, missing route wiring). In addition to the
+  6-step FP recheck — adversarial review is the *intent* check, FP
+  recheck is the *procedure* check.
+
+### Propagated
+
+35 framework prompt files re-spliced (FP-recheck + OUTPUT-FORMAT +
+Council Handoff regions). The DEEP EXPLOIT ANALYSIS body is base-only
+for this release; per-stack siblings keep their existing framework-
+specific Phase-2 content. Future per-stack work can extend the
+adversarial framing into Laravel / Rails / Next / Python / Go specifics.
+
 ## [6.11.0] - 2026-05-09
 
 ### Changed — CODE_REVIEW.md base prompt: regression-focused rewrite
