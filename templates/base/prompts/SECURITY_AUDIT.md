@@ -154,7 +154,7 @@ Phase 2 deep analysis.
 | # | Entry-point pattern | What to verify next |
 |---|---------------------|---------------------|
 | 1 | Raw SQL string concatenation / template literals in queries | Trace input origin → confirm no parameterization upstream |
-| 2 | Direct DOM injection sinks (`innerHTML`, framework-specific raw-HTML escapes, `{!! !!}`, `v-html`) | Trace the value; check framework escaping |
+| 2 | Direct DOM injection sinks (`innerHTML`, React's `dangerouslySetInnerHTML`, `{!! !!}`, `v-html`, `[innerHTML]`) | Trace the value; check framework escaping |
 | 3 | `exec` / `system` / `spawn` / `shell_exec` / `subprocess.run(shell=True)` | Trace argument origin; check if user-influenced |
 | 4 | Deserialization (`unserialize`, `pickle.loads`, `Marshal.load`, `yaml.load` unsafe) | Trace input source; if user-controlled = CRITICAL candidate |
 | 5 | URL fetchers (`fetch`, `requests.get`, `httpClient.get`) on user input | Check SSRF guards (scheme, internal-IP block, metadata block) |
@@ -166,9 +166,10 @@ Phase 2 deep analysis.
 | 11 | Tenant-scoped queries missing `tenant_id` | Check every list / get / delete / update |
 | 12 | LLM tool execution / dynamic prompt assembly | Check prompt injection boundary; check tool authorization |
 
-**Absent from this list (intentionally):** X-XSS-Protection (legacy dead),
-specific bcrypt round counts, OS-specific chmod values, HSTS max-age
-arithmetic. These are compliance theatre, not exploits.
+**Absent from this list (intentionally):** specific bcrypt round counts,
+OS-specific chmod values, HSTS max-age arithmetic, deprecated headers
+like `X-XSS-Protection` (covered explicitly in the Transport / Headers
+section below). These are compliance theatre, not exploits.
 
 ---
 
@@ -240,8 +241,8 @@ framework default:
 - **Command / shell** — `execFile` / array form, never `shell: true` with
   user input; arguments escaped if shell needed
 - **XSS** — output context-aware escaping; raw-HTML sinks
-  (`innerHTML`, framework-specific raw-HTML escapes, `{!! !!}`) only with
-  documented sanitization
+  (`innerHTML`, React `dangerouslySetInnerHTML`, Vue `v-html`, Angular
+  `[innerHTML]`, Blade `{!! !!}`) only with documented sanitization
 - **SSTI** (server-side template injection) — never compile templates
   from user input
 - **Deserialization** — only safe formats (JSON, MessagePack); never
@@ -490,16 +491,17 @@ Modern frameworks already secure many surfaces. Do NOT report
 vulnerabilities already prevented by framework guarantees unless:
 
 - The protection is explicitly bypassed in the diff
-- A dangerous escape hatch is used (`raw`, framework-specific
-  `dangerously*` props, `unsafe-*` directives)
+- A dangerous escape hatch is used (`raw`, React's
+  `dangerouslySetInnerHTML`, Vue `v-html`, Angular `[innerHTML]`,
+  `unsafe-*` directives)
 - A framework default has been disabled
 
 Examples to internalize before reporting:
 
 - React / Vue / Svelte / Angular escape HTML in `{...}` / `{{...}}` by
-  default — XSS only via the framework-specific raw-HTML escape (e.g.
-  `v-html`, `[innerHTML]`, React's raw-HTML prop) or unescaped attribute
-  injection in custom directives
+  default — XSS only via the framework-specific raw-HTML escape
+  (`dangerouslySetInnerHTML`, `v-html`, `[innerHTML]`, Svelte `{@html}`)
+  or unescaped attribute injection in custom directives
 - Prisma / Sequelize / SQLAlchemy / Eloquent parameterize by default —
   SQLi only via `.raw()` / `DB::raw` / `cursor.execute(f"...")` /
   `whereRaw` / `Sequel.lit` with user input
@@ -856,6 +858,14 @@ Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-
 ---
 
 ## Full Report Skeleton
+
+The skeleton below uses a SECURITY finding (SQL injection) as the
+illustrative example. For other audit types substitute the appropriate
+`audit_type`, H1 title, finding `Category` (e.g. Correctness for
+code-review, Performance for performance, Reliability for design-review),
+and `Rule` namespace. The schema (field order, byte-exact bullet labels,
+section order, Council slot string) is identical across all 7 audit
+types.
 
 <output_format>
 
