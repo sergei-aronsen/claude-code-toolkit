@@ -822,6 +822,14 @@ Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-
 
 ## Full Report Skeleton
 
+The skeleton below uses a SECURITY finding (SQL injection) as the
+illustrative example. For other audit types substitute the appropriate
+`audit_type`, H1 title, finding `Category` (e.g. Correctness for
+code-review, Performance for performance, Reliability for design-review),
+and `Rule` namespace. The schema (field order, byte-exact bullet labels,
+section order, Council slot string) is identical across all 7 audit
+types.
+
 <output_format>
 
 ```text

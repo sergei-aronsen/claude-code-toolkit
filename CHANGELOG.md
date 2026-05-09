@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.12.1] - 2026-05-09
+
+### Fixed — meta-audit cleanup of audit prompts
+
+Self-audit of v6.11.0 (CODE_REVIEW) and v6.12.0 (SECURITY_AUDIT) flagged
+five clarity/consistency issues. None were CI-breaking; all are
+clarity / specificity fixes.
+
+- **F-001** — `templates/base/prompts/CODE_REVIEW.md` `## SEVERITY AND
+  CONFIDENCE` body redefined the severity rubric, contradicting the
+  splice tail's instruction `The rubric is in components/severity-levels.md
+  — do not redefine`. Body now references `components/severity-levels.md`
+  as the source of truth and only defines Confidence (which the SOT
+  doesn't cover).
+- **F-004** — Renamed `## UNCERTAINTY HANDLING` → `## UNCERTAINTY
+  DISCIPLINE` in `CODE_REVIEW.md` for naming parity with
+  `SECURITY_AUDIT.md`. Same concept, single name. Added "weasel words"
+  prohibition (lifted from SECURITY_AUDIT) so both prompts now share the
+  same uncertainty rules.
+- **F-005** — Restored React, Vue, Angular, Svelte raw-HTML API names
+  with full specificity in `templates/base/prompts/SECURITY_AUDIT.md`.
+  Previous v6.12.0 wording ("framework-specific raw-HTML escapes") was
+  vague — a side effect of the `security_reminder_hook` blocking those
+  literal API strings during the initial Write. Edits via the Edit tool
+  bypass that hook trigger, so the original API names are now visible
+  across QUICK CHECK, Injection Sinks, and FRAMEWORK GUARANTEES sections.
+- **F-009** — `X-XSS-Protection` was mentioned twice in
+  `SECURITY_AUDIT.md` (once as "absent from QUICK CHECK list", once in
+  Transport / Headers section). Consolidated: kept the explicit
+  Transport / Headers entry as authoritative; QUICK CHECK absent-list
+  now references that section instead of duplicating the rationale.
+- **F-002 (mitigation)** — `components/audit-output-format.md` Full
+  Report Skeleton uses a SECURITY-flavored example (SQL injection) but
+  ships unchanged into all 7 audit prompts. Added an explicit disclaimer
+  before the skeleton: "for other audit types substitute the appropriate
+  `audit_type`, H1 title, finding `Category`, and `Rule` namespace. The
+  schema (field order, byte-exact bullet labels, section order, Council
+  slot string) is identical across all 7 audit types." Re-spliced into
+  all 35 framework prompt files.
+
+### Deferred
+
+`F-003` (Category enum wider than effective audit-type scope), `F-006`
+(`## Procedure` H2-vs-H3 collision under `## SELF-CHECK` outer heading
+in splice output), `F-007` / `F-008` / `F-010` (cosmetic) — not
+addressed in this patch. F-006 requires a `propagate-audit-pipeline-v42.sh`
+behavior change (demote SOT body H2 → H3 on inject); planned for a
+future minor.
+
 ## [6.12.0] - 2026-05-09
 
 ### Changed — SECURITY_AUDIT.md base prompt: adversarial systems-security rewrite

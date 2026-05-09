@@ -76,19 +76,12 @@ executed in the session.
 Severity and confidence are orthogonal axes. Both are required on every
 HIGH or CRITICAL finding.
 
-### Severity
+**Severity** — use the canonical rubric in `components/severity-levels.md`
+(CRITICAL / HIGH / MEDIUM / LOW; INFO is non-reportable). Do NOT redefine
+severity in the report. Re-rate using the actual failure scenario, not
+the rule label. Do not inflate.
 
-| Level | Description |
-| ------- | ---------- |
-| CRITICAL | Production outage, severe data corruption, irreversible state inconsistency, critical runtime failure. |
-| HIGH | Serious correctness or reliability issue with realistic production impact. |
-| MEDIUM | Moderate reliability, scalability, or operational concern with realistic impact. |
-| LOW | Minor issue with limited operational impact. |
-
-Do not inflate severity. Re-rate using the actual exploit/failure scenario,
-not the rule label.
-
-### Confidence
+**Confidence** — auditor-judged certainty in the finding's reachability:
 
 | Level | Description |
 | ------- | ---------- |
@@ -201,11 +194,13 @@ Do not report:
 
 ---
 
-## UNCERTAINTY HANDLING
+## UNCERTAINTY DISCIPLINE
 
 If evidence is incomplete: lower confidence, reduce severity, move the
 observation into Non-Blocking Observations, and explicitly state the
-uncertainty. Do not present assumptions as facts.
+uncertainty. Do not present assumptions as facts. Do not use weasel
+words ("could potentially", "might allow", "in theory") to inflate
+report length — either the finding is grounded or it isn't.
 
 ---
 
@@ -438,6 +433,14 @@ Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-
 ---
 
 ## Full Report Skeleton
+
+The skeleton below uses a SECURITY finding (SQL injection) as the
+illustrative example. For other audit types substitute the appropriate
+`audit_type`, H1 title, finding `Category` (e.g. Correctness for
+code-review, Performance for performance, Reliability for design-review),
+and `Rule` namespace. The schema (field order, byte-exact bullet labels,
+section order, Council slot string) is identical across all 7 audit
+types.
 
 <output_format>
 
