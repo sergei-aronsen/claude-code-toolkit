@@ -83,12 +83,17 @@ subscription to that account.
 Register `comet-bridge` with `--scope project`, never global:
 
 ```bash
+# Until upstream PR RapierCraft/Perplexity-Comet-MCP#9 merges (i18n
+# completion-detector fix), pin to the fork branch. After merge, switch
+# to: npx -y perplexity-comet-mcp
 claude mcp add comet-bridge --scope project --env COMET_PORT=9223 \
-  -- npx -y perplexity-comet-mcp
+  -- npx -y github:sergei-aronsen/Perplexity-Comet-MCP#feat/i18n-completion-detection
 ```
 
-This way only the projects you explicitly opt in get DOM access to Comet.
-Sessions of Claude Code in unrelated directories are isolated.
+`scripts/setup-comet.sh` runs this command for you with the same fork
+URL — keep them in sync if you change one. This way only the projects
+you explicitly opt in get DOM access to Comet. Sessions of Claude Code
+in unrelated directories are isolated.
 
 ### 6. Kill switch
 
