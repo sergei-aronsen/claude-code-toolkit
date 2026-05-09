@@ -676,7 +676,7 @@ grep -rn "setInterval\|usePoll\|polling" resources/js/
 ## 6. SELF-CHECK (FP Recheck — 6-Step Procedure)
 <!-- v42-splice: fp-recheck-section -->
 
-## Procedure
+### Procedure
 
 For every candidate finding, execute these six steps in order. Produce a `## SELF-CHECK` block per finding (in your scratchpad — not the final report) before deciding whether to report or drop it. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
 
@@ -691,7 +691,7 @@ If a finding survives all six steps, it proceeds to `## Findings` in the structu
 
 ---
 
-## Skipped (FP recheck) Entry Format
+### Skipped (FP recheck) Entry Format
 
 Findings dropped at any step are listed in the report's `## Skipped (FP recheck)` table with these columns in order. The `one_line_reason` MUST be ≤ 100 characters and grounded in concrete tokens from the code — never `looks fine`, `trusted code`, or `out of scope`.
 
@@ -704,13 +704,13 @@ Findings dropped at any step are listed in the report's `## Skipped (FP recheck)
 
 ---
 
-## When a Finding Survives All Six Steps
+### When a Finding Survives All Six Steps
 
 Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from in Phase 15.
 
 ---
 
-## Anti-Patterns
+### Anti-Patterns
 
 These behaviors break the recheck and MUST NOT appear in any audit report:
 
@@ -722,7 +722,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 ## 7. OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
 
-## Report Path
+### Report Path
 
 ```text
 .claude/audits/<type>-<YYYY-MM-DD-HHMM>.md
@@ -735,7 +735,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 
 ---
 
-## Type Slug to Prompt File Map
+### Type Slug to Prompt File Map
 
 | `/audit` argument | Report filename slug | Prompt loaded |
 |-------------------|----------------------|---------------|
@@ -751,7 +751,7 @@ Backward-compat aliases: `code` resolves to `code-review` and `deploy` resolves 
 
 ---
 
-## YAML Frontmatter
+### YAML Frontmatter
 
 Every report opens with a YAML frontmatter block containing exactly these 7 keys:
 
@@ -777,7 +777,7 @@ council_pass: pending
 
 ---
 
-## Section Order (Fixed)
+### Section Order (Fixed)
 
 After the YAML frontmatter, the report MUST contain these five H2 sections in this exact order:
 
@@ -793,13 +793,13 @@ Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty secti
 
 ---
 
-## Summary Section
+### Summary Section
 
 The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck`, with one row per severity (CRITICAL, HIGH, MEDIUM, LOW). The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations belong in the audit's scratchpad, never in `## Findings`. See the Full Report Skeleton below for the verbatim layout.
 
 ---
 
-## Finding Entry Schema (### Finding F-NNN)
+### Finding Entry Schema (### Finding F-NNN)
 
 Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
 
@@ -827,9 +827,9 @@ The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:
 
 ---
 
-## Verbatim Code Block (AUDIT-03)
+### Verbatim Code Block (AUDIT-03)
 
-### Layout
+#### Layout
 
 ```text
 <!-- File: <path> Lines: <start>-<end> -->
@@ -839,11 +839,11 @@ The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:
 
 `<lang>` is the language fence selected per the Extension to Language Fence Map below. `start = max(1, L - 10)` and `end = min(T, L + 10)` where `L` is the flagged line and `T` is the total line count of the file. The HTML range comment is the FIRST line above the fence; the clamp note (when present) is the SECOND line above the fence.
 
-### Clamp Behaviour
+#### Clamp Behaviour
 
 When the ±10 range is clipped by the start or end of the file, emit a `<!-- Range clamped to file bounds (start-end) -->` note immediately above the fenced block. Example: flagged line 5 in an 8-line file → `start = max(1, 5-10) = 1`, `end = min(8, 5+10) = 8`, rendered range `1-8`, clamp note required.
 
-### Extension to Language Fence Map
+#### Extension to Language Fence Map
 
 | Extension(s) | Fence |
 |--------------|-------|
@@ -871,7 +871,7 @@ The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest o
 
 ---
 
-## Skipped (allowlist) Section
+### Skipped (allowlist) Section
 
 Columns: `ID | path:line | rule | council_status`. Empty-state placeholder is the literal string `_None — no` followed by a backtick-quoted `audit-exceptions.md` reference and `in this project_`. The verbatim layout is in the Full Report Skeleton below.
 
@@ -879,7 +879,7 @@ Columns: `ID | path:line | rule | council_status`. Empty-state placeholder is th
 
 ---
 
-## Skipped (FP recheck) Section
+### Skipped (FP recheck) Section
 
 Columns: `path:line | rule | dropped_at_step | one_line_reason`. Empty-state placeholder: `_None_`. The verbatim layout is in the Full Report Skeleton below.
 
@@ -887,7 +887,7 @@ Columns: `path:line | rule | dropped_at_step | one_line_reason`. Empty-state pla
 
 ---
 
-## Council Verdict Slot (handoff to Phase 15)
+### Council Verdict Slot (handoff to Phase 15)
 
 The audit writes this section as a literal placeholder. Phase 15's `/council audit-review` mutates it in place after collating Gemini + ChatGPT verdicts.
 
@@ -901,7 +901,7 @@ Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-
 
 ---
 
-## Full Report Skeleton
+### Full Report Skeleton
 
 The skeleton below uses a SECURITY finding (SQL injection) as the
 illustrative example. For other audit types substitute the appropriate
