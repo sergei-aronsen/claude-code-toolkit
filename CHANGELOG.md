@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.9.0] - 2026-05-09
+
+### Added — GSD planning fact-check hook (PR-3 of 3)
+
+`tk-pre-gsd-plan-factcheck.sh`: a `UserPromptSubmit` advisory hook that
+fires when `/gsd-discuss-phase`, `/gsd-plan-phase`, or
+`/gsd-plan-review-convergence` mentions an external dependency
+(version, deprecation, SDK/library noun, semver pattern). The hook
+points the user at `/factcheck`, `/research`, and `/lookup` so claims
+get `[VERIFIED]` / `[DISPUTED]` / `[UNVERIFIABLE]` markers *before*
+the plan locks. PR-2's Council grounding then picks those markers up
+automatically. Closes the loop on the 3-PR /research → /council
+integration.
+
+- New `templates/global/hooks/tk-pre-gsd-plan-factcheck.sh`:
+  - Triggers only inside GSD planning entry points; ignored elsewhere.
+  - Keyword set covers EN + RU verbs (`upgrade to`, `migrate to`,
+    `обновить до`, `перейти на`, …), lifecycle terms (`deprecated`,
+    `breaking change`, `устарел`), common SDK/library nouns
+    (`stripe sdk`, `next.js`, `django`, `rails`, …), plus a regex
+    fallback for bare semver references (`v1.2`, `3.x`, `v14`).
+  - Per-prompt opt-out: append `(no-factcheck-gate)` to your prompt.
+  - Per-hook opt-out: `export TK_FACTCHECK_GATE=0`.
+  - Master switch: `export TK_HOOKS_DISABLE=1`.
+  - Advisory only — never blocks, never emits `permissionDecision`.
+- `scripts/install-hooks.sh`: registers the new hook (5 TK hooks
+  total now). Foreign and TK-owned entries with different ids are
+  preserved verbatim — pure additive change to `HOOK_TABLE`.
+- Tests:
+  - `scripts/tests/test-install-hooks.sh` — bumped count assertions
+    from 4 → 5; verifies the new hook is copied, registered with
+    `_tk_owned: true` + correct `hooks[].command` path, and survives
+    re-install (idempotent).
+  - `scripts/tests/test-hook-replay.sh` — new factcheck section: 6
+    new assertions for positive trigger, semver fallback, two
+    negative cases, per-prompt and per-hook opt-out (22 PASS / 0
+    FAIL total).
+- New `components/factcheck-planning-hooks.md` — installation,
+  trigger set, opt-out matrix, integration diagram with PR-2 Council
+  grounding.
+
+### Roadmap closure
+
+PR-1 (research bridge) + PR-2 (Council grounding) + PR-3 (planning
+hook) form one feature. The hook only points at slash commands that
+already exist; there is no new MCP, no new API surface, no new daemon.
+
 ## [6.8.0] - 2026-05-09
 
 ### Added — Prompt Architecture (7-block template + audit command)
