@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# test-hook-replay.sh — fixture-based stdin replay against the 4 v6.1 advisory
-# hooks (audit F-15 item 1). Each hook is invoked with synthesized JSON stdin;
+# test-hook-replay.sh — fixture-based stdin replay against the v6.1 advisory
+# hooks (audit F-15 item 1). v6.8 added tk-pre-gsd-plan-factcheck.sh, so this
+# now covers 5 hooks. Each hook is invoked with synthesized JSON stdin;
 # we assert advisory mode produces (a) exit 0, (b) the expected reminder text
 # in the right stream (stdout for UserPromptSubmit, stderr for Stop /
 # PreToolUse), (c) no permissionDecision payload, and (d) the negative case
-# yields zero output. Final test verifies TK_HOOKS_DISABLE=1 silences all four.
+# yields zero output. Final test verifies TK_HOOKS_DISABLE=1 silences all five.
 #
 # Usage: bash scripts/tests/test-hook-replay.sh
 # Exit:  0 = all pass / skipped, 1 = any fail
@@ -16,10 +17,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 HOOKS="$REPO_ROOT/templates/global/hooks"
 
 PRE_PLAN="$HOOKS/tk-pre-gsd-plan-council.sh"
+PRE_FACTCHECK="$HOOKS/tk-pre-gsd-plan-factcheck.sh"
 POST_AUDIT="$HOOKS/tk-post-gsd-phase-audit.sh"
 COST_WARN="$HOOKS/tk-cost-warning.sh"
 PRE_SHIP="$HOOKS/tk-pre-ship-reality-check.sh"
-for f in "$PRE_PLAN" "$POST_AUDIT" "$COST_WARN" "$PRE_SHIP"; do
+for f in "$PRE_PLAN" "$PRE_FACTCHECK" "$POST_AUDIT" "$COST_WARN" "$PRE_SHIP"; do
     [ -x "$f" ] || { echo "ERROR: hook not executable at $f"; exit 1; }
 done
 
@@ -86,6 +88,58 @@ if [ "$RC" -eq 0 ] && [ -z "$STDOUT" ] && [ -z "$STDERR" ]; then
     report_pass "pre-gsd-plan-council silent without trigger keyword"
 else
     report_fail "pre-gsd-plan-council mild prompt" "rc=$RC stdout='${STDOUT:0:120}'"
+fi
+
+# ─────────────────────────────────────────────────
+# 1b. tk-pre-gsd-plan-factcheck.sh — external-dep keyword fires advisory
+# ─────────────────────────────────────────────────
+run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-plan-phase upgrade to Stripe SDK v14","session_id":"f1"}'
+if [ "$RC" -eq 0 ] && \
+   echo "$STDOUT" | grep -q "TK advisory" && \
+   echo "$STDOUT" | grep -q "/factcheck"; then
+    report_pass "pre-gsd-plan-factcheck fires on 'upgrade to' keyword"
+else
+    report_fail "pre-gsd-plan-factcheck positive" "rc=$RC stdout='${STDOUT:0:200}'"
+fi
+
+# Version regex fallback: bare "v3.x" with no keyword still fires
+run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-discuss-phase pin all packages to v3.x"}'
+if [ "$RC" -eq 0 ] && echo "$STDOUT" | grep -q "TK advisory"; then
+    report_pass "pre-gsd-plan-factcheck fires on bare semver pattern"
+else
+    report_fail "pre-gsd-plan-factcheck semver regex" "rc=$RC stdout='${STDOUT:0:200}'"
+fi
+
+# Negative — non-planning prompt
+run_hook "$PRE_FACTCHECK" '{"prompt":"hello world"}'
+if [ "$RC" -eq 0 ] && [ -z "$STDOUT" ] && [ -z "$STDERR" ]; then
+    report_pass "pre-gsd-plan-factcheck silent on non-/gsd-* prompt"
+else
+    report_fail "pre-gsd-plan-factcheck negative" "rc=$RC stdout='${STDOUT:0:120}'"
+fi
+
+# Negative — /gsd-plan-phase but no external claim
+run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-plan-phase clean up dead code"}'
+if [ "$RC" -eq 0 ] && [ -z "$STDOUT" ] && [ -z "$STDERR" ]; then
+    report_pass "pre-gsd-plan-factcheck silent without external-dep keyword"
+else
+    report_fail "pre-gsd-plan-factcheck mild prompt" "rc=$RC stdout='${STDOUT:0:120}'"
+fi
+
+# Per-invocation opt-out via "(no-factcheck-gate)"
+run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-plan-phase upgrade to Next.js 15 (no-factcheck-gate)"}'
+if [ "$RC" -eq 0 ] && [ -z "$STDOUT" ] && [ -z "$STDERR" ]; then
+    report_pass "pre-gsd-plan-factcheck silenced by '(no-factcheck-gate)' marker"
+else
+    report_fail "pre-gsd-plan-factcheck per-prompt opt-out" "rc=$RC stdout='${STDOUT:0:160}'"
+fi
+
+# Per-hook opt-out via TK_FACTCHECK_GATE=0 (council still fires; we only test factcheck here)
+TK_FACTCHECK_GATE=0 run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-plan-phase upgrade to Next.js 15"}'
+if [ "$RC" -eq 0 ] && [ -z "$STDOUT" ] && [ -z "$STDERR" ]; then
+    report_pass "pre-gsd-plan-factcheck silenced by TK_FACTCHECK_GATE=0"
+else
+    report_fail "pre-gsd-plan-factcheck per-hook env opt-out" "rc=$RC stdout='${STDOUT:0:160}'"
 fi
 
 # ─────────────────────────────────────────────────
@@ -223,6 +277,9 @@ all_silent=1
 TK_HOOKS_DISABLE=1 run_hook "$PRE_PLAN" '{"prompt":"/gsd-plan-phase add OAuth"}'
 [ -z "$STDOUT" ] && [ -z "$STDERR" ] && [ "$RC" -eq 0 ] || all_silent=0
 
+TK_HOOKS_DISABLE=1 run_hook "$PRE_FACTCHECK" '{"prompt":"/gsd-plan-phase upgrade to Stripe SDK v14"}'
+[ -z "$STDOUT" ] && [ -z "$STDERR" ] && [ "$RC" -eq 0 ] || all_silent=0
+
 payload=$(jq -nc --arg t "$LARGE_TRANSCRIPT" '{transcript_path:$t,session_id:"sess-disable-cost",stop_hook_active:false}')
 TK_HOOKS_DISABLE=1 TK_COST_WARN_KTOK=1 run_hook "$COST_WARN" "$payload"
 [ -z "$STDOUT" ] && [ -z "$STDERR" ] && [ "$RC" -eq 0 ] || all_silent=0
@@ -239,7 +296,7 @@ TK_HOOKS_DISABLE=1 run_hook "$PRE_SHIP" '{"tool_name":"Bash","tool_input":{"comm
 [ -z "$STDOUT" ] && [ -z "$STDERR" ] && [ "$RC" -eq 0 ] || all_silent=0
 
 if [ "$all_silent" -eq 1 ]; then
-    report_pass "TK_HOOKS_DISABLE=1 silences all 4 hooks"
+    report_pass "TK_HOOKS_DISABLE=1 silences all 5 hooks"
 else
     report_fail "TK_HOOKS_DISABLE master switch" "one or more hooks emitted output despite TK_HOOKS_DISABLE=1"
 fi

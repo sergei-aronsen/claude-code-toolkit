@@ -74,6 +74,7 @@ mkdir -p "$CLAUDE_DIR"
 
 EXPECTED_HOOKS=(
     "tk-pre-gsd-plan-council.sh"
+    "tk-pre-gsd-plan-factcheck.sh"
     "tk-post-gsd-phase-audit.sh"
     "tk-cost-warning.sh"
     "tk-pre-ship-reality-check.sh"
@@ -99,7 +100,7 @@ for hk in "${EXPECTED_HOOKS[@]}"; do
         all_present=0
     fi
 done
-[ $all_present -eq 1 ] && report_pass "all 4 hook files copied + executable"
+[ $all_present -eq 1 ] && report_pass "all 5 hook files copied + executable"
 
 # Settings.json structure
 SETTINGS="$CLAUDE_DIR/settings.json"
@@ -111,10 +112,10 @@ fi
 
 # Count _tk_hook_id entries via jq
 hook_id_count=$(jq '[.. | objects | select(has("_tk_hook_id"))] | length' "$SETTINGS" 2>/dev/null || echo 0)
-if [ "$hook_id_count" -eq 4 ]; then
-    report_pass "settings.json contains exactly 4 _tk_hook_id entries"
+if [ "$hook_id_count" -eq 5 ]; then
+    report_pass "settings.json contains exactly 5 _tk_hook_id entries"
 else
-    report_fail "_tk_hook_id count" "expected 4, got $hook_id_count"
+    report_fail "_tk_hook_id count" "expected 5, got $hook_id_count"
 fi
 
 # Each entry has _tk_owned: true and a nested hooks[].command pointing at $CLAUDE_DIR/hooks/<id>.
@@ -141,14 +142,14 @@ done
 [ $all_marked -eq 1 ] && report_pass "every TK entry carries _tk_owned + correct hooks[].command path"
 
 # ─────────────────────────────────────────────────
-# 4. Idempotence — re-run install, count must stay 4
+# 4. Idempotence — re-run install, count must stay 5
 # ─────────────────────────────────────────────────
 bash "$SCRIPT" >/dev/null 2>&1
 hook_id_count=$(jq '[.. | objects | select(has("_tk_hook_id"))] | length' "$SETTINGS")
-if [ "$hook_id_count" -eq 4 ]; then
-    report_pass "second install: still exactly 4 _tk_hook_id entries (idempotent)"
+if [ "$hook_id_count" -eq 5 ]; then
+    report_pass "second install: still exactly 5 _tk_hook_id entries (idempotent)"
 else
-    report_fail "idempotence" "second install yielded $hook_id_count entries (expected 4)"
+    report_fail "idempotence" "second install yielded $hook_id_count entries (expected 5)"
 fi
 
 # ─────────────────────────────────────────────────

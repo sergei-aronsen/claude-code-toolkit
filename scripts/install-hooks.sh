@@ -55,6 +55,7 @@ TMP_STAGING=""
 # - matcher used only for PreToolUse (Bash, Edit, etc.); empty for other events
 HOOK_TABLE=(
     "tk-pre-gsd-plan-council.sh:UserPromptSubmit:"
+    "tk-pre-gsd-plan-factcheck.sh:UserPromptSubmit:"
     "tk-post-gsd-phase-audit.sh:Stop:"
     "tk-cost-warning.sh:Stop:"
     "tk-pre-ship-reality-check.sh:PreToolUse:Bash"
