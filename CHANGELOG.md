@@ -7,6 +7,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.14.2] - 2026-05-10
+
+### Fixed — wave-2 calibration findings (8 of remaining 135)
+
+Continuing the meta-audit wave-2 close-out (full list at
+`.planning/research/meta-audit-wave2-2026-05-10.md`). v6.14.2 ships
+calibration / threshold / version-guard fixes — adjacent to the v6.14.1
+surgical bug fixes (PR #84) but disjoint from those edits.
+
+#### F-221 — CODE_REVIEW INFO phrasing parity
+
+`templates/base/prompts/CODE_REVIEW.md` `## SEVERITY AND CONFIDENCE`
+section said "INFO is non-reportable", but `SECURITY_AUDIT.md` (line
+768) uses the byte-exact phrasing "INFO is NOT a reportable finding
+severity; informational observations belong in the audit's scratchpad,
+never in `## Findings`". Aligned CODE_REVIEW to the same phrasing so
+both prompts speak with one voice.
+
+#### F-261 / F-263 / F-265 — PERFORMANCE_AUDIT threshold definitions
+
+`templates/base/prompts/PERFORMANCE_AUDIT.md` `## 0.2 SEVERITY
+THRESHOLDS` table previously used `p95` and `end-to-end` without
+defining either, and excluded cold-start latency without naming the
+exclusion. Auditors were left to guess whether the threshold meant
+synthetic benchmark p95 (which can be 10× lower than production p95) or
+real production traffic. Added a "calibration footnotes" block:
+
+- `p95` = trailing 5-minute production-traffic window, outliers > 3σ
+  excluded; synthetic data must be flagged in evidence.
+- `end-to-end` = full lifecycle (ingress → handler → DB → cache →
+  external HTTP → render → egress).
+- Thresholds assume single-tenant baseline; multi-tenant adds 20-50%
+  overhead per concurrent tenant.
+- Cold-start excluded; report only when cold-start exceeds a
+  documented project baseline.
+
+#### F-380 — POSTGRES `idle_in_transaction_session_timeout` scope
+
+`templates/base/prompts/POSTGRES_PERFORMANCE_AUDIT.md` line 110
+prescribed `idle_in_transaction_session_timeout` as a "safety net"
+without naming the trade-off: that setting only kills connections idle
+*inside* a transaction, not active long-running queries. Operators set
+it expecting it to kill any long-running statement and were surprised.
+Added a callout naming the gap: combine with `statement_timeout` (caps
+query wall-clock) for full coverage.
+
+#### F-385 — POSTGRES cache hit ratio workload calibration
+
+The shared-buffers cache-hit-ratio table treated `< 95%` as universally
+"poor", but OLAP / analytics workloads legitimately scan cold tables
+and run at 70-90% — raising `shared_buffers` for an OLAP workload can
+hurt by evicting hot OLTP pages on a shared instance. Added
+workload-calibration block: OLTP > 99%, mixed 95-99%, OLAP 70-90%
+expected. Also added macOS `kern.sysv.shmmax` note (large
+`shared_buffers` may exceed kernel `shmmax` and the server refuses to
+start).
+
+#### F-396 — POSTGRES REINDEX CONCURRENTLY version guard
+
+`REINDEX INDEX CONCURRENTLY` requires PostgreSQL 12+. The audit prompt
+recommended it without a version guard; on 9.x-11.x users would copy
+the SQL, hit "syntax error" or (worse) the non-concurrent variant which
+takes an `ACCESS EXCLUSIVE` lock. Added explicit version guard and
+named `pg_repack` as the online alternative for older releases.
+
+#### F-352 / F-365 — MYSQL redo log workload context + 60s delta script
+
+The MYSQL redo-log section gave "1 hour of writes" as a universal rule
+and instructed "measure delta over 60 seconds" without supplying a
+script. Two fixes in one edit: (1) added a working bash one-liner that
+samples `Innodb_os_log_written` twice with a 60s gap and prints MB/s,
+(2) replaced "1 hour" with workload-tier guidance — steady OLTP 1h,
+bursty OLTP size-for-peak, write-mostly 4-8h, OLAP 30min — and named
+the failure mode ("furious flushing" causing write-p95 spikes during
+peak hours).
+
+#### F-367 — MYSQL IO latency thresholds calibrated by storage class
+
+The IO-latency table called `< 5ms = Excellent (SSD)`, but modern
+NVMe achieves 0.1-0.5ms. Cloud SSD (gp3, Premium SSD, pd-ssd) typically
+0.5-2ms. Network-attached EBS commonly 5-15ms even when "healthy". A
+single 5ms threshold conflated three distinct storage classes; auditors
+running against NVMe failed to flag obvious regressions, while auditors
+running against EBS-baseline flagged everything as "Warning". Replaced
+the single-tier table with five tiers (NVMe < 0.5ms / cloud SSD 0.5-5ms
+/ network-attached 5-10ms / problematic 10-20ms / disk bottleneck >
+20ms) and instructed operators to record their storage class in
+`## PROJECT SPECIFICS` so future audits compare against the right
+baseline.
+
+### False positives dropped
+
+- **F-200 / F-201** — Claimed CODE_REVIEW should embed an inline
+  severity rubric to match SECURITY_AUDIT. SECURITY_AUDIT does NOT
+  embed an inline severity rubric — its `## SCOPE & APPROACH` table
+  uses HIGH/MEDIUM/LOW for *risk-level triggers* (a different concept
+  from finding severity). v6.14.0 F-101 deliberately consolidated the
+  severity rubric to `components/severity-levels.md` SOT only. Both
+  prompts already comply.
+- **F-368** — Claimed top-heavy-queries query ranks by
+  `SUM_ROWS_EXAMINED` (accumulating across calls). It actually ranks
+  `ORDER BY SUM_TIMER_WAIT DESC` and outputs `scan_ratio = ROWS_EXAMINED
+  / ROWS_SENT` (per-call normalized). Already correct.
+- **F-272** — Claimed PERFORMANCE_AUDIT step 2 wording "Follow user
+  input" should be replaced. Step 2 is in the v42 splice block
+  (`components/audit-fp-recheck.md`); editing it would propagate to
+  SECURITY_AUDIT where "user input" is the correct framing.
+  Per-prompt wording overrides are a v6.15.x splice-mechanism feature.
+
 ## [6.14.1] - 2026-05-10
 
 ### Fixed — wave-2 surgical findings (4 of 139)
