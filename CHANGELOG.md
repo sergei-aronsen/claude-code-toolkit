@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [6.15.3] - 2026-05-10
+## [6.17.1] - 2026-05-10
+
+Phase 3 of the v6.15.x architecture pass (Council Decision 3, REVISED)
+shipped in two stages: stage 1 added three canonical SOT components for
+audit rubrics, stage 2 wired them into the splice pipeline and re-spliced
+all 30 framework audit prompts behind a new `rubric-anchors` sentinel.
+Closes wave-2 findings F-242 (severity rubric drift), F-204 / F-301 /
+F-327 (UNCERTAINTY DISCIPLINE drift propagation), F-260 / F-324 / F-363
+(FALSE-POSITIVE CONTROL gate gaps), and the propagation half of
+KNOWN-DEBT-1 (framework prompts now carry the full v4.2 audit pipeline
+in lockstep with base).
+
+Originally tracked as v6.15.2 + v6.15.3 in stacked PRs #90 / #91 against
+pre-v6.16.0 main; consolidated into v6.17.1 after v6.17.0 (PR #93)
+shipped on 2026-05-10.
 
 ### Changed — Splice pipeline now propagates rubric-anchors sentinel into 30 audit prompts (Phase 3 stage 2)
 
@@ -106,28 +120,19 @@ report `30 already-spliced` once every file carries the new sentinel.
 - `templates/{base,go,laravel,python,rails}/prompts/{CODE_REVIEW,DESIGN_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,SECURITY_AUDIT}.md`
   — 30 files re-spliced, each gains the new `rubric-anchors` block
   (~6 lines added per file, ~180 lines total).
-- `manifest.json` — version 6.15.2 → 6.15.3.
-- `CHANGELOG.md` — this entry.
 
-## [6.15.2] - 2026-05-10
+### Added — Three canonical SOT components for audit rubrics (Phase 3 stage 1)
 
-### Added — Three canonical SOT components for audit rubrics (Phase 3 staging)
+Stage 1 of Phase 3: extract the drifting sections from
+`templates/base/prompts/*.md` into single-source-of-truth components.
+Stage 2 (described above in this release) wires them into the splice
+pipeline.
 
-Phase 3 of the v6.15.x architecture pass (council Decision 3, REVISED)
-ships in two stages to keep blast radius bounded. This release is
-**stage 1**: extract the drifting sections from `templates/base/prompts/*.md`
-into single-source-of-truth components. Stage 2 (v6.15.3) extends
-`scripts/propagate-audit-pipeline-v42.sh` with three new sentinel splice
-blocks and re-splices the 35 framework prompts to consume these
-components.
-
-Why staged: the splice script is ~615 LOC of bash + embedded Python;
-adding three sentinel blocks (with `strip_splice_regions` handlers,
-idempotency invariants, and per-file insertion anchors) is a ~150 LOC
-delta with high regression surface. Shipping the SOT components first
-gives the rubric a single-point-of-reference (closes the documentation
-half of F-242) without risking the propagation pipeline. v6.15.3 will
-then mechanically splice them in.
+The two stages were originally carved into separate releases
+(v6.15.2 / v6.15.3) because the splice-script delta is ~150 LOC of bash
+plus embedded Python with high regression surface; shipping the
+components first gave the rubric a single-point-of-reference without
+risking the propagation pipeline.
 
 ### New components
 
@@ -151,36 +156,12 @@ then mechanically splice them in.
   framing. Pairs with `components/audit-fp-recheck.md` (the Gate 2
   procedure).
 
-### Wave-2 findings closed (partial)
-
-- **F-242** (severity rubric duplication / drift) — closed for the
-  documentation half. The auto-propagation half closes in v6.15.3.
-- **F-204, F-301, F-327** (UNCERTAINTY DISCIPLINE drift / SECURITY_AUDIT
-  gap / DESIGN_REVIEW phrasing) — partially closed. Canonical text now
-  exists; mechanical alignment lands in v6.15.3.
-- **F-260, F-324, F-363** (FALSE-POSITIVE CONTROL gate gaps in
-  CODE_REVIEW / DESIGN_REVIEW / PERFORMANCE_AUDIT) — partially closed.
-  Canonical structure now exists; mechanical alignment lands in
-  v6.15.3.
-
-### Scope
-
-- Three new files in `components/`. No edits to base prompts (they
-  remain self-contained for now). No edits to framework prompts. No
-  edits to splice script. No edits to tests / CI markers / Makefile.
-- `manifest.json` — version 6.15.1 → 6.15.2.
-- `CHANGELOG.md` — this entry.
-- `.planning/STATE.md` — Phase 3 marked staged (stage 1 complete).
-
-### Files
+### Stage 1 files
 
 - `components/audit-severity-anchor.md` — new (canonical severity SOT).
 - `components/audit-uncertainty-discipline.md` — new (canonical UD SOT).
 - `components/audit-fp-control-gates.md` — new (canonical FP-CONTROL SOT).
-- `manifest.json` — version bump.
-- `CHANGELOG.md` — this entry.
-- `.planning/STATE.md` — Phase 3 stage 1 complete; stage 2 (splice
-  extension) tracked as next milestone.
+- `.planning/STATE.md` — Phase 3 stage 1 marked complete.
 
 ## [6.17.0] - 2026-05-10
 
