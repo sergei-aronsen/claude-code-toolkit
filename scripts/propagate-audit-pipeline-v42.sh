@@ -2,11 +2,16 @@
 # scripts/propagate-audit-pipeline-v42.sh
 # Fan-out v4.2 audit pipeline contracts to all 49 framework prompt files.
 #
-# Inserts four sentinel-tagged blocks per file:
+# Inserts five sentinel-tagged blocks per file (v6.15.3 added rubric-anchors):
 #   1. Top-of-file allowlist callout (HTML comment)
-#   2. 6-step FP-recheck SELF-CHECK section (body from components/audit-fp-recheck.md)
-#   3. Structured OUTPUT FORMAT section (body from components/audit-output-format.md)
-#   4. Council Handoff footer with byte-exact slot string
+#   2. Rubric-anchors citation block — points at the three Phase 3 SOT
+#      components (audit-severity-anchor / audit-uncertainty-discipline /
+#      audit-fp-control-gates) without inlining their bodies. Inserted
+#      immediately before SELF-CHECK so the audit reader sees the canonical
+#      pointers right next to the FP-recheck procedure they gate.
+#   3. 6-step FP-recheck SELF-CHECK section (body from components/audit-fp-recheck.md)
+#   4. Structured OUTPUT FORMAT section (body from components/audit-output-format.md)
+#   5. Council Handoff footer with byte-exact slot string
 #
 # Idempotent: re-running produces zero diff. Uses <!-- v42-splice: ... --> sentinels.
 #
@@ -39,14 +44,25 @@ done
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FP_RECHECK_SOT="$REPO_ROOT/components/audit-fp-recheck.md"
 OUTPUT_FORMAT_SOT="$REPO_ROOT/components/audit-output-format.md"
+# v6.15.3: three citation-anchor SOTs added (Phase 3 stage 2). The splice
+# script does NOT inline these bodies; it emits short citation blocks
+# (sentinel + one-line "See <component>" reference) before the SELF-CHECK
+# section. This avoids drift surface from per-prompt inline copies while
+# still placing a v42-splice sentinel in every framework prompt.
+SEVERITY_ANCHOR_SOT="$REPO_ROOT/components/audit-severity-anchor.md"
+UNCERTAINTY_SOT="$REPO_ROOT/components/audit-uncertainty-discipline.md"
+FP_CONTROL_SOT="$REPO_ROOT/components/audit-fp-control-gates.md"
 TEMPLATES_ROOT="${SPLICE_TEMPLATES_DIR:-$REPO_ROOT/templates}"
 
 # ─────────────────────────────────────────────────
 # SOT guards (D-02, D-17)
 # ─────────────────────────────────────────────────
-[ -f "$FP_RECHECK_SOT" ]    || { echo "ERROR: SOT missing: $FP_RECHECK_SOT" >&2;    exit 1; }
-[ -f "$OUTPUT_FORMAT_SOT" ] || { echo "ERROR: SOT missing: $OUTPUT_FORMAT_SOT" >&2; exit 1; }
-[ -d "$TEMPLATES_ROOT" ]    || { echo "ERROR: templates dir missing: $TEMPLATES_ROOT" >&2; exit 1; }
+[ -f "$FP_RECHECK_SOT" ]      || { echo "ERROR: SOT missing: $FP_RECHECK_SOT" >&2;    exit 1; }
+[ -f "$OUTPUT_FORMAT_SOT" ]   || { echo "ERROR: SOT missing: $OUTPUT_FORMAT_SOT" >&2; exit 1; }
+[ -f "$SEVERITY_ANCHOR_SOT" ] || { echo "ERROR: SOT missing: $SEVERITY_ANCHOR_SOT" >&2; exit 1; }
+[ -f "$UNCERTAINTY_SOT" ]     || { echo "ERROR: SOT missing: $UNCERTAINTY_SOT" >&2;    exit 1; }
+[ -f "$FP_CONTROL_SOT" ]      || { echo "ERROR: SOT missing: $FP_CONTROL_SOT" >&2;     exit 1; }
+[ -d "$TEMPLATES_ROOT" ]      || { echo "ERROR: templates dir missing: $TEMPLATES_ROOT" >&2; exit 1; }
 
 # ─────────────────────────────────────────────────
 # SOT body extraction (D-02) — run once before per-file loop
@@ -173,7 +189,21 @@ write_spliced_file() {
         printf '%s\n' "$OUTPUT_FORMAT_BODY"
     } > "$block_dir/of.txt"
 
-    # Block 4: Council Handoff footer (D-08)
+    # Block 4 (v6.15.3): rubric-anchors citation — emitted just before the
+    # SELF-CHECK section. Cites all three Phase 3 SOT components without
+    # inlining their bodies. Single sentinel keeps the script delta
+    # bounded (no new strip-region edge cases beyond a 6-line range).
+    {
+        printf '<!-- v42-splice: rubric-anchors -->\n'
+        printf '\n'
+        printf '**Audit rubric anchors** (canonical sources of truth — do not redefine inline):\n'
+        printf '\n'
+        printf '%s\n' '- `components/audit-severity-anchor.md` — CRITICAL / HIGH / MEDIUM / LOW labels + Severity Ceiling Table.'
+        printf '%s\n' '- `components/audit-uncertainty-discipline.md` — UNCERTAINTY DISCIPLINE (lower confidence / severity, anti-padding).'
+        printf '%s\n' '- `components/audit-fp-control-gates.md` — three-gate FALSE-POSITIVE CONTROL wrapper (Adversarial → 6-step recheck → Calibration). Gate 2 procedure is `## SELF-CHECK` below.'
+    } > "$block_dir/rubric.txt"
+
+    # Block 5: Council Handoff footer (D-08)
     # Em-dash below is U+2014 (0xE2 0x80 0x94) — do NOT replace with hyphen-minus.
     {
         printf '## Council Handoff\n'
@@ -195,6 +225,7 @@ write_spliced_file() {
         "$block_dir/fp.txt" \
         "$block_dir/of.txt" \
         "$block_dir/ch.txt" \
+        "$block_dir/rubric.txt" \
         "$existing_selfcheck_line" \
         "$selfcheck_end_line" \
         "$existing_reportfmt_line" \
@@ -204,20 +235,21 @@ write_spliced_file() {
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
-callout_f, fp_f, of_f, ch_f = sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
-sc_start  = int(sys.argv[7])
-sc_end    = int(sys.argv[8])
-rf_start  = int(sys.argv[9])
-rf_end    = int(sys.argv[10])
+callout_f, fp_f, of_f, ch_f, rubric_f = sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7]
+sc_start  = int(sys.argv[8])
+sc_end    = int(sys.argv[9])
+rf_start  = int(sys.argv[10])
+rf_end    = int(sys.argv[11])
 
 def read_block(path):
     with open(path, 'r', encoding='utf-8') as fh:
         return fh.read()
 
-callout = read_block(callout_f)
-fp_blk  = read_block(fp_f)
-of_blk  = read_block(of_f)
-ch_blk  = read_block(ch_f)
+callout    = read_block(callout_f)
+fp_blk     = read_block(fp_f)
+of_blk     = read_block(of_f)
+ch_blk     = read_block(ch_f)
+rubric_blk = read_block(rubric_f)
 
 def ensure_single_trailing_blank(buf):
     """Remove all trailing blank lines then append exactly one blank line."""
@@ -256,7 +288,11 @@ while i < len(lines):
         continue
 
     # Block 2a: Replace existing SELF-CHECK section (skip old heading+body)
+    # v6.15.3: emit rubric-anchors citation immediately before SELF-CHECK
+    # so the audit reader sees the canonical SOT pointers right next to
+    # the FP-recheck procedure they gate.
     if has_sc and lineno == sc_start:
+        append_block(out, rubric_blk)
         append_block(out, fp_blk)
         in_skip = True
         i += 1
@@ -274,6 +310,7 @@ while i < len(lines):
 
     # Block 2b: Insert fp_blk BEFORE report-format heading (no existing SELF-CHECK)
     if not has_sc and has_rf and lineno == rf_start:
+        append_block(out, rubric_blk)
         append_block(out, fp_blk)
         ensure_single_trailing_blank(out)
         out.append(lines[i])
@@ -293,6 +330,7 @@ while i < len(lines):
 
 # EOF fallbacks
 if not has_sc and not has_rf:
+    append_block(out, rubric_blk)
     append_block(out, fp_blk)
     out.append('\n')
     append_block(out, of_blk)
@@ -311,7 +349,7 @@ PYEOF
 }
 
 # ─────────────────────────────────────────────────
-# strip_splice_regions() — remove all 4 splice blocks from a previously-spliced
+# strip_splice_regions() — remove all 5 splice blocks from a previously-spliced
 # file IN-PLACE. Used by --force mode so re-splicing is possible after SOT
 # updates. Idempotent on virgin files (no sentinels → no-op).
 #
@@ -346,7 +384,7 @@ def parent_h2(idx):
         j -= 1
     return j
 
-# Region boundaries are derived from the FOUR splice sentinels themselves.
+# Region boundaries are derived from the FIVE splice sentinels themselves.
 # The SOT body inside fp-recheck and output-format regions contains its own
 # '## ' headings (e.g. '## Procedure', '## Skipped (FP recheck) Entry Format'),
 # so we cannot use "next ## heading" as a boundary. Instead we use the next
@@ -381,6 +419,7 @@ callout_idx = find_line('<!-- v42-splice: callout -->')
 fp_idx      = find_line('<!-- v42-splice: fp-recheck-section -->')
 of_idx      = find_line('<!-- v42-splice: output-format-section -->')
 ch_idx      = find_line('<!-- v42-splice: council-handoff -->')
+rubric_idx  = find_line('<!-- v42-splice: rubric-anchors -->')
 
 ranges = []  # list of (start, end) line-index pairs to delete (end exclusive)
 
@@ -396,6 +435,18 @@ if callout_idx >= 0:
     if end < len(lines) and lines[end].strip() == '':
         end += 1
     ranges.append((callout_idx, end))
+
+# ─── rubric-anchors (v6.15.3): fixed 7-line block emitted by the splice
+# (sentinel, blank, **bold intro**, blank, list1, list2, list3) plus a
+# trailing blank line ensured by append_block. The body shape is known
+# at generation time, so use a deterministic line count rather than a
+# blank-line scanner — the latter prematurely terminates at the
+# intra-block blank that separates the bold intro from the list. ───
+if rubric_idx >= 0:
+    end = rubric_idx + 7
+    if end < len(lines) and lines[end].strip() == '':
+        end += 1
+    ranges.append((rubric_idx, end))
 
 # ─── fp-recheck region: parent_h2(fp) → parent_h2(of) - 1 ───
 if fp_idx >= 0:
@@ -512,11 +563,11 @@ insert_blocks() {
 
     write_spliced_file "$f" "$tmp" "$sc_heading" "$of_heading"
 
-    # ── Post-write sanity: tempfile must contain all 4 sentinels ──
+    # ── Post-write sanity: tempfile must contain all 5 sentinels (v6.15.3) ──
     local tmp_sentinels
     tmp_sentinels=$(grep -cF '<!-- v42-splice:' "$tmp" || true)
-    if [ "$tmp_sentinels" -ne 4 ]; then
-        echo "ERROR: post-splice tempfile has $tmp_sentinels/4 sentinels: $f" >&2
+    if [ "$tmp_sentinels" -ne 5 ]; then
+        echo "ERROR: post-splice tempfile has $tmp_sentinels/5 sentinels: $f" >&2
         rm -f "$tmp"
         return 1
     fi
@@ -537,7 +588,7 @@ while IFS= read -r f; do
     # D-09: sentinel detection
     total=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
 
-    if [ "$total" -eq 4 ]; then
+    if [ "$total" -eq 5 ]; then
         if [ "$FORCE" -eq 1 ]; then
             if [ "$DRY_RUN" -eq 1 ]; then
                 echo "[dry-run] would re-splice (force): ${f#"$REPO_ROOT/"}"
@@ -559,10 +610,10 @@ while IFS= read -r f; do
             continue
         fi
     fi
-    if [ "$total" -gt 0 ] && [ "$total" -lt 4 ]; then
+    if [ "$total" -gt 0 ] && [ "$total" -lt 5 ]; then
         if [ "$FORCE" -eq 1 ]; then
             if [ "$DRY_RUN" -eq 1 ]; then
-                echo "[dry-run] would strip+splice (force, partial $total/4): ${f#"$REPO_ROOT/"}"
+                echo "[dry-run] would strip+splice (force, partial $total/5): ${f#"$REPO_ROOT/"}"
                 SPLICED=$((SPLICED + 1))
                 continue
             fi
@@ -574,7 +625,7 @@ while IFS= read -r f; do
                 continue
             fi
         else
-            echo "ERROR: partial-splice ($total/4 sentinels): ${f#"$REPO_ROOT/"}" >&2
+            echo "ERROR: partial-splice ($total/5 sentinels): ${f#"$REPO_ROOT/"}" >&2
             ERRORS=$((ERRORS + 1))
             continue
         fi

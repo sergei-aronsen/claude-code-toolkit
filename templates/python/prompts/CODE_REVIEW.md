@@ -733,6 +733,14 @@ async for partition in result.partitions(100):
 
 ---
 
+<!-- v42-splice: rubric-anchors -->
+
+**Audit rubric anchors** (canonical sources of truth — do not redefine inline):
+
+- `components/audit-severity-anchor.md` — CRITICAL / HIGH / MEDIUM / LOW labels + Severity Ceiling Table.
+- `components/audit-uncertainty-discipline.md` — UNCERTAINTY DISCIPLINE (lower confidence / severity, anti-padding).
+- `components/audit-fp-control-gates.md` — three-gate FALSE-POSITIVE CONTROL wrapper (Adversarial → 6-step recheck → Calibration). Gate 2 procedure is `## SELF-CHECK` below.
+
 ## 8. SELF-CHECK (FP Recheck — 6-Step Procedure)
 <!-- v42-splice: fp-recheck-section -->
 

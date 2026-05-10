@@ -92,9 +92,9 @@ jobs:
           fi
           echo "✅ All audit templates valid"
 
-      - name: Check v4.2 pipeline markers in all 49 prompt files
+      - name: Check v4.2 pipeline markers in all 30 audit prompt files
         run: |
-          echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1)..."
+          echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1 + rubric-anchors)..."
           ERRORS=0
 
           while IFS= read -r f; do
@@ -110,6 +110,11 @@ jobs:
               echo "❌ Missing '6. **Severity sanity check**' marker: $f"
               ERRORS=$((ERRORS + 1))
             fi
+            # v6.15.3: rubric-anchors sentinel must be present after splice
+            if ! grep -qF '<!-- v42-splice: rubric-anchors -->' "$f"; then
+              echo "❌ Missing 'rubric-anchors' splice sentinel: $f"
+              ERRORS=$((ERRORS + 1))
+            fi
           done < <(find templates -path '*/prompts/*.md' \( \
             -name 'SECURITY_AUDIT.md' -o \
             -name 'CODE_REVIEW.md' -o \
@@ -123,7 +128,7 @@ jobs:
             echo "Found $ERRORS v4.2 marker errors across audit prompts"
             exit 1
           fi
-          echo "✅ All 49 prompt files carry v4.2 pipeline markers (TEMPLATE-03)"
+          echo "✅ All 30 audit prompts carry v4.2 pipeline markers + rubric-anchors sentinel (TEMPLATE-03)"
 
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh

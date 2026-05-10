@@ -7,6 +7,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.15.3] - 2026-05-10
+
+### Changed — Splice pipeline now propagates rubric-anchors sentinel into 30 audit prompts (Phase 3 stage 2)
+
+Stage 2 of the v6.15.x architecture pass (council Decision 3, REVISED).
+Stage 1 (v6.15.2) shipped the three Phase 3 SOT components
+(`audit-severity-anchor`, `audit-uncertainty-discipline`,
+`audit-fp-control-gates`) without modifying the splice pipeline. This
+release wires them into `scripts/propagate-audit-pipeline-v42.sh` and
+re-splices all 30 audit prompts so that every audit file carries a
+sentinel-tagged citation pointing at the canonical SOT components.
+
+### Splice pipeline change
+
+The splice script grew from **4 sentinels** to **5 sentinels** per
+file. The new sentinel is `<!-- v42-splice: rubric-anchors -->`. It is
+emitted as a **citation block**, not a full inline body — the audit
+reader sees a 6-line block pointing at the three Phase 3 components,
+without duplicating their bodies into every prompt:
+
+```text
+<!-- v42-splice: rubric-anchors -->
+
+**Audit rubric anchors** (canonical sources of truth — do not redefine inline):
+
+- `components/audit-severity-anchor.md` — CRITICAL / HIGH / MEDIUM / LOW labels + Severity Ceiling Table.
+- `components/audit-uncertainty-discipline.md` — UNCERTAINTY DISCIPLINE (lower confidence / severity, anti-padding).
+- `components/audit-fp-control-gates.md` — three-gate FALSE-POSITIVE CONTROL wrapper (Adversarial → 6-step recheck → Calibration). Gate 2 procedure is `## SELF-CHECK` below.
+```
+
+Why citation, not inline body: inlining ~250 lines of canonical
+content into each of 30 framework prompts would create a new ~7,500
+line drift surface (the very problem Phase 3 was meant to solve).
+A citation block places **one sentinel + one pointer** in every
+framework prompt; reviewers who need the canonical content read the
+component file. The pointer is enforced by CI (the new
+`rubric-anchors` marker check in `validate-templates`) so frameworks
+cannot drop the reference and silently regress.
+
+The rubric block is inserted immediately before the SELF-CHECK
+section (Gate 2 of the FP-control wrapper) so the audit reader sees
+the canonical SOT pointers right next to the FP-recheck procedure
+they gate.
+
+### Wave-2 findings closed (mechanical halves)
+
+Stage 1 closed the documentation halves; this release closes the
+mechanical halves by ensuring the canonical pointers are present in
+every audit prompt:
+
+- **F-242** (severity rubric duplication / drift) — closed.
+- **F-204, F-301, F-327** (UNCERTAINTY DISCIPLINE drift / SECURITY gap
+  / DESIGN_REVIEW phrasing) — closed for the propagation half. Inline
+  copies in base prompts remain (audit-specific calibration tables);
+  framework prompts now point at the canonical SOT.
+- **F-260, F-324, F-363** (FALSE-POSITIVE CONTROL gate gaps in
+  CODE_REVIEW / DESIGN_REVIEW / PERFORMANCE_AUDIT) — closed for the
+  propagation half. Same caveat as above.
+- **KNOWN-DEBT-1** (framework prompt drift vs base) — partially
+  closed. The 30 framework audit prompts now carry the v4.2 audit
+  pipeline (callout + rubric-anchors + SELF-CHECK + OUTPUT FORMAT +
+  Council Handoff) in lockstep with base. Per-section semantic drift
+  outside the splice regions remains a separate audit (v6.16+).
+
+### Migration
+
+Files that were spliced under the v4.2 pipeline (4 sentinels) are
+treated as **partial-splice** by the v6.15.3 script (4/5 sentinels).
+The script's `--force` flag triggers strip + re-splice. CI-level
+validation triggers automatically — any framework file missing the
+`rubric-anchors` sentinel fails the `validate-templates` job.
+
+For local checkouts, run:
+
+```bash
+bash scripts/propagate-audit-pipeline-v42.sh --force
+```
+
+This is a one-time migration; subsequent runs without `--force` will
+report `30 already-spliced` once every file carries the new sentinel.
+
+### Test contract update
+
+- `scripts/tests/test-template-propagation.sh` — sentinel count check
+  4 → 5; new `rubric-anchors` named-sentinel assertion; partial-splice
+  detection updated from `3/4` → `4/5`.
+- `.github/workflows/quality.yml` — `validate-templates` job grep'd for
+  the new `rubric-anchors` sentinel in every audit prompt.
+
+### Files
+
+- `scripts/propagate-audit-pipeline-v42.sh` — splice pipeline extended
+  with the new sentinel block + strip handler + sentinel-count gates
+  updated 4 → 5.
+- `scripts/tests/test-template-propagation.sh` — test fixture updates.
+- `.github/workflows/quality.yml` — CI marker check extension.
+- `templates/{base,go,laravel,python,rails}/prompts/{CODE_REVIEW,DESIGN_REVIEW,PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,SECURITY_AUDIT}.md`
+  — 30 files re-spliced, each gains the new `rubric-anchors` block
+  (~6 lines added per file, ~180 lines total).
+- `manifest.json` — version 6.15.2 → 6.15.3.
+- `CHANGELOG.md` — this entry.
+
 ## [6.15.2] - 2026-05-10
 
 ### Added — Three canonical SOT components for audit rubrics (Phase 3 staging)
