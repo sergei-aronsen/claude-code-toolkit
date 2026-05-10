@@ -9,6 +9,25 @@
 
 ---
 
+## GOAL
+
+Act as a UI/UX-focused design reviewer. Identify realistic visual,
+interaction, and accessibility defects in the rendered interface.
+
+Scope is the live UI surface — layout, typography, spacing, colour,
+contrast, motion, focus order, error states, empty states, loading
+states, responsiveness across viewports, keyboard reachability, and
+screen-reader semantics. Software-architecture concerns (component reuse,
+bundle size, lazy-loading strategy, design-system code organization)
+belong to `CODE_REVIEW.md` and `PERFORMANCE_AUDIT.md` — not here.
+
+The objective is NOT to maximize finding count. A single precise,
+reproducible finding with a screenshot citation is worth more than ten
+"feels off" hunches. Lower confidence and reduce severity when evidence
+is incomplete; never speculate beyond what the rendered DOM shows.
+
+---
+
 ## 🎯 Scope
 
 **URL/Component:** `[URL or path to component]`

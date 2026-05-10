@@ -393,7 +393,7 @@ const prisma = new PrismaClient({
   log: ['query', 'info', 'warn', 'error'],
 })
 
-// Connection pooling via PgBouncer for PostgreSQL
+// Connection pooling: use ProxySQL or MaxScale (PgBouncer is PostgreSQL-only)
 ```
 
 ### Queue Workers

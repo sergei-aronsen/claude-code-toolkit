@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.14.1] - 2026-05-10
+
+### Fixed — wave-2 surgical findings (4 of 139)
+
+Re-ran the 7-prompt adversarial meta-audit (originals from PR #82 were
+unrecoverable after compaction). Re-discovered 139 findings; this patch
+ships the small surgical subset. Larger items (DEPLOY rework, DESIGN
+identity split, FALSE-POSITIVE CONTROL parity, severity calibration) are
+sequenced for v6.14.2 onwards. Full re-audit findings list lives at
+`.planning/research/meta-audit-wave2-2026-05-10.md`.
+
+#### F-357 — PgBouncer reference inside MYSQL_PERFORMANCE_AUDIT
+
+`templates/base/prompts/MYSQL_PERFORMANCE_AUDIT.md` `### Next.js + Prisma`
+mentioned "Connection pooling via PgBouncer for PostgreSQL" inside a
+MySQL-specific audit prompt. PgBouncer is a PostgreSQL-only proxy.
+Replaced with "Connection pooling: use ProxySQL or MaxScale (PgBouncer is
+PostgreSQL-only)" so MySQL-targeted readers do not chase a wrong-stack
+suggestion. The PgBouncer-with-Prisma config example still appears in
+`POSTGRES_PERFORMANCE_AUDIT.md` (correct context).
+
+#### F-381 — DATABASE_URL inline credentials in POSTGRES audit example
+
+`templates/base/prompts/POSTGRES_PERFORMANCE_AUDIT.md` `### Next.js +
+Prisma` example showed `DATABASE_URL="postgresql://user:pass@..."` with
+no security note. Inline-credential URLs leak via `/proc/<pid>/environ`,
+`ps`, log files, container env, K8s Secret YAML, and git diff history.
+Added a security comment block instructing readers to source the URL
+from `.pgpass` (chmod 600), runtime env vars, or cloud IAM (RDS IAM
+auth, Cloud SQL Auth Proxy, Azure AD) — same threat model as v6.14.0
+F-111 (MYSQL_PWD).
+
+#### F-320 — DESIGN_REVIEW missing `## GOAL` section
+
+`templates/base/prompts/DESIGN_REVIEW.md` opened directly with
+`## 🎯 Scope`, breaking parity with the other 6 base prompts (CODE_REVIEW,
+SECURITY_AUDIT, PERFORMANCE_AUDIT, DEPLOY_CHECKLIST, MYSQL/POSTGRES
+PERFORMANCE_AUDIT all open with `## GOAL`). Added a `## GOAL` section
+that names the audit identity (UI/UX-focused: layout, typography,
+spacing, contrast, motion, focus, error/empty/loading states,
+responsiveness, keyboard/screen-reader semantics) and explicitly excludes
+software-architecture concerns (component reuse, bundle size,
+lazy-loading) — these belong to `CODE_REVIEW.md` and
+`PERFORMANCE_AUDIT.md`. Surfaces the v6.14.2+ DESIGN identity-split work
+without yet shipping it.
+
+#### F-232 — Red-flag list contradicting SELF-CHECK Step 3 on `eval`
+
+`templates/base/prompts/SECURITY_AUDIT.md` PHASE 0 red-flag list called
+"new `eval` / `exec` / `unserialize` / dynamic dispatch" an absolute
+escalation, but SELF-CHECK Step 3 (line 655) lists `eval inside a
+build-time codegen script` as platform-required and droppable. Real
+contradiction — readers either over-report (per the red flag) or
+under-report (per the recheck). Added "**on a user-influenced code
+path** (build-time codegen, test fixtures, and platform-constraint
+contexts are evaluated under SELF-CHECK Step 3 before reporting)" as a
+qualifier on the red flag, so the two sections compose without
+contradiction.
+
+### False positives dropped
+
+Three wave-2 findings did not survive verification:
+
+- **F-359** — Claimed `AVG_TIMER_WAIT > 1000000000000` is a nanosecond/
+  millisecond unit error. MySQL `performance_schema` timer values are
+  picoseconds by default (per official docs); 1e12 picoseconds = 1
+  second, matching the `Slow queries (>1s)` label. Drop.
+- **F-369** — Claimed an entire PostgreSQL config block (shared_buffers,
+  work_mem, random_page_cost) is embedded in `MYSQL_PERFORMANCE_AUDIT.md`
+  lines 450-501. `grep -n 'shared_buffers\|work_mem\|random_page_cost'`
+  in that file returns zero matches. Drop (agent hallucination).
+- **F-353** — Claimed fragmentation calc `DATA_FREE / NULLIF(DATA_LENGTH,
+  0) * 100` produces NULL on empty tables. The same query carries
+  `WHERE DATA_FREE > 50 * 1024 * 1024` which excludes the degenerate
+  case before the divide. Drop.
+
+### Known carry-over
+
+- v6.14.1 fixes land only in `templates/base/`. The v42 splice pipeline
+  propagates only the four splice blocks (callout, fp-recheck,
+  output-format, council-handoff), not surrounding body content. The 28
+  framework prompts in `templates/{laravel,rails,python,go}/prompts/*.md`
+  still carry pre-v6.14.x bodies (KNOWN-DEBT-1). Scoping doc:
+  `docs/research/framework-prompt-drift-2026-05-10.md`. Sequenced for
+  v6.15.x after `/council` validation of regen-vs-sentinel-sync choice.
+
 ## [6.14.0] - 2026-05-10
 
 ### Fixed — F-111: MYSQL_PWD security bug in MYSQL_PERFORMANCE_AUDIT example

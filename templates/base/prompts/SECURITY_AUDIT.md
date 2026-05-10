@@ -69,7 +69,9 @@ placeholder content in the final report.
 - Access modifiers downgraded (`private` → `public`, middleware removed)
 - Validation/sanitization removed without documented replacement
 - New external HTTP/DB/queue calls added without checks
-- New `eval` / `exec` / `unserialize` / dynamic dispatch
+- New `eval` / `exec` / `unserialize` / dynamic dispatch **on a user-influenced
+  code path** (build-time codegen, test fixtures, and platform-constraint
+  contexts are evaluated under SELF-CHECK Step 3 before reporting)
 - `--no-verify` / `--insecure` / `verify=False` / `rejectUnauthorized: false`
 
 ---
