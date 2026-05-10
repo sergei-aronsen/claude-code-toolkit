@@ -7,98 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [6.16.0] - 2026-05-10
+## [6.17.0] - 2026-05-10
 
-### Added — MCP scope per-row picker (lock-screen after sub-picker)
+Two Council-validated base-prompt reworks bundled into a single release:
+DEPLOY_CHECKLIST is reclassified as a deployment runbook (audit machinery
+stripped), and DESIGN_REVIEW Phase 7 is dissolved into CODE_REVIEW +
+PERFORMANCE_AUDIT to eliminate cross-prompt overlap. Closes 20 wave-2
+findings (17 from F-290..F-306, 3 from F-321/F-326/F-329).
 
-The integrations sub-picker now hands off to a dedicated **scope lock-screen**
-where the user can adjust per-MCP scope (`user` / `project` / `local`) before
-the dispatcher fires. The Phase 39 Tab/`s` scope wiring at
-`scripts/install.sh:518-530` was previously dead code in the sub-picker →
-main-TUI flow because the headless `TK_MCP_PRE_SELECTED` branch swallowed
-the entire main TUI render.
-
-- New: `mcp_detect_installed_scope <name>` helper in `scripts/lib/mcp.sh`.
-  Parses three JSON sources (`~/.claude.json` mcpServers + `<project>/.mcp.json`
-  mcpServers + `~/.claude.json` projects[<root>].mcpServers) and returns
-  `user`/`project`/`local`/empty. Resolution mirrors Claude Code's own
-  precedence: `local > project > user`. Cached on first call.
-- New: `TK_TUI_LOCK_SELECTION=1` mode for `tui_checklist`. Pre-fills every
-  row, makes Space a no-op, and replaces `Space toggle` in the footer with
-  `selection locked`. Tab + `s` + Enter remain active.
-- New: `_run_mcp_scope_lock_screen` in `scripts/install.sh`. Builds shadow
-  TUI arrays filtered to `TK_MCP_PRE_SELECTED` rows, runs `tui_checklist`
-  with the lock mode + Tab/`s` wiring, and maps the resulting per-row
-  scopes back into the full-size `MCP_SELECTED_SCOPE[]` for the dispatcher.
-- New: `mcp_cycle_row_scope_locked` wrapper. Tab is silent no-op on
-  installed rows (re-scope of installed MCPs would require destructive
-  `claude mcp remove + add` with re-OAuth/secret prompt — deferred).
-- Sub-picker now shows `(installed: U/P/L)` for already-registered MCPs
-  and `(default: U/P/L)` for new ones in `TUI_DESCS` only — `TUI_LABELS`
-  stays raw `MCP_NAMES` to preserve the CSV-match contract with the main
-  TUI / lock-screen.
-
-Skip conditions (any → lock-screen does not render):
-
-- `--mcp-scope user|project|local` flag (set-all v4.9 contract)
-- `--yes` flag (non-interactive)
-- No readable TTY (CI / piped install)
-
-### Changed — Catalog default_scope adjustments
-
-- `comet-bridge`: `project` → `user`. Single Comet profile per user; no
-  blast radius. Also removes redundant `--scope project` from
-  `install_args[]` which collided with the runtime `--scope` flag the
-  installer prepends since Phase 37.
-- `datadog`: `user` → `project`. Prod APM/logs/incidents with ack/mute
-  capability has real blast radius; default to project so a Claude
-  session in a side-project cannot mutate prod alerts.
-- `posthog`: `user` → `project`. Personal API key reads every PostHog
-  project in the org; isolate per repo so multi-product orgs don't leak
-  events between products.
-
-Migration: existing installs of `datadog` / `posthog` at user-scope keep
-working. Re-add with `--scope project` to adopt the new default.
-
-### Removed — Back navigation (`b`/`B`) from all TUI screens
-
-The Phase 36-A 2026-05-02 Back-navigation feature is reverted per user
-request 2026-05-10. The flow is now linear:
-`main TUI → skills sub-picker → MCP sub-picker → MCP scope lock-screen →
-dispatch`. Cancel via Ctrl+C / q in any sub-picker aborts the install.
-
-- `b|B)` case arm in `tui_checklist` removed.
-- `TK_TUI_ALLOW_BACK` env var no longer read anywhere; setting it has
-  no effect (regression test confirms silent ignore).
-- Footer no longer shows the `· b back` segment.
-- Outer `_redo_main_tui` loop and inner `_pc_step` state machine in
-  `scripts/install.sh:1800-2118` removed (~150 LOC). Replaced by linear
-  `skills → mcp` sequence; sub-picker rc=1 → exit 0 with localized
-  "X selection cancelled — aborting install." message.
-- `_save_main_tui_state` / `_restore_main_tui_state` helpers retained
-  (still needed for sub-picker array swap; not Back-related).
-
-### Tests added
-
-- `scripts/tests/test-catalog-default-scope.sh` — 5 assertions on the
-  three `default_scope` flips + comet-bridge `install_args[]` cleanup +
-  schema validator.
-- `scripts/tests/test-mcp-detect-installed-scope.sh` — 8 unit tests
-  covering each scope, both precedence rules, unknown name, missing
-  files, malformed JSON.
-- `scripts/tests/test-tui-lock-selection.sh` — 6 assertions on footer
-  copy, pre-fill behavior, Space-no-op (lock + regression).
-- `scripts/tests/test-tui-no-back.sh` — 5 assertions confirming Back
-  removal at footer + source level + env-var read-site.
-- `scripts/tests/test-install-scope-picker-flow.sh` — 3 integration
-  assertions on lock-screen bypass paths (`--yes`, `--mcp-scope`).
-
-### Phase artifacts
-
-- `.planning/phases/16.0-install-mcp-scope-picker/16.0-CONTEXT.md`
-- `.planning/phases/16.0-install-mcp-scope-picker/16.0-PLAN.md`
-
-## [6.15.1] - 2026-05-10
+Originally tracked as v6.15.0 + v6.15.1 in stacked PRs #88/#89 against
+pre-v6.16.0 main; consolidated into v6.17.0 after v6.16.0 (MCP scope
+picker, PR #92) shipped on 2026-05-10.
 
 ### Changed — DESIGN_REVIEW Phase 7 dissolved into CODE_REVIEW + PERFORMANCE_AUDIT
 
@@ -158,10 +77,6 @@ findings now appear under PERFORMANCE_AUDIT 3.6.
 - `templates/base/prompts/DESIGN_REVIEW.md` — heading update + Phase 7 deletion (-24 lines).
 - `templates/base/prompts/CODE_REVIEW.md` — new ARCHITECTURE AND CONSISTENCY section (+27 lines).
 - `templates/base/prompts/PERFORMANCE_AUDIT.md` — new section 3.6 Animation Performance (+11 lines).
-- `manifest.json` — version 6.15.0 → 6.15.1.
-- `CHANGELOG.md` — this entry.
-
-## [6.15.0] - 2026-05-10
 
 ### Changed — DEPLOY_CHECKLIST is now a deployment runbook, not an audit prompt (BREAKING)
 
@@ -267,6 +182,97 @@ The 28 framework prompt variants in `templates/{laravel,rails,python,go}/prompts
 still carry the old audit-machinery content (KNOWN-DEBT-1 framework
 drift). They will be updated in v6.15.2 when the framework drift sweep
 ships.
+
+## [6.16.0] - 2026-05-10
+
+### Added — MCP scope per-row picker (lock-screen after sub-picker)
+
+The integrations sub-picker now hands off to a dedicated **scope lock-screen**
+where the user can adjust per-MCP scope (`user` / `project` / `local`) before
+the dispatcher fires. The Phase 39 Tab/`s` scope wiring at
+`scripts/install.sh:518-530` was previously dead code in the sub-picker →
+main-TUI flow because the headless `TK_MCP_PRE_SELECTED` branch swallowed
+the entire main TUI render.
+
+- New: `mcp_detect_installed_scope <name>` helper in `scripts/lib/mcp.sh`.
+  Parses three JSON sources (`~/.claude.json` mcpServers + `<project>/.mcp.json`
+  mcpServers + `~/.claude.json` projects[<root>].mcpServers) and returns
+  `user`/`project`/`local`/empty. Resolution mirrors Claude Code's own
+  precedence: `local > project > user`. Cached on first call.
+- New: `TK_TUI_LOCK_SELECTION=1` mode for `tui_checklist`. Pre-fills every
+  row, makes Space a no-op, and replaces `Space toggle` in the footer with
+  `selection locked`. Tab + `s` + Enter remain active.
+- New: `_run_mcp_scope_lock_screen` in `scripts/install.sh`. Builds shadow
+  TUI arrays filtered to `TK_MCP_PRE_SELECTED` rows, runs `tui_checklist`
+  with the lock mode + Tab/`s` wiring, and maps the resulting per-row
+  scopes back into the full-size `MCP_SELECTED_SCOPE[]` for the dispatcher.
+- New: `mcp_cycle_row_scope_locked` wrapper. Tab is silent no-op on
+  installed rows (re-scope of installed MCPs would require destructive
+  `claude mcp remove + add` with re-OAuth/secret prompt — deferred).
+- Sub-picker now shows `(installed: U/P/L)` for already-registered MCPs
+  and `(default: U/P/L)` for new ones in `TUI_DESCS` only — `TUI_LABELS`
+  stays raw `MCP_NAMES` to preserve the CSV-match contract with the main
+  TUI / lock-screen.
+
+Skip conditions (any → lock-screen does not render):
+
+- `--mcp-scope user|project|local` flag (set-all v4.9 contract)
+- `--yes` flag (non-interactive)
+- No readable TTY (CI / piped install)
+
+### Changed — Catalog default_scope adjustments
+
+- `comet-bridge`: `project` → `user`. Single Comet profile per user; no
+  blast radius. Also removes redundant `--scope project` from
+  `install_args[]` which collided with the runtime `--scope` flag the
+  installer prepends since Phase 37.
+- `datadog`: `user` → `project`. Prod APM/logs/incidents with ack/mute
+  capability has real blast radius; default to project so a Claude
+  session in a side-project cannot mutate prod alerts.
+- `posthog`: `user` → `project`. Personal API key reads every PostHog
+  project in the org; isolate per repo so multi-product orgs don't leak
+  events between products.
+
+Migration: existing installs of `datadog` / `posthog` at user-scope keep
+working. Re-add with `--scope project` to adopt the new default.
+
+### Removed — Back navigation (`b`/`B`) from all TUI screens
+
+The Phase 36-A 2026-05-02 Back-navigation feature is reverted per user
+request 2026-05-10. The flow is now linear:
+`main TUI → skills sub-picker → MCP sub-picker → MCP scope lock-screen →
+dispatch`. Cancel via Ctrl+C / q in any sub-picker aborts the install.
+
+- `b|B)` case arm in `tui_checklist` removed.
+- `TK_TUI_ALLOW_BACK` env var no longer read anywhere; setting it has
+  no effect (regression test confirms silent ignore).
+- Footer no longer shows the `· b back` segment.
+- Outer `_redo_main_tui` loop and inner `_pc_step` state machine in
+  `scripts/install.sh:1800-2118` removed (~150 LOC). Replaced by linear
+  `skills → mcp` sequence; sub-picker rc=1 → exit 0 with localized
+  "X selection cancelled — aborting install." message.
+- `_save_main_tui_state` / `_restore_main_tui_state` helpers retained
+  (still needed for sub-picker array swap; not Back-related).
+
+### Tests added
+
+- `scripts/tests/test-catalog-default-scope.sh` — 5 assertions on the
+  three `default_scope` flips + comet-bridge `install_args[]` cleanup +
+  schema validator.
+- `scripts/tests/test-mcp-detect-installed-scope.sh` — 8 unit tests
+  covering each scope, both precedence rules, unknown name, missing
+  files, malformed JSON.
+- `scripts/tests/test-tui-lock-selection.sh` — 6 assertions on footer
+  copy, pre-fill behavior, Space-no-op (lock + regression).
+- `scripts/tests/test-tui-no-back.sh` — 5 assertions confirming Back
+  removal at footer + source level + env-var read-site.
+- `scripts/tests/test-install-scope-picker-flow.sh` — 3 integration
+  assertions on lock-screen bypass paths (`--yes`, `--mcp-scope`).
+
+### Phase artifacts
+
+- `.planning/phases/16.0-install-mcp-scope-picker/16.0-CONTEXT.md`
+- `.planning/phases/16.0-install-mcp-scope-picker/16.0-PLAN.md`
 
 ## [6.14.3] - 2026-05-10
 
