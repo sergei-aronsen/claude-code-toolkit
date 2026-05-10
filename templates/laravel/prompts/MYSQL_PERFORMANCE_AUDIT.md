@@ -637,12 +637,19 @@ The Summary table has columns `severity | count_reported | count_skipped_allowli
 
 ### Finding Entry Schema (### Finding F-NNN)
 
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
+Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...).
+
+The entry has 11 fields rendered in two presentation styles:
+
+- **Bullet-label fields (1–7):** rendered as `**<Label>:**` bullets immediately under the H3, in the order shown below.
+- **Section-block fields (8–11):** rendered as `**<Label>:**` paragraph headings, each followed by its block (code fence, list, prose, or diff).
+
+The fields appear in this exact order:
 
 1. **ID** — the `F-NNN` identifier matching the H3 heading.
 2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty.
-4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure.
+3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty in `Why it is real`. (Note: Confidence and Severity share the tokens HIGH/MEDIUM/LOW; the bullet label disambiguates — never write a bare `HIGH` without its `**Severity:**` or `**Confidence:**` label.)
+4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure. (Audit-type prompts MAY restrict this enum further — see the prompt's own `## Category` constraint, if any.)
 5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
 6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
 7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
@@ -651,11 +658,13 @@ Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-
 10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
 11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
-Field omission rules:
+Field omission rules (the omission key is **Severity**, never Confidence):
 
-- **CRITICAL / HIGH** — all 11 fields required.
-- **MEDIUM** — MAY omit Confidence, Data flow, and Suggested fix when they add no value.
-- **LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code/Data flow/Why it is real/Suggested fix sections may be merged into the Claim).
+- **Severity = CRITICAL / HIGH** — all 11 fields required.
+- **Severity = MEDIUM** — MAY omit Data flow and Suggested fix when they add no value. Confidence remains required (default `Confidence: MEDIUM` if not stated).
+- **Severity = LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code / Data flow / Why it is real / Suggested fix sections may be merged into the Claim).
+
+Note: omission rules apply per **Severity**. A LOW-severity finding with HIGH confidence may collapse; a HIGH-severity finding with LOW confidence MUST keep all 11 fields (LOW confidence requires the uncertainty be explicit, which lives in `Why it is real`).
 
 See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
 
