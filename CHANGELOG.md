@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.18.0] - 2026-05-10
+
+### Added — Phase C: `/diagnose-ci` slash command + `feature-flag-lifecycle` component
+
+Two bounded artifacts triaged from INBOX 2026-05-06 (Phase C "Warp picks").
+
+#### `/diagnose-ci` (commands/diagnose-ci.md)
+
+A 7-step CI-failure diagnosis loop for the case where a PR's CI is red and you need a structured triage instead of a tab-bouncing free-for-all. The loop runs sequentially and stops at the cheapest layer that explains every failed job:
+
+1. Fetch the failure surface (`gh run view --log-failed` + jobs JSON).
+2. Classify the failure layer (Infrastructure / Cache / Pinned-action / Secret / Test / Build / Environment).
+3. Isolate the offending change via `git log` + bisect, time-boxed to 15 minutes.
+4. Reproduce locally (matching tool versions, `--runInBand`, `act` for OS-specific failures).
+5. Diagnose environment dependency (filesystem case, line endings, locale, TZ, parallelism, ulimit).
+6. Apply the minimal fix at the layer you stopped at — do NOT climb the stack.
+7. Verify all jobs are green; capture a one-line lesson if the failure was non-obvious.
+
+Output is a structured `Step 1..Step 7` report.
+
+#### `feature-flag-lifecycle.md` (components/feature-flag-lifecycle.md)
+
+A 5-stage lifecycle (Born → Ramped → Defaulted → Deleted → Forgotten) for feature flags as debt instruments. Each stage has explicit exit criteria, the most-skipped transition is called out (Stage 4 → Stage 5 — flag deleted from code but left in the flag service), and four anti-patterns are catalogued: flag-as-config, flag-as-dependency, flag-with-no-owner, flag-as-dark-launch-with-no-exit. Includes a per-flag operational checklist + decision tree + ramp-cohort sequence (Internal → Beta → 1% → 10% → 50% → 100%) with 24-72h gates between steps.
+
+### Files
+
+- `commands/diagnose-ci.md` — new slash command (~150 LOC).
+- `components/feature-flag-lifecycle.md` — new component (~250 LOC, slightly over the ~150 budget because the 5-stage table + checklist + decision tree warranted the space).
+- `manifest.json` — `files.commands[]` adds `diagnose-ci`; version bump 6.17.2 → 6.18.0.
+
 ## [6.17.2] - 2026-05-10
 
 ### Added — `huashu-design` skill catalog entry

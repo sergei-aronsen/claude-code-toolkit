@@ -26,6 +26,8 @@
 - ✅ **v6.16.0 Install MCP scope picker** — lock-screen after sub-picker + Back removal + catalog patch (comet-bridge → user, datadog → project, posthog → project) (shipped 2026-05-10, PR #92).
 - ✅ **v6.17.0 DEPLOY_CHECKLIST runbook + DESIGN_REVIEW Phase 7 dissolution** — Council-validated base-prompt reworks (20 wave-2 findings: F-290..F-306 + F-321/F-326/F-329); originally tracked as v6.15.0/v6.15.1 in stacked PRs #88/#89 against pre-v6.16.0 main, consolidated post-v6.16.0 (shipped 2026-05-10, PR #93).
 - ✅ **v6.17.1 Audit-rubric SOTs + rubric-anchors splice sentinel + 30-file re-splice** — Council Decision 3 Phase 3 (closes F-242 + F-204/F-301/F-327 + F-260/F-324/F-363 propagation halves + KNOWN-DEBT-1 partial); originally stacked as PRs #90/#91 (v6.15.2/v6.15.3) against pre-v6.16.0 main, consolidated post-v6.17.0 (shipped 2026-05-10).
+- ✅ **v6.17.2 huashu-design skill catalog entry** — INBOX triage 2026-04-29; 23 → 24 skills, 516 KB mirror, 15/15 install-skills tests pass (shipped 2026-05-10, PR #96).
+- ✅ **v6.18.0 Phase C (Warp picks)** — `/diagnose-ci` 7-step CI-failure loop + `components/feature-flag-lifecycle.md` 5-stage lifecycle; INBOX triage 2026-05-06 (shipped 2026-05-10).
 
 ## Active Milestone
 
@@ -51,12 +53,11 @@ Pending scope:
 ### Medium priority
 
 - **Phase B (Pocock doctrine)** — CONTEXT.md/ubiquitous-language doctrine + `/zoom-out` + `/audit-depth` Ousterhout deep-modules audit (~700 LOC md, 1-2 days). Triaged from INBOX 2026-05-06. Run B.1 → B.2 → B.3, atomic commits, one `/council` validation pass on B.1 doctrine.
-- **Auto-update orchestrator** — `scripts/update-skills-mcps.sh` fans out plugin/skill/MCP updates. Triaged from INBOX 2026-04-29.
-- **Skill catalog: huashu-design** — add `alchaincyf/huashu-design` to skills selector catalog. Triaged from INBOX 2026-04-29 (Phase 26 shipped 2026-04-29 — slot directly into existing catalog now).
+- **Extend `update-deps.sh` with skills + more MCPs** — current `update-deps.sh` (the de-facto orchestrator) tracks toolkit + 5 plugins + 4 external tools + 2 MCPs. Missing: upstream-commit probe for the 24 catalog skills (currently `sync-skills-mirror.sh` only re-mirrors from local installed — no upstream version check), and 26 of 28 MCPs from `integrations-catalog.json` are not tracked. Original INBOX 2026-04-29 ask was a separate `scripts/update-skills-mcps.sh` orchestrator; superseded by `update-deps.sh` shipped 2026-05-06 — narrowed scope to coverage extension.
 
 ### Low priority / optional
 
-- **Phase C (Warp picks)** — `/diagnose-ci` 7-step CI-failure loop + `components/feature-flag-lifecycle.md` (~300 LOC md, ~1 day). Triaged from INBOX 2026-05-06. Drop if budget tight; C.1 high-value only on CI-heavy projects.
+_(empty — Phase C shipped in v6.18.0)_
 
 <details>
 <summary>✅ v4.0 Complement Mode (Phases 1–7 + 6.1) — SHIPPED 2026-04-21</summary>
@@ -172,4 +173,6 @@ Pending scope:
 | v6.16.0 Install MCP scope picker | — | — | ✅ Shipped | 2026-05-10 |
 | v6.17.0 DEPLOY+DESIGN reworks | — | 20 findings | ✅ Shipped | 2026-05-10 |
 | v6.17.1 Rubric SOTs + 30-file re-splice | — | 7 findings + KNOWN-DEBT-1 partial | ✅ Shipped | 2026-05-10 |
+| v6.17.2 huashu-design skill | — | — | ✅ Shipped | 2026-05-10 |
+| v6.18.0 Phase C Warp picks | — | — | ✅ Shipped | 2026-05-10 |
 | v6.15.x Framework drift sweep | — | 0/28 files | 📋 Backlog | — |
