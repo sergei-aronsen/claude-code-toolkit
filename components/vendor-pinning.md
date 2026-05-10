@@ -75,14 +75,26 @@ Each change is classified:
 | IGNORE | Internal/cosmetic, no action. |
 | DEPRECATE | Vendor removed feature toolkit uses. |
 
-### Auto-pin on release — `.github/workflows/release-pin.yml`
+### Manual pin on release
 
-Triggers on `v*` tag push. Runs `pin-vendors.sh`, commits to a feature branch
-(`chore/pin-vendors-<tag>`), pushes for maintainer review. Does NOT auto-merge
-to `main` — maintainer opens PR.
+After cutting a release with `gh release create vX.Y.Z`, run:
 
-This means "last release" = "last pin", so `/vendor-changelog` always reports
-drift relative to the most recent published toolkit version.
+```bash
+scripts/vendor/clone-pinned.sh manifest.json _external
+scripts/vendor/pin-vendors.sh manifest.json _external
+```
+
+Then commit the resulting `manifest.json` change (`vendor_pins` block) and
+push. There used to be a GitHub Actions workflow
+(`release-pin.yml` → `auto-pin-vendors-on-release.yml`) that did this
+automatically on `release.published`, but GitHub kept generating phantom
+push-event run failures bound to the workflow regardless of `on:` filter,
+producing email noise on every push to main. The workflow was removed in
+v6.14.0; the script side is unchanged.
+
+This means "last release" = "last manual pin", so `/vendor-changelog`
+reports drift relative to the most recent published toolkit version
+where the maintainer ran `pin-vendors.sh`.
 
 ## Adding a new vendor
 
@@ -90,7 +102,8 @@ drift relative to the most recent published toolkit version.
    `tag`/`commit`/`pinned_at` as `null`.
 2. Run `scripts/vendor/pin-vendors.sh` locally to capture initial pin.
 3. Commit + push.
-4. Future releases auto-pin via the workflow.
+4. After the next release tag, re-run `scripts/vendor/pin-vendors.sh`
+   manually (no auto-pin workflow — see above).
 
 ## Removing a vendor
 

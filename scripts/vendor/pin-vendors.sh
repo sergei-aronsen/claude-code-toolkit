@@ -3,8 +3,8 @@
 #
 # Updates manifest.json:vendor_pins with the current HEAD commit + tag (if
 # any) of each vendor in _external/. Designed to run on toolkit release
-# (auto-invoked by .github/workflows/release-pin.yml on tag push) but also
-# usable manually by the maintainer.
+# manually by the maintainer (the previous auto-pin workflow was removed
+# in v6.14.0 due to GitHub Actions firing phantom push-event failures).
 #
 # Behavior:
 #   - Reads manifest.json:vendor_pins to discover vendors + repos

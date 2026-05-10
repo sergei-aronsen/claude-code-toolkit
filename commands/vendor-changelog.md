@@ -164,11 +164,17 @@ answer "should I update?" (numbers) and "what breaks if I do?" (content).
 `/update-deps --analyze` invokes `/vendor-changelog` first, then renders the
 dashboard with a "Functional changes" column.
 
-## Auto-pin on release
+## Manual pin on release
 
-`.github/workflows/release-pin.yml` runs `scripts/vendor/pin-vendors.sh`
-on every `v*` tag push. This means "last release" = "last pin", so
-`/vendor-changelog` always reports drift since the most recent release.
+After cutting a release with `gh release create vX.Y.Z`, run
+`scripts/vendor/pin-vendors.sh` manually and commit the resulting
+`manifest.json:vendor_pins` block. The previous CI auto-pin workflow was
+removed in v6.14.0 due to GitHub Actions firing phantom push-event run
+failures regardless of the `on:` filter; the script side is unchanged.
+See `components/vendor-pinning.md` for the manual recipe.
+
+"Last release" = "last manual pin", so `/vendor-changelog` reports drift
+since the most recent release where the maintainer ran the script.
 
 ## Risks & limitations
 

@@ -32,7 +32,7 @@ A thin overlay on top of [**Superpowers**](https://github.com/obra/superpowers) 
 | **Limit visibility (Pro/Max)**       | Statusline shows session/weekly usage — you can see when you're about to hit the wall.                                                              |
 | **Dependency dashboard (v6.2)**      | `/update-deps` — interactive TUI listing every tracked dependency (Layer 1/2/3) with installed-vs-latest. You pick what to update.                |
 | **Post-install setup guide (v6.3)**  | Generates a local HTML page (`/.claude/setup-guide.html`) with per-MCP API-key walkthroughs and per-component config — only sections for what you actually installed. |
-| **Vendor functional changelog (v6.3)** | `/vendor-changelog` — pins external vendors (Superpowers, GSD, Serena, RTK, …) at every release; diffs HEAD vs pin; classifies changes BREAKING/ADOPT/IGNORE/DEPRECATE. Auto-pin on release via `.github/workflows/release-pin.yml`. |
+| **Vendor functional changelog (v6.3)** | `/vendor-changelog` — pins external vendors (Superpowers, GSD, Serena, RTK, …) at every release; diffs HEAD vs pin; classifies changes BREAKING/ADOPT/IGNORE/DEPRECATE. Auto-pin on release via `.github/workflows/auto-pin-vendors-on-release.yml`. |
 
 The headline value is curation. Everything is opt-in via TUI checkboxes — nothing is forced.
 
