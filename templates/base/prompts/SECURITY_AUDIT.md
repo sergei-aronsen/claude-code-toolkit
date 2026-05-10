@@ -444,6 +444,32 @@ Severity MUST reflect the realistic preconditions, not the worst-case
 imagined scenario. A bug requiring tenant-admin + race window + specific
 DB state is HIGH at most, not CRITICAL.
 
+### Severity Ceiling Table (precondition → maximum severity)
+
+The **maximum severity** a finding may claim is bounded by its weakest
+precondition. Apply the lowest ceiling that matches; never inflate.
+
+| Required attacker class | Required interaction | Max severity |
+|-------------------------|----------------------|--------------|
+| Unauthenticated, network-reachable | None | **CRITICAL** |
+| Unauthenticated, network-reachable | Click link / open page | HIGH |
+| Authenticated user (any tenant) | None | HIGH |
+| Authenticated user (any tenant) | Click link / open page | MEDIUM |
+| Tenant-admin (or peer tenant cross-over) | None | MEDIUM |
+| Tenant-admin | Click link / specific UI flow | LOW–MEDIUM |
+| Org-admin / instance-admin | Any | LOW (admin can already cause harm) |
+| Compromised external service (OAuth app, partner API) | None | HIGH |
+| Compromised external service | Specific webhook payload | MEDIUM |
+| Insider with shell access | Any | Out of scope (assume admin) |
+
+Cross-multiply with `## DATA CLASSIFICATION` below for the final
+severity. A CRITICAL-ceiling finding that exposes only PII-LOW data
+falls to HIGH; a HIGH-ceiling finding that exposes regulated data
+(PHI / PCI / financial credentials) stays at the data class's floor.
+
+When a finding's preconditions span multiple rows, take the strongest
+precondition the attacker actually needs to satisfy — not an aggregate.
+
 ---
 
 ## DATA CLASSIFICATION (severity multiplier)
@@ -463,6 +489,12 @@ Severity scales with the sensitivity of exposed data:
 ---
 
 ## REALISTIC EXPLOITABILITY FILTER
+
+This filter applies during **SELF-CHECK Steps 2-3** (data-flow trace +
+execution-context check). Each candidate finding is evaluated against
+both lists below before promoting to `## Findings`. A finding that
+matches the "do NOT report" list is dropped at Step 3 with
+`dropped_at_step: 3` and a reason citing the specific exclusion.
 
 Do NOT report vulnerabilities that require:
 

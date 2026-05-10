@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.14.3] - 2026-05-10
+
+### Fixed — wave-2 calibration findings (7 of remaining ~117)
+
+Continuing wave-2 close-out after v6.14.1 / v6.14.2 (PRs #84 and #86).
+This batch ships SECURITY_AUDIT calibration plus MYSQL/POSTGRES
+operational nuance. Full wave-2 list at
+`.planning/research/meta-audit-wave2-2026-05-10.md`.
+
+#### F-242 — SECURITY severity ceiling table
+
+`templates/base/prompts/SECURITY_AUDIT.md` `## EXPLOIT PRECONDITIONS`
+gave one example ("tenant-admin + race window + specific DB state is
+HIGH at most") but no rule mapping precondition combinations to maximum
+severity. Auditors had to infer the ceiling each time, leading to
+inconsistent severity scoring across reports. Added an explicit
+**Severity Ceiling Table** mapping `(attacker class, required
+interaction)` to a maximum severity:
+
+- Unauthenticated + no interaction → CRITICAL
+- Unauthenticated + click → HIGH
+- Authenticated user (any tenant) + no interaction → HIGH
+- Tenant-admin + no interaction → MEDIUM
+- Org/instance-admin → LOW (admin can already cause harm)
+- Compromised external service → HIGH
+
+Cross-multiplies with `## DATA CLASSIFICATION` for the final severity.
+Auditors take the strongest precondition the attacker actually needs to
+satisfy, never an aggregate.
+
+#### F-243 — REALISTIC EXPLOITABILITY FILTER execution phase
+
+`## REALISTIC EXPLOITABILITY FILTER` listed "do NOT report" / "DO
+prioritize" rules but never named the SELF-CHECK step at which the
+filter applies. Added an explicit prelude: filter applies during
+SELF-CHECK Steps 2-3 (data-flow trace + execution-context check); a
+match drops the finding at Step 3 with `dropped_at_step: 3` and a
+specific exclusion reason.
+
+#### F-358 — MYSQL performance_schema reset caveats
+
+The audit prompt instructed "uptime > 7 days" before trusting
+`events_statements_summary_by_digest` rows but missed two adjacent
+reset paths: (1) `TRUNCATE TABLE performance_schema.<table>`
+(operator may have recycled stats), (2)
+`performance_schema_max_digest_length` truncation merging long queries
+into one digest. Added a callout naming both paths plus the diagnostic
+("if `COUNT_STAR` for known frequent queries is suspiciously low, the
+digest table has been recycled — defer the audit").
+
+#### F-360 — MYSQL scan_ratio scoped to SELECT
+
+`scan_ratio = ROWS_EXAMINED / ROWS_SENT` is undefined for DML
+(INSERT/UPDATE/DELETE) — those statements send 0 rows back, so the
+NULLIF guard prevents a divide-by-zero but the resulting ratio is
+meaningless. The audit checklist `No queries with scan_ratio > 1000`
+treated the metric as universal. Added a paragraph naming the
+SELECT-only scope and pointing DML evaluators to
+`SUM_ROWS_AFFECTED / COUNT_STAR` (per-call write rate) plus
+`AVG_TIMER_WAIT` (per-call wall clock) instead.
+
+#### F-361 — MYSQL audit user permissions
+
+`### Check User Permissions` previously suggested falling back to
+`debian-sys-maint` (which holds DROP/ALTER/SUPER) if performance_schema
+was unavailable. A typo at a `mysql>` prompt running as that user can
+drop a production table. Replaced with a dedicated `audit_ro` user
+recipe (`SELECT, PROCESS, SHOW VIEW`) plus credential storage via
+`mysql_config_editor --login-path=audit_ro`. Kept the `debian-sys-maint`
+fallback as last resort but instructed wrapping the session in
+`BEGIN; ... ROLLBACK;` so accidental writes are undone.
+
+#### F-398 — POSTGRES non-immutable defaults trigger table rewrite
+
+`### 11.2 Checklist` claimed `NOT NULL` columns added with `DEFAULT`
+are "instant in PG 11+". True only when the default is an immutable
+expression. Volatile defaults (`DEFAULT now()`, `DEFAULT random()`,
+`DEFAULT gen_random_uuid()`) still trigger a full table rewrite under
+`ACCESS EXCLUSIVE` lock — operators copying the rule and using
+`now()` find their migration locks the table for minutes. Updated the
+checklist line to name the immutable-only constraint and prescribe the
+two-step pattern (add nullable column → backfill in batches → set
+default + NOT NULL) for volatile defaults.
+
+### False positives dropped
+
+- **F-388** — claimed `WHERE dbid = (SELECT oid FROM pg_database WHERE
+  datname = current_database())` may break on RDS or with permission
+  errors. `pg_database` is readable by all users on every Postgres
+  deployment including RDS / Cloud SQL / Azure Database — this is a
+  baseline catalog table. Already correct.
+- **F-389** — claimed missing multi-schema filtering on
+  `pg_stat_statements`. The view aggregates **per database**, not per
+  schema; statements can target any schema within the database. Adding
+  a schema filter at the `pg_stat_statements` layer is meaningless.
+- **F-403** — Postgres audit lacks an "Automation" section. Asymmetric
+  with MYSQL audit (which has one), but adding a Postgres automation
+  section is a feature add, not a bug. Defer to v6.15.x.
+
 ## [6.14.2] - 2026-05-10
 
 ### Fixed — wave-2 calibration findings (8 of remaining 135)

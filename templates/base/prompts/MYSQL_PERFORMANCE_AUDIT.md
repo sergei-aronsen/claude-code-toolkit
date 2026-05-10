@@ -48,7 +48,31 @@ SHOW DATABASES LIKE 'sys';
 SHOW GRANTS;
 ```
 
-For full audit need access to `performance_schema`. If not available - use `debian-sys-maint` (password in `/etc/mysql/debian.cnf`).
+For full audit, the auditor needs **read access to `performance_schema`
+and `information_schema`** — that is all. Do NOT run audits as
+`debian-sys-maint`, `root`, or any account that holds `DROP`, `ALTER`,
+or `SUPER`. A typo in an interactive session with that level of
+privilege can drop a production table.
+
+Provision a dedicated read-only audit user once:
+
+```sql
+CREATE USER 'audit_ro'@'%' IDENTIFIED BY 'use-a-strong-password';
+GRANT SELECT, PROCESS, SHOW VIEW ON *.* TO 'audit_ro'@'%';
+GRANT SELECT ON performance_schema.* TO 'audit_ro'@'%';
+GRANT SELECT ON information_schema.* TO 'audit_ro'@'%';
+GRANT SELECT ON sys.* TO 'audit_ro'@'%';
+FLUSH PRIVILEGES;
+```
+
+Store its credentials with `mysql_config_editor set --login-path=audit_ro`
+(see `## Automation` below) — never inline in audit scripts and never in
+shell history via `mysql -p<password>`.
+
+If `performance_schema` access is genuinely impossible and `debian-sys-maint`
+is the only option, run audits in a `BEGIN; ... ROLLBACK;` wrapper so any
+accidental write is undone, and never leave such a session open at a
+`mysql>` prompt.
 
 ---
 
@@ -242,12 +266,23 @@ LIMIT 15;
 
 **Interpreting scan_ratio:**
 
-| Ratio | Meaning | Action |
+`scan_ratio = ROWS_EXAMINED / ROWS_SENT`. The ratio is meaningful only
+for `SELECT` statements where `ROWS_SENT` is the result-set size.
+`INSERT`, `UPDATE`, and `DELETE` send 0 rows back to the client, so the
+NULLIF guard above prevents a divide-by-zero but the resulting ratio is
+not interpretable for DML — read it as a SELECT-only signal.
+
+| Ratio (SELECT only) | Meaning | Action |
 | ----- | ------- | ------ |
 | 1-10 | Excellent | OK |
 | 10-100 | Acceptable | Monitor |
 | 100-1000 | Poor | Add index |
 | > 1000 | Critical | Fix ASAP |
+
+For DML, separately watch `SUM_ROWS_AFFECTED / COUNT_STAR` (rows
+modified per call) and `AVG_TIMER_WAIT` (per-call wall clock). A
+`DELETE` examining 1M rows to delete 100 is a real problem, but it
+shows up in `ROWS_EXAMINED` not `scan_ratio`.
 
 **Typical solutions:**
 
@@ -279,6 +314,21 @@ ORDER BY OBJECT_NAME;
 SELECT ROUND(VARIABLE_VALUE / 86400, 1) as uptime_days
 FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Uptime';
 ```
+
+> **performance_schema reset caveats:** `events_statements_summary_by_digest`
+> and other `performance_schema` summary tables reset on:
+> (1) MySQL restart, (2) `TRUNCATE TABLE performance_schema.<table>`,
+> (3) some `performance_schema_*` config changes. The "uptime > 7 days"
+> rule is necessary but not sufficient — also confirm no operator has
+> truncated the digest table since the last restart. If `COUNT_STAR` for
+> well-known frequently-called queries is suspiciously low, the digest
+> table has been recycled; defer the audit until 7 days of fresh
+> statistics accumulate.
+>
+> Also check `performance_schema_max_digest_length` (default 1024
+> characters): long queries truncated to the same prefix get merged into
+> one digest row, silently inflating `COUNT_STAR` for the survivor. If
+> long parameterized queries are common, raise to 4096+ in `my.cnf`.
 
 **Safe to delete (uptime > 7 days):**
 
