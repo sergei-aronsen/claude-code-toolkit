@@ -1206,7 +1206,7 @@ fi
 # Mirror of the --mcps branch above; reuses TUI_* globals + print_install_status.
 # ─────────────────────────────────────────────────
 if [[ "$SKILLS" -eq 1 ]]; then
-    # Populate TUI_INSTALLED[] from the 22-skill catalog.
+    # Populate TUI_INSTALLED[] from the 24-skill catalog.
     skills_status_array
 
     # Build TUI globals from SKILLS_CATALOG.

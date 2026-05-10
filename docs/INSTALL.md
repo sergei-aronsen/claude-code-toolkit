@@ -33,7 +33,7 @@ The toolkit ships a Claude Code plugin marketplace listing at the repository's
 
 | Sub-plugin | Reach | Content |
 |------------|-------|---------|
-| `tk-skills` | Desktop Code tab + terminal Code | 22 curated skills mirrored from skills.sh |
+| `tk-skills` | Desktop Code tab + terminal Code | 24 curated skills mirrored from skills.sh |
 | `tk-commands` | Terminal Code only | 29 slash commands for Claude Code workflows |
 | `tk-framework-rules` | Terminal Code only | 7 framework CLAUDE.md fragments (Laravel, Rails, Next.js, Node.js, Python, Go, base) |
 
@@ -221,7 +221,7 @@ components checklist, and once with `--mcps` for the MCP catalog.
 Install curated skills from the toolkit's marketplace mirror.
 
 ```bash
-# TUI mode — interactive 22-skill catalog with detect status
+# TUI mode — interactive 24-skill catalog with detect status
 bash scripts/install.sh --skills
 
 # Non-interactive — install all uninstalled skills (default-set)
@@ -249,7 +249,7 @@ or `failed (exit N)`.
 **Removing a skill:** `rm -rf ~/.claude/skills/<name>` (no dedicated
 `--skills-remove` flag — manual deletion is sufficient).
 
-**Mirror provenance:** All 22 skills are sourced from upstream and committed to
+**Mirror provenance:** All 24 skills are sourced from upstream and committed to
 `templates/skills-marketplace/` as a static snapshot. Re-sync via
 `scripts/sync-skills-mirror.sh` (maintainer tool). See `docs/SKILLS-MIRROR.md`
 for license + upstream URL per skill.

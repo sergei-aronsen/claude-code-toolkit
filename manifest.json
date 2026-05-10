@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.17.1",
+  "version": "6.17.2",
   "updated": "2026-05-10",
   "build_date": "2026-05-10",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -391,6 +391,9 @@
       },
       {
         "path": "templates/skills-marketplace/firecrawl"
+      },
+      {
+        "path": "templates/skills-marketplace/huashu-design"
       },
       {
         "path": "templates/skills-marketplace/i18n-localization"
