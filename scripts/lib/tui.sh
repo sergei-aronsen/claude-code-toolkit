@@ -303,11 +303,7 @@ _tui_render() {
     # Footer hint. Esc detection is unreliable on some macOS terminal configs
     # (Send +Esc / Esc-as-Meta), so the public hint advertises Ctrl+C — Esc is
     # still wired in tui_checklist's case match for terminals where it does work.
-    # When TK_TUI_ALLOW_BACK=1 (multi-step flows), advertise the `b` key.
-    local _back_hint=""
-    if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
-        _back_hint=" · b back"
-    fi
+    # v6.16.0 — Back navigation removed; flow is linear. Cancel via Ctrl+C / q.
     # Phase 39 TUI-SCOPE-02: per-row hint surfaces only when caller wires the
     # Tab→TUI_ROW_FN dispatch. Composes with _header_hint (the s key) into a
     # single line; combined width was checked at planning (~95 chars under
@@ -334,9 +330,9 @@ _tui_render() {
         _toggle_hint="selection locked"
     fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        _frame+=$'\n  \e[2m↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
+        _frame+=$'\n  \e[2m↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}"$' · Ctrl+C abort\e[0m\n'
     else
-        _frame+=$'\n  ↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
+        _frame+=$'\n  ↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}"$' · Ctrl+C abort\n'
     fi
 
     # Single atomic write — terminal renders one frame, no flicker, no bleed.
@@ -473,20 +469,6 @@ tui_checklist() {
                 # Quit — cancel.
                 rc=1
                 break
-                ;;
-            b|B)
-                # Back — return to previous step in a multi-step flow.
-                # Caller (install.sh pre-collection loop) interprets rc=4
-                # as "user wants to re-do the previous picker"; standalone
-                # tui_checklist callers can ignore rc=4 (treat as cancel).
-                # Only enabled when TK_TUI_ALLOW_BACK=1 — otherwise b/B
-                # behaves like any unknown key (ignored). Gating prevents
-                # surprises in single-step TUI invocations where Back has
-                # no defined target.
-                if [[ "${TK_TUI_ALLOW_BACK:-0}" == "1" ]]; then
-                    rc=4
-                    break
-                fi
                 ;;
             $'\t')
                 # Phase 39 TUI-SCOPE-02: per-row scope hotkey. Mirrors the
