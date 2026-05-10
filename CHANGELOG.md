@@ -98,6 +98,113 @@ dispatch`. Cancel via Ctrl+C / q in any sub-picker aborts the install.
 - `.planning/phases/16.0-install-mcp-scope-picker/16.0-CONTEXT.md`
 - `.planning/phases/16.0-install-mcp-scope-picker/16.0-PLAN.md`
 
+## [6.15.0] - 2026-05-10
+
+### Changed — DEPLOY_CHECKLIST is now a deployment runbook, not an audit prompt (BREAKING)
+
+`templates/base/prompts/DEPLOY_CHECKLIST.md` was the only file in the
+v4.2 audit-pipeline list that wasn't actually an audit prompt. It is a
+**deployment checklist**: numbered phases (code cleanup → quality →
+DB → environment → security → deployment → verification → rollback).
+The v4.2 propagation injected SELF-CHECK 6-step FP recheck, OUTPUT
+FORMAT structured-report schema, and Council Handoff into every
+audit prompt — and DEPLOY_CHECKLIST got swept up in that.
+
+Result before this change: a DevOps operator running this checklist
+faced a 6-step false-positive recheck procedure on a checkbox-only
+workflow. There were no candidate findings to evaluate. Sections 9-10
+(lines 238-563) of the file were dead weight.
+
+**Council validation (2026-05-10):** Both Skeptic and Pragmatist judges
+returned verdict SIMPLIFY on the v6.15.x plan. Implemented their
+revisions:
+
+- **Skeptic addition** — also strip the QUICK CHECK table (audit-
+  pattern artifact, not a deploy procedure). Done: removed the QUICK
+  CHECK table and "If all 6 = OK → Ready to deploy!" line that
+  conflicted with `CODE_REVIEW.md` "do not infer status from inspection".
+- **Pragmatist addition** — update 4 infrastructure files, not just the
+  splice script. Done: edits to `Makefile`, `.github/workflows/quality.yml`,
+  `scripts/propagate-audit-pipeline-v42.sh`, and
+  `scripts/tests/test-template-propagation.sh` so DEPLOY_CHECKLIST is no
+  longer included in audit-prompt validation. The v4.2 splice pipeline
+  no longer attempts to inject SELF-CHECK / OUTPUT FORMAT / Council
+  Handoff into DEPLOY_CHECKLIST.
+- **Pragmatist addition** — auth/crypto deploys need an explicit
+  monitoring story. Done: new Phase 5.4 ("Auth / Crypto / Session
+  changes") with mandatory items for threat-model update, auth-failure
+  metrics armed, anomaly alerts armed, audit logs armed (SOC 2 §CC7 /
+  GDPR Art. 33). Mandatory only when the deploy touches auth code paths;
+  marked `n/a` with one-line justification for non-auth deploys.
+
+### Closed — wave-2 findings F-290 .. F-306 (17 findings)
+
+The DEPLOY_CHECKLIST rework closes the entire DEPLOY_CHECKLIST wave-2
+finding cluster:
+
+- **F-290** — fundamental category mismatch (audit machinery on a
+  checklist prompt). Fixed by stripping audit machinery.
+- **F-291** — checkbox-only QUICK CHECK assumed verification. Fixed by
+  removing QUICK CHECK and replacing with Phase 0a Pre-Deploy Baseline
+  (capture metrics with evidence) + per-phase atomicity statements.
+- **F-292** — DEPLOY TYPES referenced section numbers, not stages.
+  Fixed by mapping each deploy type (Hotfix / Minor / Feature / Major)
+  to the specific phases that apply, and adding strategy-in-use field
+  (single-machine / rolling / blue-green / canary).
+- **F-293** — migration safety missing backward-compatibility check.
+  Fixed by Phase 3.2 (forward-compatible window + backward-compatible
+  window + dropped-column reference scan).
+- **F-294** — driver hygiene without verification. Fixed by Phase 4.3
+  connectivity-verified box + queue-depth pre-deploy <80% requirement.
+- **F-295** — generic security checks missing threat model and CSRF /
+  rate-limit / token-expiry. Fixed by Phase 5.4 (auth/crypto threat
+  model link), Phase 5.5 (CSRF / rate-limit / token-expiry).
+- **F-296** — pre/deploy/post stages without atomicity guarantees.
+  Fixed by explicit "Atomicity" callout at Phase 6 head + per-step
+  failure routing ("if step 5 fails: maintenance stays ON, route to
+  Phase 8").
+- **F-297** — no observability gate between deploy and post-deploy.
+  Fixed by Phase 7.4 Post-Deploy Comparison vs Phase 0a Baseline
+  (error rate, p95, GC, DB pool, queue depth, auth-failure rate).
+- **F-298** — manual smoke tests. Fixed by Phase 7.1 (automated, not
+  manual) + Phase 7.2 (regression suite re-run) + Phase 7.3 (load /
+  traffic-shape validation conditional).
+- **F-299** — vague rollback triggers. Fixed by Phase 8.2 trigger table
+  with specific signals, thresholds, time windows, and named decider per
+  trigger.
+- **F-300** — PROJECT SPECIFICS without validation. Fixed by Phase 0.1
+  strategy-in-use checklist + cross-references to the rest of the
+  checklist for downstream validation.
+- **F-301** — UNCERTAINTY DISCIPLINE inappropriate in checklist
+  context. Fixed by removing the section entirely.
+- **F-302** — Section "## 9. SELF-CHECK" looked like a continuation of
+  the numbered checklist. Fixed by removing sections 9-10.
+- **F-304** — Hotfix path skipped phases 2-5 unconditionally. Fixed by
+  Phase 5 conditional rule: hotfix MUST cover Phase 5 if patch touches
+  auth/session/token/crypto code paths.
+- **F-305** — reactive-only monitoring. Fixed by Phase 0a Pre-Deploy
+  Baseline (proactive baseline capture before deploy starts).
+- **F-306** — "Ready to deploy" conclusion premature. Fixed by removing
+  the conclusion entirely; deploys proceed phase-by-phase, not
+  QUICK-CHECK-pass.
+
+F-303 (placeholder name consistency) is cosmetic only — defer.
+
+### Migration impact for users
+
+Projects with `.claude/prompts/DEPLOY_CHECKLIST.md` synced to v6.14.x
+will see the file rewritten on next `update-claude.sh` run. Existing
+local edits to the audit-pipeline sections (SELF-CHECK / OUTPUT FORMAT)
+will be discarded — those sections are gone. Existing edits to the
+phase content (1-8) are preserved if they match the new section
+headers; otherwise the smart-update script will surface them in the
+backup directory.
+
+The 28 framework prompt variants in `templates/{laravel,rails,python,go}/prompts/DEPLOY_CHECKLIST.md`
+still carry the old audit-machinery content (KNOWN-DEBT-1 framework
+drift). They will be updated in v6.15.2 when the framework drift sweep
+ships.
+
 ## [6.14.3] - 2026-05-10
 
 ### Fixed — wave-2 calibration findings (7 of remaining ~117)

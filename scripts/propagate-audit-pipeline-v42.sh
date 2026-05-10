@@ -603,8 +603,12 @@ while IFS= read -r f; do
 done < <(find "$TEMPLATES_ROOT" -path '*/prompts/*.md' \
     \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
-       -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o -name 'DEPLOY_CHECKLIST.md' -o \
+       -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
        -name 'DESIGN_REVIEW.md' \) | sort)
+# v6.15.0: DEPLOY_CHECKLIST.md is no longer treated as an audit prompt —
+# it is a deployment runbook. Audit-pipeline splice blocks (callout,
+# fp-recheck, output-format, council-handoff) are intentionally NOT
+# injected into DEPLOY_CHECKLIST. See CHANGELOG v6.15.0 for rationale.
 
 printf 'Processed %d files: %d spliced, %d already-spliced, %d skipped (errors)\n' \
     "$((SPLICED + ALREADY_SPLICED + ERRORS))" "$SPLICED" "$ALREADY_SPLICED" "$ERRORS"

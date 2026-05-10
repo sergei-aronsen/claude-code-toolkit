@@ -6,7 +6,7 @@
 #   1. Run 1 splices all 35 files (Processed line: "35 spliced, 0 already-spliced, 0 errors")
 #   2. Each spliced file carries exactly 4 v42-splice sentinels
 #   3. Each spliced file carries the 4 grep-verifiable contract markers
-#   4. Run 2 produces zero diff (diff -r empty) and reports "0 spliced, 35 already-spliced"
+#   4. Run 2 produces zero diff (diff -r empty) and reports "0 spliced, 30 already-spliced"
 #
 # Usage: bash scripts/tests/test-template-propagation.sh
 # Exit:  0 = all pass; 1 = any fail
@@ -71,8 +71,8 @@ fi
 #      spliced or already-spliced from a previous live-templates apply).
 #      The idempotency contract (run 2 byte-identical to run 1) is asserted
 #      separately below — what matters here is that no file errored.
-if grep -qE 'Processed 35 files: (35 spliced, 0 already-spliced|0 spliced, 35 already-spliced), 0 skipped' "$RUN1_LOG"; then
-    report_pass "run 1: 35 files terminal (spliced or already-spliced), 0 errors"
+if grep -qE 'Processed 30 files: (30 spliced, 0 already-spliced|0 spliced, 30 already-spliced), 0 skipped' "$RUN1_LOG"; then
+    report_pass "run 1: 30 audit files terminal (spliced or already-spliced; DEPLOY_CHECKLIST excluded as v6.15.0), 0 errors"
 else
     report_fail "run 1: summary does not match expected terminal state"
     grep -F 'Processed' "$RUN1_LOG" | head -3 || true
@@ -125,17 +125,19 @@ while IFS= read -r f; do
 done < <(find "$SCRATCH/templates" -path '*/prompts/*.md' \
     \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
-       -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o -name 'DEPLOY_CHECKLIST.md' -o \
+       -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
        -name 'DESIGN_REVIEW.md' \) | sort)
+# v6.15.0: DEPLOY_CHECKLIST excluded — runbook not audit. 30 spliced
+# files = 5 frameworks × 6 audit prompt types.
 
 if [ "$SENTINEL_FAIL" -eq 0 ]; then
-    report_pass "sentinel invariants: all 35 files carry exactly 4 named v42-splice sentinels"
+    report_pass "sentinel invariants: all 30 audit files carry exactly 4 named v42-splice sentinels (DEPLOY_CHECKLIST excluded as v6.15.0)"
 fi
 if [ "$MARKER_FAIL" -eq 0 ]; then
-    report_pass "contract markers: all 35 files contain 'Council Handoff' + '1. **Read context**'"
+    report_pass "contract markers: all 30 audit files contain 'Council Handoff' + '1. **Read context**'"
 fi
 if [ "$SLOT_FAIL" -eq 0 ]; then
-    report_pass "em-dash slot: all 35 files contain '_pending — run /council audit-review_' (U+2014)"
+    report_pass "em-dash slot: all 30 audit files contain '_pending — run /council audit-review_' (U+2014)"
 fi
 
 # =============================================================================
@@ -152,11 +154,11 @@ else
     report_fail "run 2: splice script exited non-zero (see $RUN2_LOG)"
 fi
 
-# 4.1: run 2 must report "0 spliced, 35 already-spliced"
-if grep -qF '0 spliced, 35 already-spliced, 0 skipped' "$RUN2_LOG"; then
-    report_pass "run 2: summary reports 0 spliced, 35 already-spliced"
+# 4.1: run 2 must report "0 spliced, 30 already-spliced"
+if grep -qF '0 spliced, 30 already-spliced, 0 skipped' "$RUN2_LOG"; then
+    report_pass "run 2: summary reports 0 spliced, 30 already-spliced (DEPLOY excluded v6.15.0)"
 else
-    report_fail "run 2: summary does not match '0 spliced, 35 already-spliced'"
+    report_fail "run 2: summary does not match '0 spliced, 30 already-spliced'"
     grep -F 'Processed' "$RUN2_LOG" | head -3 || true
 fi
 

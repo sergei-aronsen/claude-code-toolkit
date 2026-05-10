@@ -340,8 +340,7 @@ validate:
 	@ERRORS=0; \
 	for f in $$(find templates -path '*/prompts/*.md' \( \
 		-name 'PERFORMANCE_AUDIT.md' -o \
-		-name 'CODE_REVIEW.md' -o \
-		-name 'DEPLOY_CHECKLIST.md' \)); do \
+		-name 'CODE_REVIEW.md' \)); do \
 		if ! grep -q "QUICK CHECK" "$$f" 2>/dev/null; then \
 			echo "❌ Missing QUICK CHECK: $$f"; \
 			ERRORS=$$((ERRORS + 1)); \
@@ -356,6 +355,9 @@ validate:
 		exit 1; \
 	fi
 	@echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1)..."
+	@# v6.15.0: DEPLOY_CHECKLIST is a deployment runbook, not an audit
+	@# prompt — excluded from QUICK CHECK / SELF-CHECK / Council Handoff
+	@# checks above and below. See CHANGELOG v6.15.0.
 	@ERRORS=0; \
 	for f in $$(find templates -path '*/prompts/*.md' \( \
 		-name 'SECURITY_AUDIT.md' -o \
@@ -363,7 +365,6 @@ validate:
 		-name 'PERFORMANCE_AUDIT.md' -o \
 		-name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
 		-name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
-		-name 'DEPLOY_CHECKLIST.md' -o \
 		-name 'DESIGN_REVIEW.md' \)); do \
 		if ! grep -qF 'Council Handoff' "$$f" 2>/dev/null; then \
 			echo "❌ Missing 'Council Handoff' marker: $$f"; \
