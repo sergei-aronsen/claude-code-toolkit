@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.17.2] - 2026-05-10
+
+### Added — `huashu-design` skill catalog entry
+
+Adds [`alchaincyf/huashu-design`](https://github.com/alchaincyf/huashu-design) (13K stars) to the skills selector catalog as a 24th entry. HTML-native design skill for high-fidelity prototypes, slides, animations, and MP4 / GIF export pipelines. Bilingual (Chinese / English) but the trigger description covers both languages, so the catalog selector matches it from prompts in either.
+
+- `scripts/lib/skills.sh` — `SKILLS_CATALOG` array bumped 23 → 24, comments updated.
+- `scripts/install.sh` / `scripts/sync-skills-mirror.sh` — count comments + error-message strings updated.
+- `scripts/tests/test-install-skills.sh` — S1 + S6 assertions bumped to 24 (S6 dry-run row count, S1 array length, last-index alphabetical-final assertion).
+- `templates/skills-marketplace/huashu-design/` — new mirror with `SKILL.md` (60K), `LICENSE`, `README.md`, `references/` (296K, 21 files), `scripts/` (128K, 12 files), `test-prompts.json`. Excludes upstream `assets/` (30M MP4/GIF demos) and `demos/` (672K) to keep the mirror under 1 MB.
+- `manifest.json` — `files.skills_marketplace[]` adds `templates/skills-marketplace/huashu-design`. `impeccable` remains catalog-only (not mirrored), so manifest count = catalog count - 1 = 23.
+- Docs: `docs/SKILLS-MIRROR.md`, `docs/INSTALL.md`, `docs/CLAUDE_DESKTOP.md` count strings updated.
+
+### Validation
+
+- Desktop-safety (DESK-02 / DESK-04) — passes: `huashu-design/SKILL.md` contains zero matches against the `(Read|Write|Bash|Grep|Edit|Task)\(|Use (the )?(Read|Write|Bash|Grep|Edit|Task) tool` heuristic.
+- `make check` — all green.
+- `bash scripts/tests/test-install-skills.sh` — 15 / 15 PASS.
+
 ## [6.17.1] - 2026-05-10
 
 Phase 3 of the v6.15.x architecture pass (Council Decision 3, REVISED)

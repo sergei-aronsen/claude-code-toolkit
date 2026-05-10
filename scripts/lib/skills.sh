@@ -3,12 +3,12 @@
 # Claude Code Toolkit — Skills Catalog Loader + Detection + Install Helper (v4.5+)
 # Source this file. Do NOT execute it directly.
 # Exposes:
-#   skills_catalog_names           — prints 22 skill names one-per-line (alpha sorted)
+#   skills_catalog_names           — prints 24 skill names one-per-line (alpha sorted)
 #   is_skill_installed <name>      — returns 0 (installed) / 1 (not installed)
 #   skills_status_array            — populates TUI_INSTALLED[] for install.sh --skills branch
 #   skills_install <name> [--force] — copies skill from mirror to target via cp -R
 # Globals (write):
-#   SKILLS_CATALOG[]   — 22 curated skill names (alpha order); populated at source time
+#   SKILLS_CATALOG[]   — 24 curated skill names (alpha order); populated at source time
 #   TUI_INSTALLED[]    — populated by skills_status_array (parallel to SKILLS_CATALOG)
 # Test seams:
 #   TK_SKILLS_HOME          — override $HOME/.claude/skills/ probe path (used by is_skill_installed)
@@ -28,7 +28,7 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
-# Curated 22-skill catalog — SKILL-01 source of truth.
+# Curated 24-skill catalog — SKILL-01 source of truth.
 # Alphabetical order. Do NOT add or remove without updating REQUIREMENTS.md SKILL-01.
 # shellcheck disable=SC2034
 SKILLS_CATALOG=(
@@ -39,6 +39,7 @@ SKILLS_CATALOG=(
   docx
   find-skills
   firecrawl
+  huashu-design
   i18n-localization
   impeccable
   memo-skill
@@ -70,7 +71,7 @@ _skills_default_mirror_path() {
     echo "${TK_SKILLS_MIRROR_PATH:-${d}/../../templates/skills-marketplace}"
 }
 
-# skills_catalog_names — print all 22 skill names from SKILLS_CATALOG, one per line.
+# skills_catalog_names — print all 24 skill names from SKILLS_CATALOG, one per line.
 skills_catalog_names() {
     printf '%s\n' "${SKILLS_CATALOG[@]}"
 }

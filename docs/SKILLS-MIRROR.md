@@ -1,6 +1,6 @@
 # Skills Mirror
 
-The Claude Code Toolkit ships a curated mirror of 22 skills under `templates/skills-marketplace/`.
+The Claude Code Toolkit ships a curated mirror of 24 skills under `templates/skills-marketplace/`.
 Each skill is a static snapshot — committed bytes, version-pinned, offline-installable.
 `scripts/install.sh --skills` copies selected skills to `~/.claude/skills/<name>/`.
 
@@ -19,7 +19,7 @@ For maintainers:
 2. Run the standalone re-sync script:
 
    ```bash
-   bash scripts/sync-skills-mirror.sh        # all 22 skills
+   bash scripts/sync-skills-mirror.sh        # all 24 skills
    bash scripts/sync-skills-mirror.sh ai-models   # single skill
    bash scripts/sync-skills-mirror.sh --dry-run   # preview without writes
    ```

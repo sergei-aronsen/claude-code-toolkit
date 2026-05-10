@@ -63,7 +63,7 @@ OPTIONS:
   -h, --help    Show this help message.
 
 ARGUMENTS:
-  skill-name    Sync only this one skill (must be in the 22-skill catalog).
+  skill-name    Sync only this one skill (must be in the 24-skill catalog).
                 If omitted, all 22 catalog skills are synced.
 
 TEST SEAMS:
@@ -142,7 +142,7 @@ if [[ -n "$SINGLE_SKILL" ]]; then
         fi
     done
     if [[ "$found" -eq 0 ]]; then
-        echo -e "${RED}✗${NC} '$SINGLE_SKILL' is not in the 22-skill catalog" >&2
+        echo -e "${RED}✗${NC} '$SINGLE_SKILL' is not in the 24-skill catalog" >&2
         echo "Run without arguments to see all catalog skills." >&2
         exit 2
     fi

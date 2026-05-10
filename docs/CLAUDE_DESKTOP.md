@@ -50,7 +50,7 @@ Open Claude Desktop, switch to the Code tab, and run:
 
 You will see three sub-plugins:
 
-- `tk-skills` — 22 curated skills (Desktop-compatible)
+- `tk-skills` — 24 curated skills (Desktop-compatible)
 - `tk-commands` — 29 slash commands (Code-only; appears greyed out on Chat tab)
 - `tk-framework-rules` — 7 framework CLAUDE.md fragments (Code-only)
 
