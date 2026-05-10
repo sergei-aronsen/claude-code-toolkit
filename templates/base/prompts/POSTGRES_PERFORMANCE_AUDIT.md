@@ -109,6 +109,16 @@ ORDER BY duration DESC;
 
 **Rule:** No transactions longer than 10 minutes in production. Set `idle_in_transaction_session_timeout` as a safety net.
 
+> **Scope of `idle_in_transaction_session_timeout`:** terminates only
+> connections that are idle while inside a transaction (i.e. waiting for
+> the next statement after `BEGIN`). It does NOT terminate **active**
+> long-running statements — for those, use `statement_timeout` instead.
+> Both settings should be tuned together: `statement_timeout` caps query
+> wall-clock time; `idle_in_transaction_session_timeout` caps the gap
+> between statements within a transaction. A frozen client mid-`SELECT`
+> is killed by `statement_timeout`; a client that ran `BEGIN` then went
+> away is killed by `idle_in_transaction_session_timeout`.
+
 ---
 
 ## 3. Shared Buffers & Cache Hit Ratio
@@ -132,7 +142,20 @@ WHERE datname = current_database();
 | 95-99% | Good | Monitor |
 | < 95% | Poor | Increase shared_buffers |
 
-**Rule:** `shared_buffers = 25% RAM` (but not more than 8GB on Linux)
+**Workload calibration:**
+
+- **OLTP** (transactional): expect `> 99%`. Below 99% is a real signal —
+  hot working set does not fit in `shared_buffers`.
+- **Mixed**: `95-99%` is normal.
+- **OLAP / analytics / data warehouse**: `70-90%` is typical and
+  acceptable. Large sequential scans of cold tables intentionally bypass
+  cache; raising `shared_buffers` does not help and may hurt by evicting
+  hot OLTP pages on a shared instance.
+
+**Rule:** `shared_buffers = 25% RAM` (but not more than 8GB on Linux).
+On macOS / BSD, check `sysctl kern.sysv.shmmax` first — large
+`shared_buffers` may exceed kernel `shmmax` and the server will refuse
+to start.
 
 ---
 
@@ -395,9 +418,14 @@ VACUUM ANALYZE table_name;
 -- Aggressive (frees disk space)
 VACUUM FULL table_name; -- LOCKS TABLE!
 
--- Rebuild bloated index without locking
+-- Rebuild bloated index without locking (PostgreSQL 12+)
 REINDEX INDEX CONCURRENTLY index_name;
 ```
+
+> **Version guard:** `REINDEX ... CONCURRENTLY` requires PostgreSQL 12+.
+> On 9.x–11.x, plain `REINDEX` takes an `ACCESS EXCLUSIVE` lock for the
+> duration of the rebuild — schedule during a maintenance window or use
+> the `pg_repack` extension for online rebuilds on older versions.
 
 ---
 

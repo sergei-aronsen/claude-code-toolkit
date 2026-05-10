@@ -77,9 +77,10 @@ Severity and confidence are orthogonal axes. Both are required on every
 HIGH or CRITICAL finding.
 
 **Severity** — use the canonical rubric in `components/severity-levels.md`
-(CRITICAL / HIGH / MEDIUM / LOW; INFO is non-reportable). Do NOT redefine
-severity in the report. Re-rate using the actual failure scenario, not
-the rule label. Do not inflate.
+(CRITICAL / HIGH / MEDIUM / LOW). INFO is NOT a reportable finding
+severity; informational observations belong in the auditor's scratchpad,
+never in `## Findings`. Do NOT redefine severity in the report. Re-rate
+using the actual failure scenario, not the rule label. Do not inflate.
 
 **Confidence** — auditor-judged certainty in the finding's reachability:
 

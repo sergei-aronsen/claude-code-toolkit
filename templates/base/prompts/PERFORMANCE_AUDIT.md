@@ -53,6 +53,23 @@ findings; the rubric labels themselves are unchanged.
 | MEDIUM | Improvable, > 1s p95 | Next sprint |
 | LOW | Micro-optimization, < 1s | Backlog |
 
+**Threshold definitions (calibration footnotes):**
+
+- `p95` is computed over a trailing 5-minute window of production traffic,
+  outliers > 3σ excluded. If only synthetic / load-test data is available,
+  state that explicitly in the finding's evidence — synthetic p95 is not
+  the same as production p95.
+- `end-to-end` includes the full request lifecycle (network ingress →
+  app handler → DB → cache → external HTTP → render → egress), not just
+  the slowest single hop.
+- Thresholds assume **single-tenant baseline workload**. Multi-tenant
+  systems should add a 20-50% overhead per concurrent tenant before
+  comparing against the table.
+- **Cold-start latency** (first request after a process restart, Lambda
+  / serverless warm-up, JIT compile) is excluded from the table. Cold-start
+  finding only when cold-start exceeds a project-documented baseline
+  (record the baseline in `## PROJECT SPECIFICS` if relevant).
+
 ---
 
 ## 1. DATABASE PERFORMANCE
