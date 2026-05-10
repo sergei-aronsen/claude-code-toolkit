@@ -326,10 +326,17 @@ _tui_render() {
         # behavior wiring lands in Plan 02.
         _header_hint=" · ${TUI_HEADER_KEY} set-all-scope"
     fi
+    # v6.16.0 — replace "Space toggle" copy with "selection locked" when the
+    # caller pre-locked the row checkboxes (e.g. MCP scope lock-screen). The
+    # rest of the hint line composes the same way.
+    local _toggle_hint="Space toggle"
+    if [[ "${TK_TUI_LOCK_SELECTION:-0}" -eq 1 ]]; then
+        _toggle_hint="selection locked"
+    fi
     if [[ "${_TUI_COLOR:-0}" -eq 1 ]]; then
-        _frame+=$'\n  \e[2m↑↓ navigate · Space toggle · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
+        _frame+=$'\n  \e[2m↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\e[0m\n'
     else
-        _frame+=$'\n  ↑↓ navigate · Space toggle · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
+        _frame+=$'\n  ↑↓ navigate · '"${_toggle_hint}"$' · Enter install'"${_row_hint}${_header_hint}${_back_hint}"$' · Ctrl+C abort\n'
     fi
 
     # Single atomic write — terminal renders one frame, no flicker, no bleed.
@@ -358,7 +365,13 @@ tui_checklist() {
     TUI_RESULTS=()
     local i
     for (( i=0; i<total; i++ )); do
-        if [[ "${TUI_REQUIRED[$i]:-0}" -eq 1 ]]; then
+        # v6.16.0 — TK_TUI_LOCK_SELECTION=1: caller pre-locked the selection
+        # (e.g. MCP scope lock-screen after the sub-picker). Every row pre-
+        # checked, Space is a no-op (handled below), only Tab/s + Enter are
+        # active. Required-only pre-check policy is bypassed in this mode.
+        if [[ "${TK_TUI_LOCK_SELECTION:-0}" -eq 1 ]]; then
+            TUI_RESULTS[$i]=1
+        elif [[ "${TUI_REQUIRED[$i]:-0}" -eq 1 ]]; then
             TUI_RESULTS[$i]=1
         else
             TUI_RESULTS[$i]=0
@@ -409,7 +422,11 @@ tui_checklist() {
                 # Installed items are immutable UNLESS TUI_REINSTALLABLE[i]=1
                 # (caller-opt-in for the install↔reinstall cycle).
                 # Submit row (FOCUS_IDX == total) is also no-op for space.
-                if [[ "$FOCUS_IDX" -lt "$total" ]] \
+                # v6.16.0 — TK_TUI_LOCK_SELECTION=1: ALL rows immutable
+                # (selection came pre-locked from a prior sub-picker).
+                if [[ "${TK_TUI_LOCK_SELECTION:-0}" -eq 1 ]]; then
+                    : # no-op — selection locked
+                elif [[ "$FOCUS_IDX" -lt "$total" ]] \
                    && [[ "${TUI_REQUIRED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
                     local _can_toggle=0
                     if [[ "${TUI_INSTALLED[$FOCUS_IDX]:-0}" -ne 1 ]]; then
