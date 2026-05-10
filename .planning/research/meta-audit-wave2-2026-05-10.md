@@ -18,6 +18,28 @@
 | POSTGRES_PERFORMANCE_AUDIT | 24 | 2 | 19 | 2 | F-380..F-403 |
 | **Totals** | **139** | **22** | **103** | **13** | — |
 
+## Status snapshot (post-v6.17.1, 2026-05-10)
+
+| Prompt | Total | Closed | Open | Closed-via |
+|--------|-------|--------|------|-----------|
+| DEPLOY_CHECKLIST | 17 | 17 | 0 | v6.17.0 (full close-out) |
+| DESIGN_REVIEW | 11 | 6 | 5 | v6.14.1 / v6.17.0 / v6.17.1 |
+| PERFORMANCE_AUDIT | 15 | 5 | 10 | v6.14.2 / v6.17.1 |
+| MYSQL_PERFORMANCE_AUDIT | 21 | 12 | 9 | v6.14.1 (3 dropped as FP) / v6.14.2 / v6.14.3 / v6.17.1 |
+| POSTGRES_PERFORMANCE_AUDIT | 24 | 8 | 16 | v6.14.1 / v6.14.2 / v6.14.3 |
+| CODE_REVIEW | 25 | 4 | 21 | v6.14.2 / v6.17.1 |
+| SECURITY_AUDIT | 26 | 3 | 23 | v6.14.3 / v6.17.0 / v6.17.1 |
+| **Totals** | **139** | **55** | **84** | — |
+
+**Open by prompt (84 findings):**
+
+- CODE_REVIEW: F-202, F-203, F-205, F-206, F-207, F-208, F-209, F-210, F-211, F-212, F-213, F-214, F-215, F-216, F-217, F-218, F-219, F-220, F-222, F-223, F-224 (21)
+- SECURITY_AUDIT: F-230, F-231, F-233, F-234, F-235, F-236, F-237, F-238, F-239, F-240, F-241, F-244, F-245, F-246, F-247, F-248, F-249, F-250, F-251, F-252, F-253, F-254, F-255 (23)
+- PERFORMANCE_AUDIT: F-262, F-264, F-266, F-267, F-268, F-269, F-270, F-271, F-273, F-274 (10)
+- DESIGN_REVIEW: F-322, F-323, F-325, F-328, F-330 (5)
+- MYSQL_PERFORMANCE_AUDIT: F-350, F-351, F-354, F-355, F-356, F-362, F-364, F-366, F-370 (9)
+- POSTGRES_PERFORMANCE_AUDIT: F-382, F-383, F-384, F-386, F-387, F-390, F-391, F-392, F-393, F-394, F-395, F-397, F-399, F-400, F-401, F-402 (16)
+
 ---
 
 ## Triage by Effort
