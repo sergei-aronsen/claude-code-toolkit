@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.14.0] - 2026-05-10
+
+### Fixed — F-111: MYSQL_PWD security bug in MYSQL_PERFORMANCE_AUDIT example
+
+`templates/base/prompts/MYSQL_PERFORMANCE_AUDIT.md` shipped a bash example
+that exported `MYSQL_PWD` after extracting it from `/etc/mysql/debian.cnf`.
+This violated the toolkit's own Global Security Rule §1 (never log/leak
+passwords) — `MYSQL_PWD` leaks to any process running as the same user via
+`/proc/<pid>/environ`. Replaced with `mysql --login-path=health_check`
+pattern (credentials stored once via `mysql_config_editor set`, file is
+obfuscated and chmod 600).
+
+### Changed — F-104: SECURITY_AUDIT collapses 3 false-positive gates into one
+
+`templates/base/prompts/SECURITY_AUDIT.md` previously had three separate
+sections (`QUALITY OVER QUANTITY`, `UNCERTAINTY DISCIPLINE`,
+`ADVERSARIAL SELF-REVIEW`) that all restated "drop weak findings" without
+defining an execution order between them and the propagated 6-step
+SELF-CHECK. Merged into a single `## FALSE-POSITIVE CONTROL` section
+that declares the canonical 3-gate order:
+
+```text
+1. Adversarial self-review  → intent check
+2. 6-step FP recheck        → procedure check
+3. Calibration              → severity + confidence sanity, anti-padding
+```
+
+Each former section is now a numbered subsection (Gate 1 / Gate 2 / Gate
+3) under the new parent. The 6-step SELF-CHECK procedure (propagated from
+`components/audit-fp-recheck.md`) is unchanged and remains the canonical
+implementation of Gate 2. Net token reduction in SECURITY_AUDIT: ~50
+lines once duplicate intent statements are collapsed.
+
+### Changed — F-101: audit-output-format.md schema disambiguation
+
+`components/audit-output-format.md` (the SOT spliced into all 35 framework
+prompts) clarified three points the meta-audit flagged as ambiguous:
+
+- **Bullet-label vs section-block fields.** The 11 fields are now
+  explicitly split: fields 1–7 render as `**Label:**` bullets under the
+  H3, fields 8–11 render as paragraph-heading section blocks. The "11
+  fields" claim is no longer aspirational — both presentation styles are
+  named.
+- **Confidence vs Severity HIGH/MEDIUM/LOW collision.** Both fields share
+  the tokens HIGH/MEDIUM/LOW. Added explicit guidance that the bullet
+  label disambiguates ("never write a bare HIGH without its
+  `**Severity:**` or `**Confidence:**` label") so Phase 15's Council
+  parser cannot misroute a token.
+- **Field-omission key.** Omission rules were silent on whether they
+  keyed off Severity or Confidence. Now states: omission key is
+  **Severity**. A LOW-severity finding with HIGH confidence may collapse;
+  a HIGH-severity finding with LOW confidence MUST keep all 11 fields
+  (LOW confidence requires the uncertainty in `Why it is real`).
+
+Re-spliced all 35 framework prompts via `--force`.
+
+### Changed — F-107: cross-prompt heading numbering parity
+
+Stripped numeric prefixes (`## 0.`, `## 1.`, `## 2.`, …, `## 13.`) from
+the canonical audit headings (`QUICK CHECK`, `SELF-CHECK`,
+`OUTPUT FORMAT`) across all 7 base prompts. Other H2s in the same files
+have always been unnumbered; the prefix was an artefact of incremental
+template merges and broke Phase 15 navigation parity. The propagation
+script (`scripts/propagate-audit-pipeline-v42.sh`) already supported both
+styles via `^## ([0-9]+\.\s*)?<heading>` regex — no script change
+required.
+
+Also dropped the duplicated `> **Recommended model:** Claude Opus 4.5
+(claude-opus-4-5-20251101)` line from `DEPLOY_CHECKLIST.md` and
+`PERFORMANCE_AUDIT.md`. The other 5 base prompts never had it; model
+selection is a Claude Code-level concern, not a per-prompt one.
+
+### Meta-audit context
+
+This release is the v6.14.0 first wave from a 7-prompt adversarial
+meta-audit (one parallel reviewer per base prompt, ~150 findings total)
+that ran 2026-05-10. F-101 / F-104 / F-107 / F-111 are the surgical,
+low-risk findings shipped in this PR. Substantive items (per-audit
+severity rubrics, per-audit SELF-CHECK variants, DEPLOY rework, DESIGN
+identity split, coverage extensions, framework-prompt drift sweep) are
+sequenced for v6.14.1+ and v6.15.x.
+
 ## [6.13.0] - 2026-05-09
 
 ### Fixed — F-006 propagator demote H2→H3

@@ -145,7 +145,7 @@ sink behind tenant-admin + MFA is HIGH at most.
 
 ---
 
-## 0. QUICK CHECK (entry-point scan, NOT grep checklist)
+## QUICK CHECK (entry-point scan, NOT grep checklist)
 
 Use grep ONLY as entry-point discovery. Never report a grep match without
 execution-path verification. The point is to surface candidate sinks for
@@ -576,42 +576,32 @@ Do NOT report:
 
 ---
 
-## QUALITY OVER QUANTITY
+## FALSE-POSITIVE CONTROL
 
-Do NOT maximize finding count. After identifying strong HIGH/CRITICAL
-findings:
+Every candidate finding passes through three gates in this order. A
+finding that fails any gate is dropped (record the drop step and reason
+in `## Skipped (FP recheck)`); a finding that survives all three is
+promoted to `## Findings`.
 
-- Prioritize deeper exploit-chain analysis on those findings
-- Validate exploitability against the embedded code
-- Search for related attack chains across the codebase
+```text
+1. Adversarial self-review  → intent check  (per finding, mandatory for HIGH / CRITICAL)
+2. 6-step FP recheck        → procedure check  (per finding, every severity — see SELF-CHECK below)
+3. Calibration              → severity + confidence sanity, anti-padding (per report)
+```
 
-Five weak speculative MEDIUMs are worse than one verified CRITICAL with a
-working exploit description. If you cannot describe a concrete attack
-path the user would care about, drop or downgrade.
+The order is fixed: adversarial review first (cheap, kills bad
+hypotheses), procedure recheck second (expensive, requires reading
+±20 lines and tracing data flow), calibration third (applies to the
+surviving set as a whole).
 
----
-
-## UNCERTAINTY DISCIPLINE
-
-If exploitability cannot be confirmed from the embedded code:
-
-- Lower confidence (HIGH → MEDIUM → LOW)
-- Explicitly state the assumptions required
-- Prefer omission over speculation
-
-Do NOT present hypothetical vulnerabilities as confirmed. Do NOT use
-weasel words ("could potentially", "might allow", "in theory") to inflate
-report length — either the finding is grounded or it isn't.
-
----
-
-## ADVERSARIAL SELF-REVIEW (mandatory for HIGH / CRITICAL)
+### Gate 1 — Adversarial self-review (intent check)
 
 For every HIGH or CRITICAL finding, attempt to disprove it before
 reporting. Search explicitly for:
 
 - Upstream sanitization that defangs the input
-- Framework guarantees that block the path
+- Framework guarantees that block the path (see FRAMEWORK GUARANTEES
+  above)
 - Impossible execution paths (dead code, environment-gated branches,
   feature flags off in production)
 - Privilege constraints that prevent the required attacker class from
@@ -620,16 +610,40 @@ reporting. Search explicitly for:
 - Environmental limitations (the function exists but is never wired into
   a route)
 
-A finding survives only if exploitability remains plausible AFTER
-adversarial review. Document in your scratchpad which counter-evidence
-you considered and why it failed.
+A finding survives Gate 1 only if exploitability remains plausible
+after adversarial review. Document in your scratchpad which
+counter-evidence you considered and why it failed.
 
-This is in addition to the 6-step FP recheck below — adversarial
-self-review is the *intent* check; FP recheck is the *procedure* check.
+### Gate 2 — 6-step FP recheck (procedure check)
+
+The 6-step procedure is defined in `## SELF-CHECK` below (propagated
+from `components/audit-fp-recheck.md`). Each step has a fail-fast
+condition; drops are recorded in `## Skipped (FP recheck)` with the step
+number and a one-line reason citing concrete tokens from the source.
+
+### Gate 3 — Calibration (severity + confidence sanity, anti-padding)
+
+After Gates 1 and 2, apply these rules to the surviving set:
+
+- **Confidence calibration.** If exploitability cannot be confirmed
+  from the embedded code, lower confidence (HIGH → MEDIUM → LOW) and
+  explicitly state the assumptions required in `Why it is real`. Prefer
+  omission over speculation.
+- **Severity calibration.** Re-rate severity using the actual exploit
+  scenario, not the rule label. A theoretical sink behind 3 unlikely
+  preconditions and no PII is not CRITICAL. Apply the precedence rule:
+  ATTACKER MODEL determines the base; DATA CLASSIFICATION raises the
+  floor when sensitive data is exposed; the higher of the two wins.
+- **No padding.** Five weak speculative MEDIUMs are worse than one
+  verified CRITICAL with a working exploit description. If you cannot
+  describe a concrete attack path the user would care about, drop or
+  downgrade. Do NOT use weasel words (`could potentially`, `might
+  allow`, `in theory`) to inflate the report — either the finding is
+  grounded or it is not.
 
 ---
 
-## 1. SELF-CHECK (FP Recheck — 6-Step Procedure)
+## SELF-CHECK (FP Recheck — 6-Step Procedure)
 <!-- v42-splice: fp-recheck-section -->
 
 ### Procedure
@@ -675,7 +689,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 - Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
 - Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
 
-## 2. OUTPUT FORMAT (Structured Report Schema — Phase 14)
+## OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
 
 ### Report Path
@@ -757,12 +771,19 @@ The Summary table has columns `severity | count_reported | count_skipped_allowli
 
 ### Finding Entry Schema (### Finding F-NNN)
 
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...). The 11 fields appear in this exact order:
+Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...).
+
+The entry has 11 fields rendered in two presentation styles:
+
+- **Bullet-label fields (1–7):** rendered as `**<Label>:**` bullets immediately under the H3, in the order shown below.
+- **Section-block fields (8–11):** rendered as `**<Label>:**` paragraph headings, each followed by its block (code fence, list, prose, or diff).
+
+The fields appear in this exact order:
 
 1. **ID** — the `F-NNN` identifier matching the H3 heading.
 2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty.
-4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure.
+3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty in `Why it is real`. (Note: Confidence and Severity share the tokens HIGH/MEDIUM/LOW; the bullet label disambiguates — never write a bare `HIGH` without its `**Severity:**` or `**Confidence:**` label.)
+4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure. (Audit-type prompts MAY restrict this enum further — see the prompt's own `## Category` constraint, if any.)
 5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
 6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
 7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
@@ -771,11 +792,13 @@ Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-
 10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
 11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
-Field omission rules:
+Field omission rules (the omission key is **Severity**, never Confidence):
 
-- **CRITICAL / HIGH** — all 11 fields required.
-- **MEDIUM** — MAY omit Confidence, Data flow, and Suggested fix when they add no value.
-- **LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code/Data flow/Why it is real/Suggested fix sections may be merged into the Claim).
+- **Severity = CRITICAL / HIGH** — all 11 fields required.
+- **Severity = MEDIUM** — MAY omit Data flow and Suggested fix when they add no value. Confidence remains required (default `Confidence: MEDIUM` if not stated).
+- **Severity = LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code / Data flow / Why it is real / Suggested fix sections may be merged into the Claim).
+
+Note: omission rules apply per **Severity**. A LOW-severity finding with HIGH confidence may collapse; a HIGH-severity finding with LOW confidence MUST keep all 11 fields (LOW confidence requires the uncertainty be explicit, which lives in `Why it is real`).
 
 See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
 
