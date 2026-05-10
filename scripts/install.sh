@@ -332,6 +332,173 @@ print_install_status() {
 }
 
 # ─────────────────────────────────────────────────
+# v6.16.0 (T-05/06/07) — MCP scope lock-screen
+# ─────────────────────────────────────────────────
+#
+# Renders an interactive checklist where the SELECTION is locked (came from
+# the integrations sub-picker via TK_MCP_PRE_SELECTED) but the per-row SCOPE
+# is editable. Wires Tab/`s` through to the existing mcp_cycle_row_scope /
+# mcp_toggle_scope dispatch (Phase 39 — previously dead code because the
+# headless TK_MCP_PRE_SELECTED branch in the main TUI swallowed everything).
+#
+# Approach: build a SHADOW set of TUI arrays containing only rows whose
+# MCP_NAMES entry appears in TK_MCP_PRE_SELECTED. Run tui_checklist on the
+# shadow with TK_TUI_LOCK_SELECTION=1 + Tab/`s` wiring. After return, copy
+# each shadow row's MCP_SELECTED_SCOPE back to its original index in the
+# full MCP_SELECTED_SCOPE[] (parallel to TUI_LABELS). The full-sized arrays
+# untouched outside the shadow are what the dispatcher loop at line ~590
+# reads to drive `claude mcp add --scope <X>`.
+#
+# Reads:
+#   TK_MCP_PRE_SELECTED — CSV of MCP_NAMES, set by the sub-picker
+#   TUI_LABELS / TUI_GROUPS / TUI_INSTALLED / TUI_DESCS / TUI_TO_MCP_IDX
+#       — populated by mcp_status_array (full catalog, render order)
+#   MCP_SELECTED_SCOPE[] — parallel to TUI_LABELS, seeded from MCP_DEFAULT_SCOPE
+#   MCP_NAMES[] — alphabetical
+#
+# Writes:
+#   MCP_SELECTED_SCOPE[$tui_i] for each TUI row whose name is in PRE_SELECTED
+#
+# Cancel handling: tui_checklist rc=1 → "Install cancelled at scope picker."
+# + exit 0 (matches sub-picker cancel behaviour).
+mcp_cycle_row_scope_locked() {
+    # T-06: Tab on installed rows is silent no-op (D-13 in CONTEXT.md). Re-scope
+    # of installed MCPs would require `claude mcp remove + add` with re-OAuth /
+    # secret prompt — out of phase scope (DEF-01).
+    local _idx="${FOCUS_IDX:-0}"
+    if [[ "${TUI_INSTALLED[$_idx]:-0}" -eq 1 ]]; then
+        return 0
+    fi
+    mcp_cycle_row_scope
+}
+
+_run_mcp_scope_lock_screen() {
+    # Bail if there's nothing to scope — empty selection means user picked zero
+    # rows in the sub-picker.
+    local _have_selection=0
+    local _i
+    for ((_i=0; _i<${#TUI_RESULTS[@]}; _i++)); do
+        if [[ "${TUI_RESULTS[$_i]:-0}" -eq 1 ]]; then
+            _have_selection=1
+            break
+        fi
+    done
+    if [[ "$_have_selection" -eq 0 ]]; then
+        return 0
+    fi
+
+    # T-07: build shadow arrays (filtered to selected rows in original render
+    # order). Save originals so we can restore after the lock-screen returns.
+    local _SAVE_LABELS=("${TUI_LABELS[@]+"${TUI_LABELS[@]}"}")
+    local _SAVE_GROUPS=("${TUI_GROUPS[@]+"${TUI_GROUPS[@]}"}")
+    local _SAVE_INSTALLED=("${TUI_INSTALLED[@]+"${TUI_INSTALLED[@]}"}")
+    local _SAVE_DESCS=("${TUI_DESCS[@]+"${TUI_DESCS[@]}"}")
+    local _SAVE_REQUIRED=("${TUI_REQUIRED[@]+"${TUI_REQUIRED[@]}"}")
+    local _SAVE_REINSTALLABLE=("${TUI_REINSTALLABLE[@]+"${TUI_REINSTALLABLE[@]}"}")
+    local _SAVE_TUI_TO_MCP=("${TUI_TO_MCP_IDX[@]+"${TUI_TO_MCP_IDX[@]}"}")
+    local _SAVE_MCP_SCOPE=("${MCP_SELECTED_SCOPE[@]+"${MCP_SELECTED_SCOPE[@]}"}")
+    local _SAVE_RESULTS=("${TUI_RESULTS[@]+"${TUI_RESULTS[@]}"}")
+
+    # _SHADOW_ORIG_IDX[$shadow_i] = original $tui_i — used to map results back.
+    local _SHADOW_ORIG_IDX=()
+
+    TUI_LABELS=()
+    TUI_GROUPS=()
+    TUI_INSTALLED=()
+    TUI_DESCS=()
+    TUI_REQUIRED=()
+    TUI_REINSTALLABLE=()
+    TUI_TO_MCP_IDX=()
+    MCP_SELECTED_SCOPE=()
+
+    for ((_i=0; _i<${#_SAVE_LABELS[@]}; _i++)); do
+        if [[ "${_SAVE_RESULTS[$_i]:-0}" -ne 1 ]]; then
+            continue
+        fi
+        _SHADOW_ORIG_IDX+=("$_i")
+        TUI_LABELS+=("${_SAVE_LABELS[$_i]}")
+        TUI_GROUPS+=("${_SAVE_GROUPS[$_i]}")
+        TUI_DESCS+=("${_SAVE_DESCS[$_i]}")
+        TUI_REQUIRED+=("${_SAVE_REQUIRED[$_i]:-0}")
+        TUI_REINSTALLABLE+=("${_SAVE_REINSTALLABLE[$_i]:-0}")
+        TUI_TO_MCP_IDX+=("${_SAVE_TUI_TO_MCP[$_i]:-$_i}")
+        # Installed MCPs render with their *current* scope, locked. Newly-
+        # selected MCPs use the catalog default already in MCP_SELECTED_SCOPE.
+        local _row_name="${MCP_NAMES[${_SAVE_TUI_TO_MCP[$_i]:-$_i}]}"
+        local _detected
+        _detected=$(mcp_detect_installed_scope "$_row_name")
+        if [[ -n "$_detected" ]]; then
+            TUI_INSTALLED+=(1)
+            MCP_SELECTED_SCOPE+=("$_detected")
+        else
+            TUI_INSTALLED+=(0)
+            MCP_SELECTED_SCOPE+=("${_SAVE_MCP_SCOPE[$_i]:-user}")
+        fi
+    done
+
+    # Re-render labels with the scope glyph that mcp_cycle_row_scope expects
+    # at the head of TUI_LABELS[$_idx]. Reuse the exact label-build path the
+    # toggle helper uses — call mcp_cycle_row_scope_locked twice on the same
+    # row to get back to the starting scope (cycles user→project→local→user;
+    # 3 cycles return to start). Cheaper alternative: synthesise the glyph
+    # inline.
+    local _g _name
+    for ((_i=0; _i<${#TUI_LABELS[@]}; _i++)); do
+        case "${MCP_SELECTED_SCOPE[$_i]}" in
+            user)    _g="[U]" ;;
+            project) _g="[P]" ;;
+            local)   _g="[L]" ;;
+            *)       _g="[U]" ;;
+        esac
+        _name="${TUI_LABELS[$_i]}"
+        TUI_LABELS[_i]="${_g} ${_name}"
+    done
+
+    # Wire scope dispatcher and lock the selection.
+    export TK_TUI_LOCK_SELECTION=1
+    # shellcheck disable=SC2034  # consumed by tui.sh _tui_render
+    TUI_HEADER_KEY="s"
+    # shellcheck disable=SC2034
+    TUI_HEADER_FN="mcp_toggle_scope"
+    # shellcheck disable=SC2034
+    TUI_ROW_KEY=$'\t'
+    # shellcheck disable=SC2034
+    TUI_ROW_FN="mcp_cycle_row_scope_locked"
+    # shellcheck disable=SC2034
+    TUI_HEADER_TEXT="Configure MCP scope (Tab toggles per-row, s sets all)"
+
+    local _lock_rc=0
+    tui_checklist || _lock_rc=$?
+
+    unset TK_TUI_LOCK_SELECTION TUI_HEADER_KEY TUI_HEADER_FN \
+          TUI_ROW_KEY TUI_ROW_FN TUI_HEADER_TEXT
+
+    if [[ "$_lock_rc" -eq 1 ]]; then
+        echo "Install cancelled at scope picker."
+        exit 0
+    fi
+
+    # Map shadow MCP_SELECTED_SCOPE back into the full-size array at the
+    # original positions, then restore the rest of the TUI state for the
+    # dispatcher to read.
+    local _shadow_scope=("${MCP_SELECTED_SCOPE[@]+"${MCP_SELECTED_SCOPE[@]}"}")
+    MCP_SELECTED_SCOPE=("${_SAVE_MCP_SCOPE[@]+"${_SAVE_MCP_SCOPE[@]}"}")
+    for ((_i=0; _i<${#_SHADOW_ORIG_IDX[@]}; _i++)); do
+        local _orig="${_SHADOW_ORIG_IDX[$_i]}"
+        MCP_SELECTED_SCOPE[$_orig]="${_shadow_scope[$_i]}"
+    done
+
+    TUI_LABELS=("${_SAVE_LABELS[@]+"${_SAVE_LABELS[@]}"}")
+    TUI_GROUPS=("${_SAVE_GROUPS[@]+"${_SAVE_GROUPS[@]}"}")
+    TUI_INSTALLED=("${_SAVE_INSTALLED[@]+"${_SAVE_INSTALLED[@]}"}")
+    TUI_DESCS=("${_SAVE_DESCS[@]+"${_SAVE_DESCS[@]}"}")
+    TUI_REQUIRED=("${_SAVE_REQUIRED[@]+"${_SAVE_REQUIRED[@]}"}")
+    TUI_REINSTALLABLE=("${_SAVE_REINSTALLABLE[@]+"${_SAVE_REINSTALLABLE[@]}"}")
+    TUI_TO_MCP_IDX=("${_SAVE_TUI_TO_MCP[@]+"${_SAVE_TUI_TO_MCP[@]}"}")
+    TUI_RESULTS=("${_SAVE_RESULTS[@]+"${_SAVE_RESULTS[@]}"}")
+}
+
+# ─────────────────────────────────────────────────
 # Routing gate: --mcps takes the MCP page; --skills (or --skills-only / Desktop
 # auto-route) takes the Skills page; default is the Phase 24 components page.
 # Mutex — exactly one of three branches per invocation.
@@ -469,6 +636,21 @@ if [[ "$MCPS" -eq 1 ]]; then
             done
         done
         unset _pre_csv _IFS_SAVE _pre_arr _pname _mcp_idx tui_i
+
+        # v6.16.0 (T-05) — render the scope lock-screen so the user can pick
+        # per-row scope before the dispatcher fires. Skipped when:
+        #   - --mcp-scope was passed on CLI (TK_MCP_SCOPE_CLI applies set-all)
+        #   - --yes was passed (non-interactive)
+        #   - no readable TTY (CI / piped install)
+        # Selection is locked at this point (came from the sub-picker), so the
+        # lock-screen exposes only the scope toggle (Tab/`s`) — see
+        # _run_mcp_scope_lock_screen above.
+        _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
+        if [[ -z "${TK_MCP_SCOPE_CLI:-}" ]] \
+           && [[ "$YES" -ne 1 ]] \
+           && [[ -r "$_install_tty_src" ]]; then
+            _run_mcp_scope_lock_screen
+        fi
     elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; skip OAuth-only unless --force
         # (OAuth needs interactive browser flow — incompatible with --yes).
@@ -1617,21 +1799,17 @@ fi
 # ─────────────────────────────────────────────────
 if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
     # ─────────────────────────────────────────────
-    # State machine with back-nav (UX-FLOW-02 — user feedback 2026-05-02:
-    # "can I press Back from skills/MCP picker to re-do the main TUI?").
+    # v6.16.0 — linear pre-collection: skills → mcp → dispatch.
+    # The Phase 36-A back-navigation state machine (TK_TUI_ALLOW_BACK + rc=4
+    # + outer redo-main loop) was removed in T-08b per user request
+    # 2026-05-10 ("убрать Back отовсюду"). Cancel via Ctrl+C / q in any
+    # sub-picker aborts the whole install (rc=1 → exit 0).
     #
-    # Steps:  main → skills → mcp → done
-    # Forward: rc=0 from sub-picker advances to next.
-    # Back:    rc=4 (TK_TUI_ALLOW_BACK=1) returns to previous step.
-    #          From skills back → main TUI re-renders with current selections.
-    #          From mcp    back → skills picker (or main TUI if skills not selected).
-    # Cancel:  rc=1 from any picker aborts the whole install.
-    #
-    # Outer loop runs main TUI when _redo_main_tui=1; inner loop is the
-    # skills/mcp state machine. Bridge plumbing + _need_*_pre derivation
-    # repeats per outer iteration so a back-jump that toggles main-TUI
-    # checkboxes (e.g. unchecking the Bridges row) is reflected
-    # immediately in the next dispatch.
+    # save/restore helpers below remain because each sub-picker rebuilds
+    # TUI_* with its own catalog contents; the dispatcher at line ~2120
+    # needs the MAIN-TUI rows (toolkit, security, mcp-servers, skills, …)
+    # to drive its install loop. The helpers swap state in/out around each
+    # sub-picker.
     # ─────────────────────────────────────────────
 
     _save_main_tui_state() {
@@ -1656,129 +1834,74 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
               _SAVE_TUI_REINSTALLABLE
     }
 
-    _redo_main_tui=0
-    while true; do
-        # If a back-jump from the skills picker requested it, re-render the
-        # main TUI with the same selections preserved (TUI_RESULTS persists).
-        if [[ "$_redo_main_tui" -eq 1 ]]; then
-            if ! tui_checklist; then
-                echo "Install cancelled."
-                exit 0
-            fi
-            _redo_main_tui=0
+    # Sub-pickers always run in interactive mode — the catalog rows were
+    # removed from main TUI per user request 2026-05-06 ("redundant info,
+    # the actual choice happens in next step anyway"). Sub-picker itself is
+    # the opt-out: Submit empty = skip catalog entirely.
+
+    # ─────────────── Skills sub-picker ───────────────
+    echo ""
+    echo -e "${CYAN}Loading skills catalog...${NC}"
+    _source_lib skills
+    _save_main_tui_state
+    skills_status_array
+    TUI_LABELS=("${SKILLS_CATALOG[@]}")
+    TUI_GROUPS=()
+    TUI_DESCS=()
+    TUI_REQUIRED=()
+    for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
+        TUI_GROUPS+=("Skills")
+        TUI_DESCS+=("$(_skills_description "${SKILLS_CATALOG[$_sk_i]}")")
+        TUI_REQUIRED+=(0)
+    done
+    unset _sk_i
+    TUI_RESULTS=()
+    _rc=0
+    tui_checklist || _rc=$?
+    case "$_rc" in
+        0)
+            _skills_pre_csv=""
+            for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
+                if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
+                    _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
+                fi
+            done
+            unset _sk_i
+            export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
+            unset _skills_pre_csv
+            _restore_main_tui_state
+            ;;
+        *)
+            echo "Skills selection cancelled — aborting install."
+            exit 0
+            ;;
+    esac
+
+    # ─────────────── MCP sub-picker ───────────────
+    echo ""
+    echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
+    _source_lib mcp
+    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
+        # BSD mktemp (macOS): X-run must be at end. Drop .json
+        # to avoid literal-filename collision on re-runs.
+        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX")
+        CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
+        # Phase 32-01 (CAT-01): catalog renamed
+        # mcp-catalog.json → integrations-catalog.json. Old
+        # name 404s on raw.githubusercontent.com (user report
+        # 2026-05-02). The other block at line ~258 was
+        # updated; this one was missed.
+        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/integrations-catalog.json" -o "$MCP_CATALOG_TMP"; then
+            echo -e "${RED}✗${NC} Failed to download integrations-catalog.json — aborting" >&2
+            exit 1
         fi
-
-        # Sub-pickers always run in interactive mode — the catalog rows
-        # were removed from main TUI per user request 2026-05-06 ("redundant
-        # info, the actual choice happens in next step anyway"). Sub-picker
-        # itself is the opt-out: Submit empty = skip catalog entirely.
-        _need_mcp_pre=1
-        _need_skills_pre=1
-
-        # Inner state machine: skills → mcp → done. Back-jumps stay in this
-        # inner loop unless they need the main TUI (skills→main, or
-        # mcp→main when skills wasn't selected).
-        _pc_step="skills"
-        _pc_back_to_main=0
-        while true; do
-            case "$_pc_step" in
-                skills)
-                    if [[ "$_need_skills_pre" -ne 1 ]]; then
-                        _pc_step="mcp"
-                        continue
-                    fi
-                    echo ""
-                    echo -e "${CYAN}Loading skills catalog...${NC}"
-                    _source_lib skills
-                    _save_main_tui_state
-                    skills_status_array
-                    TUI_LABELS=("${SKILLS_CATALOG[@]}")
-                    TUI_GROUPS=()
-                    TUI_DESCS=()
-                    TUI_REQUIRED=()
-                    for ((_sk_i=0; _sk_i<${#SKILLS_CATALOG[@]}; _sk_i++)); do
-                        TUI_GROUPS+=("Skills")
-                        TUI_DESCS+=("$(_skills_description "${SKILLS_CATALOG[$_sk_i]}")")
-                        TUI_REQUIRED+=(0)
-                    done
-                    unset _sk_i
-                    # Restore previous skills selection if user is returning
-                    # via Back from MCP picker — TK_SKILLS_PRE_SELECTED was
-                    # exported on the prior pass.
-                    TUI_RESULTS=()
-                    if [[ -n "${TK_SKILLS_PRE_SELECTED:-}" ]]; then
-                        _IFS_SAVED2="$IFS"
-                        IFS=','
-                        # shellcheck disable=SC2206
-                        _prev_sk=( ${TK_SKILLS_PRE_SELECTED} )
-                        IFS="$_IFS_SAVED2"
-                        for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
-                            TUI_RESULTS[$_sk_i]=0
-                            for _p in "${_prev_sk[@]+"${_prev_sk[@]}"}"; do
-                                if [[ "${TUI_LABELS[$_sk_i]}" == "$_p" ]]; then
-                                    TUI_RESULTS[$_sk_i]=1
-                                    break
-                                fi
-                            done
-                        done
-                        unset _sk_i _p _prev_sk _IFS_SAVED2
-                    fi
-                    _rc=0
-                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
-                    case "$_rc" in
-                        0)
-                            _skills_pre_csv=""
-                            for ((_sk_i=0; _sk_i<${#TUI_LABELS[@]}; _sk_i++)); do
-                                if [[ "${TUI_RESULTS[$_sk_i]:-0}" -eq 1 ]]; then
-                                    _skills_pre_csv="${_skills_pre_csv}${_skills_pre_csv:+,}${TUI_LABELS[$_sk_i]}"
-                                fi
-                            done
-                            unset _sk_i
-                            export TK_SKILLS_PRE_SELECTED="$_skills_pre_csv"
-                            unset _skills_pre_csv
-                            _restore_main_tui_state
-                            _pc_step="mcp"
-                            ;;
-                        1)
-                            echo "Skills selection cancelled — aborting install."
-                            exit 0
-                            ;;
-                        4)
-                            # Back to main TUI.
-                            _restore_main_tui_state
-                            _pc_back_to_main=1
-                            break
-                            ;;
-                    esac
-                    ;;
-                mcp)
-                    if [[ "$_need_mcp_pre" -ne 1 ]]; then
-                        break
-                    fi
-                    echo ""
-                    echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
-                    _source_lib mcp
-                    if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
-                        # BSD mktemp (macOS): X-run must be at end. Drop .json
-                        # to avoid literal-filename collision on re-runs.
-                        MCP_CATALOG_TMP=$(mktemp "${TMPDIR:-/tmp}/mcp-catalog-XXXXXX")
-                        CLEANUP_PATHS+=("$MCP_CATALOG_TMP")
-                        # Phase 32-01 (CAT-01): catalog renamed
-                        # mcp-catalog.json → integrations-catalog.json. Old
-                        # name 404s on raw.githubusercontent.com (user report
-                        # 2026-05-02). The other block at line ~258 was
-                        # updated; this one was missed.
-                        if ! _tk_curl_safe "$TK_REPO_URL/scripts/lib/integrations-catalog.json" -o "$MCP_CATALOG_TMP"; then
-                            echo -e "${RED}✗${NC} Failed to download integrations-catalog.json — aborting" >&2
-                            exit 1
-                        fi
-                        export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
-                    fi
-                    _save_main_tui_state
-                    if ! mcp_catalog_load >/dev/null 2>&1; then
-                        echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
-                        exit 1
-                    fi
+        export TK_MCP_CATALOG_PATH="$MCP_CATALOG_TMP"
+    fi
+    _save_main_tui_state
+    if ! mcp_catalog_load >/dev/null 2>&1; then
+        echo -e "${RED}✗${NC} Failed to load MCP catalog — aborting" >&2
+        exit 1
+    fi
                     # Phase 34-01: mcp_status_array now sets TUI_LABELS to
                     # display_name (with [!] prefix on unofficial entries) and
                     # TUI_GROUPS to title-cased categories. The sub-picker
@@ -1825,12 +1948,42 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                                 if [[ "${MCP_UNOFFICIAL[$_mcp_i]:-0}" == "1" ]]; then
                                     _mcp_desc="[!] ${_mcp_desc}"
                                 fi
-                                TUI_DESCS+=("${_mcp_desc} [MCP:${_mcp_glyph} CLI:${_cli_glyph}]")
+
+                                # v6.16.0 (T-04) — append a scope hint so the
+                                # user sees what scope the row will land in
+                                # before the lock-screen. Glyph derives from:
+                                #   - mcp_detect_installed_scope (T-02)
+                                #     when the MCP is already registered →
+                                #     "(installed: U/P/L)"
+                                #   - MCP_DEFAULT_SCOPE[$_mcp_i] otherwise
+                                #     → "(default: U/P/L)"
+                                # IMPORTANT: only the description suffix is
+                                # mutated. TUI_LABELS stays raw MCP_NAMES so
+                                # the CSV-match below (line 1869–1872) keeps
+                                # working — see comment at 1853–1861 in the
+                                # pre-v6.16 code, preserved verbatim below.
+                                _scope_detected=$(mcp_detect_installed_scope "${MCP_NAMES[$_mcp_i]}")
+                                if [[ -n "$_scope_detected" ]]; then
+                                    case "$_scope_detected" in
+                                        user)    _scope_hint="(installed: U)" ;;
+                                        project) _scope_hint="(installed: P)" ;;
+                                        local)   _scope_hint="(installed: L)" ;;
+                                        *)       _scope_hint="" ;;
+                                    esac
+                                else
+                                    case "${MCP_DEFAULT_SCOPE[$_mcp_i]:-user}" in
+                                        user)    _scope_hint="(default: U)" ;;
+                                        project) _scope_hint="(default: P)" ;;
+                                        local)   _scope_hint="(default: L)" ;;
+                                        *)       _scope_hint="(default: U)" ;;
+                                    esac
+                                fi
+                                TUI_DESCS+=("${_mcp_desc} [MCP:${_mcp_glyph} CLI:${_cli_glyph}] ${_scope_hint}")
                                 TUI_REQUIRED+=(0)
                             fi
                         done
                     done
-                    unset _mcp_i _cat_i _mcp_desc _mcp_status_word _cli_status_word _mcp_glyph _cli_glyph
+                    unset _mcp_i _cat_i _mcp_desc _mcp_status_word _cli_status_word _mcp_glyph _cli_glyph _scope_detected _scope_hint
                     # Restore prior MCP selection on Back-return (same pattern as skills).
                     TUI_RESULTS=()
                     if [[ -n "${TK_MCP_PRE_SELECTED:-}" ]]; then
@@ -1850,58 +2003,36 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                         done
                         unset _mcp_i _p _prev_mcp _IFS_SAVED2
                     fi
-                    # Phase 39 (HIGH-01 fix): the sub-picker is a pre-collection
-                    # screen whose ONLY contract is "produce TK_MCP_PRE_SELECTED
-                    # CSV of raw MCP_NAMES" for the main TUI to re-match. Wiring
-                    # mcp_toggle_scope here corrupts every TUI_LABELS[] slot
-                    # with a scope-glyph prefix (e.g. "[U] context7"); the CSV
-                    # builder + lookback restore below both read TUI_LABELS as
-                    # raw names, breaking exact-match. Per-row scope choice
-                    # happens in the main TUI (where MCP_SELECTED_SCOPE[] is
-                    # already wired). No scope banner / `s` toggle here.
-                    _rc=0
-                    TK_TUI_ALLOW_BACK=1 tui_checklist || _rc=$?
-                    unset TUI_HEADER_TEXT
-                    case "$_rc" in
-                        0)
-                            _mcp_pre_csv=""
-                            for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
-                                if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
-                                    _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
-                                fi
-                            done
-                            unset _mcp_i
-                            export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
-                            unset _mcp_pre_csv
-                            _restore_main_tui_state
-                            break   # done with pre-collection
-                            ;;
-                        1)
-                            echo "MCP selection cancelled — aborting install."
-                            exit 0
-                            ;;
-                        4)
-                            _restore_main_tui_state
-                            if [[ "$_need_skills_pre" -eq 1 ]]; then
-                                _pc_step="skills"
-                            else
-                                _pc_back_to_main=1
-                                break
-                            fi
-                            ;;
-                    esac
-                    ;;
-            esac
-        done   # inner step loop
+    # v6.16.0 — sub-picker is a pre-collection screen whose ONLY contract is
+    # "produce TK_MCP_PRE_SELECTED CSV of raw MCP_NAMES" for the main MCP TUI
+    # (or the v6.16 lock-screen) to re-match. Wiring mcp_toggle_scope HERE
+    # would corrupt every TUI_LABELS[] slot with a scope-glyph prefix
+    # ("[U] context7"); the CSV builder below reads TUI_LABELS as raw names,
+    # so exact-match would break. Per-row scope choice happens in the
+    # lock-screen rendered by _run_mcp_scope_lock_screen (T-05).
+    _rc=0
+    tui_checklist || _rc=$?
+    unset TUI_HEADER_TEXT
+    case "$_rc" in
+        0)
+            _mcp_pre_csv=""
+            for ((_mcp_i=0; _mcp_i<${#TUI_LABELS[@]}; _mcp_i++)); do
+                if [[ "${TUI_RESULTS[$_mcp_i]:-0}" -eq 1 ]]; then
+                    _mcp_pre_csv="${_mcp_pre_csv}${_mcp_pre_csv:+,}${TUI_LABELS[$_mcp_i]}"
+                fi
+            done
+            unset _mcp_i
+            export TK_MCP_PRE_SELECTED="$_mcp_pre_csv"
+            unset _mcp_pre_csv
+            _restore_main_tui_state
+            ;;
+        *)
+            echo "MCP selection cancelled — aborting install."
+            exit 0
+            ;;
+    esac
 
-        if [[ "$_pc_back_to_main" -eq 1 ]]; then
-            _redo_main_tui=1
-            continue   # outer loop → re-run main TUI, re-derive needs
-        fi
-        break   # all pre-collection done
-    done   # outer redo loop
-
-    unset _need_mcp_pre _need_skills_pre _redo_main_tui _pc_step _pc_back_to_main _rc
+    unset _rc
     unset -f _save_main_tui_state _restore_main_tui_state
 fi
 
