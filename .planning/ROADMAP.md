@@ -20,13 +20,17 @@
 - ✅ **v6.12.1 Meta-audit cleanup** — severity rubric, naming parity, raw-HTML specificity (shipped 2026-05-09, PR #79).
 - ✅ **v6.13.0 F-006 propagator demote + 5-prompt meta-audit** — shipped 2026-05-09 (PR #81).
 - ✅ **v6.14.0 Base-prompt meta-audit wave 1** — F-101/F-104/F-107/F-111 (shipped 2026-05-10, PR #82). Hotfix PR #83 deleted phantom release-pin workflow.
-- ✅ **v6.16.0 Install MCP scope picker** — lock-screen after sub-picker + Back removal + catalog patch (comet-bridge → user, datadog → project, posthog → project) (shipped 2026-05-10).
+- ✅ **v6.14.1 Meta-audit wave-2 surgical findings** — 4 of 139 (shipped 2026-05-10, PR #84).
+- ✅ **v6.14.2 Meta-audit wave-2 calibration findings** — 8 of 135 (shipped 2026-05-10, PR #86).
+- ✅ **v6.14.3 Meta-audit wave-2 calibration findings** — 7 of ~117 (shipped 2026-05-10, PR #87).
+- ✅ **v6.16.0 Install MCP scope picker** — lock-screen after sub-picker + Back removal + catalog patch (comet-bridge → user, datadog → project, posthog → project) (shipped 2026-05-10, PR #92).
+- ✅ **v6.17.0 DEPLOY_CHECKLIST runbook + DESIGN_REVIEW Phase 7 dissolution** — Council-validated base-prompt reworks (20 wave-2 findings: F-290..F-306 + F-321/F-326/F-329); originally tracked as v6.15.0/v6.15.1 in stacked PRs #88/#89 against pre-v6.16.0 main, consolidated post-v6.16.0 (shipped 2026-05-10).
 
 ## Active Milestone
 
-**v6.14.1 — Base-Prompt Meta-Audit Wave 2** (planning, started 2026-05-10).
+**v6.17.1 — Audit-rubric SOTs + 30-file framework re-splice** (in progress).
 
-Wave 1 closed 4 of ~150 findings from 7-prompt adversarial meta-audit. Remaining ~146 findings unrecoverable (PR-#82 conversation compacted) — re-run audit, batch into v6.14.1 (small/surgical) and v6.15.x (big rework).
+Three canonical SOT components for audit rubrics (Phase 3 stage 1) + rubric-anchors splice sentinel + 30-file re-splice (Phase 3 stage 2). Originally stacked as PRs #90/#91 (v6.15.2/v6.15.3) against pre-v6.16.0 main; bundled into v6.17.1 after v6.17.0 ships.
 
 Pending scope:
 
@@ -161,5 +165,10 @@ Pending scope:
 | v6.12.1 Meta-audit cleanup | — | — | ✅ Shipped | 2026-05-09 |
 | v6.13.0 Propagator demote + 5-prompt audit | — | — | ✅ Shipped | 2026-05-09 |
 | v6.14.0 Meta-audit wave 1 | — | 4/4 findings | ✅ Shipped | 2026-05-10 |
-| v6.14.1 Meta-audit wave 2 | — | 0/~146 | 🔄 Planning | — |
+| v6.14.1 Wave-2 surgical | — | 4/139 findings | ✅ Shipped | 2026-05-10 |
+| v6.14.2 Wave-2 calibration | — | 8/135 findings | ✅ Shipped | 2026-05-10 |
+| v6.14.3 Wave-2 calibration | — | 7/~117 findings | ✅ Shipped | 2026-05-10 |
+| v6.16.0 Install MCP scope picker | — | — | ✅ Shipped | 2026-05-10 |
+| v6.17.0 DEPLOY+DESIGN reworks | — | 20 findings | ✅ Shipped | 2026-05-10 |
+| v6.17.1 Rubric SOTs + 30-file re-splice | — | — | 🔄 In progress | — |
 | v6.15.x Framework drift sweep | — | 0/28 files | 📋 Backlog | — |

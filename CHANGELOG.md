@@ -7,6 +7,182 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.17.0] - 2026-05-10
+
+Two Council-validated base-prompt reworks bundled into a single release:
+DEPLOY_CHECKLIST is reclassified as a deployment runbook (audit machinery
+stripped), and DESIGN_REVIEW Phase 7 is dissolved into CODE_REVIEW +
+PERFORMANCE_AUDIT to eliminate cross-prompt overlap. Closes 20 wave-2
+findings (17 from F-290..F-306, 3 from F-321/F-326/F-329).
+
+Originally tracked as v6.15.0 + v6.15.1 in stacked PRs #88/#89 against
+pre-v6.16.0 main; consolidated into v6.17.0 after v6.16.0 (MCP scope
+picker, PR #92) shipped on 2026-05-10.
+
+### Changed — DESIGN_REVIEW Phase 7 dissolved into CODE_REVIEW + PERFORMANCE_AUDIT
+
+`templates/base/prompts/DESIGN_REVIEW.md` Phase 7 ("Code Health") was a
+duplicate of audit categories owned by other prompts: component reuse,
+design tokens, and magic-number hygiene belong in CODE_REVIEW; bundle
+size, lazy loading, CLS, and animation performance belong in
+PERFORMANCE_AUDIT. Carrying these in DESIGN_REVIEW caused the same
+finding to surface in two reports with different severities and no
+canonical owner — wave-2 findings F-321 (cross-prompt overlap) and
+F-329 (severity mismatch).
+
+This release dissolves Phase 7 into the prompts that already own each
+concern:
+
+- **DESIGN_REVIEW** is now a 6-phase review process (Preparation,
+  Interaction Testing, Responsiveness, Visual Polish, Accessibility,
+  Robustness). Heading "## 📋 7-Phase Review Process" → "## 📋 6-Phase
+  Review Process". Phase 7 section deleted.
+- **CODE_REVIEW** gains a new section "ARCHITECTURE AND CONSISTENCY"
+  (after BUSINESS LOGIC VALIDATION, before LOW-VALUE REVIEW FILTER) with
+  three concrete checks: component reuse, design tokens, magic numbers.
+  Each check is gated by the existing LOW-VALUE REVIEW FILTER —
+  reviewers must justify duplication >30 LOC for component-reuse
+  findings, must show the project ships a token system before flagging
+  hardcoded values, and must show the magic number carries semantic
+  meaning before flagging it.
+- **PERFORMANCE_AUDIT** gains a new section 3.6 "Animation Performance"
+  covering the only Phase 7 bullet not already in section 3 of
+  PERFORMANCE_AUDIT (`transform` / `opacity` GPU acceleration,
+  layout-triggering properties, paint cost on long lists,
+  `prefers-reduced-motion`). Bundle size (3.1), lazy loading (3.2 /
+  3.3), Core Web Vitals + CLS (3.4) already covered the rest.
+
+Closes wave-2 findings F-321, F-329, and partial F-326 (3 findings).
+
+### Scope
+
+- Base prompts only (`templates/base/prompts/{DESIGN_REVIEW,CODE_REVIEW,PERFORMANCE_AUDIT}.md`).
+- Framework copies (`templates/{laravel,rails,python,go}/prompts/DESIGN_REVIEW.md`)
+  still carry Phase 7. Drift remains tracked under KNOWN-DEBT-1 and is
+  the target of v6.15.2 (Phase 3 — framework drift via components
+  splice). Council Decision 2 explicitly scoped this release to base.
+
+### Migration
+
+No action required for users running `templates/base/prompts/*` — the
+audit pipeline still emits 6 audit reports (DESIGN_REVIEW remains in
+the audit-pipeline list, only its phase count shrank). Users who pinned
+to "Phase 7 Code Health" findings in their own playbooks should
+re-route: component / token / magic-number findings now appear under
+CODE_REVIEW "ARCHITECTURE AND CONSISTENCY"; animation-performance
+findings now appear under PERFORMANCE_AUDIT 3.6.
+
+### Files
+
+- `templates/base/prompts/DESIGN_REVIEW.md` — heading update + Phase 7 deletion (-24 lines).
+- `templates/base/prompts/CODE_REVIEW.md` — new ARCHITECTURE AND CONSISTENCY section (+27 lines).
+- `templates/base/prompts/PERFORMANCE_AUDIT.md` — new section 3.6 Animation Performance (+11 lines).
+
+### Changed — DEPLOY_CHECKLIST is now a deployment runbook, not an audit prompt (BREAKING)
+
+`templates/base/prompts/DEPLOY_CHECKLIST.md` was the only file in the
+v4.2 audit-pipeline list that wasn't actually an audit prompt. It is a
+**deployment checklist**: numbered phases (code cleanup → quality →
+DB → environment → security → deployment → verification → rollback).
+The v4.2 propagation injected SELF-CHECK 6-step FP recheck, OUTPUT
+FORMAT structured-report schema, and Council Handoff into every
+audit prompt — and DEPLOY_CHECKLIST got swept up in that.
+
+Result before this change: a DevOps operator running this checklist
+faced a 6-step false-positive recheck procedure on a checkbox-only
+workflow. There were no candidate findings to evaluate. Sections 9-10
+(lines 238-563) of the file were dead weight.
+
+**Council validation (2026-05-10):** Both Skeptic and Pragmatist judges
+returned verdict SIMPLIFY on the v6.15.x plan. Implemented their
+revisions:
+
+- **Skeptic addition** — also strip the QUICK CHECK table (audit-
+  pattern artifact, not a deploy procedure). Done: removed the QUICK
+  CHECK table and "If all 6 = OK → Ready to deploy!" line that
+  conflicted with `CODE_REVIEW.md` "do not infer status from inspection".
+- **Pragmatist addition** — update 4 infrastructure files, not just the
+  splice script. Done: edits to `Makefile`, `.github/workflows/quality.yml`,
+  `scripts/propagate-audit-pipeline-v42.sh`, and
+  `scripts/tests/test-template-propagation.sh` so DEPLOY_CHECKLIST is no
+  longer included in audit-prompt validation. The v4.2 splice pipeline
+  no longer attempts to inject SELF-CHECK / OUTPUT FORMAT / Council
+  Handoff into DEPLOY_CHECKLIST.
+- **Pragmatist addition** — auth/crypto deploys need an explicit
+  monitoring story. Done: new Phase 5.4 ("Auth / Crypto / Session
+  changes") with mandatory items for threat-model update, auth-failure
+  metrics armed, anomaly alerts armed, audit logs armed (SOC 2 §CC7 /
+  GDPR Art. 33). Mandatory only when the deploy touches auth code paths;
+  marked `n/a` with one-line justification for non-auth deploys.
+
+### Closed — wave-2 findings F-290 .. F-306 (17 findings)
+
+The DEPLOY_CHECKLIST rework closes the entire DEPLOY_CHECKLIST wave-2
+finding cluster:
+
+- **F-290** — fundamental category mismatch (audit machinery on a
+  checklist prompt). Fixed by stripping audit machinery.
+- **F-291** — checkbox-only QUICK CHECK assumed verification. Fixed by
+  removing QUICK CHECK and replacing with Phase 0a Pre-Deploy Baseline
+  (capture metrics with evidence) + per-phase atomicity statements.
+- **F-292** — DEPLOY TYPES referenced section numbers, not stages.
+  Fixed by mapping each deploy type (Hotfix / Minor / Feature / Major)
+  to the specific phases that apply, and adding strategy-in-use field
+  (single-machine / rolling / blue-green / canary).
+- **F-293** — migration safety missing backward-compatibility check.
+  Fixed by Phase 3.2 (forward-compatible window + backward-compatible
+  window + dropped-column reference scan).
+- **F-294** — driver hygiene without verification. Fixed by Phase 4.3
+  connectivity-verified box + queue-depth pre-deploy <80% requirement.
+- **F-295** — generic security checks missing threat model and CSRF /
+  rate-limit / token-expiry. Fixed by Phase 5.4 (auth/crypto threat
+  model link), Phase 5.5 (CSRF / rate-limit / token-expiry).
+- **F-296** — pre/deploy/post stages without atomicity guarantees.
+  Fixed by explicit "Atomicity" callout at Phase 6 head + per-step
+  failure routing ("if step 5 fails: maintenance stays ON, route to
+  Phase 8").
+- **F-297** — no observability gate between deploy and post-deploy.
+  Fixed by Phase 7.4 Post-Deploy Comparison vs Phase 0a Baseline
+  (error rate, p95, GC, DB pool, queue depth, auth-failure rate).
+- **F-298** — manual smoke tests. Fixed by Phase 7.1 (automated, not
+  manual) + Phase 7.2 (regression suite re-run) + Phase 7.3 (load /
+  traffic-shape validation conditional).
+- **F-299** — vague rollback triggers. Fixed by Phase 8.2 trigger table
+  with specific signals, thresholds, time windows, and named decider per
+  trigger.
+- **F-300** — PROJECT SPECIFICS without validation. Fixed by Phase 0.1
+  strategy-in-use checklist + cross-references to the rest of the
+  checklist for downstream validation.
+- **F-301** — UNCERTAINTY DISCIPLINE inappropriate in checklist
+  context. Fixed by removing the section entirely.
+- **F-302** — Section "## 9. SELF-CHECK" looked like a continuation of
+  the numbered checklist. Fixed by removing sections 9-10.
+- **F-304** — Hotfix path skipped phases 2-5 unconditionally. Fixed by
+  Phase 5 conditional rule: hotfix MUST cover Phase 5 if patch touches
+  auth/session/token/crypto code paths.
+- **F-305** — reactive-only monitoring. Fixed by Phase 0a Pre-Deploy
+  Baseline (proactive baseline capture before deploy starts).
+- **F-306** — "Ready to deploy" conclusion premature. Fixed by removing
+  the conclusion entirely; deploys proceed phase-by-phase, not
+  QUICK-CHECK-pass.
+
+F-303 (placeholder name consistency) is cosmetic only — defer.
+
+### Migration impact for users
+
+Projects with `.claude/prompts/DEPLOY_CHECKLIST.md` synced to v6.14.x
+will see the file rewritten on next `update-claude.sh` run. Existing
+local edits to the audit-pipeline sections (SELF-CHECK / OUTPUT FORMAT)
+will be discarded — those sections are gone. Existing edits to the
+phase content (1-8) are preserved if they match the new section
+headers; otherwise the smart-update script will surface them in the
+backup directory.
+
+The 28 framework prompt variants in `templates/{laravel,rails,python,go}/prompts/DEPLOY_CHECKLIST.md`
+still carry the old audit-machinery content (KNOWN-DEBT-1 framework
+drift). They will be updated in v6.15.2 when the framework drift sweep
+ships.
+
 ## [6.16.0] - 2026-05-10
 
 ### Added — MCP scope per-row picker (lock-screen after sub-picker)

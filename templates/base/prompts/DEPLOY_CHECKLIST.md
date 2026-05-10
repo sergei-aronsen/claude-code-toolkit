@@ -1,28 +1,18 @@
 # Deploy Checklist — Base Template
 
-<!-- v42-splice: callout -->
-<!-- Audit exceptions allowlist: .claude/rules/audit-exceptions.md
-     Consult this file before reporting any finding. Use /audit-skip to add
-     an entry, /audit-restore to remove one. -->
+> **This is a deployment runbook, not an audit prompt.** Run it before
+> every production deploy. The checklist produces a go/no-go decision
+> and a rollback plan, not a structured findings report. The audit
+> machinery (SELF-CHECK FP recheck, OUTPUT FORMAT report schema, Council
+> handoff) is intentionally absent — those belong in `CODE_REVIEW.md`,
+> `SECURITY_AUDIT.md`, and the per-stack performance audits, not here.
 
 ## Goal
 
 Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
-
----
-
-## QUICK CHECK (5 minutes)
-
-| # | Check | Expected |
-| --- | ------- | ---------- |
-| 1 | Build | Success |
-| 2 | Tests | Pass |
-| 3 | Linter | No errors |
-| 4 | Debug code | Removed |
-| 5 | Migrations | Reviewed |
-| 6 | Env vars | Set |
-
-**If all 6 = OK → Ready to deploy!**
+For each section, mark every checkbox `[x]` with evidence (command run,
+log link, screenshot reference, or a one-line note) before proceeding.
+A `[ ]` left unchecked at the end of any phase blocks the deploy.
 
 ---
 
@@ -45,16 +35,44 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 - `.env` — environment variables
 - [Other important files]
 
+**Strategy in use** (pick one and document):
+
+- [ ] Single-machine sequential — full downtime window, simplest.
+- [ ] Rolling restart — workers cycle one at a time, no downtime.
+- [ ] Blue/green — full duplicate environment, instant cut-over.
+- [ ] Canary — N% of traffic to new version first, then ramp.
+
+The phases below assume single-machine sequential by default; for
+rolling/blue-green/canary, the same gates apply per slice.
+
 ---
 
 ## 0.2 DEPLOY TYPES
 
-| Type | When | Checklist |
-| ----- | ------- | --------- |
-| Hotfix | Critical bug | Quick Check only |
-| Minor | Small changes | Quick Check + section 1 |
-| Feature | New functionality | Sections 0-6 |
-| Major | Architectural changes | Full checklist |
+| Type | When | Required phases | Note |
+| ----- | ------- | --------- | ---- |
+| Hotfix | Critical bug | Phases 0, 3 (if migration), 5 (if auth/crypto), 6, 7, 8 | Phase 5 cannot be skipped if patch touches auth/session/token/crypto code paths. |
+| Minor | Small changes | Phases 0-3, 6-8 | Phase 4 only if env config changed. |
+| Feature | New functionality | Phases 0-8 (full) | Phase 7.3 (load test) recommended if traffic-shape changes. |
+| Major | Architectural changes | Phases 0-8 (full) + post-deploy comparison vs Phase 0a baseline | Always blue/green or canary; never single-machine sequential. |
+
+---
+
+## 0a. PRE-DEPLOY BASELINE
+
+Capture **before** the deploy starts so post-deploy comparison has a
+reference. Write the values into the deploy ticket.
+
+- [ ] **Error rate** (rolling 5-min, all endpoints): \_\_\_\_ %
+- [ ] **Latency p95** (top 5 endpoints): \_\_\_\_ ms each
+- [ ] **GC pause time p99** (if applicable): \_\_\_\_ ms
+- [ ] **DB connection pool utilization**: \_\_\_\_ %
+- [ ] **Queue depth** (per queue): \_\_\_\_
+- [ ] **Auth-failure rate** (if patch touches auth): \_\_\_\_ /min
+
+These numbers feed Phase 7.4 (post-deploy comparison) and Phase 8
+(rollback triggers). Without a baseline, post-deploy "looks fine" is
+not a measurable claim.
 
 ---
 
@@ -68,12 +86,14 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 
 ### 1.2 Commented Code
 
-- [ ] No commented-out code
-- [ ] No backup blocks
+- [ ] No commented-out blocks
+- [ ] No "temporary" code
 
-### 1.3 Temporary Files
+### 1.3 Linter
 
-- [ ] No .bak, .tmp, .old files
+- [ ] Linter passes (command actually run, not inferred)
+- [ ] Type checker passes (command actually run, not inferred)
+- [ ] No new warnings introduced
 
 ---
 
@@ -81,19 +101,21 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 
 ### 2.1 Tests
 
-- [ ] All tests pass
-- [ ] No skipped tests without reason
-- [ ] Critical functionality covered
+- [ ] All tests pass on the deploy candidate commit (CI green)
+- [ ] New code is covered by tests
+- [ ] No `.skip`, `xfail`, or `it.only` in committed test files
 
-### 2.2 Linting
+### 2.2 Build
 
-- [ ] Code passes linter
-- [ ] No errors (warnings OK)
+- [ ] Build succeeds in the deploy environment (not "works on my machine")
+- [ ] No new warnings
+- [ ] Bundle size within budget (if frontend)
 
-### 2.3 Build
+### 2.3 Performance
 
-- [ ] Build passes without errors
-- [ ] Assets built and minified
+- [ ] No N+1 queries introduced (run query log on smoke path)
+- [ ] No new heavy queries (>100ms) without index plan
+- [ ] Caching strategy chosen for new endpoints
 
 ---
 
@@ -102,16 +124,33 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 ### 3.1 Migrations
 
 - [ ] Migrations have rollback
-- [ ] NOT NULL columns have default
+- [ ] NOT NULL columns have default (if PG: default is **immutable** —
+  see `POSTGRES_PERFORMANCE_AUDIT.md` F-398 for volatile-default trap)
 - [ ] Indexes added
-- [ ] Dry run verified
+- [ ] Dry run verified on a production-size dataset
 
-### 3.2 Backup
+### 3.2 Backward compatibility
 
-- [ ] Backup created before migrations
-- [ ] Backup verified for restorability
+- [ ] Running application code on the OLD schema **after** migration
+  still works (forward-compatible window for rolling deploys)
+- [ ] Running NEW application code on the OLD schema works (backward-
+  compatible window — required if rollback ships old code against new
+  schema). If neither direction is safe, this is a two-deploy migration:
+  first deploy adds the column nullable, backfills, then the second
+  deploy enforces NOT NULL and removes the old code path.
+- [ ] No queries reference dropped columns / renamed columns / removed
+  indexes during the deploy window. If a column is being dropped,
+  remove all `SELECT col` and `WHERE col` references in code at least
+  one deploy ahead of the schema change.
 
-### 3.3 Seeders
+### 3.3 Backup
+
+- [ ] Backup created **before** migrations (not just "we have nightly
+  backups" — a deploy-aligned snapshot)
+- [ ] Backup verified for restorability (restore-test on staging if the
+  migration is destructive)
+
+### 3.4 Seeders
 
 - [ ] Seeders DO NOT run in production
 - [ ] No truncate without env check
@@ -131,13 +170,26 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 
 - [ ] All API keys — production versions
 - [ ] Passwords strong and unique
-- [ ] No secrets in code
+- [ ] No secrets in code or in `.env.example`
+- [ ] Secrets sourced from secret manager / environment, not committed
+  files
 
-### 4.3 Cache Config
+### 4.3 Cache / Session / Queue Drivers
 
-- [ ] Cache driver configured (not file)
-- [ ] Session driver configured
-- [ ] Queue driver configured
+- [ ] Cache driver configured (not file in production unless single-host)
+- [ ] Session driver configured (not file if multi-host)
+- [ ] Queue driver configured (not sync in production)
+- [ ] **Connectivity verified**: ping cache + session + queue endpoints
+  from the deploy host before starting Phase 6 — a typo in
+  `CACHE_HOST` is detected here, not after the deploy
+- [ ] Queue depth pre-deploy < 80% capacity (giving headroom for the
+  deploy-time backlog)
+
+### 4.4 Feature Flags
+
+- [ ] New features default OFF; explicit allow-list controls who sees them
+- [ ] Flag-system reachability verified (the flag service responds and
+  returns expected values for the deploy host)
 
 ---
 
@@ -145,65 +197,148 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 
 ### 5.1 Files
 
-- [ ] .env not accessible via web
-- [ ] .git not accessible via web
+- [ ] `.env` not accessible via web
+- [ ] `.git` not accessible via web
 - [ ] Logs not accessible via web
+- [ ] Backup files not in web-accessible paths
 
 ### 5.2 Permissions
 
-- [ ] Correct directory permissions
+- [ ] Correct directory permissions (least privilege)
 - [ ] Owner correct (www-data/nginx)
+- [ ] No world-writable files in app dir
 
 ### 5.3 Dependencies
 
+- [ ] Vulnerability scan run (`npm audit` / `composer audit` /
+  `pip-audit` / `go vuln check`) — **command actually executed**, not
+  inferred from a pinned lock file
 - [ ] No critical vulnerabilities
-- [ ] Dependencies updated
+- [ ] No new transitive dependency from an unknown publisher
+
+### 5.4 Auth / Crypto / Session changes (conditional)
+
+If this deploy touches authentication, session handling, token issuance,
+or cryptographic primitives, the next four boxes are mandatory. (For
+non-auth deploys, mark "n/a" with a one-line justification.)
+
+- [ ] **Threat model updated** — link or paste the section from
+  `.claude/rules/project-context.md` describing the new auth/crypto
+  surface. Do not deploy a delta the threat model has not been updated
+  to cover.
+- [ ] **Auth-failure metrics armed** — login-failure rate, token-refresh
+  failure rate, MFA-challenge failure rate visible in dashboards before
+  the deploy starts (so a regression is observable in minutes, not
+  hours).
+- [ ] **Anomaly alerts armed** — anomaly thresholds (per-account login
+  burst, geographic distribution shift, sudden permission-grant volume)
+  active and routed to oncall.
+- [ ] **Audit logs armed** — sign-in / sign-out / permission-change /
+  token-issue events written to an append-only log accessible to
+  incident response. Required for SOC 2 §CC7 / GDPR Art. 33.
+
+### 5.5 CSRF / Rate-limit / Token expiry
+
+- [ ] CSRF token generation and verification covered for new state-
+  changing endpoints
+- [ ] Rate limit configured for new auth endpoints (login, register,
+  password-reset, API-key generation)
+- [ ] Token expiry < session-fixation window (typically ≤ 30 minutes
+  for access tokens; refresh-token policy documented)
 
 ---
 
 ## 6. DEPLOYMENT
 
+> **Atomicity:** Steps within a phase run sequentially. If a step
+> fails, **maintenance mode stays on** until Phase 8 (rollback) decides
+> the recovery path. Do not auto-disable maintenance mode on partial
+> success.
+
 ### 6.1 Pre-Deploy
 
 ```bash
-# 1. Maintenance mode
-# 2. Backup database
-# 3. Pull code
-# 4. Install dependencies
+1. Maintenance mode ON
+2. Database backup (deploy-aligned snapshot, not "nightly")
+3. Pull code (verify the SHA matches the CI-green commit)
+4. Install dependencies (no network = abort; a half-installed deploy
+   is worse than no deploy)
 ```
+
+If any step 1-4 fails: maintenance stays ON, no migrations, no worker
+restart, route to Phase 8.
 
 ### 6.2 Deploy
 
 ```bash
-# 5. Run migrations
-# 6. Clear caches
-# 7. Rebuild caches
-# 8. Restart workers
+5. Run migrations (with --dry-run first if supported)
+6. Clear caches
+7. Rebuild caches (warm critical cache keys before traffic)
+8. Restart workers (rolling, not all-at-once — see strategy in 0.1)
 ```
+
+If step 5 fails: maintenance stays ON. Run the migration's rollback,
+verify Phase 0a baseline metrics restored, then route to Phase 8.
+
+If step 8 hangs > 60s per worker: do **not** force-kill. Investigate the
+hung worker (`kill -QUIT <pid>` for Java/JS to dump state). A force-kill
+can corrupt in-flight write transactions.
 
 ### 6.3 Post-Deploy
 
 ```bash
-# 9. Verify site works
-# 10. Check logs for errors
-# 11. Disable maintenance
+9. Verify a known-good page renders (smoke URL) — automated, not
+   manual
+10. Tail error logs for 60 seconds; abort to Phase 8 if error rate
+    exceeds Phase 0a baseline by 2× or more
+11. Disable maintenance mode (only after step 9 + 10 are CLEAN)
 ```
 
 ---
 
 ## 7. VERIFICATION
 
-### 7.1 Smoke Tests
+### 7.1 Smoke Tests (automated)
 
-- [ ] Homepage loads
-- [ ] Login works
-- [ ] Core functionality works
+- [ ] Homepage 200
+- [ ] Login flow end-to-end (HTTP request to confirmation page) —
+  scripted, not "I clicked it"
+- [ ] Top 3 critical user flows pass automated checks
+- [ ] Health check endpoint returns expected payload (not just 200 — the
+  body must contain DB-up, cache-up, queue-up signals)
 
-### 7.2 Monitoring
+### 7.2 Regression Suite
 
-- [ ] No new errors in logs
-- [ ] Error rate hasn't increased
-- [ ] Response time is normal
+- [ ] Production smoke-test suite re-run post-deploy (the same suite
+  CI ran, against production)
+- [ ] If frontend deploy: visual-regression suite re-run post-deploy
+
+### 7.3 Load / Traffic-Shape Validation (conditional)
+
+If this deploy changes traffic shape (new endpoint, removed cache,
+N+1 fix that releases pent-up DB load):
+
+- [ ] Synthetic load run that simulates expected post-deploy traffic
+  shape against staging or canary
+- [ ] DB connection pool, cache hit rate, and worker queue depth observed
+  under that load — within budget
+
+### 7.4 Post-Deploy Comparison vs Phase 0a Baseline
+
+- [ ] Error rate ≤ baseline + 0.5%
+- [ ] Latency p95 ≤ baseline × 1.2 (top 5 endpoints)
+- [ ] GC pause p99 ≤ baseline × 1.5
+- [ ] DB pool utilization ≤ baseline + 10pp
+- [ ] Queue depth draining (not growing) within 5 minutes
+- [ ] Auth-failure rate ≤ baseline + 10% (if Phase 5.4 triggered)
+
+If any line fails: route to Phase 8. Do **not** wait for users to
+report regressions.
+
+### 7.5 Feature Flag State
+
+- [ ] All new features confirmed OFF by default
+- [ ] Flag-flip path tested on a non-production user before announcing
 
 ---
 
@@ -211,353 +346,117 @@ Comprehensive pre-deploy verification. Act as a Senior DevOps Engineer.
 
 ### 8.1 Readiness
 
-- [ ] Rollback script ready
-- [ ] Database backup available
-- [ ] Know commit hash for rollback
+- [ ] Rollback script ready and tested (the script has been executed at
+  least once on staging)
+- [ ] Database backup available (verified in 3.3)
+- [ ] Commit hash for rollback recorded in deploy ticket
+- [ ] Rollback runbook link in deploy ticket — names the on-call
+  decision-maker, the dashboards to watch, and the abort criteria
 
 ### 8.2 Triggers
 
-Rollback if:
+Rollback when **any** trigger fires within the post-deploy window
+(default 30 minutes; longer for canary):
 
-- Error rate > 5%
-- Critical functionality not working
-- Database corruption
+| Signal | Threshold | Time window | Decider |
+| ------- | ---------- | ----------- | ------- |
+| Error rate | > Phase 0a baseline + 1pp | rolling 5 min | on-call |
+| Latency p95 (top 5 endpoints) | > Phase 0a × 1.5 | rolling 5 min | on-call |
+| Auth-failure rate (if Phase 5.4 triggered) | > Phase 0a + 25% | rolling 5 min | on-call + security oncall |
+| Critical user-flow smoke test | failing | any single failure | on-call (immediate) |
+| Database corruption | any signal: replication lag spike, foreign-key violation log entries, unexpected NULLs in a NOT NULL column | any | on-call + DBA (immediate) |
+| New 5xx class not seen pre-deploy | > 10/min sustained 5 min | 5 min | on-call |
 
----
+"Critical functionality" must be defined per project — list the
+specific endpoints / user actions in `## 0.1 PROJECT SPECIFICS` so the
+on-call decider does not improvise mid-incident.
 
-## UNCERTAINTY DISCIPLINE
+### 8.3 Time Boundaries
 
-If evidence is incomplete: lower confidence, reduce severity, move the
-observation into Non-Blocking Observations, and explicitly state the
-uncertainty. Do not present assumptions as facts. Do not use weasel
-words ("could potentially", "might allow", "in theory") to inflate
-report length — either the finding is grounded or it isn't.
-
----
-
-## 9. SELF-CHECK (FP Recheck — 6-Step Procedure)
-<!-- v42-splice: fp-recheck-section -->
-
-### Procedure
-
-For every candidate finding, execute these six steps in order. Produce a `## SELF-CHECK` block per finding (in your scratchpad — not the final report) before deciding whether to report or drop it. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
-
-1. **Read context** — Open the source file at `<path>:<line>` and load ±20 lines around the flagged line. Read the full surrounding function or block; do not reason from the rule label alone.
-2. **Trace data flow** — Follow user input from its origin to the flagged sink. Name each hop (≤ 6 hops). If input never reaches the sink, the finding is a false positive — drop with `dropped_at_step: 2`.
-3. **Check execution context** — Identify whether the code runs in test / production / background worker / service worker / build script / CI. Patterns that look exploitable in production may be required by the platform in another context (e.g. `eval` inside a build-time codegen script).
-4. **Cross-reference exceptions** — Re-read `.claude/rules/audit-exceptions.md`. Look for entries on the same file or neighbouring lines that change the threat surface (e.g. an upstream sanitizer documented in another exception). Match key is byte-exact: same path, same line, same rule, same U+2014 em-dash separator.
-5. **Apply platform-constraint rule** — If the pattern is required by the platform (MV3 service-worker MUST NOT use dynamic `importScripts`, OAuth `client_id` MUST be in `manifest.json`, CSP requires inline-style hashes, etc.), the finding is a design trade-off, not a vulnerability. Drop with the constraint named in the reason.
-6. **Severity sanity check** — Re-rate severity using the actual exploit scenario, not the rule label. A theoretical XSS sink behind 3 unlikely preconditions and no PII is not CRITICAL. If you cannot describe a concrete attack path the user would care about, drop or downgrade.
-
-If a finding survives all six steps, it proceeds to `## Findings` in the structured report.
+- **Decision window** to abort: 5 minutes after the trigger fires.
+  Beyond 5 minutes, switch from rollback to forward-fix unless the
+  trigger is "database corruption" or "auth bypass".
+- **Watch window** post-deploy: 30 minutes default, 2 hours for major
+  schema or auth changes.
+- **All-clear**: signed off by on-call and (if Phase 5.4 triggered)
+  security on-call. Until then the deploy is "watching", not "done".
 
 ---
 
-### Skipped (FP recheck) Entry Format
+## Stack Specifics
 
-Findings dropped at any step are listed in the report's `## Skipped (FP recheck)` table with these columns in order. The `one_line_reason` MUST be ≤ 100 characters and grounded in concrete tokens from the code — never `looks fine`, `trusted code`, or `out of scope`.
+### Laravel
 
-| path:line | rule | dropped_at_step | one_line_reason |
-|-----------|------|-----------------|-----------------|
-| `src/auth.ts:42` | `SEC-XSS` | 2 | `value flows through escapeHtml() at line 38 before reaching innerHTML` |
-| `lib/utils.py:5` | `SEC-EVAL` | 5 | `eval is required by build-time codegen; never reached at runtime` |
+```bash
+# Pre-deploy
+php artisan down --secret="recovery-token"
 
-`dropped_at_step` MUST be an integer in the range 1-6 matching the step where the finding was dropped.
+# Migrations
+php artisan migrate --pretend  # dry run
+php artisan migrate --force
 
----
+# Caches
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-### When a Finding Survives All Six Steps
-
-Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from in Phase 15.
-
----
-
-### Anti-Patterns
-
-These behaviors break the recheck and MUST NOT appear in any audit report:
-
-- Dropping a finding without recording the step number and reason — every drop is auditable.
-- Reasoning from the rule label instead of the code — the recheck exists because rule names are pattern-matched, not exploit-verified.
-- Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
-- Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
-
-## 10. OUTPUT FORMAT (Structured Report Schema — Phase 14)
-<!-- v42-splice: output-format-section -->
-
-### Report Path
-
-```text
-.claude/audits/<type>-<YYYY-MM-DD-HHMM>.md
+# Post-deploy
+php artisan up
 ```
 
-- `<type>` is one of the 7 canonical slugs documented in the next section. Backward-compat aliases resolve to a canonical slug at dispatch time.
-- Timestamp is local time, generated with `date '+%Y-%m-%d-%H%M'` (24-hour, no separator between hour and minute).
-- The audit creates the directory with `mkdir -p .claude/audits` on first write.
-- The toolkit does NOT auto-add `.claude/audits/` to `.gitignore` — let the user decide which audit reports to commit.
+### Next.js
 
----
+```bash
+# Build
+pnpm build
 
-### Type Slug to Prompt File Map
+# Restart
+pm2 reload ecosystem.config.js --update-env
 
-| `/audit` argument | Report filename slug | Prompt loaded |
-|-------------------|----------------------|---------------|
-| `security` | `security` | `templates/<framework>/prompts/SECURITY_AUDIT.md` |
-| `code-review` | `code-review` | `templates/<framework>/prompts/CODE_REVIEW.md` |
-| `performance` | `performance` | `templates/<framework>/prompts/PERFORMANCE_AUDIT.md` |
-| `deploy-checklist` | `deploy-checklist` | `templates/<framework>/prompts/DEPLOY_CHECKLIST.md` |
-| `mysql-performance` | `mysql-performance` | `templates/<framework>/prompts/MYSQL_PERFORMANCE_AUDIT.md` |
-| `postgres-performance` | `postgres-performance` | `templates/<framework>/prompts/POSTGRES_PERFORMANCE_AUDIT.md` |
-| `design-review` | `design-review` | `templates/<framework>/prompts/DESIGN_REVIEW.md` |
-
-Backward-compat aliases: `code` resolves to `code-review` and `deploy` resolves to `deploy-checklist` at dispatch time. The report filename ALWAYS uses the canonical slug, never the alias.
-
----
-
-### YAML Frontmatter
-
-Every report opens with a YAML frontmatter block containing exactly these 7 keys:
-
-```yaml
----
-audit_type: security
-timestamp: "2026-04-25-1730"
-commit_sha: a1b2c3d
-total_findings: 3
-skipped_allowlist: 1
-skipped_fp_recheck: 2
-council_pass: pending
----
+# Verify
+curl -f https://example.com/api/health
 ```
 
-- `audit_type` — one of the 7 canonical slugs from the type map.
-- `timestamp` — quoted `YYYY-MM-DD-HHMM` (the same string used in the report filename).
-- `commit_sha` — `git rev-parse --short HEAD` output, or the literal string `none` when the project is not a git repo.
-- `total_findings` — integer count of entries in the `## Findings` section.
-- `skipped_allowlist` — integer count of rows in the `## Skipped (allowlist)` table.
-- `skipped_fp_recheck` — integer count of rows in the `## Skipped (FP recheck)` table.
-- `council_pass` — starts at `pending`. Phase 15's `/council audit-review` mutates this to `passed`, `failed`, or `disputed` after collating per-finding verdicts.
+### Node.js (generic)
 
----
+```bash
+# Restart with zero-downtime (PM2)
+pm2 reload <app>
 
-### Section Order (Fixed)
-
-After the YAML frontmatter, the report MUST contain these five H2 sections in this exact order:
-
-1. `## Summary`
-2. `## Findings`
-3. `## Skipped (allowlist)`
-4. `## Skipped (FP recheck)`
-5. `## Council verdict`
-
-Plus the report's title H1 (`# <Type Title> Audit — <project name>`) immediately after the closing `---` of the frontmatter and before `## Summary`.
-
-Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty section as the literal placeholder `_None_` — the allowlist case uses a longer placeholder shown verbatim in the Skipped (allowlist) section below. Phase 15 navigates by these literal H2 headings.
-
----
-
-### Summary Section
-
-The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck`, with one row per severity (CRITICAL, HIGH, MEDIUM, LOW). The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations belong in the audit's scratchpad, never in `## Findings`. See the Full Report Skeleton below for the verbatim layout.
-
----
-
-### Finding Entry Schema (### Finding F-NNN)
-
-Each surviving finding becomes an `### Finding F-NNN` H3 block. `F-NNN` is zero-padded to 3 digits and sequential per report (`F-001`, `F-002`, ...).
-
-The entry has 11 fields rendered in two presentation styles:
-
-- **Bullet-label fields (1–7):** rendered as `**<Label>:**` bullets immediately under the H3, in the order shown below.
-- **Section-block fields (8–11):** rendered as `**<Label>:**` paragraph headings, each followed by its block (code fence, list, prose, or diff).
-
-The fields appear in this exact order:
-
-1. **ID** — the `F-NNN` identifier matching the H3 heading.
-2. **Severity** — one of CRITICAL, HIGH, MEDIUM, LOW (per `components/severity-levels.md`).
-3. **Confidence** — one of HIGH, MEDIUM, LOW. HIGH = directly observable in code with a clear execution path; MEDIUM = strong evidence with some inferred assumptions; LOW = weak signal or incomplete evidence. LOW-confidence findings MUST explicitly state the uncertainty in `Why it is real`. (Note: Confidence and Severity share the tokens HIGH/MEDIUM/LOW; the bullet label disambiguates — never write a bare `HIGH` without its `**Severity:**` or `**Confidence:**` label.)
-4. **Category** — one of: Correctness, Business Logic, Reliability, Concurrency, Performance, Operational Reliability, Operational Maintainability Risk, API Contract, Data Integrity, Security, Data Exposure. (Audit-type prompts MAY restrict this enum further — see the prompt's own `## Category` constraint, if any.)
-5. **Rule** — the auditor's rule-id (e.g. `SEC-SQL-INJECTION`, `PERF-N+1`, `LOG-INVERTED-COND`, `DATA-PARTIAL-UPDATE`).
-6. **Location** — `<path>:<start>-<end>` for a range, or `<path>:<line>` for a single point.
-7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
-8. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
-9. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
-10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
-11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
-
-Field omission rules (the omission key is **Severity**, never Confidence):
-
-- **Severity = CRITICAL / HIGH** — all 11 fields required.
-- **Severity = MEDIUM** — MAY omit Data flow and Suggested fix when they add no value. Confidence remains required (default `Confidence: MEDIUM` if not stated).
-- **Severity = LOW** — MAY collapse to ID + Severity + Confidence + Location + Claim + one-line evidence (the Code / Data flow / Why it is real / Suggested fix sections may be merged into the Claim).
-
-Note: omission rules apply per **Severity**. A LOW-severity finding with HIGH confidence may collapse; a HIGH-severity finding with LOW confidence MUST keep all 11 fields (LOW confidence requires the uncertainty be explicit, which lives in `Why it is real`).
-
-See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
-
-The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
-
----
-
-### Verbatim Code Block (AUDIT-03)
-
-#### Layout
-
-```text
-<!-- File: <path> Lines: <start>-<end> -->
-[optional clamp note]
-[fenced code block here with <lang> from the Extension Map]
+# Or systemd (one-shot reload, watch state)
+sudo systemctl reload <app>.service
+sudo systemctl status <app>.service
 ```
 
-`<lang>` is the language fence selected per the Extension to Language Fence Map below. `start = max(1, L - 10)` and `end = min(T, L + 10)` where `L` is the flagged line and `T` is the total line count of the file. The HTML range comment is the FIRST line above the fence; the clamp note (when present) is the SECOND line above the fence.
+### Python (gunicorn / uvicorn)
 
-#### Clamp Behaviour
+```bash
+# Gracefully reload Gunicorn workers
+kill -HUP $(cat /var/run/gunicorn.pid)
 
-When the ±10 range is clipped by the start or end of the file, emit a `<!-- Range clamped to file bounds (start-end) -->` note immediately above the fenced block. Example: flagged line 5 in an 8-line file → `start = max(1, 5-10) = 1`, `end = min(8, 5+10) = 8`, rendered range `1-8`, clamp note required.
-
-#### Extension to Language Fence Map
-
-| Extension(s) | Fence |
-|--------------|-------|
-| `.ts`, `.tsx` | `ts` (or `tsx` for JSX-bearing files) |
-| `.js`, `.jsx`, `.mjs`, `.cjs` | `js` |
-| `.py` | `python` |
-| `.sh`, `.bash`, `.zsh` | `bash` |
-| `.rb` | `ruby` |
-| `.go` | `go` |
-| `.php` | `php` |
-| `.md` | `markdown` |
-| `.yml`, `.yaml` | `yaml` |
-| `.json` | `json` |
-| `.toml` | `toml` |
-| `.html`, `.htm` | `html` |
-| `.css`, `.scss`, `.sass` | `css` |
-| `.sql` | `sql` |
-| `.rs` | `rust` |
-| `.java` | `java` |
-| `.kt`, `.kts` | `kotlin` |
-| `.swift` | `swift` |
-| *unknown* | `text` |
-
-The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest of function` cuts. Council reasons from the actual code, not a paraphrase.
-
----
-
-### Skipped (allowlist) Section
-
-Columns: `ID | path:line | rule | council_status`. Empty-state placeholder is the literal string `_None — no` followed by a backtick-quoted `audit-exceptions.md` reference and `in this project_`. The verbatim layout is in the Full Report Skeleton below.
-
-`council_status` is parsed from the matching entry's `**Council:**` bullet inside `audit-exceptions.md`. Allowed values: `unreviewed`, `council_confirmed_fp`, `disputed`. Use `sed '/^<!--/,/^-->/d'` (per `commands/audit-restore.md` post-13-05 fix) to strip HTML comment blocks before walking entries — the seed file ships with an HTML-commented example heading that would otherwise produce false matches. The `F-A001`..`F-ANNN` numbering is independent of `F-NNN` for surviving findings.
-
----
-
-### Skipped (FP recheck) Section
-
-Columns: `path:line | rule | dropped_at_step | one_line_reason`. Empty-state placeholder: `_None_`. The verbatim layout is in the Full Report Skeleton below.
-
-`dropped_at_step` MUST be an integer in 1-6 matching the FP-recheck step where the finding was dropped (see `components/audit-fp-recheck.md`). `one_line_reason` MUST be ≤ 100 chars and reference concrete tokens visible in the source — never `looks fine`, `trusted code`, or `out of scope`.
-
----
-
-### Council Verdict Slot (handoff to Phase 15)
-
-The audit writes this section as a literal placeholder. Phase 15's `/council audit-review` mutates it in place after collating Gemini + ChatGPT verdicts.
-
-```markdown
-## Council verdict
-
-_pending — run /council audit-review_
+# Verify workers cycled
+ps -ef | grep gunicorn | wc -l
 ```
 
-Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-dash); single-underscore italic (`_..._`), no asterisks; no backticks, no bold, no code fence, no trailing whitespace. DO NOT REFORMAT — Phase 15 greps for this exact byte sequence to locate the slot before rewriting it.
+### Go
 
----
+```bash
+# Drop-in replacement (systemd ExecReload sends SIGHUP if supported)
+sudo systemctl reload <app>.service
 
-### Full Report Skeleton
-
-The skeleton below uses a SECURITY finding (SQL injection) as the
-illustrative example. For other audit types substitute the appropriate
-`audit_type`, H1 title, finding `Category` (e.g. Correctness for
-code-review, Performance for performance, Reliability for design-review),
-and `Rule` namespace. The schema (field order, byte-exact bullet labels,
-section order, Council slot string) is identical across all 7 audit
-types.
-
-<output_format>
-
-```text
----
-audit_type: security
-timestamp: "2026-04-25-1730"
-commit_sha: a1b2c3d
-total_findings: 1
-skipped_allowlist: 1
-skipped_fp_recheck: 1
-council_pass: pending
----
-
-# Security Audit — claude-code-toolkit
-
-## Summary
-
-| severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck |
-|----------|----------------|-------------------------|--------------------------|
-| HIGH | 1 | 1 | 1 |
-
-## Findings
-
-### Finding F-001
-
-- **Severity:** HIGH
-- **Confidence:** HIGH
-- **Category:** Security
-- **Rule:** SEC-SQL-INJECTION
-- **Location:** src/users.ts:42
-- **Claim:** User-supplied id flows into a string-concatenated SQL query without parameterization.
-
-**Code:**
-
-[fenced code block here — verbatim ±10 lines around src/users.ts:42, ts language fence]
-
-**Data flow:**
-
-- `req.params.id` arrives from the HTTP route handler.
-- Passed unchanged into `db.query()`.
-- No parameterized binding between origin and sink.
-
-**Why it is real:**
-
-The literal `db.query("SELECT * FROM users WHERE id=" + req.params.id)` concatenates an Express request parameter directly into the SQL string. The route is public, so an attacker can supply a malicious id and reach the sink unauthenticated.
-
-**Suggested fix:**
-
-[fenced code block here — replacement using parameterized query]
-
-## Skipped (allowlist)
-
-| ID | path:line | rule | council_status |
-|----|-----------|------|----------------|
-| F-A001 | lib/utils.py:5 | SEC-EVAL | unreviewed |
-
-## Skipped (FP recheck)
-
-| path:line | rule | dropped_at_step | one_line_reason |
-|-----------|------|-----------------|-----------------|
-| src/legacy.js:14 | SEC-EVAL | 3 | eval guarded by isBuildTime(); never reached at runtime |
-
-## Council verdict
-
-_pending — run /council audit-review_
+# Verify build embedded the deploy-time SHA
+curl -s https://example.com/version
 ```
 
-</output_format>
+### Rails
 
-## Council Handoff
-<!-- v42-splice: council-handoff -->
+```bash
+# Migrations
+RAILS_ENV=production bin/rails db:migrate
 
-When the structured report is complete, hand it off to the Supreme Council for
-peer review. See `commands/audit.md` Phase 5 (Council Pass — mandatory) for the
-invocation: `/council audit-review --report <path>`. The Council runs in
-audit-review mode (see `commands/council.md` `## Modes`). The Council verdict
-slot in the report is pre-populated with the byte-exact placeholder
-`_pending — run /council audit-review_` (U+2014 em-dash) and is overwritten by
-the Council pass.
+# Asset precompile
+RAILS_ENV=production bin/rails assets:precompile
+
+# Restart Puma
+bundle exec pumactl phased-restart
+```
