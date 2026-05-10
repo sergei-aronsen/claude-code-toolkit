@@ -1825,12 +1825,42 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
                                 if [[ "${MCP_UNOFFICIAL[$_mcp_i]:-0}" == "1" ]]; then
                                     _mcp_desc="[!] ${_mcp_desc}"
                                 fi
-                                TUI_DESCS+=("${_mcp_desc} [MCP:${_mcp_glyph} CLI:${_cli_glyph}]")
+
+                                # v6.16.0 (T-04) — append a scope hint so the
+                                # user sees what scope the row will land in
+                                # before the lock-screen. Glyph derives from:
+                                #   - mcp_detect_installed_scope (T-02)
+                                #     when the MCP is already registered →
+                                #     "(installed: U/P/L)"
+                                #   - MCP_DEFAULT_SCOPE[$_mcp_i] otherwise
+                                #     → "(default: U/P/L)"
+                                # IMPORTANT: only the description suffix is
+                                # mutated. TUI_LABELS stays raw MCP_NAMES so
+                                # the CSV-match below (line 1869–1872) keeps
+                                # working — see comment at 1853–1861 in the
+                                # pre-v6.16 code, preserved verbatim below.
+                                _scope_detected=$(mcp_detect_installed_scope "${MCP_NAMES[$_mcp_i]}")
+                                if [[ -n "$_scope_detected" ]]; then
+                                    case "$_scope_detected" in
+                                        user)    _scope_hint="(installed: U)" ;;
+                                        project) _scope_hint="(installed: P)" ;;
+                                        local)   _scope_hint="(installed: L)" ;;
+                                        *)       _scope_hint="" ;;
+                                    esac
+                                else
+                                    case "${MCP_DEFAULT_SCOPE[$_mcp_i]:-user}" in
+                                        user)    _scope_hint="(default: U)" ;;
+                                        project) _scope_hint="(default: P)" ;;
+                                        local)   _scope_hint="(default: L)" ;;
+                                        *)       _scope_hint="(default: U)" ;;
+                                    esac
+                                fi
+                                TUI_DESCS+=("${_mcp_desc} [MCP:${_mcp_glyph} CLI:${_cli_glyph}] ${_scope_hint}")
                                 TUI_REQUIRED+=(0)
                             fi
                         done
                     done
-                    unset _mcp_i _cat_i _mcp_desc _mcp_status_word _cli_status_word _mcp_glyph _cli_glyph
+                    unset _mcp_i _cat_i _mcp_desc _mcp_status_word _cli_status_word _mcp_glyph _cli_glyph _scope_detected _scope_hint
                     # Restore prior MCP selection on Back-return (same pattern as skills).
                     TUI_RESULTS=()
                     if [[ -n "${TK_MCP_PRE_SELECTED:-}" ]]; then
