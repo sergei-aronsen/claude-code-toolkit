@@ -1481,3 +1481,102 @@ mcp_status_array() {
 
     export MCP_CLI_PRESENT
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# v6.16.0 — installed-scope detection (Phase 16.0-install-mcp-scope-picker, T-02)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# `claude mcp list` does NOT print scope per row, so the v6.16 lock-screen
+# parses three JSON sources directly. Resolution mirrors Claude Code's own
+# precedence (most-specific wins): local > project > user.
+#
+# Sources:
+#   ~/.claude.json                         → .mcpServers[name]                     (user scope)
+#   <PROJECT_ROOT>/.mcp.json               → .mcpServers[name]                     (project scope)
+#   ~/.claude.json → .projects[<root>].mcpServers[name]                            (local scope)
+#
+# Test seams:
+#   TK_MCP_DETECT_USER_JSON      — override path to ~/.claude.json
+#   TK_MCP_DETECT_PROJECT_JSON   — override path to <project>/.mcp.json
+#   TK_MCP_DETECT_PROJECT_ROOT   — override $PWD used for projects[<root>] lookup
+#
+# Cached on first call: re-parsing 28 entries × 3 sources × 1 jq fork was the
+# wall-time hot spot in early prototypes. Lists are stored as newline-separated
+# strings (Bash 3.2 — no associative arrays).
+
+# shellcheck disable=SC2034  # consumed inside mcp_detect_installed_scope
+_MCP_SCOPE_USER_LIST=""
+# shellcheck disable=SC2034
+_MCP_SCOPE_PROJECT_LIST=""
+# shellcheck disable=SC2034
+_MCP_SCOPE_LOCAL_LIST=""
+_MCP_SCOPE_CACHE_INIT=0
+
+# _mcp_scope_cache_init — populate the three name lists once per shell.
+# Silent fallback on missing files / malformed JSON (mcp_detect_installed_scope
+# is a display-only helper; we never want to crash a TUI render because the
+# user's JSON is corrupt).
+_mcp_scope_cache_init() {
+    if [[ "${_MCP_SCOPE_CACHE_INIT}" -eq 1 ]]; then
+        return 0
+    fi
+    _MCP_SCOPE_CACHE_INIT=1
+
+    # Resolve sources (test seams override real paths).
+    local _user_json="${TK_MCP_DETECT_USER_JSON:-${HOME}/.claude.json}"
+    local _project_root="${TK_MCP_DETECT_PROJECT_ROOT:-$(pwd)}"
+    local _project_json="${TK_MCP_DETECT_PROJECT_JSON:-${_project_root}/.mcp.json}"
+
+    # Bash 3.2 + nounset safe. Always run jq with `// empty` to swallow null/missing.
+    if command -v jq >/dev/null 2>&1 && [[ -r "$_user_json" ]]; then
+        _MCP_SCOPE_USER_LIST=$(jq -r '.mcpServers // {} | keys[]' "$_user_json" 2>/dev/null || true)
+        _MCP_SCOPE_LOCAL_LIST=$(jq -r --arg root "$_project_root" \
+            '.projects[$root].mcpServers // {} | keys[]' "$_user_json" 2>/dev/null || true)
+    fi
+    if command -v jq >/dev/null 2>&1 && [[ -r "$_project_json" ]]; then
+        _MCP_SCOPE_PROJECT_LIST=$(jq -r '.mcpServers // {} | keys[]' "$_project_json" 2>/dev/null || true)
+    fi
+}
+
+# mcp_detect_installed_scope <name> — print "user"|"project"|"local"|"" for the
+# given MCP. Empty when the MCP is not installed in any of the three sources or
+# inputs are unreadable. Caller must NOT depend on a non-empty result for any
+# control-flow path that could leak destructive ops; the helper is a *display*
+# helper.
+#
+# Resolution order (most-specific wins): local > project > user. Reflects
+# Claude Code's own scope precedence so the displayed glyph matches whatever
+# `claude mcp get NAME` would say.
+mcp_detect_installed_scope() {
+    local _name="${1:-}"
+    if [[ -z "$_name" ]]; then
+        return 0
+    fi
+    _mcp_scope_cache_init
+
+    # printf-grep-eq idiom is Bash-3.2-safe and avoids sub-shell forks per
+    # lookup. Newline-anchored grep prevents partial-name matches (e.g.
+    # "stripe" matching a hypothetical "stripe-test").
+    if printf '%s\n' "${_MCP_SCOPE_LOCAL_LIST}" | grep -Fxq -- "$_name"; then
+        printf '%s' "local"
+        return 0
+    fi
+    if printf '%s\n' "${_MCP_SCOPE_PROJECT_LIST}" | grep -Fxq -- "$_name"; then
+        printf '%s' "project"
+        return 0
+    fi
+    if printf '%s\n' "${_MCP_SCOPE_USER_LIST}" | grep -Fxq -- "$_name"; then
+        printf '%s' "user"
+        return 0
+    fi
+    return 0
+}
+
+# _mcp_scope_cache_reset — for tests that need to swap fixtures mid-run.
+# Not part of the public surface; tests source mcp.sh and reach in.
+_mcp_scope_cache_reset() {
+    _MCP_SCOPE_USER_LIST=""
+    _MCP_SCOPE_PROJECT_LIST=""
+    _MCP_SCOPE_LOCAL_LIST=""
+    _MCP_SCOPE_CACHE_INIT=0
+}
