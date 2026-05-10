@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.17.2",
+  "version": "6.18.0",
   "updated": "2026-05-10",
   "build_date": "2026-05-10",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -98,6 +98,9 @@
       },
       {
         "path": "commands/audit.md"
+      },
+      {
+        "path": "commands/diagnose-ci.md"
       },
       {
         "path": "commands/factcheck.md"
