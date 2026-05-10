@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.15.2] - 2026-05-10
+
+### Added — Three canonical SOT components for audit rubrics (Phase 3 staging)
+
+Phase 3 of the v6.15.x architecture pass (council Decision 3, REVISED)
+ships in two stages to keep blast radius bounded. This release is
+**stage 1**: extract the drifting sections from `templates/base/prompts/*.md`
+into single-source-of-truth components. Stage 2 (v6.15.3) extends
+`scripts/propagate-audit-pipeline-v42.sh` with three new sentinel splice
+blocks and re-splices the 35 framework prompts to consume these
+components.
+
+Why staged: the splice script is ~615 LOC of bash + embedded Python;
+adding three sentinel blocks (with `strip_splice_regions` handlers,
+idempotency invariants, and per-file insertion anchors) is a ~150 LOC
+delta with high regression surface. Shipping the SOT components first
+gives the rubric a single-point-of-reference (closes the documentation
+half of F-242) without risking the propagation pipeline. v6.15.3 will
+then mechanically splice them in.
+
+### New components
+
+- **`components/audit-severity-anchor.md`** — canonical four-level
+  severity rubric (CRITICAL / HIGH / MEDIUM / LOW), the Severity
+  Ceiling Table (precondition → maximum severity), and an
+  audit-specific calibration cheat-sheet that locks the four labels in
+  place while letting each audit map its own inputs onto them.
+  References `components/severity-levels.md` as the long-form rubric.
+- **`components/audit-uncertainty-discipline.md`** — the canonical
+  UNCERTAINTY DISCIPLINE block (currently duplicated verbatim across 5
+  of 6 base audit prompts; missing entirely from SECURITY_AUDIT). Adds
+  an explicit anti-padding ladder (lower confidence → lower severity →
+  move to Non-Blocking → drop) and four concrete anti-patterns (weasel
+  words, padding, hidden assumptions, confidence inflation).
+- **`components/audit-fp-control-gates.md`** — the three-gate FALSE
+  POSITIVE CONTROL outer wrapper (Adversarial self-review → 6-step FP
+  recheck → Calibration). Currently lives only in SECURITY_AUDIT;
+  CODE_REVIEW, DESIGN_REVIEW, and the three perf audits jump straight
+  to Gate 2 (the 6-step recheck) without the adversarial / calibration
+  framing. Pairs with `components/audit-fp-recheck.md` (the Gate 2
+  procedure).
+
+### Wave-2 findings closed (partial)
+
+- **F-242** (severity rubric duplication / drift) — closed for the
+  documentation half. The auto-propagation half closes in v6.15.3.
+- **F-204, F-301, F-327** (UNCERTAINTY DISCIPLINE drift / SECURITY_AUDIT
+  gap / DESIGN_REVIEW phrasing) — partially closed. Canonical text now
+  exists; mechanical alignment lands in v6.15.3.
+- **F-260, F-324, F-363** (FALSE-POSITIVE CONTROL gate gaps in
+  CODE_REVIEW / DESIGN_REVIEW / PERFORMANCE_AUDIT) — partially closed.
+  Canonical structure now exists; mechanical alignment lands in
+  v6.15.3.
+
+### Scope
+
+- Three new files in `components/`. No edits to base prompts (they
+  remain self-contained for now). No edits to framework prompts. No
+  edits to splice script. No edits to tests / CI markers / Makefile.
+- `manifest.json` — version 6.15.1 → 6.15.2.
+- `CHANGELOG.md` — this entry.
+- `.planning/STATE.md` — Phase 3 marked staged (stage 1 complete).
+
+### Files
+
+- `components/audit-severity-anchor.md` — new (canonical severity SOT).
+- `components/audit-uncertainty-discipline.md` — new (canonical UD SOT).
+- `components/audit-fp-control-gates.md` — new (canonical FP-CONTROL SOT).
+- `manifest.json` — version bump.
+- `CHANGELOG.md` — this entry.
+- `.planning/STATE.md` — Phase 3 stage 1 complete; stage 2 (splice
+  extension) tracked as next milestone.
+
 ## [6.15.1] - 2026-05-10
 
 ### Changed — DESIGN_REVIEW Phase 7 dissolved into CODE_REVIEW + PERFORMANCE_AUDIT

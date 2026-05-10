@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.15.x
 milestone_name: "Meta-Audit Wave-2 Architecture Pass (post-Council)"
 status: in_progress
-last_updated: "2026-05-10T18:00:00Z"
+last_updated: "2026-05-10T19:00:00Z"
 last_activity: 2026-05-10
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 2
-  percent: 67
+  total_phases: 4
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
 ---
 
 # Project State
@@ -72,9 +72,13 @@ Council APPROVED. Delete Phase 7 ("Code Health") from `templates/base/prompts/DE
 
 Closes wave-2 findings: F-321, F-329, partial F-326. Other DESIGN_REVIEW findings (F-322, F-324, F-327, F-328) sequenced for v6.14.4 or after Phase 3.
 
-### Phase 3 — v6.15.2 — Framework drift via components splice (council Decision 3, REVISED)
+### Phase 3 — v6.15.2 — Framework drift via components splice (council Decision 3, REVISED — STAGED)
 
-**Status:** Planning. Risk: MEDIUM (lower than original sentinel-sync plan).
+**Status:** Stage 1 shipped (commit pending PR, 2026-05-10). Stage 2
+(splice script extension + 35-file re-splice) carved out as v6.15.3
+(Phase 4) — see below. Risk realized: LOW for stage 1 (3 new files,
+zero edits to existing files); stage 2 risk reassessed as HIGH (615
+LOC bash + Python script, ~150 LOC delta, 35-file mass-rewrite).
 
 **Original plan REJECTED by Skeptic.** Sentinel sync was overengineered (~560 manual sentinel insertions across 16 files). Use existing component-splice infrastructure.
 
@@ -90,6 +94,55 @@ Re-splice all 35 framework prompts via `--force`. Frameworks gain v6.14.x severi
 
 Closes wave-2 findings: F-204, F-260, F-272, F-301, F-324, F-327, F-363 + framework-drift backlog (KNOWN-DEBT-1).
 
+**Stage 1 (v6.15.2, this release):** Three SOT components added under
+`components/audit-{severity-anchor,uncertainty-discipline,fp-control-gates}.md`.
+Documents the canonical rubric / discipline / gates so audit prompts
+have a single source of reference. Closes documentation halves of
+F-242 / F-204 / F-301 / F-327 / F-260 / F-324 / F-363. No edits to base
+or framework prompts. No splice-script changes.
+
+**Stage 2 (v6.15.3, Phase 4):** Extend splice script with three new
+sentinel blocks (`severity-anchor`, `uncertainty-discipline`,
+`fp-control-gates`). Re-splice 30 audit prompts (5 frameworks × 6 audit
+types — DEPLOY excluded per v6.15.0). Update tests
+(`test-template-propagation.sh` sentinel count 4 → 7) and CI markers
+(`quality.yml` v4.2 marker check). Mechanical halves of the wave-2
+findings above close in stage 2.
+
+### Phase 4 — v6.15.3 — Splice script extension (Phase 3 stage 2)
+
+**Status:** Planning. Risk: HIGH.
+
+Extend `scripts/propagate-audit-pipeline-v42.sh` from 4 to 7 sentinel
+blocks. Concrete deliverables:
+
+- 3 new SOT path constants + body extractors + demote-headings calls.
+- 3 new block file generators in `prepare_blocks`.
+- 3 new insertion anchors in the embedded Python rewrite (matching
+  the existing callout / fp-recheck / output-format / council-handoff
+  pattern).
+- 3 new `strip_splice_regions()` handlers (idempotent re-splice).
+- Test fixture update: `test-template-propagation.sh` sentinel count
+  4 → 7 per file, processed-summary regex update, partial-splice
+  detection update.
+- CI marker update: `quality.yml` `validate-templates` job to grep for
+  the three new markers (analogous to existing `Council Handoff` /
+  `1. **Read context**` greps).
+- Re-splice 30 audit prompts via `--force`; verify zero diff on
+  second run (D-09 idempotency contract).
+
+Risk drivers:
+
+- Splice script is 615 LOC of bash + embedded Python heredoc; adding
+  three more blocks is non-trivial.
+- 30-file mass-rewrite: any insertion-anchor bug propagates to all 30
+  files in one shot. Test fixtures must catch this.
+- Frameworks may already carry partial / drifted versions of these
+  sections that the splice would duplicate. `strip_splice_regions()`
+  must remove the framework's existing UNCERTAINTY DISCIPLINE / FP
+  CONTROL / severity-table sections before insertion to avoid double
+  content.
+
 ## Session Continuity
 
 Last session: 2026-05-10
@@ -98,8 +151,9 @@ Started: v6.15.0 planning post-Council
 **Next steps:**
 
 1. ✅ Phase 1 — DEPLOY rework: shipped as PR #88 (f6d9140). Awaiting merge.
-2. ✅ Phase 2 — DESIGN split: shipped on `fix/v615-1-design-split` branch. PR pending.
-3. ▶ Phase 3 — Framework drift via components: extract 3 new components, extend splice pipeline, re-splice 35 files, ship as PR.
+2. ✅ Phase 2 — DESIGN split: shipped as PR #89 on `fix/v615-1-design-split`. CI green, awaiting merge.
+3. ✅ Phase 3 stage 1 — SOT components: shipped on `fix/v615-2-framework-drift-splice`. PR pending.
+4. ▶ Phase 4 (v6.15.3) — splice script extension + 30-file re-splice. Risk: HIGH. Best done after stages 1-3 land on main.
 
 After all 3 phases, re-evaluate remaining wave-2 findings (~80 left after architecture pass) for surgical close-out.
 
