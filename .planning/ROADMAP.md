@@ -20,6 +20,7 @@
 - ✅ **v6.12.1 Meta-audit cleanup** — severity rubric, naming parity, raw-HTML specificity (shipped 2026-05-09, PR #79).
 - ✅ **v6.13.0 F-006 propagator demote + 5-prompt meta-audit** — shipped 2026-05-09 (PR #81).
 - ✅ **v6.14.0 Base-prompt meta-audit wave 1** — F-101/F-104/F-107/F-111 (shipped 2026-05-10, PR #82). Hotfix PR #83 deleted phantom release-pin workflow.
+- ✅ **v6.16.0 Install MCP scope picker** — lock-screen after sub-picker + Back removal + catalog patch (comet-bridge → user, datadog → project, posthog → project) (shipped 2026-05-10).
 
 ## Active Milestone
 
