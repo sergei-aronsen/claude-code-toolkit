@@ -332,6 +332,173 @@ print_install_status() {
 }
 
 # ─────────────────────────────────────────────────
+# v6.16.0 (T-05/06/07) — MCP scope lock-screen
+# ─────────────────────────────────────────────────
+#
+# Renders an interactive checklist where the SELECTION is locked (came from
+# the integrations sub-picker via TK_MCP_PRE_SELECTED) but the per-row SCOPE
+# is editable. Wires Tab/`s` through to the existing mcp_cycle_row_scope /
+# mcp_toggle_scope dispatch (Phase 39 — previously dead code because the
+# headless TK_MCP_PRE_SELECTED branch in the main TUI swallowed everything).
+#
+# Approach: build a SHADOW set of TUI arrays containing only rows whose
+# MCP_NAMES entry appears in TK_MCP_PRE_SELECTED. Run tui_checklist on the
+# shadow with TK_TUI_LOCK_SELECTION=1 + Tab/`s` wiring. After return, copy
+# each shadow row's MCP_SELECTED_SCOPE back to its original index in the
+# full MCP_SELECTED_SCOPE[] (parallel to TUI_LABELS). The full-sized arrays
+# untouched outside the shadow are what the dispatcher loop at line ~590
+# reads to drive `claude mcp add --scope <X>`.
+#
+# Reads:
+#   TK_MCP_PRE_SELECTED — CSV of MCP_NAMES, set by the sub-picker
+#   TUI_LABELS / TUI_GROUPS / TUI_INSTALLED / TUI_DESCS / TUI_TO_MCP_IDX
+#       — populated by mcp_status_array (full catalog, render order)
+#   MCP_SELECTED_SCOPE[] — parallel to TUI_LABELS, seeded from MCP_DEFAULT_SCOPE
+#   MCP_NAMES[] — alphabetical
+#
+# Writes:
+#   MCP_SELECTED_SCOPE[$tui_i] for each TUI row whose name is in PRE_SELECTED
+#
+# Cancel handling: tui_checklist rc=1 → "Install cancelled at scope picker."
+# + exit 0 (matches sub-picker cancel behaviour).
+mcp_cycle_row_scope_locked() {
+    # T-06: Tab on installed rows is silent no-op (D-13 in CONTEXT.md). Re-scope
+    # of installed MCPs would require `claude mcp remove + add` with re-OAuth /
+    # secret prompt — out of phase scope (DEF-01).
+    local _idx="${FOCUS_IDX:-0}"
+    if [[ "${TUI_INSTALLED[$_idx]:-0}" -eq 1 ]]; then
+        return 0
+    fi
+    mcp_cycle_row_scope
+}
+
+_run_mcp_scope_lock_screen() {
+    # Bail if there's nothing to scope — empty selection means user picked zero
+    # rows in the sub-picker.
+    local _have_selection=0
+    local _i
+    for ((_i=0; _i<${#TUI_RESULTS[@]}; _i++)); do
+        if [[ "${TUI_RESULTS[$_i]:-0}" -eq 1 ]]; then
+            _have_selection=1
+            break
+        fi
+    done
+    if [[ "$_have_selection" -eq 0 ]]; then
+        return 0
+    fi
+
+    # T-07: build shadow arrays (filtered to selected rows in original render
+    # order). Save originals so we can restore after the lock-screen returns.
+    local _SAVE_LABELS=("${TUI_LABELS[@]+"${TUI_LABELS[@]}"}")
+    local _SAVE_GROUPS=("${TUI_GROUPS[@]+"${TUI_GROUPS[@]}"}")
+    local _SAVE_INSTALLED=("${TUI_INSTALLED[@]+"${TUI_INSTALLED[@]}"}")
+    local _SAVE_DESCS=("${TUI_DESCS[@]+"${TUI_DESCS[@]}"}")
+    local _SAVE_REQUIRED=("${TUI_REQUIRED[@]+"${TUI_REQUIRED[@]}"}")
+    local _SAVE_REINSTALLABLE=("${TUI_REINSTALLABLE[@]+"${TUI_REINSTALLABLE[@]}"}")
+    local _SAVE_TUI_TO_MCP=("${TUI_TO_MCP_IDX[@]+"${TUI_TO_MCP_IDX[@]}"}")
+    local _SAVE_MCP_SCOPE=("${MCP_SELECTED_SCOPE[@]+"${MCP_SELECTED_SCOPE[@]}"}")
+    local _SAVE_RESULTS=("${TUI_RESULTS[@]+"${TUI_RESULTS[@]}"}")
+
+    # _SHADOW_ORIG_IDX[$shadow_i] = original $tui_i — used to map results back.
+    local _SHADOW_ORIG_IDX=()
+
+    TUI_LABELS=()
+    TUI_GROUPS=()
+    TUI_INSTALLED=()
+    TUI_DESCS=()
+    TUI_REQUIRED=()
+    TUI_REINSTALLABLE=()
+    TUI_TO_MCP_IDX=()
+    MCP_SELECTED_SCOPE=()
+
+    for ((_i=0; _i<${#_SAVE_LABELS[@]}; _i++)); do
+        if [[ "${_SAVE_RESULTS[$_i]:-0}" -ne 1 ]]; then
+            continue
+        fi
+        _SHADOW_ORIG_IDX+=("$_i")
+        TUI_LABELS+=("${_SAVE_LABELS[$_i]}")
+        TUI_GROUPS+=("${_SAVE_GROUPS[$_i]}")
+        TUI_DESCS+=("${_SAVE_DESCS[$_i]}")
+        TUI_REQUIRED+=("${_SAVE_REQUIRED[$_i]:-0}")
+        TUI_REINSTALLABLE+=("${_SAVE_REINSTALLABLE[$_i]:-0}")
+        TUI_TO_MCP_IDX+=("${_SAVE_TUI_TO_MCP[$_i]:-$_i}")
+        # Installed MCPs render with their *current* scope, locked. Newly-
+        # selected MCPs use the catalog default already in MCP_SELECTED_SCOPE.
+        local _row_name="${MCP_NAMES[${_SAVE_TUI_TO_MCP[$_i]:-$_i}]}"
+        local _detected
+        _detected=$(mcp_detect_installed_scope "$_row_name")
+        if [[ -n "$_detected" ]]; then
+            TUI_INSTALLED+=(1)
+            MCP_SELECTED_SCOPE+=("$_detected")
+        else
+            TUI_INSTALLED+=(0)
+            MCP_SELECTED_SCOPE+=("${_SAVE_MCP_SCOPE[$_i]:-user}")
+        fi
+    done
+
+    # Re-render labels with the scope glyph that mcp_cycle_row_scope expects
+    # at the head of TUI_LABELS[$_idx]. Reuse the exact label-build path the
+    # toggle helper uses — call mcp_cycle_row_scope_locked twice on the same
+    # row to get back to the starting scope (cycles user→project→local→user;
+    # 3 cycles return to start). Cheaper alternative: synthesise the glyph
+    # inline.
+    local _g _name
+    for ((_i=0; _i<${#TUI_LABELS[@]}; _i++)); do
+        case "${MCP_SELECTED_SCOPE[$_i]}" in
+            user)    _g="[U]" ;;
+            project) _g="[P]" ;;
+            local)   _g="[L]" ;;
+            *)       _g="[U]" ;;
+        esac
+        _name="${TUI_LABELS[$_i]}"
+        TUI_LABELS[_i]="${_g} ${_name}"
+    done
+
+    # Wire scope dispatcher and lock the selection.
+    export TK_TUI_LOCK_SELECTION=1
+    # shellcheck disable=SC2034  # consumed by tui.sh _tui_render
+    TUI_HEADER_KEY="s"
+    # shellcheck disable=SC2034
+    TUI_HEADER_FN="mcp_toggle_scope"
+    # shellcheck disable=SC2034
+    TUI_ROW_KEY=$'\t'
+    # shellcheck disable=SC2034
+    TUI_ROW_FN="mcp_cycle_row_scope_locked"
+    # shellcheck disable=SC2034
+    TUI_HEADER_TEXT="Configure MCP scope (Tab toggles per-row, s sets all)"
+
+    local _lock_rc=0
+    tui_checklist || _lock_rc=$?
+
+    unset TK_TUI_LOCK_SELECTION TUI_HEADER_KEY TUI_HEADER_FN \
+          TUI_ROW_KEY TUI_ROW_FN TUI_HEADER_TEXT
+
+    if [[ "$_lock_rc" -eq 1 ]]; then
+        echo "Install cancelled at scope picker."
+        exit 0
+    fi
+
+    # Map shadow MCP_SELECTED_SCOPE back into the full-size array at the
+    # original positions, then restore the rest of the TUI state for the
+    # dispatcher to read.
+    local _shadow_scope=("${MCP_SELECTED_SCOPE[@]+"${MCP_SELECTED_SCOPE[@]}"}")
+    MCP_SELECTED_SCOPE=("${_SAVE_MCP_SCOPE[@]+"${_SAVE_MCP_SCOPE[@]}"}")
+    for ((_i=0; _i<${#_SHADOW_ORIG_IDX[@]}; _i++)); do
+        local _orig="${_SHADOW_ORIG_IDX[$_i]}"
+        MCP_SELECTED_SCOPE[$_orig]="${_shadow_scope[$_i]}"
+    done
+
+    TUI_LABELS=("${_SAVE_LABELS[@]+"${_SAVE_LABELS[@]}"}")
+    TUI_GROUPS=("${_SAVE_GROUPS[@]+"${_SAVE_GROUPS[@]}"}")
+    TUI_INSTALLED=("${_SAVE_INSTALLED[@]+"${_SAVE_INSTALLED[@]}"}")
+    TUI_DESCS=("${_SAVE_DESCS[@]+"${_SAVE_DESCS[@]}"}")
+    TUI_REQUIRED=("${_SAVE_REQUIRED[@]+"${_SAVE_REQUIRED[@]}"}")
+    TUI_REINSTALLABLE=("${_SAVE_REINSTALLABLE[@]+"${_SAVE_REINSTALLABLE[@]}"}")
+    TUI_TO_MCP_IDX=("${_SAVE_TUI_TO_MCP[@]+"${_SAVE_TUI_TO_MCP[@]}"}")
+    TUI_RESULTS=("${_SAVE_RESULTS[@]+"${_SAVE_RESULTS[@]}"}")
+}
+
+# ─────────────────────────────────────────────────
 # Routing gate: --mcps takes the MCP page; --skills (or --skills-only / Desktop
 # auto-route) takes the Skills page; default is the Phase 24 components page.
 # Mutex — exactly one of three branches per invocation.
@@ -469,6 +636,21 @@ if [[ "$MCPS" -eq 1 ]]; then
             done
         done
         unset _pre_csv _IFS_SAVE _pre_arr _pname _mcp_idx tui_i
+
+        # v6.16.0 (T-05) — render the scope lock-screen so the user can pick
+        # per-row scope before the dispatcher fires. Skipped when:
+        #   - --mcp-scope was passed on CLI (TK_MCP_SCOPE_CLI applies set-all)
+        #   - --yes was passed (non-interactive)
+        #   - no readable TTY (CI / piped install)
+        # Selection is locked at this point (came from the sub-picker), so the
+        # lock-screen exposes only the scope toggle (Tab/`s`) — see
+        # _run_mcp_scope_lock_screen above.
+        _install_tty_src="${TK_TUI_TTY_SRC:-/dev/tty}"
+        if [[ -z "${TK_MCP_SCOPE_CLI:-}" ]] \
+           && [[ "$YES" -ne 1 ]] \
+           && [[ -r "$_install_tty_src" ]]; then
+            _run_mcp_scope_lock_screen
+        fi
     elif [[ "$YES" -eq 1 ]]; then
         # Default-set: select all not-installed; skip OAuth-only unless --force
         # (OAuth needs interactive browser flow — incompatible with --yes).
