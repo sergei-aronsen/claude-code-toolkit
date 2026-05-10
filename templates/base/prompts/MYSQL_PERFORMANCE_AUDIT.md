@@ -138,9 +138,31 @@ FROM performance_schema.global_status
 WHERE VARIABLE_NAME = 'Innodb_os_log_written';
 ```
 
-**Measure delta over 60 seconds to get MB/s.**
+**Measure delta over 60 seconds to get MB/s.** Sample twice with a 60s
+gap, compute the difference. Helper:
 
-**Rule:** Redo Log should hold at least 1 hour of writes.
+```bash
+A=$(mysql -BNe "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME='Innodb_os_log_written'")
+sleep 60
+B=$(mysql -BNe "SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME='Innodb_os_log_written'")
+echo "$(( (B - A) / 1024 / 1024 / 60 )) MB/s"
+```
+
+**Rule:** Redo Log should hold at least 1 hour of writes — but the "1
+hour" target is workload-dependent:
+
+- **Steady OLTP**: 1 hour is the conventional baseline.
+- **Bursty OLTP** (peak-hour spikes 4-10× steady-state write rate): size
+  for 1 hour at *peak* write rate, not steady-state, so checkpoints do
+  not back up during a burst.
+- **Heavy OLTP / write-mostly**: 4-8 hours.
+- **Analytics / OLAP** (mostly reads, periodic batch writes): 30 minutes
+  at batch-write rate is usually enough.
+
+Underprovisioning the redo log forces MySQL into a "furious flushing"
+mode where every write competes with checkpoint IO. Symptom: write p95
+spikes during peak hours but `Innodb_buffer_pool_reads` and slow-query
+log show no obvious cause.
 
 **Config:**
 
@@ -170,10 +192,19 @@ LIMIT 5;
 
 | Latency | Status | Action |
 | ------- | ------ | ------ |
-| < 5ms | Excellent (SSD) | - |
-| 5-10ms | OK | Monitor |
-| 10-20ms | Warning | Check disk |
-| > 20ms | Critical | Disk bottleneck |
+| < 0.5ms | Excellent (NVMe / local SSD) | - |
+| 0.5-5ms | Good (cloud SSD: gp3, io2, Premium SSD) | - |
+| 5-10ms | OK (network-attached, baseline EBS) | Monitor |
+| 10-20ms | Warning | Check disk / IOPS provisioning |
+| > 20ms | Critical | Disk bottleneck (HDD, throttled EBS, noisy neighbour) |
+
+> **Storage class matters.** Direct-attached NVMe achieves 0.1-0.5ms;
+> cloud SSDs (AWS gp3, Azure Premium SSD, GCP pd-ssd) typically 0.5-2ms;
+> network-attached storage and burstable / non-provisioned EBS commonly
+> 5-15ms even when "healthy". A "5ms = Excellent" threshold hides real
+> NVMe regressions. Calibrate against your actual storage class — record
+> the storage type in `## PROJECT SPECIFICS` so future audits compare
+> against the right baseline.
 
 ### Temp Tables on Disk
 
