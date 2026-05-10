@@ -169,6 +169,36 @@ Prioritize logic correctness over style.
 
 ---
 
+## ARCHITECTURE AND CONSISTENCY
+
+Reuse, design tokens, and named constants are correctness concerns when
+the project already has the conventions established. Flag findings only
+when concrete duplication or maintenance cost is evident in the diff —
+not on speculation.
+
+Check:
+
+- **Component reuse.** A new component in the diff that re-implements a
+  capability already covered by an existing component (visible via grep
+  for the same primitive — button, modal, table row, form field). Treat
+  as a finding only when the duplication is non-trivial (>30 LOC of
+  parallel logic) and the existing component is reachable from the new
+  call site without invasive refactor.
+- **Design tokens.** Hardcoded color literals, pixel spacing, or font
+  declarations when the project ships a token system (CSS variables,
+  Tailwind theme, design-tokens package). Flag when the diff bypasses
+  the system in a place where token usage is the established pattern.
+- **Magic numbers.** Numeric literals in business logic, layout sizing,
+  timeout values, retry counts, or threshold checks without a named
+  constant. Flag when the value carries semantic meaning the reader
+  must reverse-engineer from context.
+
+Findings here must pass the LOW-VALUE REVIEW FILTER below: skip purely
+stylistic preferences, premature abstractions, and refactors without
+measurable maintenance benefit.
+
+---
+
 ## LOW-VALUE REVIEW FILTER
 
 Do not generate findings merely because a review category exists. Every

@@ -36,7 +36,7 @@ is incomplete; never speculate beyond what the rendered DOM shows.
 
 ---
 
-## 📋 7-Phase Review Process
+## 📋 6-Phase Review Process
 
 ### Phase 1: Preparation
 
@@ -199,31 +199,6 @@ mcp__playwright__browser_snapshot — shows accessibility tree
 - [ ] Errors explain what to do
 - [ ] Recovery path is clear
 - [ ] Partial failures handled gracefully
-
----
-
-### Phase 7: Code Health
-
-**Component patterns:**
-
-- [ ] Existing components are used
-- [ ] New components reusable
-- [ ] Props interface clear
-- [ ] No hardcoded values (use tokens)
-
-**Design tokens:**
-
-- [ ] Colors from variables/tokens
-- [ ] Spacing from scale
-- [ ] Typography from system
-- [ ] No magic numbers
-
-**Performance:**
-
-- [ ] Images optimized (WebP, lazy loading)
-- [ ] No layout shifts (CLS)
-- [ ] Animations use transform/opacity
-- [ ] Bundle size reasonable
 
 ---
 

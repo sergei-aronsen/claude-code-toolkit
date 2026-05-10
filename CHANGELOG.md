@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.15.1] - 2026-05-10
+
+### Changed — DESIGN_REVIEW Phase 7 dissolved into CODE_REVIEW + PERFORMANCE_AUDIT
+
+`templates/base/prompts/DESIGN_REVIEW.md` Phase 7 ("Code Health") was a
+duplicate of audit categories owned by other prompts: component reuse,
+design tokens, and magic-number hygiene belong in CODE_REVIEW; bundle
+size, lazy loading, CLS, and animation performance belong in
+PERFORMANCE_AUDIT. Carrying these in DESIGN_REVIEW caused the same
+finding to surface in two reports with different severities and no
+canonical owner — wave-2 findings F-321 (cross-prompt overlap) and
+F-329 (severity mismatch).
+
+This release dissolves Phase 7 into the prompts that already own each
+concern:
+
+- **DESIGN_REVIEW** is now a 6-phase review process (Preparation,
+  Interaction Testing, Responsiveness, Visual Polish, Accessibility,
+  Robustness). Heading "## 📋 7-Phase Review Process" → "## 📋 6-Phase
+  Review Process". Phase 7 section deleted.
+- **CODE_REVIEW** gains a new section "ARCHITECTURE AND CONSISTENCY"
+  (after BUSINESS LOGIC VALIDATION, before LOW-VALUE REVIEW FILTER) with
+  three concrete checks: component reuse, design tokens, magic numbers.
+  Each check is gated by the existing LOW-VALUE REVIEW FILTER —
+  reviewers must justify duplication >30 LOC for component-reuse
+  findings, must show the project ships a token system before flagging
+  hardcoded values, and must show the magic number carries semantic
+  meaning before flagging it.
+- **PERFORMANCE_AUDIT** gains a new section 3.6 "Animation Performance"
+  covering the only Phase 7 bullet not already in section 3 of
+  PERFORMANCE_AUDIT (`transform` / `opacity` GPU acceleration,
+  layout-triggering properties, paint cost on long lists,
+  `prefers-reduced-motion`). Bundle size (3.1), lazy loading (3.2 /
+  3.3), Core Web Vitals + CLS (3.4) already covered the rest.
+
+Closes wave-2 findings F-321, F-329, and partial F-326 (3 findings).
+
+### Scope
+
+- Base prompts only (`templates/base/prompts/{DESIGN_REVIEW,CODE_REVIEW,PERFORMANCE_AUDIT}.md`).
+- Framework copies (`templates/{laravel,rails,python,go}/prompts/DESIGN_REVIEW.md`)
+  still carry Phase 7. Drift remains tracked under KNOWN-DEBT-1 and is
+  the target of v6.15.2 (Phase 3 — framework drift via components
+  splice). Council Decision 2 explicitly scoped this release to base.
+
+### Migration
+
+No action required for users running `templates/base/prompts/*` — the
+audit pipeline still emits 6 audit reports (DESIGN_REVIEW remains in
+the audit-pipeline list, only its phase count shrank). Users who pinned
+to "Phase 7 Code Health" findings in their own playbooks should
+re-route: component / token / magic-number findings now appear under
+CODE_REVIEW "ARCHITECTURE AND CONSISTENCY"; animation-performance
+findings now appear under PERFORMANCE_AUDIT 3.6.
+
+### Files
+
+- `templates/base/prompts/DESIGN_REVIEW.md` — heading update + Phase 7 deletion (-24 lines).
+- `templates/base/prompts/CODE_REVIEW.md` — new ARCHITECTURE AND CONSISTENCY section (+27 lines).
+- `templates/base/prompts/PERFORMANCE_AUDIT.md` — new section 3.6 Animation Performance (+11 lines).
+- `manifest.json` — version 6.15.0 → 6.15.1.
+- `CHANGELOG.md` — this entry.
+
 ## [6.15.0] - 2026-05-10
 
 ### Changed — DEPLOY_CHECKLIST is now a deployment runbook, not an audit prompt (BREAKING)

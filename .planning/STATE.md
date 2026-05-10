@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.15.0
+milestone: v6.15.x
 milestone_name: "Meta-Audit Wave-2 Architecture Pass (post-Council)"
-status: planning
-last_updated: "2026-05-10T11:10:00Z"
+status: in_progress
+last_updated: "2026-05-10T18:00:00Z"
 last_activity: 2026-05-10
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -45,9 +45,9 @@ Wave-2 progress: **23/139 closed + 9 FP drops = 32 of 139 resolved**. Remaining 
 
 ## Active Phases
 
-### Phase 1 — v6.15.0 — DEPLOY rework (council Decision 1)
+### Phase 1 — v6.15.0 — DEPLOY rework (council Decision 1) ✅
 
-**Status:** Planning. Risk: MEDIUM.
+**Status:** Shipped (PR #88, commit f6d9140, 2026-05-10). Risk realized: MEDIUM, no surprises.
 
 Strip audit machinery from `templates/base/prompts/DEPLOY_CHECKLIST.md` per F-290. Council additions over my original plan:
 
@@ -61,9 +61,9 @@ Strip audit machinery from `templates/base/prompts/DEPLOY_CHECKLIST.md` per F-29
 
 Closes wave-2 findings: F-290..F-306 (17 findings).
 
-### Phase 2 — v6.15.1 — DESIGN identity split (council Decision 2)
+### Phase 2 — v6.15.1 — DESIGN identity split (council Decision 2) ✅
 
-**Status:** Planning. Risk: LOW.
+**Status:** Shipped (commit pending PR, 2026-05-10). Risk realized: LOW.
 
 Council APPROVED. Delete Phase 7 ("Code Health") from `templates/base/prompts/DESIGN_REVIEW.md` (F-321, F-329). Re-home content:
 
@@ -97,9 +97,9 @@ Started: v6.15.0 planning post-Council
 
 **Next steps:**
 
-1. ▶ Phase 1 — DEPLOY rework: edit DEPLOY_CHECKLIST.md, update 4 infrastructure files, add auth/crypto monitoring story, ship as PR.
-2. Phase 2 — DESIGN split: edit 3 prompts (DESIGN_REVIEW, CODE_REVIEW, PERFORMANCE_AUDIT), ship as PR.
-3. Phase 3 — Framework drift via components: extract 3 new components, extend splice pipeline, re-splice 35 files, ship as PR.
+1. ✅ Phase 1 — DEPLOY rework: shipped as PR #88 (f6d9140). Awaiting merge.
+2. ✅ Phase 2 — DESIGN split: shipped on `fix/v615-1-design-split` branch. PR pending.
+3. ▶ Phase 3 — Framework drift via components: extract 3 new components, extend splice pipeline, re-splice 35 files, ship as PR.
 
 After all 3 phases, re-evaluate remaining wave-2 findings (~80 left after architecture pass) for surgical close-out.
 
