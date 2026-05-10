@@ -24,13 +24,14 @@
 - ✅ **v6.14.2 Meta-audit wave-2 calibration findings** — 8 of 135 (shipped 2026-05-10, PR #86).
 - ✅ **v6.14.3 Meta-audit wave-2 calibration findings** — 7 of ~117 (shipped 2026-05-10, PR #87).
 - ✅ **v6.16.0 Install MCP scope picker** — lock-screen after sub-picker + Back removal + catalog patch (comet-bridge → user, datadog → project, posthog → project) (shipped 2026-05-10, PR #92).
-- ✅ **v6.17.0 DEPLOY_CHECKLIST runbook + DESIGN_REVIEW Phase 7 dissolution** — Council-validated base-prompt reworks (20 wave-2 findings: F-290..F-306 + F-321/F-326/F-329); originally tracked as v6.15.0/v6.15.1 in stacked PRs #88/#89 against pre-v6.16.0 main, consolidated post-v6.16.0 (shipped 2026-05-10).
+- ✅ **v6.17.0 DEPLOY_CHECKLIST runbook + DESIGN_REVIEW Phase 7 dissolution** — Council-validated base-prompt reworks (20 wave-2 findings: F-290..F-306 + F-321/F-326/F-329); originally tracked as v6.15.0/v6.15.1 in stacked PRs #88/#89 against pre-v6.16.0 main, consolidated post-v6.16.0 (shipped 2026-05-10, PR #93).
+- ✅ **v6.17.1 Audit-rubric SOTs + rubric-anchors splice sentinel + 30-file re-splice** — Council Decision 3 Phase 3 (closes F-242 + F-204/F-301/F-327 + F-260/F-324/F-363 propagation halves + KNOWN-DEBT-1 partial); originally stacked as PRs #90/#91 (v6.15.2/v6.15.3) against pre-v6.16.0 main, consolidated post-v6.17.0 (shipped 2026-05-10).
 
 ## Active Milestone
 
-**v6.17.1 — Audit-rubric SOTs + 30-file framework re-splice** (in progress).
+**v6.14.1 — Base-Prompt Meta-Audit Wave 2** (continuing).
 
-Three canonical SOT components for audit rubrics (Phase 3 stage 1) + rubric-anchors splice sentinel + 30-file re-splice (Phase 3 stage 2). Originally stacked as PRs #90/#91 (v6.15.2/v6.15.3) against pre-v6.16.0 main; bundled into v6.17.1 after v6.17.0 ships.
+Wave 1 closed 4 findings (v6.14.0). Wave 2 batches landed across v6.14.1 / v6.14.2 / v6.14.3 (19 findings closed). v6.17.0 / v6.17.1 closed an additional 23 findings via Council-validated reworks. Remaining work: re-run 7-prompt adversarial meta-audit on base prompts to recover the ~146 unrecoverable wave-2 findings from PR-#82 (compacted), then triage.
 
 Pending scope:
 
@@ -170,5 +171,5 @@ Pending scope:
 | v6.14.3 Wave-2 calibration | — | 7/~117 findings | ✅ Shipped | 2026-05-10 |
 | v6.16.0 Install MCP scope picker | — | — | ✅ Shipped | 2026-05-10 |
 | v6.17.0 DEPLOY+DESIGN reworks | — | 20 findings | ✅ Shipped | 2026-05-10 |
-| v6.17.1 Rubric SOTs + 30-file re-splice | — | — | 🔄 In progress | — |
+| v6.17.1 Rubric SOTs + 30-file re-splice | — | 7 findings + KNOWN-DEBT-1 partial | ✅ Shipped | 2026-05-10 |
 | v6.15.x Framework drift sweep | — | 0/28 files | 📋 Backlog | — |
