@@ -110,8 +110,6 @@
         "env_var_keys": [],
         "install_args": [
           "comet-bridge",
-          "--scope",
-          "project",
           "--env",
           "COMET_PORT=9223",
           "--",
@@ -121,7 +119,7 @@
         ],
         "description": "Research/lookup/factcheck via Perplexity Pro subscription (no API costs). Requires Comet browser + isolated profile. Run scripts/setup-comet.sh first.",
         "requires_oauth": false,
-        "default_scope": "project",
+        "default_scope": "user",
         "preflight_script": "scripts/setup-comet.sh"
       },
       "dbhub": {
@@ -156,7 +154,7 @@
         ],
         "description": "APM + infra metrics + logs + dashboards + incidents",
         "requires_oauth": true,
-        "default_scope": "user"
+        "default_scope": "project"
       },
       "figma": {
         "name": "figma",
@@ -339,7 +337,7 @@
         ],
         "description": "Product analytics + error tracking + feature flags + A/B testing",
         "requires_oauth": false,
-        "default_scope": "user"
+        "default_scope": "project"
       },
       "serena": {
         "name": "serena",
