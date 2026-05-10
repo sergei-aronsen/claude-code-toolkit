@@ -175,6 +175,17 @@ Frequent frontend polling (setInterval, usePoll) can overwhelm the backend if en
 - [ ] Polling endpoints use cache or in-memory storage, not heavy DB aggregations
 - [ ] Polling intervals are reasonable (no sub-second polling for non-critical data)
 
+### 3.6 Animation Performance
+
+Animations that mutate layout-triggering properties force the browser to
+re-run layout / paint on every frame and produce jank on lower-end
+devices. Restrict animations to GPU-accelerated properties.
+
+- [ ] Animations use `transform` and `opacity` (GPU-accelerated, no layout reflow)
+- [ ] No animations on `width`, `height`, `top`, `left`, `margin`, `padding` (trigger layout) unless wrapped in `will-change` with measured benefit
+- [ ] No animations on `box-shadow`, `filter`, `backdrop-filter` on long lists (paint cost scales with element count)
+- [ ] `prefers-reduced-motion` media query honored for accessibility
+
 ---
 
 ## 4. API PERFORMANCE
