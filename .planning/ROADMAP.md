@@ -11,10 +11,46 @@
 - ✅ **v4.8 Multi-CLI Bridge** — Phases 28–31 (shipped 2026-04-29). See `.planning/milestones/v4.8-ROADMAP.md`.
 - ✅ **v4.9 Integrations Catalog** — Phases 32–35 (shipped 2026-05-02).
 - ✅ **v5.0 Per-MCP Scope + Project Secrets Boundary** — Phases 36–41 (shipped 2026-05-06). See `.planning/milestones/v5.0-ROADMAP.md`.
+- ✅ **v6.0 Toolkit Overlay Redesign** — shipped 2026-05-06 (PRs #41–47).
+- ✅ **v6.1 Morph→Serena swap + audit closures** — shipped 2026-05-06 (PRs #49–53).
+- ✅ **v6.3 Solo-founder gaps closed** — product-thinking gate + vendor changelog + auto-format hook (shipped 2026-05-07, PR #60).
+- ✅ **v6.4 Project-scope MCP storage redesign** — global slot per project (shipped 2026-05-07, PR #66).
+- ✅ **v6.11 CODE_REVIEW regression rewrite** — shipped 2026-05-08 (PR #77).
+- ✅ **v6.12 SECURITY_AUDIT adversarial rewrite** — shipped 2026-05-08 (PR #78).
+- ✅ **v6.12.1 Meta-audit cleanup** — severity rubric, naming parity, raw-HTML specificity (shipped 2026-05-09, PR #79).
+- ✅ **v6.13.0 F-006 propagator demote + 5-prompt meta-audit** — shipped 2026-05-09 (PR #81).
+- ✅ **v6.14.0 Base-prompt meta-audit wave 1** — F-101/F-104/F-107/F-111 (shipped 2026-05-10, PR #82). Hotfix PR #83 deleted phantom release-pin workflow.
 
 ## Active Milestone
 
-_None — v5.0 just shipped. Run `/gsd-new-milestone` to start the next._
+**v6.14.1 — Base-Prompt Meta-Audit Wave 2** (planning, started 2026-05-10).
+
+Wave 1 closed 4 of ~150 findings from 7-prompt adversarial meta-audit. Remaining ~146 findings unrecoverable (PR-#82 conversation compacted) — re-run audit, batch into v6.14.1 (small/surgical) and v6.15.x (big rework).
+
+Pending scope:
+
+- Per-audit severity rubrics
+- Per-audit SELF-CHECK variants
+- DEPLOY_CHECKLIST rework
+- DESIGN_REVIEW identity split
+- Coverage extensions
+- F-003 carry-over (Category enum scope)
+
+## Backlog
+
+### High priority
+
+- **v6.15.x — KNOWN-DEBT-1 framework prompt drift sweep**: 28 files in `templates/{laravel,rails,python,go}/prompts/*.md` carry substantially older content than `templates/base/prompts/*.md`. Pick (a) regen from base + framework-specific delta, or (b) extend splice pipeline to base→framework sentinel sync.
+
+### Medium priority
+
+- **Phase B (Pocock doctrine)** — CONTEXT.md/ubiquitous-language doctrine + `/zoom-out` + `/audit-depth` Ousterhout deep-modules audit (~700 LOC md, 1-2 days). Triaged from INBOX 2026-05-06. Run B.1 → B.2 → B.3, atomic commits, one `/council` validation pass on B.1 doctrine.
+- **Auto-update orchestrator** — `scripts/update-skills-mcps.sh` fans out plugin/skill/MCP updates. Triaged from INBOX 2026-04-29.
+- **Skill catalog: huashu-design** — add `alchaincyf/huashu-design` to skills selector catalog. Triaged from INBOX 2026-04-29 (Phase 26 shipped 2026-04-29 — slot directly into existing catalog now).
+
+### Low priority / optional
+
+- **Phase C (Warp picks)** — `/diagnose-ci` 7-step CI-failure loop + `components/feature-flag-lifecycle.md` (~300 LOC md, ~1 day). Triaged from INBOX 2026-05-06. Drop if budget tight; C.1 high-value only on CI-heavy projects.
 
 <details>
 <summary>✅ v4.0 Complement Mode (Phases 1–7 + 6.1) — SHIPPED 2026-04-21</summary>
@@ -115,3 +151,14 @@ _None — v5.0 just shipped. Run `/gsd-new-milestone` to start the next._
 | v4.8 Multi-CLI Bridge | 28–31 | 12/12 | ✅ Shipped | 2026-04-29 |
 | v4.9 Integrations Catalog | 32–35 | 14/14 | ✅ Shipped | 2026-05-02 |
 | v5.0 Per-MCP Scope + Project Secrets Boundary | 36–41 | 16/16 | ✅ Shipped | 2026-05-06 |
+| v6.0 Toolkit Overlay Redesign | — | — | ✅ Shipped | 2026-05-06 |
+| v6.1 Morph→Serena swap | — | — | ✅ Shipped | 2026-05-06 |
+| v6.3 Solo-founder gaps | — | — | ✅ Shipped | 2026-05-07 |
+| v6.4 MCP storage redesign | — | — | ✅ Shipped | 2026-05-07 |
+| v6.11 CODE_REVIEW rewrite | — | — | ✅ Shipped | 2026-05-08 |
+| v6.12 SECURITY_AUDIT rewrite | — | — | ✅ Shipped | 2026-05-08 |
+| v6.12.1 Meta-audit cleanup | — | — | ✅ Shipped | 2026-05-09 |
+| v6.13.0 Propagator demote + 5-prompt audit | — | — | ✅ Shipped | 2026-05-09 |
+| v6.14.0 Meta-audit wave 1 | — | 4/4 findings | ✅ Shipped | 2026-05-10 |
+| v6.14.1 Meta-audit wave 2 | — | 0/~146 | 🔄 Planning | — |
+| v6.15.x Framework drift sweep | — | 0/28 files | 📋 Backlog | — |

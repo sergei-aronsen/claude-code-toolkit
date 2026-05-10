@@ -453,6 +453,13 @@ const prisma = new PrismaClient({
 
 // Connection pooling via PgBouncer
 // DATABASE_URL="postgresql://user:pass@pgbouncer:6432/db?pgbouncer=true"
+//
+// SECURITY: never commit real credentials inline. Source DATABASE_URL from:
+//   - .pgpass file (chmod 600, per-host: hostname:port:db:user:password)
+//   - environment variable injected at runtime (12-factor)
+//   - cloud IAM (RDS IAM auth, Cloud SQL Auth Proxy, Azure AD)
+// URL-form credentials leak via /proc/<pid>/environ, ps output, log files,
+// container env, K8s Secret YAML, and git diff history.
 ```
 
 ### Laravel
