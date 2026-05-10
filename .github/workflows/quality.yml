@@ -82,8 +82,9 @@ jobs:
           done < <(find templates -path '*/prompts/*.md' \( \
             -name 'SECURITY_AUDIT.md' -o \
             -name 'PERFORMANCE_AUDIT.md' -o \
-            -name 'CODE_REVIEW.md' -o \
-            -name 'DEPLOY_CHECKLIST.md' \))
+            -name 'CODE_REVIEW.md' \))
+          # v6.15.0: DEPLOY_CHECKLIST is a deployment runbook, not an
+          # audit prompt. See CHANGELOG v6.15.0.
 
           if [ $ERRORS -gt 0 ]; then
             echo "Found $ERRORS errors"
@@ -115,8 +116,8 @@ jobs:
             -name 'PERFORMANCE_AUDIT.md' -o \
             -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
             -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
-            -name 'DEPLOY_CHECKLIST.md' -o \
             -name 'DESIGN_REVIEW.md' \))
+          # v6.15.0: DEPLOY_CHECKLIST excluded — runbook not audit.
 
           if [ $ERRORS -gt 0 ]; then
             echo "Found $ERRORS v4.2 marker errors across audit prompts"
