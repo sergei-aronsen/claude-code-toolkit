@@ -589,7 +589,7 @@ CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
 
 ### 11.2 Checklist
 
-- [ ] `NOT NULL` columns added with `DEFAULT` value (instant in PG 11+)
+- [ ] `NOT NULL` columns added with `DEFAULT` value (instant in PG 11+ **only when the default is an immutable expression** — `DEFAULT 'literal'`, `DEFAULT 0`, `DEFAULT TRUE`, or any function marked `IMMUTABLE`. Volatile defaults like `DEFAULT now()`, `DEFAULT random()`, `DEFAULT gen_random_uuid()` still trigger a full table rewrite under `ACCESS EXCLUSIVE` lock. Wrap volatile defaults in a two-step pattern: add nullable column → backfill in batches → set default + NOT NULL.)
 - [ ] Indexes created with `CONCURRENTLY`
 - [ ] No `DROP COLUMN` on large tables without prior assessment
 - [ ] `ALTER TYPE` (changing column type) avoided on large tables (rewrites entire table)
