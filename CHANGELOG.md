@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.19.0] - 2026-05-11
+
+### Supreme Council — full rewrite of all four role system prompts
+
+Re-authored every Council role prompt (`templates/council-prompts/*.md` plus
+`templates/council-prompts/ru/*.md`) to lift verdict discipline closer to
+production-review quality. Pure prompt content — no orchestrator changes
+beyond one defensive regex fix.
+
+`skeptic-system.md` becomes an explicit **anti-build decision gate** with
+six evaluation tests (Necessity / Now-vs-Later / Smallest-Useful-Change /
+Future-Proofing Trap / One-Way Door / Maintenance Burden), a Burden-of-Proof
+checklist of complexity triggers (queues, caches, plugin systems, generic
+engines, persistent state, public API changes), a four-category evidence
+model (need / complexity / code-grounded / general-pattern), and a Simpler
+Alternative ruleset that forces every alternative to reduce a concrete
+dimension (files touched, abstractions, persistent state, infra deps,
+runtime paths, config surface, future commitments).
+
+`pragmatist-system.md` becomes a production-readiness gate with the
+core question "will this deliver enough real production value to justify
+implementation and long-term maintenance cost", three evidence categories
+(code-grounded / plan-grounded / general-pattern, each with its own citation
+format), and a Prior-Art Lookup Hierarchy (existing codebase pattern →
+framework primitive → DB/infra primitive → simple explicit → larger
+architectural pattern). SIMPLIFY is now the explicit default verdict when
+complexity is unjustified.
+
+`audit-review-skeptic.md` and `audit-review-pragmatist.md` both gain a
+Non-Negotiable Evidence Boundary (no auditor prose, no claimed-impact, no
+external knowledge), a four-step analysis procedure with source/path/sink/
+guard/behavior decomposition (worked SQLi example), explicit FALSE_POSITIVE
+valid/invalid reasons, partial-proof citation patterns, Pipe-Safety rules
+for Markdown-table escaping (`|` → `/` inside quoted tokens, ≤ 160 chars),
+and an explicit HIGH/MEDIUM/LOW → `0.9`/`0.7`/`0.3` mapping so role-prompt
+semantics agree with the float contract in
+`scripts/council/prompts/audit-review.md`. Each role ends with a 10-13-item
+internal self-check.
+
+All four prompts are mirrored in Russian under
+`templates/council-prompts/ru/`. Technical literals (`REAL` /
+`FALSE_POSITIVE` / `NEEDS_MORE_CONTEXT` / `PROCEED` / `SIMPLIFY` /
+`RETHINK` / `SKIP` / `VERDICT` / `HIGH` / `MEDIUM` / `LOW`) stay ASCII so
+the orchestrator's regexes match unchanged.
+
+### Bug fix — `_extract_concerns()` regex tolerance
+
+`scripts/council/brain.py` `_extract_concerns()` previously matched only
+`## Concerns` (H2). The new role prompts may nest a `### Concerns` (H3)
+section under a required H2 — the old regex would drop those bullets,
+emptying `concerns_skeptic` / `concerns_pragmatist` in the JSON output.
+The regex is now `#{2,}\s*Concerns` with an `(?=\n#{1,6}\s|\Z)` look-ahead
+so H2 / H3 / H4 headers are all extractable, while still stopping at the
+next heading of any level.
+
+### Files
+
+- `templates/council-prompts/skeptic-system.md`
+- `templates/council-prompts/pragmatist-system.md`
+- `templates/council-prompts/audit-review-skeptic.md`
+- `templates/council-prompts/audit-review-pragmatist.md`
+- `templates/council-prompts/ru/skeptic-system.md`
+- `templates/council-prompts/ru/pragmatist-system.md`
+- `templates/council-prompts/ru/audit-review-skeptic.md`
+- `templates/council-prompts/ru/audit-review-pragmatist.md`
+- `scripts/council/brain.py` (`_extract_concerns()` regex)
+- `manifest.json` (version bump)
+
+### Operator note
+
+Users who customized local copies under `~/.claude/council/prompts/` will
+see `.upstream-new.md` sidecar files on the next toolkit update. Review and
+merge manually — the role prompts grew substantially (~3x previous size)
+and any local edits to the previous short version need re-application
+against the new structure.
+
 ## [6.18.1] - 2026-05-11
 
 ### Documentation — Two-layer memory conflict protocol (PR #99)

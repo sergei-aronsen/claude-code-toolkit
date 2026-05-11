@@ -458,14 +458,16 @@ def _extract_concerns(text):
 
     The Skeptic prompt asks for "max 3" concerns under that heading; the
     Pragmatist's "## Production Readiness" / "## Maintenance Forecast"
-    sections may or may not use the same name. We scan for any `## Concerns`
-    (case-insensitive) header and harvest list bullets up to the next
-    heading. Returns up to 3 concise strings.
+    sections may or may not use the same name. We scan for any
+    `##`/`###`/`####` Concerns header (case-insensitive) and harvest list
+    bullets up to the next heading of equal or shallower depth. Accepting
+    H3 + H4 avoids silently dropping concerns when the role prompt nests
+    the section under a parent heading. Returns up to 3 concise strings.
     """
     if not text:
         return []
     m = re.search(
-        r"##\s*Concerns[^\n]*\n(.*?)(?=\n##\s|\Z)",
+        r"#{2,}\s*Concerns[^\n]*\n(.*?)(?=\n#{1,6}\s|\Z)",
         text,
         re.DOTALL | re.IGNORECASE,
     )
