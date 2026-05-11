@@ -62,6 +62,35 @@ The regex is now `#{2,}\s*Concerns` with an `(?=\n#{1,6}\s|\Z)` look-ahead
 so H2 / H3 / H4 headers are all extractable, while still stopping at the
 next heading of any level.
 
+### Domain persona overlays — Group A rewrite
+
+All eight domain persona overlays under `templates/council-prompts/personas/`
+(`security-{skeptic,pragmatist}`, `performance-{skeptic,pragmatist}`,
+`ux-{skeptic,pragmatist}`, `migration-{skeptic,pragmatist}`) have been
+refactored from short 25–35-line addenda into concentrated 105–125-line
+domain patches. Each overlay was first generated through the three-stage
+prompt-optimizer (PROMETHEUS → meta-optimization → synthesis) against a
+hand-written context file that explicitly lists what the base prompt
+already covers, then manually merged with the original's punchy framings
+to keep memorable phrases ("Profile first, then plan", "Just add Redis is
+not a plan", "An iframe is isolation, not absolution", "Forward-fix is
+wishful thinking", "we'll a11y it later"). Pragmatist overlays explicitly
+forbid replaying their Skeptic sibling's territory and add the
+production-deployment / observability / ownership angles instead. Each
+overlay now carries an HTML sidecar header matching the base prompts and
+ends with a `Minimum Plan Answers` compact 3-4-question closing gate.
+Group B (`cfo-pragmatist`, `marketer-pragmatist`, `product-skeptic`,
+`user-empath`) is intentionally out of scope here — those belong to the
+separate `/product-review` pipeline.
+
+Overlays remain optional (composed only when the plan text matches the
+relevant trigger regex in `brain.py`). When loaded they are prepended to
+the base role system prompt with a literal `---` divider, so the base's
+verdict taxonomy, evidence rules, confidence rules, and output discipline
+remain authoritative — no overlay restates them. Russian-localized
+overlays are intentionally deferred; `load_persona()` falls back to the
+English file when a localized copy is missing.
+
 ### Files
 
 - `templates/council-prompts/skeptic-system.md`
@@ -72,6 +101,14 @@ next heading of any level.
 - `templates/council-prompts/ru/pragmatist-system.md`
 - `templates/council-prompts/ru/audit-review-skeptic.md`
 - `templates/council-prompts/ru/audit-review-pragmatist.md`
+- `templates/council-prompts/personas/security-skeptic.md`
+- `templates/council-prompts/personas/security-pragmatist.md`
+- `templates/council-prompts/personas/performance-skeptic.md`
+- `templates/council-prompts/personas/performance-pragmatist.md`
+- `templates/council-prompts/personas/ux-skeptic.md`
+- `templates/council-prompts/personas/ux-pragmatist.md`
+- `templates/council-prompts/personas/migration-skeptic.md`
+- `templates/council-prompts/personas/migration-pragmatist.md`
 - `scripts/council/brain.py` (`_extract_concerns()` regex)
 - `manifest.json` (version bump)
 
