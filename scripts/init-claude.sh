@@ -76,6 +76,10 @@ while [[ $# -gt 0 ]]; do
             SKIP_COUNCIL=true
             shift
             ;;
+        --no-prompt-engineer)
+            SKIP_PROMPT_ENGINEER=true
+            shift
+            ;;
         --mode)
             if [[ -z "${2:-}" ]]; then
                 echo -e "${RED}--mode requires a value${NC}"; exit 1
@@ -125,7 +129,7 @@ while [[ $# -gt 0 ]]; do
         *)
             echo -e "${RED}Unknown argument: $1${NC}"
             echo -e "Available frameworks: laravel, nextjs, nodejs, python, go, rails, base"
-            echo -e "Flags: --version, --dry-run, --no-council, --no-bootstrap, --no-bridges, --bridges <list>, --skip-hooks, --skip-cost-routing, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
+            echo -e "Flags: --version, --dry-run, --no-council, --no-prompt-engineer, --no-bootstrap, --no-bridges, --bridges <list>, --skip-hooks, --skip-cost-routing, --fail-fast, --mode <name>, --force, --force-mode-change, --no-banner, --yes"
             exit 1
             ;;
     esac
@@ -145,6 +149,7 @@ if [[ "$YES" == "true" ]]; then
 fi
 
 SKIP_COUNCIL="${SKIP_COUNCIL:-false}"
+SKIP_PROMPT_ENGINEER="${SKIP_PROMPT_ENGINEER:-false}"
 MODE="${MODE:-}"
 FORCE="${FORCE:-false}"
 FORCE_MODE_CHANGE="${FORCE_MODE_CHANGE:-false}"
@@ -996,6 +1001,90 @@ setup_cost_routing() {
     fi
 }
 
+# Setup Prompt Engineer (integrated). Single-prompt optimizer over Codex CLI.
+# Non-interactive — just downloads optimize_prompt.py + README + slash command
+# and writes a `pe` shell alias. Codex CLI is recommended (not enforced) since
+# the same dependency is surfaced by setup_council above.
+setup_prompt_engineer() {
+    local pe_dir="$HOME/.claude/prompt-engineer"
+    local commands_dir="$HOME/.claude/commands"
+
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║   Prompt Engineer Setup                    ║${NC}"
+    echo -e "${CYAN}║   Single-Prompt Optimizer (Codex CLI)      ║${NC}"
+    echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! command -v python3 &>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC} Python 3 not found — skipping Prompt Engineer"
+        echo -e "  Install Python 3.8+ and run: ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-prompt-engineer.sh)${NC}"
+        return
+    fi
+
+    mkdir -p "$pe_dir"
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/prompt-engineer/optimize_prompt.py" -o "$pe_dir/optimize_prompt.py" 2>/dev/null; then
+        chmod +x "$pe_dir/optimize_prompt.py"
+        echo -e "  ${GREEN}✓${NC} optimize_prompt.py installed"
+    else
+        rm -f "$pe_dir/optimize_prompt.py"
+        echo -e "  ${RED}✗${NC} Failed to download optimize_prompt.py — retry with:"
+        echo -e "    ${YELLOW}bash <(curl -sSL ${REPO_URL}/scripts/setup-prompt-engineer.sh)${NC}"
+        return
+    fi
+
+    curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/prompt-engineer/README.md" -o "$pe_dir/README.md" 2>/dev/null || rm -f "$pe_dir/README.md"
+
+    # /prompt-engineer slash command (global). Idempotent + mtime-aware mirror
+    # of the council command install above.
+    mkdir -p "$commands_dir"
+    if curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/commands/prompt-engineer.md" \
+            -o "$commands_dir/prompt-engineer.md.tmp" 2>/dev/null; then
+        if [ ! -f "$commands_dir/prompt-engineer.md" ]; then
+            mv "$commands_dir/prompt-engineer.md.tmp" "$commands_dir/prompt-engineer.md"
+            echo -e "  ${GREEN}✓${NC} commands/prompt-engineer.md installed (global)"
+        elif [ "$commands_dir/prompt-engineer.md.tmp" -nt "$commands_dir/prompt-engineer.md" ]; then
+            mv "$commands_dir/prompt-engineer.md.tmp" "$commands_dir/prompt-engineer.md"
+            echo -e "  ${GREEN}✓${NC} commands/prompt-engineer.md (refreshed)"
+        else
+            rm -f "$commands_dir/prompt-engineer.md.tmp"
+            echo -e "  ${GREEN}✓${NC} commands/prompt-engineer.md (already current)"
+        fi
+    else
+        rm -f "$commands_dir/prompt-engineer.md.tmp"
+        echo -e "  ${YELLOW}⚠${NC} commands/prompt-engineer.md (not critical)"
+    fi
+
+    # `pe` shell alias. Detect zsh vs bash, append to the right rc file.
+    local shell_rc=""
+    if [[ -n "${ZSH_VERSION:-}" ]] || [[ "${SHELL:-}" == */zsh ]]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ -n "${BASH_VERSION:-}" ]] || [[ "${SHELL:-}" == */bash ]]; then
+        shell_rc="$HOME/.bash_profile"
+        [[ -f "$HOME/.bashrc" ]] && shell_rc="$HOME/.bashrc"
+    fi
+
+    if [[ -z "$shell_rc" ]]; then
+        echo -e "  ${YELLOW}⚠${NC} Could not detect shell — add this manually:"
+        echo -e "      alias pe='python3 $pe_dir/optimize_prompt.py'"
+    elif ! grep -qE "alias pe=.*optimize_prompt\.py" "$shell_rc" 2>/dev/null; then
+        {
+            echo ""
+            echo "# Prompt Engineer alias (installed by claude-code-toolkit)"
+            echo "alias pe='python3 $pe_dir/optimize_prompt.py'"
+        } >> "$shell_rc"
+        echo -e "  ${GREEN}✓${NC} Added 'pe' alias to $shell_rc"
+        echo -e "      Reload: ${YELLOW}source $shell_rc${NC}"
+    else
+        echo -e "  ${GREEN}✓${NC} 'pe' alias already present in $shell_rc"
+    fi
+
+    if ! command -v codex &>/dev/null; then
+        echo -e "  ${YELLOW}⚠${NC} Codex CLI not found — required to run /prompt-engineer"
+        echo -e "      Install: ${YELLOW}npm install -g @openai/codex${NC} then sign in with OpenAI"
+    fi
+}
+
 # Setup Supreme Council (integrated)
 setup_council() {
     local council_dir="$HOME/.claude/council"
@@ -1480,6 +1569,13 @@ main() {
         # Supreme Council setup (integrated)
         if [[ "$SKIP_COUNCIL" != true ]]; then
             setup_council
+        fi
+
+        # Prompt Engineer setup (integrated). Non-interactive — installs
+        # ~/.claude/prompt-engineer/optimize_prompt.py + commands/prompt-engineer.md
+        # + `pe` shell alias. Codex CLI dependency is surfaced but not enforced.
+        if [[ "$SKIP_PROMPT_ENGINEER" != true ]]; then
+            setup_prompt_engineer
         fi
 
         echo ""
