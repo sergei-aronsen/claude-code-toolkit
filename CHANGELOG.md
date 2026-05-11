@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.18.1] - 2026-05-11
+
+### Documentation — Two-layer memory conflict protocol (PR #99)
+
+Documents the two parallel Claude Code memory stores and a default precedence + conflict-resolution protocol.
+
+**Background.** Real conflict observed in a downstream project: `.claude/rules/memory.md` still listed "R2-Only Architecture (2026-02-13)" as primary while harness auto-memory `MEMORY.md` had captured the Redis-via-SSH migration on 2026-03-23. Claude quoted the stale layer because no protocol said which wins. Toolkit's existing memory docs treated `.claude/rules/` as the gold standard but never named the harness auto-memory layer or how to handle disagreement.
+
+**Two layers.** `.claude/rules/*.md` (git-tracked, user writes, auto-loaded via `globs:`) vs `~/.claude/projects/<encoded-cwd>/memory/MEMORY.md` (harness auto-memory, Claude writes autonomously, injected every turn). Not synchronized — they can drift independently.
+
+**Default protocol.**
+
+1. `.claude/rules/` wins (git-tracked, human-managed)
+2. If auto-memory is demonstrably newer (later dated event, real merged PR) — update rules and commit; auto-memory will re-converge on next write
+3. Never silently quote the older layer — disclose the conflict
+
+**Surface area.**
+
+- `components/memory-persistence.md` — new "Two Layers" section with full comparison table (location, git-tracked, who writes, who reads, origin, programmability, lifecycle) and 6-step protocol.
+- `templates/{base,go,laravel,python,rails}/CLAUDE.md` — inline short-form protocol pointer under "Knowledge Persistence" so the rule loads into every session, not just when the component is opened.
+
+6 files, +70 lines, doc-only patch. No behavior change in scripts.
+
 ## [6.18.0] - 2026-05-10
 
 ### Added — Phase C: `/diagnose-ci` slash command + `feature-flag-lifecycle` component
