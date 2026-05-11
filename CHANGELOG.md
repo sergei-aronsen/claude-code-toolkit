@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.20.0] - 2026-05-11
+
+### Prompt Engineer — single-prompt optimizer integrated
+
+Adds a second AI tool alongside the Supreme Council:
+`/prompt-engineer <path>` (slash command) and `pe <path>` (shell alias).
+Rewrites one prompt file into a deployment-ready version using Codex
+CLI (ChatGPT). Where the Council validates an implementation plan with
+Skeptic + Pragmatist review, the Prompt Engineer rewrites a single
+prompt for clarity, controllability, reliability, and reusability.
+
+Vendored from <https://github.com/sergei-aronsen/prompt-optimizer>
+(single source file, standard library only, no pip deps) with two
+local bug fixes:
+
+- **600 s timeout** on the `codex exec` subprocess. The upstream call
+  used the default `subprocess.run` behaviour (no timeout), so a hung
+  Codex session would block the script forever. The fix raises a
+  `RuntimeError` and writes a `--- TIMEOUT after Ns ---` marker to
+  the per-stage log file.
+- **`try/finally`** around `tempfile.NamedTemporaryFile` so the
+  temporary output file is cleaned up even when the subprocess raises
+  before the explicit `unlink`. Previously, any exception between
+  `mktemp` and `unlink` leaked a file into `/tmp`.
+
+The upstream `optimize_prompt.py` recently switched from a fixed
+3-stage pipeline (PROMETHEUS → meta → synthesis) to a default
+single-pass mode where one PROMETHEUS call internally performs both
+first-pass optimization and a meta-optimization sweep. Single-pass is
+faster, cheaper, and produces near-best-of-three quality on
+well-defined source prompts. The legacy 3-stage pipeline is still
+available via `--multi-pass` for short or ambiguous source prompts.
+
+### Install surface
+
+Standalone installer:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-prompt-engineer.sh)
+```
+
+Lays down:
+
+- `~/.claude/prompt-engineer/optimize_prompt.py` (executable)
+- `~/.claude/prompt-engineer/README.md`
+- `~/.claude/commands/prompt-engineer.md` (global slash command)
+- `pe` shell alias appended to `~/.zshrc` or `~/.bash_profile`
+
+`scripts/init-claude.sh` calls a new `setup_prompt_engineer` function
+right after the Supreme Council install step. A new
+`--no-prompt-engineer` flag skips the install for users who do not
+want it. The function is non-interactive — it surfaces a warning if
+the Codex CLI is missing on `PATH` but never blocks the broader
+toolkit install.
+
+### Files
+
+- `scripts/prompt-engineer/optimize_prompt.py` (new — vendored + 2 local fixes)
+- `scripts/prompt-engineer/README.md` (new)
+- `scripts/setup-prompt-engineer.sh` (new — standalone installer)
+- `commands/prompt-engineer.md` (new — global slash command)
+- `scripts/init-claude.sh` (`setup_prompt_engineer` function + call site +
+  `--no-prompt-engineer` flag plumbing)
+- `manifest.json` (version bump)
+- `CHANGELOG.md` (this entry)
+
+### Operator note
+
+Requires the Codex CLI (`npm install -g @openai/codex`) and an OpenAI
+account — same dependency the Council already surfaces. No pip
+dependency, no API keys, no config file. Run `pe --help` after
+sourcing the updated shell rc.
+
 ## [6.19.0] - 2026-05-11
 
 ### Supreme Council — full rewrite of all four role system prompts

@@ -29,10 +29,16 @@ import sys
 ALLOWED_CONFLICTS = {"superpowers", "get-shit-done"}
 
 # Commands that ship globally to ~/.claude/commands/ (installed by
-# setup-council.sh / setup-security.sh, NOT per-project via manifest).
-# These files live in commands/ on disk so installers can curl them, but
-# are intentionally absent from files.commands[]. Drift check skips them.
-GLOBAL_ONLY_COMMANDS = {"council.md", "council-stats.md", "council-clear-cache.md"}
+# setup-council.sh / setup-prompt-engineer.sh / setup-security.sh, NOT
+# per-project via manifest). These files live in commands/ on disk so
+# installers can curl them, but are intentionally absent from
+# files.commands[]. Drift check skips them.
+GLOBAL_ONLY_COMMANDS = {
+    "council.md",
+    "council-stats.md",
+    "council-clear-cache.md",
+    "prompt-engineer.md",
+}
 
 # Resolve repo root relative to this script (scripts/ is one level below root)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
