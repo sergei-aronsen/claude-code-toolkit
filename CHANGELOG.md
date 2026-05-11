@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.21.0] - 2026-05-11
+
+### Prompt batch — Group B personas + base agents rewritten
+
+Eight prompt files rewritten via the v6.20.0 `pe` optimizer plus per-file
+manual merge. Pipeline = single-pass Codex CLI optimization with a
+per-file context document, followed by line-by-line merge to restore
+parser-sensitive tokens, output-section names, refusal tables, and
+schema fields. Per-file commits in the PR for traceability.
+
+#### Group B — `/product-review` personas
+
+Four self-contained persona system prompts consumed by Claude when the
+`/product-review` slash command runs. Sharpened business-review voice;
+lane-split so the four personas no longer overlap. Output section
+headings preserved verbatim for the aggregator in
+`commands/product-review.md`.
+
+- **product-skeptic** — sharper TAM/SAM/SOM and JTBD discipline.
+  Added experiment-discipline section (paid commitment > survey
+  interest). 63 → 199 lines.
+- **marketer-pragmatist** — expanded channel taxonomy with
+  forcing-functions (name the channel + first 10 acquisition attempts,
+  or treat distribution risk as too high to start building). Added
+  recommendation-specificity templates so the persona produces
+  "run $50 LinkedIn ad targeting X" rather than "improve marketing".
+  69 → 208 lines.
+- **cfo-pragmatist** — explicit benchmark table (LTV/CAC, payback,
+  CVSS-style severity bands). Hardened SaaS-graveyard gate with
+  three-state classification (`in graveyard` / `borderline` / `safe`).
+  Added LLM-inference and payment-processor gotchas to gross-margin
+  section. Tier-engineering guidance now concrete (price points,
+  annual prepay, multi-seat tiers, usage caps) instead of vague
+  "test pricing". 73 → 213 lines.
+- **user-empath** — hardened first-person discipline (explicit
+  accept-list "I would use this", reject-list "As the user…"). Added
+  frequency-of-pain classification (daily / weekly / monthly /
+  quarterly / rare) that maps to subscription willingness. Trust-
+  threshold section now distinguishes data classes (read-only,
+  personal, customer, financial, irreversible actions) with concrete
+  example sentences. 75 → 278 lines.
+
+#### Base agents — `templates/base/agents/`
+
+Four agent system prompts that ship in every project install via
+`init-claude.sh`. Preserved verbatim: YAML frontmatter (allowed-tools
+scopes), all parser-sensitive tokens and schema fields. Made framework-
+agnostic where original was Laravel-centric.
+
+- **code-reviewer.md** — added explicit Diff Discipline section (inline
+  comments target changed lines only, post-change line numbers for
+  RIGHT side, untouched-code concerns go in Concerns section not
+  inline, one finding per location). Expanded `review.json` structured-
+  output rules (validate with jq, confirm every line matches a changed
+  line, never run gh commands when workflow publishes). 254 → 365
+  lines.
+- **planner.md** — added Plan-Compliance Contract (plans must be
+  specific enough for code-reviewer's Plan Compliance checklist to
+  verify post-implementation), Plan-Mode Discipline (read-only research
+  with scratchpad-only write), Clarifying Questions First (up to 3
+  blocking questions before research), Verify-First Codebase Research,
+  MoSCoW priorities, Plan Quality Bar. Fixed broken nested code-fence
+  in Plan Template. Replaced PHP-specific path examples with language-
+  agnostic `.ext` placeholders. 195 → 316 lines.
+- **security-auditor.md** — made framework-agnostic. Original was
+  Laravel-centric; now covers all 6 supported stacks (Laravel, Rails,
+  Next.js, Node/Express, Python/Django/Flask, Go) with per-stack
+  what-to-check + grep examples. Added CVSS-aligned severity bands
+  (Critical 9.0+, High 7.0-8.9, Medium 4.0-6.9, Low 0.1-3.9),
+  HIGH/MEDIUM/LOW confidence levels per finding (LOW cannot drive
+  Critical), Audit Mode (diff vs full-repo), Observations section for
+  theoretical leads, Finding Requirements checklist, Final Review
+  self-check. Fixed broken code-fence nesting. Authorization-context
+  boundary explicit (refuses attack tooling, real-world exploitation,
+  operational payloads). 325 → 589 lines.
+- **test-writer.md** — expanded framework coverage to all 6 stacks
+  (Laravel/Pest, Rails/RSpec, Node.js/Jest+Vitest, Python/pytest, Go)
+  with concrete 20-30 line example tests per stack. Added Framework
+  Detection table. Added Bash whitelist for `pytest`, `go test`,
+  `bundle exec rspec`. Strengthened TDD discipline (explicit
+  Red/Green/Refactor phases, Pre-Write Checks, Non-Negotiable Rules).
+  Expanded coverage taxonomy from 5 to 8 categories (added Integration,
+  Contract, Property). Added Acceptance Criteria Mapping to
+  `.claude/scratchpad/` plans, Security Test Expectations, Minimal
+  Implementation Scope rule (smallest production change, no broader
+  public-API expansion, no new deps). 357 → 493 lines.
+
 ## [6.20.0] - 2026-05-11
 
 ### Prompt Engineer — single-prompt optimizer integrated

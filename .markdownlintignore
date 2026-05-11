@@ -36,3 +36,8 @@ docs/research/
 # of upstream plugins (superpowers, get-shit-done, etc.). Third-party
 # markdown is not lintable on our terms — excluded from local lint.
 _external/
+
+# output/ contains transient artifacts from scripts/prompt-engineer
+# runs (00-original.txt, 01-optimized.md, etc.). Gitignored; not part
+# of the published toolkit. Excluded from lint.
+output/
