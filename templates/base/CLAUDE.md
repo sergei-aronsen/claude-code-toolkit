@@ -354,6 +354,18 @@ Complex tasks: `.claude/scratchpad/current-task.md` for plans, `findings.md` for
 
 On significant changes, update: (1) `.claude/rules/` for project facts, (2) `.claude/CLAUDE.md` if workflow changed, (3) docs/README for humans. Use `/learn` to save debugging insights as scoped rule files in `.claude/rules/` with `globs:` — auto-loaded only for relevant files.
 
+### Two memory layers — conflict protocol
+
+Two parallel stores exist: `.claude/rules/*.md` (git-tracked, you write) and `~/.claude/projects/<encoded-cwd>/memory/MEMORY.md` (harness auto-memory, Claude writes). They are NOT synchronized.
+
+When the two disagree on a fact:
+
+1. Default precedence — `.claude/rules/` wins (git-tracked, human-managed)
+2. If auto-memory is demonstrably newer (later dated event, references a real merged PR) — update `.claude/rules/*.md` with the new fact and commit
+3. Never silently quote the older layer — always disclose the conflict to the user
+
+See `components/memory-persistence.md` § Two Layers for the full table.
+
 ---
 
 ## Skill Accumulation (Self-Learning)

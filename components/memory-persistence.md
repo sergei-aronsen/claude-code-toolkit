@@ -178,6 +178,48 @@ Remove "AT THE START OF EACH SESSION" MCP sync steps and "BEFORE COMMIT" memory 
 
 ---
 
+## Two Layers — Project Rules vs Harness Auto-Memory
+
+Claude Code exposes **two parallel memory stores**. They are NOT synchronized. Knowing which is which prevents stale-fact bugs.
+
+| | `.claude/rules/*.md` (project rules) | `~/.claude/projects/<encoded-cwd>/memory/MEMORY.md` (auto-memory) |
+|---|---|---|
+| **Location** | Inside repo | User home, per-project subfolder |
+| **Git-tracked** | Yes | No (local-only state) |
+| **Who writes** | You + `/learn` + manual edits | Claude Code itself, autonomously |
+| **Who reads** | Auto-loader at session start (via `globs:`) | Harness injects `MEMORY.md` into every turn |
+| **Origin** | Toolkit (`templates/base/rules/`) | Built-in Claude Code feature |
+| **Programmable** | Yes — format, scope, content under your control | Indirect — only via instructions in `~/.claude/CLAUDE.md` |
+| **Lifecycle** | Lives until you delete or edit the file | Overwritten autonomously when model decides |
+
+### Why conflict happens
+
+When a fact changes (e.g., migration from R2 to Redis-via-SSH on 2026-03-23):
+
+- Auto-memory updates automatically — model notices the change and rewrites the entry
+- `.claude/rules/memory.md` stays stale — no manual edit, no `/learn` run
+
+Next session loads **both** layers. If Claude does not reconcile dates, the stale fact from `rules/` wins by accident and gets quoted back to you as current.
+
+### Conflict resolution protocol
+
+When the two layers disagree on a fact:
+
+1. Read the relevant `.claude/rules/*.md` (git-tracked source of truth)
+2. Read `MEMORY.md` auto-memory entries on the same topic
+3. **Default precedence — `.claude/rules/` wins** (git-tracked, human-managed)
+4. If auto-memory is demonstrably newer (has a later dated event, references a real merged PR):
+   - Update `.claude/rules/*.md` with the new fact
+   - Commit the change (`feat: update rules/X — fact superseded by Y`)
+   - Auto-memory will re-converge on next write
+5. If `.claude/rules/` is newer (recent commit, audit entry):
+   - Note the discrepancy to the user — the next auto-memory write will overwrite the stale entry; no manual intervention needed
+6. Never silently quote the older layer — always disclose the conflict
+
+Add this protocol to your project's `.claude/CLAUDE.md` (Knowledge Persistence section) if your team relies on auto-memory.
+
+---
+
 ## Security
 
 **NEVER store credentials in `.claude/rules/` or `.claude/docs/`** — these are git-tracked.
