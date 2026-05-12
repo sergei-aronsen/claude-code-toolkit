@@ -11,8 +11,11 @@
 #   SKILLS_CATALOG[]   — 24 curated skill names (alpha order); populated at source time
 #   TUI_INSTALLED[]    — populated by skills_status_array (parallel to SKILLS_CATALOG)
 # Test seams:
-#   TK_SKILLS_HOME          — override $HOME/.claude/skills/ probe path (used by is_skill_installed)
-#   TK_SKILLS_MIRROR_PATH   — override templates/skills-marketplace/ source path (used by skills_install)
+#   TK_SKILLS_HOME                    — override $HOME/.claude/skills/ probe path (used by is_skill_installed)
+#   TK_SKILLS_MIRROR_PATH             — override templates/skills-marketplace/ source path (used by skills_install)
+#   TK_SKILLS_INSTALL_IMPECCABLE_CMD  — override resolved install-impeccable.sh path (used by skills_install for `impeccable`)
+#   TK_SKILLS_TARBALL_CMD             — stub command for skills_fetch_mirror_via_tarball; takes (dest_tgz_path, tar_url),
+#                                       writes a tarball to dest. Used by hermetic tests in lieu of real curl.
 #
 # IMPORTANT: No errexit/nounset/pipefail — sourced libraries must not alter caller error mode.
 
@@ -255,5 +258,78 @@ skills_install() {
     fi
     mkdir -p "$home" || return 1
     cp -R "$src" "$target" || return 1
+    return 0
+}
+
+# skills_fetch_mirror_via_tarball — download the toolkit tarball and export
+# TK_SKILLS_MIRROR_PATH + TK_SKILLS_INSTALL_IMPECCABLE_CMD so subsequent
+# skills_install calls resolve sources from the extracted tree instead of
+# the BASH_SOURCE-relative path (which is wrong under curl-pipe because
+# install.sh sources scripts/lib/skills.sh from /tmp/skills-XXXXXX).
+#
+# Reads env:
+#   TK_TOOLKIT_REF        — branch/tag/SHA passed to the GitHub archive URL.
+#                           Defaults to "main". Allowlisted by install.sh
+#                           before this function runs (regex [A-Za-z0-9._/-]+,
+#                           no `..`).
+#   TK_USER_AGENT         — curl User-Agent. Defaults to a placeholder so a
+#                           non-toolkit caller can still invoke this directly.
+#   TK_SKILLS_TARBALL_CMD — test seam. When set, invoked as
+#                             "$TK_SKILLS_TARBALL_CMD <dest_tgz> <tar_url>"
+#                           and expected to write a tarball to dest. Skips
+#                           the curl call entirely. Production callers leave
+#                           this unset.
+#   TMPDIR                — base for mktemp; macOS default $TMPDIR honored.
+#
+# Writes env:
+#   TK_SKILLS_MIRROR_PATH               — extracted templates/skills-marketplace
+#   TK_SKILLS_INSTALL_IMPECCABLE_CMD    — extracted scripts/install-impeccable.sh
+#
+# Returns 0 on success, 1 on any failure (mktemp, fetch, tar extract, or a
+# missing path inside the tarball). On failure neither env var is exported.
+skills_fetch_mirror_via_tarball() {
+    local ref="${TK_TOOLKIT_REF:-main}"
+    local tar_url="https://github.com/sergei-aronsen/claude-code-toolkit/archive/${ref}.tar.gz"
+    local tar_tmp tar_dir
+    tar_tmp=$(mktemp "${TMPDIR:-/tmp}/tk-skills-tar-XXXXXX.tgz") || return 1
+    tar_dir=$(mktemp -d "${TMPDIR:-/tmp}/tk-skills-extract-XXXXXX") || {
+        rm -f "$tar_tmp"
+        return 1
+    }
+    if [[ -n "${TK_SKILLS_TARBALL_CMD:-}" ]]; then
+        "$TK_SKILLS_TARBALL_CMD" "$tar_tmp" "$tar_url" || {
+            rm -rf "$tar_dir"; rm -f "$tar_tmp"
+            return 1
+        }
+    elif command -v curl >/dev/null 2>&1; then
+        curl -sSLf \
+            -A "${TK_USER_AGENT:-claude-code-toolkit-installer}" \
+            --max-time 120 --connect-timeout 10 \
+            --retry 2 --retry-delay 2 \
+            "$tar_url" -o "$tar_tmp" || {
+            rm -rf "$tar_dir"; rm -f "$tar_tmp"
+            return 1
+        }
+    else
+        rm -rf "$tar_dir"; rm -f "$tar_tmp"
+        return 1
+    fi
+    # --strip-components=1 peels the GitHub-injected `<owner>-<repo>-<sha>/`
+    # prefix so paths inside $tar_dir start at `templates/`, `scripts/`, etc.
+    tar -xzf "$tar_tmp" -C "$tar_dir" --strip-components=1 2>/dev/null || {
+        rm -rf "$tar_dir"; rm -f "$tar_tmp"
+        return 1
+    }
+    rm -f "$tar_tmp"
+    if [[ ! -d "$tar_dir/templates/skills-marketplace" ]]; then
+        rm -rf "$tar_dir"
+        return 1
+    fi
+    if [[ ! -f "$tar_dir/scripts/install-impeccable.sh" ]]; then
+        rm -rf "$tar_dir"
+        return 1
+    fi
+    export TK_SKILLS_MIRROR_PATH="$tar_dir/templates/skills-marketplace"
+    export TK_SKILLS_INSTALL_IMPECCABLE_CMD="$tar_dir/scripts/install-impeccable.sh"
     return 0
 }
