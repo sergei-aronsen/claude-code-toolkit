@@ -78,6 +78,25 @@ REQUIRED_ENTRY_KEYS = (
 # POSIX env-var name shape: leading uppercase or underscore, then alphanumeric/underscore.
 ENV_VAR_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
+# Required keys on every components.cli[<name>] entry.
+# CLI entries are auxiliary side-blocks attached to a matching components.mcp
+# entry by shared name (see mcp.sh:183-187 and install.sh:992-994). They carry
+# only the platform-install commands and the detection hint; presentation
+# metadata (display_name, description, category) lives on the MCP side.
+REQUIRED_CLI_ENTRY_KEYS = (
+    "detect_cmd",
+    "install",
+)
+
+# Control characters forbidden inside cli install commands. Newline / CR / NUL
+# enable trivial injection (KEY=val<newline>rm -rf), backspace can hide chars
+# in terminal echo. Other shell metacharacters (`$`, `&&`, `|`, …) are NOT
+# rejected — many legitimate vendor install snippets need them (e.g.
+# "mkdir -p ~/.local/bin && curl -fsSL …"). Defense relies on the trust
+# boundary (curated catalog) plus runtime sandboxing via `bash -c` and the
+# TK_MCP_CATALOG_PATH gate enforced by install.sh.
+_CLI_CMD_CTRL_CHARS = ("\n", "\r", "\x00", "\x08")
+
 
 def fail(message):
     print("ERROR: " + message, file=sys.stderr)
@@ -271,6 +290,89 @@ def main():
             )
             errors += 1
 
+    # Check 12: components.cli[<name>] entries (Audit 2026-05-12).
+    # Previously the validator stopped at components.mcp.*. Catalog also
+    # carries components.cli[<name>].install.{darwin,linux} which install.sh
+    # passes to `eval` in cli-installer.sh. Without this section a malformed
+    # or hostile cli entry would slip through `make validate-catalog`.
+    cli_section = components.get("cli", {})
+    if cli_section is None:
+        cli_section = {}
+    if not isinstance(cli_section, dict):
+        fail('"components.cli" must be an object when present')
+        errors += 1
+        cli_section = {}
+
+    cli_count = 0
+    for key, entry in cli_section.items():
+        cli_count += 1
+        location = "components.cli[" + repr(key) + "]"
+
+        if not isinstance(entry, dict):
+            fail(location + " must be an object, got " + type(entry).__name__)
+            errors += 1
+            continue
+
+        missing = [k for k in REQUIRED_CLI_ENTRY_KEYS if k not in entry]
+        if missing:
+            fail(location + " missing required keys: " + ", ".join(missing))
+            errors += 1
+            continue
+
+        detect_cmd = entry.get("detect_cmd")
+        if not isinstance(detect_cmd, str) or not detect_cmd:
+            fail(location + ": .detect_cmd must be a non-empty string")
+            errors += 1
+        else:
+            for ch in _CLI_CMD_CTRL_CHARS:
+                if ch in detect_cmd:
+                    fail(
+                        location + ": .detect_cmd contains a forbidden "
+                        "control character " + repr(ch)
+                    )
+                    errors += 1
+                    break
+
+        post_hint = entry.get("post_install_hint")
+        if post_hint is not None:
+            if not isinstance(post_hint, str):
+                fail(location + ": .post_install_hint must be a string when present")
+                errors += 1
+            else:
+                for ch in _CLI_CMD_CTRL_CHARS:
+                    if ch in post_hint:
+                        fail(
+                            location + ": .post_install_hint contains a forbidden "
+                            "control character " + repr(ch)
+                        )
+                        errors += 1
+                        break
+
+        install = entry.get("install")
+        if not isinstance(install, dict):
+            fail(location + ": .install must be an object with darwin+linux")
+            errors += 1
+            continue
+
+        for plat in ("darwin", "linux"):
+            cmd = install.get(plat)
+            if not isinstance(cmd, str) or not cmd:
+                fail(
+                    location + ": .install." + plat
+                    + " must be a non-empty string"
+                )
+                errors += 1
+                continue
+            for ch in _CLI_CMD_CTRL_CHARS:
+                if ch in cmd:
+                    fail(
+                        location + ": .install." + plat
+                        + " contains a forbidden control character "
+                        + repr(ch)
+                    )
+                    errors += 1
+                    break
+
     if errors > 0:
         print(
             "integrations-catalog.json validation FAILED ("
@@ -283,7 +385,9 @@ def main():
     print(
         "integrations-catalog.json validation PASSED ("
         + str(len(seen_keys))
-        + " mcp entries checked across "
+        + " mcp entries + "
+        + str(cli_count)
+        + " cli entries checked across "
         + str(len(valid_categories))
         + " categories)"
     )

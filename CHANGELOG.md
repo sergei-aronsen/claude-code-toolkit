@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security audit hardening — 2026-05-13 sweep (4 findings)
+
+Repo audit run on the v6.23.0 head surfaced four findings in the install /
+catalog dispatch path. Three are now closed; the fourth (`F-9` tests
+missing `set -e`) was a false positive and dropped after re-verification.
+
+#### F-1 — `TK_MCP_CATALOG_PATH` test seam without `TK_TEST=1` gate (HIGH / Security)
+
+`scripts/install.sh` previously honoured `TK_MCP_CATALOG_PATH` from the
+calling environment unconditionally. The catalog string then flowed into
+`bash -c` via `cli-installer.sh:123,130`, so a pre-set env var pointing at
+an attacker-controlled JSON file would have executed arbitrary commands
+under the user's account during `bash <(curl -sSL .../install.sh)`. This is
+the same RCE class that audit C2/H6 closed for
+`TK_SP_INSTALL_CMD`/`TK_GSD_INSTALL_CMD` via `TK_TEST=1` gating.
+
+Mirror lockdown: `install.sh:269-277` now rejects a pre-set
+`TK_MCP_CATALOG_PATH` unless `TK_TEST=1` is also exported, with a
+diagnostic stderr message. Internal exports inside `install.sh` (after the
+curl-pipe catalog download) happen after the gate and remain unaffected.
+Tests in `test-integrations-tui.sh` (A16, A17) that legitimately pre-set
+the catalog path now also export `TK_TEST=1`.
+
+#### F-2 — `eval` in `scripts/vendor/pin-vendors.sh` with git-tag interpolation (HIGH / Bug)
+
+Lines 99-100 used `eval "ARG_${name//-/_}_TAG='$head_tag'"`. Git tags
+legally contain single quotes (`'`) and other shell metacharacters; an
+upstream vendor pushing a hostile tag could break the eval and, in the
+worst case, inject shell into the maintainer's environment.
+
+Replaced with three parallel indexed arrays (`PIN_NAMES`, `PIN_COMMITS`,
+`PIN_TAGS`) iterated by index. Values flow straight into `jq --arg` which
+quotes them safely. Verified via `DRY_RUN=1 bash scripts/vendor/`
+`pin-vendors.sh` — all 8 vendor pins captured correctly.
+
+#### F-3 — `validate-integrations-catalog.py` did not cover `components.cli.*` (MEDIUM / Security)
+
+The validator rigorously checked `components.mcp.*` shape but left
+`components.cli.*` unvalidated. The CLI side carries `install.darwin` /
+`install.linux` strings that flow into command execution in
+`cli-installer.sh`, so missing coverage meant a malformed entry could
+slip past `make validate-catalog`.
+
+Added Check 12: every `components.cli[<name>]` entry must have non-empty
+`detect_cmd` and `install.{darwin,linux}` string fields; control
+characters (`\n`, `\r`, `\x00`, `\x08`) are rejected in all command-class
+fields. Optional `post_install_hint` is type-checked when present.
+Validator now reports `29 mcp entries + 8 cli entries checked`.
+
+Regression test A21 added to `scripts/tests/test-integrations-catalog.sh`:
+mutates the catalog to inject a newline into one CLI entry's
+`install.darwin` and asserts the validator exits non-zero with a
+`install.darwin contains a forbidden control character` message.
+
+#### Defense in depth — `cli-installer.sh` `eval` → `bash -c`
+
+Even with F-1 closed and F-3 in place, the eval-class footprint in
+`cli-installer.sh:123,130` was widened — `eval` runs in the current shell
+and could pollute exported state on a future regression. Replaced with
+`bash -c -- "$cmd"` so the catalog-provided string executes in a child
+shell. Existing `test-cli-installer.sh` (24 assertions) stays green
+without modification.
+
+#### Deferred (separate PRs)
+
+- **F-7** monolith decomposition (`install.sh` 2457 LOC, `brain.py` 3503
+  LOC, `mcp.sh` 1582 LOC) — refactor scope estimated 4-6h.
+- **F-8** CI init-matrix expansion from 2 to 6 frameworks × 2 OS.
+- `eval "$@"` in `setup-comet.sh` / `setup-open-design.sh` — internal
+  callers only, low priority; invasive call-site rewrite.
+- `CHANGELOG.md` archival split (211 KB).
+
 ### Fixed — Project-scope MCPs fail under `curl | bash` (project-secrets lazy-source path collapse)
 
 User report 2026-05-12: project-scope MCPs (`cloudflare`, `stripe`,
