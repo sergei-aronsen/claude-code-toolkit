@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Double scope glyph in MCP scope lock-screen
+
+User report 2026-05-12 (screenshot): the per-row MCP scope picker
+rendered every row with two scope brackets — `[U] [U] Cloudflare`,
+`[P] [P] Stripe`, etc. — until Tab was pressed on that row, at which
+point a single bracket appeared.
+
+#### Root cause
+
+`install.sh:405-455` builds a SHADOW set of `TUI_*` arrays containing
+only rows the user picked in the prior catalog TUI, then runs
+`tui_checklist` in `TK_TUI_LOCK_SELECTION=1` mode for the scope-edit
+sub-screen. The shadow-build loop copied `_SAVE_LABELS[$_i]` verbatim
+into `TUI_LABELS[]` — but those labels were already prefixed with a
+single scope glyph by `mcp_status_array`'s prior call to
+`_mcp_rebuild_row_labels`. A second loop then case-on-scope-prepended
+`[U]`/`[P]`/`[L]` (with a trailing space) to each row, producing the
+visible double glyph.
+Pressing Tab fired `mcp_cycle_row_scope_locked`, which rebuilt the
+row's label from `MCP_DISPLAY[]` via the canonical single-glyph path
+and masked the bug for that row only.
+
+#### Fix
+
+Replaced the manual prepend loop with a single call to the canonical
+`_mcp_rebuild_row_labels` helper (`scripts/lib/mcp.sh:1164`), which
+writes every `TUI_LABELS[$_j]` from scratch using `MCP_DISPLAY[]`,
+`MCP_UNOFFICIAL[]`, and a single `_mcp_render_scope_glyph` invocation.
+One label-build code path now serves the catalog TUI, the lock-screen
+sub-picker, and the per-row Tab cycle.
+
+#### Tests
+
+- New `scripts/tests/test-mcp-lock-screen-glyph.sh` (10 assertions, 2
+  scenarios): LG1 documents the canonical helper's single-glyph
+  contract under pre-glyphed shadow input; LG2 is a structural
+  regression guard asserting the lock-screen init block carries the
+  helper call and dropped the legacy `_g="[U]"` + manual prepend
+  construct.
+- Existing `scripts/tests/test-tui-lock-selection.sh` (6/6),
+  `test-mcp-selector.sh` (36/36), and `test-mcp-detect-installed-`
+  `scope.sh` (8/8) unchanged; `make check` green; shellcheck clean.
+
 ### Fixed — Skills install under `curl | bash` (path-resolution regression)
 
 Marketplace skills install path failed for every fresh skill when the
