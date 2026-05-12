@@ -264,10 +264,63 @@ upgrade_npm() { npm install -g "$1@latest"; }
 probe_cc_safety_net() { probe_npm "cc-safety-net"; }
 probe_better_model()  { probe_npm "better-model"; }
 probe_gsd_sdk()       { probe_npm "get-shit-done-cc"; }
+probe_repomix()       { probe_npm "repomix"; }
 
 upgrade_cc_safety_net() { upgrade_npm "cc-safety-net"; }
 upgrade_better_model()  { upgrade_npm "better-model"; }
 upgrade_gsd_sdk()       { upgrade_npm "get-shit-done-cc"; }
+upgrade_repomix() {
+    # Repomix is invoked via `npx -y repomix@<PIN>` from brain.py, the
+    # /pack command, the integrations-catalog MCP entry, and the
+    # repomix SKILL — so a global install isn't required, but bumping
+    # the pinned version IS. _sync_repomix_pin reads `npm view`'s latest
+    # and rewrites every `repomix@<old>` string in the toolkit.
+    _sync_repomix_pin
+}
+
+_sync_repomix_pin() {
+    local manifest="$SCRIPT_DIR/../manifest.json"
+    local latest
+    latest=$(npm view repomix version 2>/dev/null | tr -d '\n')
+    if [[ -z "$latest" ]]; then
+        echo "✗ could not read latest repomix version from npm" >&2
+        return 1
+    fi
+    if ! command -v jq &>/dev/null; then
+        echo "✗ jq required to update manifest" >&2
+        return 1
+    fi
+    if [[ ! -f "$manifest" ]]; then
+        echo "✗ manifest.json not found at $manifest" >&2
+        return 1
+    fi
+    # Update manifest pin
+    local tmp="${manifest}.tmp"
+    jq --arg v "v$latest" '.vendor_pins.repomix.tag = $v' "$manifest" > "$tmp" \
+        && mv "$tmp" "$manifest"
+
+    # BSD vs GNU sed in-place: GNU accepts `-i` alone, BSD requires `-i ''`.
+    # `sed --version` succeeds on GNU and fails on BSD — branch on that.
+    local sed_in_place=(-i '')
+    if sed --version >/dev/null 2>&1; then
+        sed_in_place=(-i)
+    fi
+
+    local repo_root="$SCRIPT_DIR/.."
+    local files=(
+        "$repo_root/scripts/council/pack.py"
+        "$repo_root/scripts/lib/integrations-catalog.json"
+        "$repo_root/commands/pack.md"
+        "$repo_root/templates/base/skills/repomix/SKILL.md"
+    )
+    local f
+    for f in "${files[@]}"; do
+        [[ -f "$f" ]] || continue
+        sed "${sed_in_place[@]}" -E \
+            "s/repomix@[0-9]+\.[0-9]+\.[0-9]+/repomix@$latest/g" "$f"
+    done
+    echo "✓ repomix pin synced to $latest"
+}
 
 probe_rtk() {
     local installed="" latest=""
@@ -436,6 +489,7 @@ register_dep "get-shit-done-cc" "External"  probe_gsd_sdk          upgrade_gsd_s
 register_dep "serena"           "MCP"       probe_serena           upgrade_serena           "LSP code search/refactor (uv tool serena-agent)"
 register_dep "claude-context"   "MCP"       probe_claude_context   upgrade_claude_context   "Vector-DB semantic search (npx)"
 register_dep "claude-memo"      "Optional"  probe_claude_memo      upgrade_claude_memo      "Persistent engineering memory (vault + 4 hooks)"
+register_dep "repomix"          "External"  probe_repomix          upgrade_repomix          "Repo-pack for AI context (npx, pinned in manifest)"
 
 # ───────── --check single-dep ─────────
 

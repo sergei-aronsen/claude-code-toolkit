@@ -392,6 +392,23 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "repomix": {
+        "name": "repomix",
+        "display_name": "Repomix",
+        "category": "dev-tools",
+        "env_var_keys": [],
+        "install_args": [
+          "repomix",
+          "--",
+          "npx",
+          "-y",
+          "repomix@1.14.0",
+          "--mcp"
+        ],
+        "description": "Pack local + remote repos into AI-friendly XML/Markdown for full-codebase context",
+        "requires_oauth": false,
+        "default_scope": "user"
+      },
       "resend": {
         "name": "resend",
         "display_name": "Resend",

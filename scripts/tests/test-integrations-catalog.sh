@@ -113,19 +113,20 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A5 — components.mcp has 28 entries
+# A5 — components.mcp has 29 entries
 # (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21;
 #  v6.0 INT-15 added morph-fast-tools + claude-context = 23;
 #  v6.1: morph-fast-tools replaced by serena 1-for-1, count unchanged at 23.
 #  v6.2 docs PR: +1 (dbhub) = 24; claude-memo PR: +3 (mailgun, datadog, posthog) = 27.
-#  v6.6 added comet-bridge (Pplx Pro research backend, +1 = 28).)
+#  v6.6 added comet-bridge (Pplx Pro research backend, +1 = 28).
+#  v6.23 added repomix (full-repo pack for AI context, +1 = 29).)
 # ─────────────────────────────────────────────────
-_pyq "A5: components.mcp has exactly 28 entries" '
+_pyq "A5: components.mcp has exactly 29 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
-if isinstance(mcp, dict) and len(mcp) == 28:
+if isinstance(mcp, dict) and len(mcp) == 29:
     print("OK")
 else:
-    print("components.mcp count is " + str(len(mcp)) + ", expected 28")
+    print("components.mcp count is " + str(len(mcp)) + ", expected 29")
 '
 
 # ─────────────────────────────────────────────────

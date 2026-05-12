@@ -81,6 +81,59 @@ template is reusable for the remaining 6 base audit prompts
   project-level instruction. Every prompt-file edit must go through
   `pe` first, then a manual context-aware merge.
 
+## [6.23.0] - 2026-05-12
+
+### Added — Repomix integration
+
+Closes Supreme Council's prior context-starvation problem by feeding a
+compressed full-repo pack to Gemini (Skeptic) and ChatGPT (Pragmatist)
+alongside the existing targeted-files context.
+
+- **`brain.py --pack`** (default ON when Node available). Generates a
+  `repomix --compress --style xml` snapshot of the local repo, caches it
+  at `.claude/scratchpad/repomix-pack.xml`, and injects it before
+  `FILES CONTEXT` in both Skeptic and Pragmatist prompts. Pack content
+  passes through the existing `redact_context()` layer on top of
+  Secretlint (defense in depth). Cache invalidates automatically when
+  any tracked file's mtime exceeds the pack's mtime. New flags:
+  `--no-pack`, `--pack-force`, `--pack-fresh`, `--pack-remote <url>`.
+- **180k-token soft budget** with graceful degradation chain — over-budget
+  packs are dropped silently and Council falls back to legacy targeted
+  context. Override via `REPOMIX_PACK_BUDGET` env var.
+- **`/pack` slash command** (`commands/pack.md`) wraps repomix for manual
+  invocation: `/pack`, `/pack --remote user/repo`, `/pack --to clipboard`,
+  `/pack --format md`. Writes to `.claude/scratchpad/pack-<timestamp>.<ext>`.
+- **`repomix` skill** (`templates/base/skills/repomix/SKILL.md`) with EN+RU
+  triggers and a decision matrix showing when repomix beats `Grep` /
+  `Read` / `find-function` / `Explore`.
+- **MCP catalog entry** (`scripts/lib/integrations-catalog.json`) — 29th
+  server, `category=dev-tools`, `default_scope=user`, zero secrets,
+  pinned to `repomix@1.14.0`.
+- **`update-deps.sh probe_repomix` + `upgrade_repomix`** — `_sync_repomix_pin`
+  bumps `manifest.json:vendor_pins.repomix.tag` and sed-rewrites every
+  `repomix@<old>` string in `pack.py`, the MCP catalog, `pack.md`, and the
+  skill. BSD- and GNU-`sed`-compatible.
+- **`docs/REPOMIX.md`** — user-facing guide on pack flow, budgets, MCP,
+  security model, and disabling.
+- **Pinned version** `repomix@1.14.0` in `manifest.json:vendor_pins`.
+- **Tests** — `test-council-pack.sh` (12 assertions), `test-mcp-repomix.sh`
+  (8), `test-update-deps-repomix.sh` (4); existing `test-mcp-selector.sh`
+  bumped 28 → 29 entries (36 assertions).
+
+### Changed
+
+- `manifest.json` version 6.22.0 → 6.23.0; `commands/pack.md` and
+  `skills/repomix/SKILL.md` registered in the manifest file lists.
+- `templates/base/skills/skill-rules.json` gains the `repomix` activation
+  block.
+
+### Deferred to v6.24
+
+- `VENDOR_USE_REPOMIX=1` flag in `scripts/vendor/clone-pinned.sh`. Reason:
+  the downstream `diff-summary.sh` reads `.git/` directories for commit
+  history; switching to packed XML requires a coordinated rewrite of both
+  files. Ship as a follow-up PR with both halves.
+
 ## [6.22.0] - 2026-05-12
 
 ### Framework template consolidation — 40 files deleted

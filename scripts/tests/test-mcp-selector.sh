@@ -80,7 +80,8 @@ run_s1_catalog_correctness() {
     # v6.1: morph-fast-tools replaced by serena (1-for-1) — count stays 23.
     # v6.2 docs PR added dbhub (+1 = 24); claude-memo PR added mailgun + datadog + posthog (+3 = 27).
     # v6.6 added comet-bridge (Pplx Pro research backend, +1 = 28).
-    assert_eq "28" "${#MCP_NAMES[@]}" "S1: catalog contains 28 entries"
+    # v6.23 added repomix (full-repo pack for AI context, +1 = 29).
+    assert_eq "29" "${#MCP_NAMES[@]}" "S1: catalog contains 29 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 
     # Find notion index and verify requires_oauth = 1
