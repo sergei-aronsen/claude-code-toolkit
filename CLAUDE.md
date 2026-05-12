@@ -131,6 +131,101 @@ claude-guides/
 
 ---
 
+## Prompt Optimization Pipeline (MANDATORY)
+
+When optimizing or rewriting any prompt file in this project (base
+audit prompts, agent prompts, persona overlays, slash-command prompt
+bodies — any `.md` file whose primary purpose is to instruct an LLM),
+follow this two-stage pipeline. **Never skip stage 1.**
+
+### Stage 1 — Run the Prompt Generator (`pe`)
+
+`pe` is the project's Codex-CLI-backed prompt optimizer at
+`scripts/prompt-engineer/optimize_prompt.py` (shell alias installed by
+`scripts/setup-prompt-engineer.sh`).
+
+```bash
+# Default single-pass optimization with a context.md
+pe path/to/prompt.md --context path/to/context.md
+
+# Or invoke the script directly
+python3 scripts/prompt-engineer/optimize_prompt.py \
+    path/to/prompt.md --context path/to/context.md
+```
+
+Write a `context.md` first that declares:
+
+- File purpose and intended consumer (which slash command / agent
+  loads it).
+- What MUST be preserved verbatim (parser-sensitive tokens, splice
+  sentinels like `<!-- v42-splice: ... -->`, em-dash slots U+2014,
+  YAML frontmatter, exact heading anchors).
+- What can be sharpened freely (verbose prose, redundant sections,
+  generic filler).
+- What to add if missing.
+- House style (straight quotes, no emoji headings unless project
+  convention, markdownlint-clean).
+- Target line count.
+
+Run `pe` once with that context. Output lands in
+`output/<timestamp>/01-optimized.md`. Treat the result as a **draft,
+not a finished file**.
+
+### Stage 2 — Manual context-aware merge
+
+`pe` does not understand all project invariants. After the draft
+lands, manually edit it back into shape:
+
+1. Strip the outer `\`\`\`markdown` / `\`\`\`text` wrapper if the
+   optimizer added one.
+2. Restore every splice sentinel character-for-character (sentinels
+   are critical — `scripts/propagate-audit-pipeline-v42.sh` greps for
+   them).
+3. Restore the em-dash slot exactly: `_pending — run /council`
+   `audit-review_` (U+2014, single-underscore italic, no asterisks,
+   no backticks, no bold). Phase 15 navigates by this byte sequence.
+4. Restore audit-pipeline markers byte-exact: `1. **Read context**`,
+   `6. **Severity sanity check**`, `Council Handoff` heading.
+5. Restore YAML frontmatter at the top of the file if it was
+   reordered or paraphrased.
+6. Fix structural contradictions the optimizer missed (e.g., a free-
+   form section that conflicts with a spliced canonical schema —
+   delete the obsolete one).
+7. Convert curly quotes to straight quotes.
+8. Strip trailing whitespace.
+
+### Stage 3 — Validate
+
+Before commit:
+
+```bash
+npx markdownlint-cli <target>
+bash scripts/tests/test-template-propagation.sh  # if audit prompt
+make check
+```
+
+### What NEVER goes through `pe`
+
+- **Spliced section bodies** — content between `<!-- v42-splice: ... -->`
+  sentinels is regenerated from `components/audit-*.md` SOTs. Edit
+  the SOT itself, then re-run `scripts/propagate-audit-pipeline-v42.sh`
+  to fan out. Never edit a spliced body in place — the next splice
+  run will overwrite the edit.
+- **Files outside `templates/`, `commands/`, `components/`,
+  `templates/council-prompts/`** — `pe` is for prompts, not for code,
+  scripts, or documentation.
+
+### Why this rule exists
+
+`pe` surfaces phrasing tightenings and redundancy across sections
+that aren't easy to see reading the file linearly. Skipping `pe` and
+hand-editing loses that lift. Skipping the manual merge ships a draft
+that violates project invariants (broken sentinels, hyphens replacing
+em-dashes, paraphrased parser tokens) and the splice script /
+Council parser will silently fail.
+
+---
+
 ## Knowledge Persistence (IMPORTANT!)
 
 When making **significant changes** to the project — save knowledge to three places:
