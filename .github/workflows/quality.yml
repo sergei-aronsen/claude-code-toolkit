@@ -92,7 +92,7 @@ jobs:
           fi
           echo "✅ All audit templates valid"
 
-      - name: Check v4.2 pipeline markers in all 30 audit prompt files
+      - name: Check v4.2 pipeline markers in all 6 base audit prompt files
         run: |
           echo "Checking v4.2 audit pipeline markers (Council Handoff + FP-recheck step 1 + rubric-anchors)..."
           ERRORS=0
@@ -128,7 +128,7 @@ jobs:
             echo "Found $ERRORS v4.2 marker errors across audit prompts"
             exit 1
           fi
-          echo "✅ All 30 audit prompts carry v4.2 pipeline markers + rubric-anchors sentinel (TEMPLATE-03)"
+          echo "✅ All 6 audit prompts carry v4.2 pipeline markers + rubric-anchors sentinel (TEMPLATE-03; v6.22.0 framework cleanup)"
 
       - name: Test 20 — template propagation idempotency
         run: bash scripts/tests/test-template-propagation.sh

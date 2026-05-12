@@ -1,6 +1,10 @@
 #!/bin/bash
 # scripts/propagate-audit-pipeline-v42.sh
-# Fan-out v4.2 audit pipeline contracts to all 49 framework prompt files.
+# Fan-out v4.2 audit pipeline contracts to the 6 base audit prompt files.
+# v6.22.0: framework-specific audit prompts deleted as drift vs modernized
+# base. Splice now runs only over templates/base/prompts/{CODE_REVIEW,
+# DESIGN_REVIEW,MYSQL_PERFORMANCE_AUDIT,PERFORMANCE_AUDIT,
+# POSTGRES_PERFORMANCE_AUDIT,SECURITY_AUDIT}.md.
 #
 # Inserts five sentinel-tagged blocks per file (v6.15.3 added rubric-anchors):
 #   1. Top-of-file allowlist callout (HTML comment)

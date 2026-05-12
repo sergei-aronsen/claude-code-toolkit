@@ -40,23 +40,23 @@ fi
 # 1.2: copy templates/ to scratch
 cp -r "$REPO_ROOT/templates" "$SCRATCH/templates"
 
-# 1.3: count source files (must be 35 across 5 frameworks × 7 prompt types).
-# v6.0: nextjs/ and nodejs/ removed (Next.js covered by GSD skills-marketplace,
-# nodejs merged into base). Frameworks remaining: base, laravel, rails, python, go.
+# 1.3: count source files. v6.22.0: framework audit prompts deleted (drift vs
+# modernized base). Remaining = 6 audit prompts (base) + 5 DEPLOY_CHECKLIST
+# (base+laravel+rails+python+go) = 11 total.
 SRC_COUNT=$(find "$SCRATCH/templates" -path '*/prompts/*.md' \
     \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
        -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o -name 'DEPLOY_CHECKLIST.md' -o \
        -name 'DESIGN_REVIEW.md' \) | wc -l | tr -d ' ')
 
-if [ "$SRC_COUNT" = "35" ]; then
-    report_pass "source file count: 35 prompt files (5 frameworks x 7 types)"
+if [ "$SRC_COUNT" = "11" ]; then
+    report_pass "source file count: 11 prompt files (6 base audits + 5 DEPLOY_CHECKLIST)"
 else
-    report_fail "source file count: expected 35, got $SRC_COUNT"
+    report_fail "source file count: expected 11, got $SRC_COUNT"
 fi
 
 # =============================================================================
-# Test Group 2 — Run 1: splice all 35 files
+# Test Group 2 — Run 1: splice all 6 base audit files
 # =============================================================================
 
 RUN1_LOG="$SCRATCH/run1.log"
@@ -67,12 +67,13 @@ else
     head -40 "$RUN1_LOG"
 fi
 
-# 2.1: run 1 must report all 35 files in a terminal state (either freshly
-#      spliced or already-spliced from a previous live-templates apply).
-#      The idempotency contract (run 2 byte-identical to run 1) is asserted
-#      separately below — what matters here is that no file errored.
-if grep -qE 'Processed 30 files: (30 spliced, 0 already-spliced|0 spliced, 30 already-spliced), 0 skipped' "$RUN1_LOG"; then
-    report_pass "run 1: 30 audit files terminal (spliced or already-spliced; DEPLOY_CHECKLIST excluded as v6.15.0), 0 errors"
+# 2.1: run 1 must report all 6 audit files (base only, v6.22.0) in a terminal
+#      state (either freshly spliced or already-spliced from a previous
+#      live-templates apply). The idempotency contract (run 2 byte-identical
+#      to run 1) is asserted separately below — what matters here is that no
+#      file errored.
+if grep -qE 'Processed 6 files: (6 spliced, 0 already-spliced|0 spliced, 6 already-spliced), 0 skipped' "$RUN1_LOG"; then
+    report_pass "run 1: 6 audit files terminal (spliced or already-spliced; DEPLOY_CHECKLIST excluded as v6.15.0), 0 errors"
 else
     report_fail "run 1: summary does not match expected terminal state"
     grep -F 'Processed' "$RUN1_LOG" | head -3 || true
@@ -127,17 +128,18 @@ done < <(find "$SCRATCH/templates" -path '*/prompts/*.md' \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
        -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
        -name 'DESIGN_REVIEW.md' \) | sort)
-# v6.15.0: DEPLOY_CHECKLIST excluded — runbook not audit. 30 spliced
-# files = 5 frameworks × 6 audit prompt types.
+# v6.15.0: DEPLOY_CHECKLIST excluded — runbook not audit.
+# v6.22.0: framework audit prompts deleted. 6 spliced files = 1 framework
+# (base) × 6 audit prompt types.
 
 if [ "$SENTINEL_FAIL" -eq 0 ]; then
-    report_pass "sentinel invariants: all 30 audit files carry exactly 5 named v42-splice sentinels (rubric-anchors added v6.15.3)"
+    report_pass "sentinel invariants: all 6 audit files carry exactly 5 named v42-splice sentinels (rubric-anchors added v6.15.3)"
 fi
 if [ "$MARKER_FAIL" -eq 0 ]; then
-    report_pass "contract markers: all 30 audit files contain 'Council Handoff' + '1. **Read context**'"
+    report_pass "contract markers: all 6 audit files contain 'Council Handoff' + '1. **Read context**'"
 fi
 if [ "$SLOT_FAIL" -eq 0 ]; then
-    report_pass "em-dash slot: all 30 audit files contain '_pending — run /council audit-review_' (U+2014)"
+    report_pass "em-dash slot: all 6 audit files contain '_pending — run /council audit-review_' (U+2014)"
 fi
 
 # =============================================================================
@@ -154,11 +156,11 @@ else
     report_fail "run 2: splice script exited non-zero (see $RUN2_LOG)"
 fi
 
-# 4.1: run 2 must report "0 spliced, 30 already-spliced"
-if grep -qF '0 spliced, 30 already-spliced, 0 skipped' "$RUN2_LOG"; then
-    report_pass "run 2: summary reports 0 spliced, 30 already-spliced (DEPLOY excluded v6.15.0)"
+# 4.1: run 2 must report "0 spliced, 6 already-spliced"
+if grep -qF '0 spliced, 6 already-spliced, 0 skipped' "$RUN2_LOG"; then
+    report_pass "run 2: summary reports 0 spliced, 6 already-spliced (DEPLOY excluded v6.15.0; framework audits deleted v6.22.0)"
 else
-    report_fail "run 2: summary does not match '0 spliced, 30 already-spliced'"
+    report_fail "run 2: summary does not match '0 spliced, 6 already-spliced'"
     grep -F 'Processed' "$RUN2_LOG" | head -3 || true
 fi
 
