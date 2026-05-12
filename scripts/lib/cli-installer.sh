@@ -119,15 +119,22 @@ cli_install() {
             fi
             # Trust boundary: $darwin_cmd is from the curated, schema-validated
             # integrations-catalog.json (not user input). Plan 32-01's Python
-            # validator enforces shape; eval is safe inside this boundary.
-            eval "$darwin_cmd"
+            # validator enforces shape (see validate-integrations-catalog.py
+            # Check 12 added 2026-05-12 — rejects control chars in
+            # components.cli.*.install.darwin). Defense-in-depth: invoke the
+            # string through `bash -c` (subshell) instead of `eval` (current
+            # shell), so a future regression in the catalog cannot pollute the
+            # parent installer's exported state.
+            bash -c -- "$darwin_cmd"
             return $?
             ;;
         Linux)
             # D-19: vendor-recommended install string runs as-is. No distro
             # detection. No sudo auto-prefix (D-17). Trust boundary identical
-            # to Darwin branch above — catalog string is curated.
-            eval "$linux_cmd"
+            # to Darwin branch above — catalog string is curated and validated
+            # by Check 12 in validate-integrations-catalog.py (control-char
+            # rejection added 2026-05-12). Same eval→`bash -c` rationale.
+            bash -c -- "$linux_cmd"
             return $?
             ;;
         *)

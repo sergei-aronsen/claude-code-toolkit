@@ -398,6 +398,41 @@ else
 fi
 rm -f "$_a20_tmp"
 
+# ─────────────────────────────────────────────────
+# A21 — Audit 2026-05-12 (F-3): validator must reject a mutated catalog whose
+# components.cli[<name>].install.darwin contains a newline (RCE vector when
+# the string flows into `eval` in cli-installer.sh). Locks the cli-coverage
+# extension of validate-integrations-catalog.py.
+# ─────────────────────────────────────────────────
+echo ""
+echo "── A21: validator catches newline in components.cli.*.install.darwin ──"
+_a21_tmp="$(mktemp -t catalog-cli-inj.XXXXXX)"
+python3 - "$CATALOG" > "$_a21_tmp" <<'PYEOF'
+import json, sys
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    c = json.load(fh)
+cli = c.get("components", {}).get("cli", {})
+if not cli:
+    sys.exit("fixture precondition failed: catalog has no components.cli entries")
+first_name = sorted(cli.keys())[0]
+c["components"]["cli"][first_name]["install"]["darwin"] = "brew install x\nrm -rf /"
+print(json.dumps(c, indent=2))
+PYEOF
+
+_a21_out="$(python3 "$REPO_ROOT/scripts/validate-integrations-catalog.py" "$_a21_tmp" 2>&1 || true)"
+_a21_rc=0
+python3 "$REPO_ROOT/scripts/validate-integrations-catalog.py" "$_a21_tmp" >/dev/null 2>&1 || _a21_rc=$?
+if [[ "$_a21_rc" -ne 0 ]] && printf '%s\n' "$_a21_out" | grep -q 'install.darwin contains a forbidden'; then
+    PASS=$((PASS + 1))
+    printf "  ${GREEN}OK${NC} A21: validator rejected newline in cli.install.darwin (F-3 regression)\n"
+else
+    FAIL=$((FAIL + 1))
+    printf "  ${RED}FAIL${NC} A21: validator did NOT reject newline in cli.install.darwin (rc=%s)\n" "$_a21_rc"
+    printf "      validator stdout/stderr:\n"
+    printf '%s\n' "$_a21_out" | sed 's/^/        /'
+fi
+rm -f "$_a21_tmp"
+
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"
 [[ "$FAIL" -eq 0 ]]

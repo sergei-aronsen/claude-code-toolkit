@@ -266,6 +266,20 @@ _source_lib dispatch
 _source_lib state
 _source_lib bridges
 
+# Audit 2026-05-12 (F-1): TK_MCP_CATALOG_PATH is a test seam (used by
+# scripts/tests/test-{integrations-foundation,uninstall-state-cleanup,
+# catalog-scope-fallback,integrations-tui}.sh to point at synthetic
+# fixtures). The catalog string flows into `bash -c` via cli-installer.sh,
+# so a hostile pre-set env value is a clean RCE vector under the user's
+# account. Mirror the C2/H6 lockdown: honour the override only when
+# TK_TEST=1 is also set. Internal exports below (lines ~299, ~1898) happen
+# AFTER this gate, so they remain unaffected.
+if [[ -n "${TK_MCP_CATALOG_PATH:-}" && "${TK_TEST:-0}" != "1" ]]; then
+    echo -e "${RED}Error:${NC} TK_MCP_CATALOG_PATH override is a test seam; requires TK_TEST=1." >&2
+    echo "        Unset TK_MCP_CATALOG_PATH (env or shell rc) and re-run, or export TK_TEST=1 if you are running the test harness." >&2
+    exit 1
+fi
+
 # MCPS=1 path needs the MCP catalog + wizard library.
 if [[ "$MCPS" -eq 1 ]]; then
     _source_lib mcp
