@@ -436,23 +436,18 @@ _run_mcp_scope_lock_screen() {
         fi
     done
 
-    # Re-render labels with the scope glyph that mcp_cycle_row_scope expects
-    # at the head of TUI_LABELS[$_idx]. Reuse the exact label-build path the
-    # toggle helper uses — call mcp_cycle_row_scope_locked twice on the same
-    # row to get back to the starting scope (cycles user→project→local→user;
-    # 3 cycles return to start). Cheaper alternative: synthesise the glyph
-    # inline.
-    local _g _name
-    for ((_i=0; _i<${#TUI_LABELS[@]}; _i++)); do
-        case "${MCP_SELECTED_SCOPE[$_i]}" in
-            user)    _g="[U]" ;;
-            project) _g="[P]" ;;
-            local)   _g="[L]" ;;
-            *)       _g="[U]" ;;
-        esac
-        _name="${TUI_LABELS[$_i]}"
-        TUI_LABELS[_i]="${_g} ${_name}"
-    done
+    # Rebuild every shadow-row TUI_LABELS slot from MCP_DISPLAY[] +
+    # MCP_SELECTED_SCOPE[] via the canonical helper. Pre-2026-05-12 a manual
+    # case-on-scope + prepend loop here read the already-glyphed label out of
+    # _SAVE_LABELS (the parent TUI seeded by mcp_status_array's prior
+    # _mcp_rebuild_row_labels call) and prepended a SECOND glyph, producing
+    # visible `[U] [U] Name` / `[P] [P] Name` on screen until the user pressed
+    # Tab (user report 2026-05-12, screenshot). Tab fired
+    # `mcp_cycle_row_scope_locked` which rebuilt the row using the same
+    # canonical MCP_DISPLAY[] path, masking the bug for that single row.
+    # Delegating to the helper here removes the inline prepend entirely; the
+    # helper writes a single-glyph label per row in one place.
+    _mcp_rebuild_row_labels
 
     # Wire scope dispatcher and lock the selection.
     export TK_TUI_LOCK_SELECTION=1
