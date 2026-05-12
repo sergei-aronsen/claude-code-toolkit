@@ -58,6 +58,15 @@ updates="."
 updated_count=0
 skipped_count=0
 
+# Audit 2026-05-12 (F-2): replace `eval "ARG_${name//-/_}_TAG='$head_tag'"`
+# with three parallel indexed arrays. Git tags can legally contain single
+# quotes (`'`), which would break the eval'd assignment and, in the worst
+# case, inject shell. Indexed arrays carry the raw byte stream — jq's
+# `--arg` later does the quoting safely.
+PIN_NAMES=()
+PIN_COMMITS=()
+PIN_TAGS=()
+
 while IFS= read -r name; do
     [[ -z "$name" ]] && continue
     dir="$EXTERNAL_DIR/$name"
@@ -89,15 +98,16 @@ while IFS= read -r name; do
     tag_disp="${head_tag:-<no tag>}"
     echo -e "  ${GREEN}✓${NC} $name → ${short} (${tag_disp}) @ ${today}"
 
-    # Append jq update fragment
-    # Use --arg for safe string injection
+    # Append jq update fragment. Use --arg for safe string injection: jq
+    # arg-names use the slugged var (dashes → underscores) so they are valid
+    # jq identifiers.
     updates+=" | .vendor_pins[\"$name\"].commit = \$${name//-/_}_commit"
     updates+=" | .vendor_pins[\"$name\"].tag = \$${name//-/_}_tag"
     updates+=" | .vendor_pins[\"$name\"].pinned_at = \$today"
 
-    # Stash args for the final jq call
-    eval "ARG_${name//-/_}_COMMIT='$head_commit'"
-    eval "ARG_${name//-/_}_TAG='$head_tag'"
+    PIN_NAMES+=("$name")
+    PIN_COMMITS+=("$head_commit")
+    PIN_TAGS+=("$head_tag")
 
     updated_count=$((updated_count + 1))
 done <<< "$vendors"
@@ -121,18 +131,19 @@ echo -e "${CYAN}Step 3 — write manifest${NC}"
 tmp=$(mktemp "${TMPDIR:-/tmp}/manifest-XXXXXX.json")
 trap 'rm -f "$tmp"' EXIT
 
-# Build jq args dynamically
+# Build jq args dynamically from the parallel PIN_* arrays populated above.
+# Iterate by index so we tolerate vendor names with shell metacharacters
+# verbatim — jq --arg quotes them safely.
 jq_args=(--arg today "$today")
-while IFS= read -r name; do
-    [[ -z "$name" ]] && continue
-    dir="$EXTERNAL_DIR/$name"
-    [[ ! -d "$dir/.git" ]] && continue
-    var_name="${name//-/_}"
-    commit_var="ARG_${var_name}_COMMIT"
-    tag_var="ARG_${var_name}_TAG"
-    jq_args+=(--arg "${var_name}_commit" "${!commit_var:-}")
-    jq_args+=(--arg "${var_name}_tag" "${!tag_var:-}")
-done <<< "$vendors"
+# Bash 3.2 (macOS): expansion of an empty array under `set -u` triggers an
+# "unbound variable" error. Guard with explicit length check before the loop.
+if [[ ${#PIN_NAMES[@]} -gt 0 ]]; then
+    for i in "${!PIN_NAMES[@]}"; do
+        var_name="${PIN_NAMES[$i]//-/_}"
+        jq_args+=(--arg "${var_name}_commit" "${PIN_COMMITS[$i]}")
+        jq_args+=(--arg "${var_name}_tag"    "${PIN_TAGS[$i]}")
+    done
+fi
 
 jq "${jq_args[@]}" "$updates" "$MANIFEST" > "$tmp"
 
