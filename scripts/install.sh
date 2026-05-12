@@ -268,6 +268,18 @@ _source_lib bridges
 
 # MCPS=1 path needs the MCP catalog + wizard library.
 if [[ "$MCPS" -eq 1 ]]; then
+    # Source project-secrets BEFORE mcp.sh so the project_secrets_*
+    # functions are declared by the time mcp.sh's guard at lines 97-106
+    # runs `command -v project_secrets_write_env` and short-circuits the
+    # BASH_SOURCE-relative lazy sibling-source. Under curl-pipe the lazy
+    # path resolves to /tmp/project-secrets.sh (mcp.sh sits in
+    # /tmp/mcp-XXXXXX), which doesn't exist — the silent miss left
+    # project_secrets_write_env undeclared and project-scope MCPs
+    # (cloudflare, stripe, mailgun, ...) failed at mcp.sh:782 with
+    # `mcp_wizard_run: project-scope requested but scripts/lib/project-`
+    # `secrets.sh not loaded` (user report 2026-05-12). Same class as the
+    # v6.23.1 skills-curl-pipe path-resolution fix.
+    _source_lib project-secrets
     _source_lib mcp
     # Phase 34-02 (TUI-04): cli-installer primitives for --cli-only / non-mcp-only paths.
     # cli_detect / cli_install / cli_post_install_hint are sub-millisecond on the
@@ -1893,6 +1905,9 @@ if [[ "${TK_TUI_CONFIRMED:-0}" == "1" && "$DRY_RUN" -ne 1 ]]; then
     # ─────────────── MCP sub-picker ───────────────
     echo ""
     echo -e "${CYAN}Loading MCP catalog (probing claude CLI for installed servers — a few seconds)...${NC}"
+    # Same curl-pipe rationale as the top-level MCPS branch above: declare
+    # project_secrets_* before mcp.sh's lazy-source guard runs.
+    _source_lib project-secrets
     _source_lib mcp
     if _is_curl_pipe && [[ -z "${TK_MCP_CATALOG_PATH:-}" ]]; then
         # BSD mktemp (macOS): X-run must be at end. Drop .json

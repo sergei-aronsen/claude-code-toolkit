@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Project-scope MCPs fail under `curl | bash` (project-secrets lazy-source path collapse)
+
+User report 2026-05-12: project-scope MCPs (`cloudflare`, `stripe`,
+`mailgun`) failed during the installer's MCP dispatch with
+`mcp_wizard_run: project-scope requested but scripts/lib/project-`
+`secrets.sh not loaded`. User-scope MCPs (`comet-bridge`, `context7`,
+`notebooklm`, `repomix`, ...) installed cleanly side-by-side, so the
+breakage was scope-specific.
+
+#### Root cause
+
+`scripts/lib/mcp.sh:97-106` lazy-sources `project-secrets.sh` through a
+`BASH_SOURCE`-relative sibling path
+(`${dirname BASH_SOURCE[mcp.sh]}/project-secrets.sh`). Under
+`curl ... | bash` / `bash <(curl ...)`, `install.sh`'s `_source_lib mcp`
+writes `mcp.sh` into `/tmp/mcp-XXXXXX` and sources from there.
+`_MCP_LIB_DIR` resolves to `/tmp`; the lazy sibling target
+`/tmp/project-secrets.sh` does not exist, so the guarded
+`if [[ -f ... ]]` silently skips the source. Later, `mcp.sh:782`
+checks `command -v project_secrets_write_env` and aborts
+`mcp_wizard_run` when the user selected any project-scope MCP. Exact
+same class as the v6.23.1 skills-curl-pipe path-resolution regression.
+
+#### Fix
+
+`install.sh` now calls `_source_lib project-secrets` immediately
+before each `_source_lib mcp` site (top-level `MCPS=1` branch +
+MCP sub-picker re-entry). Loading project-secrets first declares
+the `project_secrets_*` functions before `mcp.sh`'s guard runs;
+`mcp.sh:97` (`command -v project_secrets_write_env`) then
+short-circuits the lazy sibling-source path entirely.
+
+#### Tests
+
+- New `scripts/tests/test-install-project-secrets-curl-pipe.sh`
+  (3 assertions, 3 scenarios): PS1 reproduces the curl-pipe baseline
+  with `mcp.sh` sourced alone from `/tmp` (`project_secrets_write_env`
+  stays undeclared); PS2 confirms sourcing `project-secrets.sh` before
+  `mcp.sh` declares both function families; PS3 is a structural
+  regression guard asserting `install.sh` carries a
+  `_source_lib project-secrets` call within 5 lines of every
+  `_source_lib mcp` site.
+- Sibling tests untouched: `test-mcp-selector.sh` (36/36),
+  `test-mcp-secrets.sh` (11/11), `test-mcp-wizard.sh` (63/63),
+  `test-install-skills-curl-pipe.sh` (14/14). `make check` green;
+  shellcheck clean.
+
 ### Fixed — Double scope glyph in MCP scope lock-screen
 
 User report 2026-05-12 (screenshot): the per-row MCP scope picker
