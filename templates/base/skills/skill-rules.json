@@ -257,6 +257,37 @@
         ],
         "filePatterns": []
       }
+    },
+    "repomix": {
+      "path": ".claude/skills/repomix/SKILL.md",
+      "description": "Pack the repo (local or remote) into one AI-friendly XML/Markdown/JSON file via Repomix. Use for architectural reviews, cross-repo handoff, full-codebase audits — not single-file lookups.",
+      "triggers": {
+        "keywords": [
+          "repomix",
+          "pack repo",
+          "pack codebase",
+          "pack repository",
+          "codebase snapshot",
+          "full repo context",
+          "cross-repo review",
+          "analyze remote repo",
+          "feed codebase to llm",
+          "упакуй репо",
+          "снапшот",
+          "упаковать кодовую базу",
+          "обзор архитектуры",
+          "передать репо в llm",
+          "удалённый репо"
+        ],
+        "intentPatterns": [
+          "pack.*repo",
+          "pack.*codebase",
+          "snapshot.*codebase",
+          "analyze.*github\\.com",
+          "feed.*codebase"
+        ],
+        "filePatterns": []
+      }
     }
   }
 }

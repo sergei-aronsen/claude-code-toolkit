@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.22.0",
+  "version": "6.23.0",
   "updated": "2026-05-12",
   "build_date": "2026-05-12",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -47,6 +47,12 @@
       "tag": "latest",
       "commit": "2fbc7514f6964acabcfac65501b8bb6b525e3aa8",
       "pinned_at": "2026-05-07"
+    },
+    "repomix": {
+      "repo": "https://github.com/yamadashy/repomix",
+      "tag": "v1.14.0",
+      "commit": "5811266e6f242c6f30ad102a066acf7780dcbf30",
+      "pinned_at": "2026-05-12"
     }
   },
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
@@ -110,6 +116,9 @@
       },
       {
         "path": "commands/lookup.md"
+      },
+      {
+        "path": "commands/pack.md"
       },
       {
         "path": "commands/product-review.md"
@@ -181,6 +190,9 @@
       },
       {
         "path": "skills/reality-check/SKILL.md"
+      },
+      {
+        "path": "skills/repomix/SKILL.md"
       }
     ],
     "hooks": [
