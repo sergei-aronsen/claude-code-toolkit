@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.22.0] - 2026-05-12
+
+### Framework template consolidation — 40 files deleted
+
+Removed framework-specific duplicates of base agents and audit prompts.
+After v6.21.0 made `templates/base/agents/*.md` framework-aware inline
+(security-auditor covers all 6 stacks; test-writer carries per-stack
+examples), the per-stack mirrors became drift debt — older checklist-
+style content that diverged from the modern hypothesis-driven base by
+200–1500 lines per file.
+
+The install fallback chain already routes framework→base when a
+framework file is absent (`scripts/init-claude.sh` `download_files()`
+lines 745–759), so no behavior change for end users: installs in
+laravel/rails/python/go projects now resolve straight to the modern base
+content for these prompt types.
+
+#### Deleted (40 files)
+
+- 16 framework agents — `templates/{laravel,rails,python,go}/agents/`
+  `{code-reviewer,planner,security-auditor,test-writer}.md`. Pure drift
+  after v6.21.0 base-agent rewrites covered all stacks inline.
+- 24 framework audit prompts — `templates/{laravel,rails,python,go}/`
+  `prompts/{CODE_REVIEW,DESIGN_REVIEW,MYSQL_PERFORMANCE_AUDIT,`
+  `PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,SECURITY_AUDIT}.md`.
+  Base versions are post-v6.13 modern audit methodology (threat model,
+  severity ceiling, FP control gates, exploit chains) — superior to
+  the deleted framework checklist variants.
+
+#### Kept
+
+- 4 stack-experts — `templates/{laravel,rails,python,go}/agents/`
+  `{laravel,rails,python,go}-expert.md`. Deep stack-specific knowledge
+  not encodable in framework-agnostic base.
+- 4 DEPLOY_CHECKLIST — `templates/{laravel,rails,python,go}/prompts/`
+  `DEPLOY_CHECKLIST.md`. Framework-specific shell commands
+  (`artisan config:cache`, `composer install --no-dev`, `rails db:`
+  `migrate`, `go build -ldflags`, etc.) that base cannot replicate
+  generically.
+
+#### Test and CI updates
+
+- `scripts/tests/test-template-propagation.sh` — expected source count
+  35→11, expected splice count 30→6 (base only). DEPLOY_CHECKLIST
+  remains excluded per v6.15.0 (runbook, not audit).
+- `scripts/propagate-audit-pipeline-v42.sh` — header updated; loop now
+  finds 6 base audit prompts (was 30 across 5 frameworks × 6 types).
+- `.github/workflows/quality.yml` and `Makefile` — message strings
+  updated from "30 audit prompts" / "35 prompt files" to "6 audit
+  prompts".
+
+#### Why this is safe
+
+The framework→base fallback in `download_files()` was added precisely
+for this case: deleting a framework-specific file silently routes the
+install to the base version. End-user installs continue to function;
+they receive the higher-quality modern base prompts where they
+previously got the older drifted variants.
+
+Net deletion: ~15,000 LOC removed (40 files averaging ~375 lines).
+Repository simplification: single source of truth for 6 audit prompt
+types and 4 base agents.
+
 ## [6.21.0] - 2026-05-11
 
 ### Prompt batch — Group B personas + base agents rewritten

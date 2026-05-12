@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "version": "6.21.0",
-  "updated": "2026-05-11",
-  "build_date": "2026-05-11",
+  "version": "6.22.0",
+  "updated": "2026-05-12",
+  "build_date": "2026-05-12",
   "description": "Claude Code Toolkit manifest for smart updates",
   "vendor_pins_note": "Pinned commits/tags of external vendors as of the toolkit release. Used by /vendor-changelog to diff vendor HEAD against these pins and surface BREAKING/ADOPT/IGNORE/DEPRECATE classifications. Updated manually by the maintainer post-release via scripts/vendor/pin-vendors.sh.",
   "vendor_pins": {
