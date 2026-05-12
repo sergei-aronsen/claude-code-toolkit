@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Skills install under `curl | bash` (path-resolution regression)
+
+Marketplace skills install path failed for every fresh skill when the
+installer ran via `bash <(curl ...)` or `curl ... | bash` (user report
+2026-05-12: `huashu-design` and `impeccable` failed with `source missing:
+/var/folders/.../T/../../templates/skills-marketplace/huashu-design`).
+
+#### Root cause
+
+Under curl-pipe, `install.sh:_source_lib skills` writes
+`scripts/lib/skills.sh` into `/tmp/skills-XXXXXX` and sources it from
+there. `skills.sh` resolved the source mirror via a `BASH_SOURCE`-
+relative path (`${dirname BASH_SOURCE}/../../templates/skills-marketplace`),
+which under tmpfile origin collapses to a non-existent
+`/var/folders/.../templates/skills-marketplace`. Equivalent bug applied
+to the `impeccable` special-case lookup of `install-impeccable.sh`. The
+existing curl-pipe handler for the MCP catalog (`install.sh:291-300`)
+had no equivalent for skills; both `TK_SKILLS_MIRROR_PATH` and
+`TK_SKILLS_INSTALL_IMPECCABLE_CMD` were declared as env-var seams in
+`skills.sh` but never populated by `install.sh`.
+
+Pre-installed skills masked the bug in tester reports because the
+dispatch loop short-circuits to `"installed ✓"` without invoking
+`skills_install` when `TUI_RESULTS[i]=0`. A fresh machine with no
+`~/.claude/skills/` would have seen all 24 skills fail.
+
+#### Fix
+
+- New `skills_fetch_mirror_via_tarball` in `scripts/lib/skills.sh`
+  downloads `https://github.com/sergei-aronsen/claude-code-toolkit/`
+  `archive/${TK_TOOLKIT_REF}.tar.gz`, extracts to a tmpdir, and exports
+  both `TK_SKILLS_MIRROR_PATH` and `TK_SKILLS_INSTALL_IMPECCABLE_CMD`
+  pointing at the extracted tree.
+- `scripts/install.sh` after `_source_lib skills` (when `SKILLS=1` and
+  `_is_curl_pipe`) calls the helper and exits with a clear error if
+  the tarball fetch or extraction fails. Mirrors the existing MCP-
+  catalog curl-pipe handler pattern.
+- `TK_SKILLS_TARBALL_CMD` test seam added so hermetic tests can stub
+  the curl call with a local fixture tarball.
+
+#### Tests
+
+- New `scripts/tests/test-install-skills-curl-pipe.sh` (14 assertions,
+  6 scenarios): reproduces the bug under simulated curl-pipe origin
+  (CP1), confirms the new helper exists (CP2) and exports both env
+  vars from a fixture tarball (CP3), exercises the end-to-end install
+  path through the seam (CP4), verifies the `impeccable` special-case
+  picks up the helper-exported override (CP5), and confirms a failing
+  fetch leaves no partial state (CP6).
+- Existing `scripts/tests/test-install-skills.sh` (15/15) still
+  passes; `make check` green; shellcheck clean.
+
 ### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
 
 Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit

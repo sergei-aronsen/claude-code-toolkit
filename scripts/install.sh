@@ -554,6 +554,24 @@ fi
 # twice is harmless, but in practice only one code path reaches this point.
 if [[ "$SKILLS" -eq 1 ]]; then
     _source_lib skills
+
+    # Under curl-pipe, _source_lib wrote skills.sh into /tmp/skills-XXXXXX, so
+    # skills.sh's BASH_SOURCE-relative mirror resolver collapses to
+    # `/var/folders/.../templates/skills-marketplace` — a non-existent path —
+    # and every fresh skill install fails with "source missing" (user report
+    # 2026-05-12, huashu-design + impeccable). Pre-installed skills mask the
+    # bug because the dispatch loop short-circuits "installed ✓" without
+    # calling skills_install. Fix: download the toolkit tarball and export
+    # both TK_SKILLS_MIRROR_PATH and TK_SKILLS_INSTALL_IMPECCABLE_CMD so the
+    # downstream resolvers and the impeccable special-case find their files.
+    # Mirrors the MCP-catalog curl-pipe handler at line ~291.
+    if _is_curl_pipe && [[ -z "${TK_SKILLS_MIRROR_PATH:-}" ]]; then
+        if ! skills_fetch_mirror_via_tarball; then
+            echo -e "${RED}✗${NC} Failed to fetch toolkit tarball for skills install — aborting" >&2
+            echo -e "  Set TK_SKILLS_MIRROR_PATH manually if you have a local clone." >&2
+            exit 1
+        fi
+    fi
 fi
 
 if [[ "$MCPS" -eq 1 ]]; then
