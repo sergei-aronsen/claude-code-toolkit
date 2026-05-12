@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
+
+Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit
+prompt as pilot validation of the mandatory `pe` (Prompt Generator)
+two-stage pipeline now documented in `templates/base/CLAUDE.md`.
+
+#### Pipeline executed
+
+1. **Stage 1 — `pe` draft** — Ran
+   `python3 scripts/prompt-engineer/optimize_prompt.py`
+   `templates/base/prompts/DESIGN_REVIEW.md --context`
+   `/tmp/design-review-ctx.md`. Context file declared preservation
+   constraints (5 v42-splice sentinels, em-dash slot, CI-required
+   audit pipeline markers, splice-region body immutability) and
+   surfaced specific defects (schema contradiction between Report
+   Template and OUTPUT FORMAT; duplicate Common Issues Checklist;
+   generic Design Principles filler; inconsistent emoji headings).
+2. **Stage 2 — manual context-aware merge** — Stripped the outer
+   three-backtick markdown fence wrapper from the optimizer output;
+   verified all 5 splice sentinels and 4 CI-required markers (Council Handoff
+   heading, `1. **Read context**`, `6. **Severity sanity check**`,
+   em-dash slot) survived byte-exact; confirmed splice-region bodies
+   (rubric-anchors, SELF-CHECK, OUTPUT FORMAT, Council Handoff)
+   passed through untouched so the next
+   `propagate-audit-pipeline-v42.sh` run is idempotent.
+
+#### Outcome — `templates/base/prompts/DESIGN_REVIEW.md`
+
+- 684 → 552 LOC (132 LOC removed, ~19% reduction in source size).
+- `## 📝 Report Template` section deleted — it defined a free-form
+  markdown report layout that contradicted the canonical structured
+  schema spliced from `components/audit-output-format.md`. The
+  contradiction had silently shipped since the section was spliced
+  into the file; readers had two different output formats in one
+  prompt. Removing the obsolete free-form template leaves the spliced
+  OUTPUT FORMAT as the single source of truth.
+- `## Common Issues Checklist` section deleted — every item it listed
+  was already covered in Phase 4 (Visual Polish) or Phase 5
+  (Accessibility).
+- `## Design Principles Reference` section deleted — five generic
+  heuristics (Hierarchy, Consistency, Feedback, Forgiveness,
+  Simplicity) with no project anchor.
+- `## Playwright MCP Quick Reference` consolidated to a single block;
+  per-phase MCP references pruned to a one-line pointer.
+- Emoji removed from H2 headings (🎯, 📋, 📝) to match the audit-
+  prompt house style used by `CODE_REVIEW.md`, `SECURITY_AUDIT.md`,
+  `PERFORMANCE_AUDIT.md`.
+- Heading capitalization normalized to sentence case for H2+.
+- SPA framework note added to Phase 2 ("For SPA frameworks such as
+  React, Vue, and Svelte, test state transitions, not only initial
+  DOM render").
+- `## Category constraint` section added with design-review-specific
+  category guidance (Reliability / Operational Maintainability Risk
+  / Correctness) drawn from the structured schema enum.
+- All v42-splice sentinels, splice region bodies, em-dash slot, and
+  CI markers preserved byte-exact. `make check`, `bash scripts/`
+  `tests/test-template-propagation.sh` (11/11), and markdownlint pass.
+
+#### Why this pilot matters
+
+This shipment exercises the `pe` + manual-merge pipeline end-to-end on
+a real Bucket 1 file with a real preservation-constraint surface (5
+sentinels, 4 CI markers, em-dash slot, splice region bodies). The
+template is reusable for the remaining 6 base audit prompts
+(`CODE_REVIEW`, `MYSQL_PERFORMANCE_AUDIT`, `PERFORMANCE_AUDIT`,
+`POSTGRES_PERFORMANCE_AUDIT`, `SECURITY_AUDIT`, `DEPLOY_CHECKLIST`).
+
+#### Also in this PR
+
+- `templates/base/CLAUDE.md` — new `## Prompt Optimization Pipeline
+  (MANDATORY)` section codifies the two-stage `pe` workflow as a
+  project-level instruction. Every prompt-file edit must go through
+  `pe` first, then a manual context-aware merge.
+
 ## [6.22.0] - 2026-05-12
 
 ### Framework template consolidation — 40 files deleted

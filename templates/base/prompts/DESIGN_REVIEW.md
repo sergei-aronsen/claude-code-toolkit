@@ -9,262 +9,146 @@
 
 ---
 
-## GOAL
+## Goal
 
-Act as a UI/UX-focused design reviewer. Identify realistic visual,
-interaction, and accessibility defects in the rendered interface.
+Act as a UI/UX design reviewer for the rendered interface. Identify realistic visual, interaction, responsiveness, and accessibility defects that affect users.
 
-Scope is the live UI surface — layout, typography, spacing, colour,
-contrast, motion, focus order, error states, empty states, loading
-states, responsiveness across viewports, keyboard reachability, and
-screen-reader semantics. Software-architecture concerns (component reuse,
-bundle size, lazy-loading strategy, design-system code organization)
-belong to `CODE_REVIEW.md` and `PERFORMANCE_AUDIT.md` — not here.
+Scope is the live UI surface: layout, typography, spacing, color, contrast, motion, focus behavior, error states, empty states, loading states, viewport behavior, keyboard reachability, and screen-reader semantics.
 
-The objective is NOT to maximize finding count. A single precise,
-reproducible finding with a screenshot citation is worth more than ten
-"feels off" hunches. Lower confidence and reduce severity when evidence
-is incomplete; never speculate beyond what the rendered DOM shows.
+Do not report software-architecture concerns here. Component reuse, bundle size, lazy-loading strategy, and design-system code organization belong to `CODE_REVIEW.md` or `PERFORMANCE_AUDIT.md`.
+
+Prioritize evidence over finding count. A precise, reproducible finding with a screenshot or accessibility-tree citation is more valuable than several subjective observations. Lower confidence and severity when evidence is incomplete.
 
 ---
 
-## 🎯 Scope
+## Scope
 
 **URL/Component:** `[URL or path to component]`
-**Viewport:** Desktop (1440px) / Tablet (768px) / Mobile (375px)
-**Focus:** [New feature / Redesign / Bug fix / Full audit]
+**Viewports:** Desktop 1440px / Tablet 768px / Mobile 375px
+**Focus:** `[New feature / Redesign / Bug fix / Full audit]`
+
+Review only the requested UI surface unless the issue clearly affects a shared pattern visible in that surface.
 
 ---
 
-## 📋 6-Phase Review Process
+## 6-phase review process
 
 ### Phase 1: Preparation
 
-```text
-1. Define scope of changes (git diff --name-only for UI files)
-2. Start preview environment
-3. Open in Playwright: mcp__playwright__browser_navigate
-4. Load design principles from ./context/design-principles.md (if exists)
-```
+1. Identify UI scope from the request and changed files where available
+2. Start or verify the preview environment
+3. Open the target URL or component in Playwright MCP
+4. Load `./context/design-principles.md` if it exists
+5. Consult `.claude/rules/audit-exceptions.md` before reporting findings
 
-**Checklist:**
+Use the Playwright MCP quick reference below for navigation, inspection, screenshots, viewport changes, and cleanup.
 
-- [ ] Preview environment works
-- [ ] All changed pages accessible
-- [ ] Design guidelines loaded
+### Phase 2: Interaction testing
 
----
+Exercise the primary user flows end to end. Include expected success paths and at least one realistic failure path for forms or submissions.
 
-### Phase 2: Interaction Testing
+Verify interactive states where applicable:
 
-**Primary user flows:**
+- Hover
+- Focus
+- Active or pressed
+- Disabled
+- Loading
+- Empty
+- Error
+- Success or confirmation
 
-| Flow | Steps | Status |
-|------|-------|--------|
-| [Main action] | [1. Click → 2. Fill → 3. Submit] | ⬜ |
-| [Secondary action] | [...] | ⬜ |
+For SPA frameworks such as React, Vue, and Svelte, test state transitions, not only initial DOM render. Verify that UI state changes after clicks, form edits, route changes, async loading, validation failures, and recovery actions.
 
-**Interactive states to verify:**
-
-- [ ] Hover states
-- [ ] Focus states
-- [ ] Active/pressed states
-- [ ] Disabled states
-- [ ] Loading states
-- [ ] Empty states
-- [ ] Error states
-
-**Tools:**
-
-```text
-mcp__playwright__browser_click — click verification
-mcp__playwright__browser_hover — hover states
-mcp__playwright__browser_snapshot — accessibility tree
-```
-
----
+Use accessibility snapshots and screenshots to support findings. Do not report a missing state unless the state is reachable or reasonably required by the visible workflow.
 
 ### Phase 3: Responsiveness
 
-Test at three breakpoints:
+Test at minimum:
 
-| Viewport | Width | Status | Issues |
-|----------|-------|--------|--------|
-| Desktop | 1440px | ⬜ | |
-| Tablet | 768px | ⬜ | |
-| Mobile | 375px | ⬜ | |
+| Viewport | Width |
+|----------|-------|
+| Desktop | 1440px |
+| Tablet | 768px |
+| Mobile | 375px |
 
-**Check for each viewport:**
+Check each viewport for:
 
-- [ ] Layout doesn't break
-- [ ] Text is readable (min 16px on mobile)
-- [ ] Touch targets >= 44x44px on mobile
-- [ ] No horizontal scroll
-- [ ] Images are responsive
+- Layout stability with no unintended overlap or clipping
+- Readable text, with body text effectively at least 16px on mobile
+- Touch targets at least 44x44px where practical
+- No unintended horizontal scroll
+- Responsive images and media
+- Usable navigation and controls without hidden critical actions
 
-**Tool:**
+### Phase 4: Visual polish
 
-```text
-mcp__playwright__browser_resize(width, height)
-```
+Assess visible quality against the product context and any project design guidance.
 
----
+Check for:
 
-### Phase 4: Visual Polish
+- Clear visual hierarchy
+- Consistent spacing and alignment
+- Typography scale, line height, and weight consistency
+- Color usage that supports meaning and state
+- Components that look like part of the same system
+- Icon style and sizing consistency
+- Borders, shadows, and elevation used consistently
+- Motion that is smooth, purposeful, and not disruptive
+- Long content handling without unreadable truncation
+- Overflow behavior that does not hide important content
 
-**Layout & Spacing:**
+Treat aesthetic preference as LOW severity unless it harms comprehension, trust, conversion, accessibility, or task completion.
 
-- [ ] Consistent spacing (uses spacing scale)
-- [ ] Proper alignment (grid alignment)
-- [ ] Visual hierarchy is clear
-- [ ] Enough white space
+### Phase 5: Accessibility
 
-**Typography:**
+Evaluate WCAG 2.1 AA-relevant behavior from the rendered UI.
 
-- [ ] Font sizes match scale
-- [ ] Line heights readable (1.4-1.6 for body)
-- [ ] Font weights used meaningfully
-- [ ] Maximum 2-3 font families
+Check keyboard access:
 
-**Color:**
+- All interactive controls are reachable
+- Tab order follows the visual and task flow
+- Focus is visible and distinguishable
+- Escape closes modal or transient UI where expected
+- No keyboard traps
 
-- [ ] Colors from design system
-- [ ] Contrast ratios sufficient (see Phase 5)
-- [ ] States distinguishable by color + another attribute
-- [ ] Dark mode (if applicable)
+Check semantics and announcements:
 
-**Visual consistency:**
+- Headings, landmarks, lists, buttons, links, and form controls are semantic
+- Images have useful alt text or are correctly decorative
+- ARIA labels are present where visible text is absent
+- Form labels are programmatically connected to inputs
+- Validation and error messages are announced or discoverable
 
-- [ ] Components look uniform
-- [ ] Icons same style and size
-- [ ] Borders/shadows consistent
-- [ ] Animations smooth (not jerky)
+Check visual accessibility:
 
----
+- Text contrast is at least 4.5:1
+- UI component contrast is at least 3:1
+- Information is not conveyed by color alone
+- Content remains usable at 200% zoom where testable
 
-### Phase 5: Accessibility (WCAG 2.1 AA)
-
-**Keyboard Navigation:**
-
-- [ ] All interactive elements accessible via keyboard
-- [ ] Tab order is logical
-- [ ] Focus visible and noticeable
-- [ ] Escape closes modals/dropdowns
-- [ ] No keyboard traps
-
-**Screen Reader:**
-
-- [ ] Semantic HTML (headings, landmarks, lists)
-- [ ] Alt text for images
-- [ ] ARIA labels where needed
-- [ ] Form labels connected to inputs
-- [ ] Error messages announced
-
-**Visual:**
-
-- [ ] Color contrast >= 4.5:1 for text
-- [ ] Color contrast >= 3:1 for UI elements
-- [ ] Information not conveyed by color alone
-- [ ] Text resizable to 200%
-- [ ] No content loss on zoom
-
-**Tool for verification:**
-
-```text
-mcp__playwright__browser_snapshot — shows accessibility tree
-```
-
----
+Use the accessibility tree as primary evidence for semantic findings.
 
 ### Phase 6: Robustness
 
-**Edge cases:**
+Probe realistic edge cases that affect user experience:
 
-- [ ] Empty states (no data)
-- [ ] Loading states (slow network)
-- [ ] Error states (API failure)
-- [ ] Long content (overflow handling)
-- [ ] Special characters in input
-- [ ] Rapid clicks/submissions
+- Empty data
+- Slow loading
+- API or submission failure
+- Long names, labels, messages, and table content
+- Special characters in inputs
+- Rapid clicks or repeated submissions
+- Narrow viewport plus long content
+- Missing optional media or metadata
 
-**Form validation:**
+For forms, verify required-field indication, validation timing, message clarity, double-submit protection, and success feedback.
 
-- [ ] Required fields marked
-- [ ] Validation messages clear
-- [ ] Inline validation (not just on submit)
-- [ ] Success feedback after submit
-
-**Error handling:**
-
-- [ ] Errors explain what to do
-- [ ] Recovery path is clear
-- [ ] Partial failures handled gracefully
+For errors, verify that the message explains what happened and offers a clear recovery path.
 
 ---
 
-## Issue Triage Matrix (Design-Specific Labels)
-
-Triage labels for design findings. The standard rubric is in
-`components/severity-levels.md` — do not redefine. Map design labels to
-SOT severities when emitting the structured report:
-**Blocker → CRITICAL**, **High → HIGH**, **Medium → MEDIUM**, **Nitpick → LOW**.
-
-| Design label | Criteria | SOT severity | Action |
-|--------------|----------|--------------|--------|
-| **[Blocker]** | Breaks functionality, accessibility failure, data loss | CRITICAL | Must fix before merge |
-| **[High]** | Poor UX, significant visual bug, WCAG violation | HIGH | Should fix before merge |
-| **[Medium]** | Minor inconsistency, edge case issue | MEDIUM | Can fix in follow-up |
-| **[Nitpick]** | Aesthetic preference, minor polish | LOW | Optional |
-
----
-
-## 📝 Report Template
-
-```markdown
-## Design Review: [Component/Page Name]
-
-**Date:** [date]
-**Reviewer:** Claude
-**Viewport tested:** Desktop ✅ | Tablet ✅ | Mobile ✅
-
-### Summary
-
-[1-2 sentences: overall assessment]
-
-### 🔴 Blockers (must fix)
-
-1. **[Issue title]**
-   - Location: [file:line or URL]
-   - Problem: [description]
-   - Impact: [user impact]
-   - Fix: [suggested solution]
-   - Screenshot: [if applicable]
-
-### 🟠 High Priority
-
-1. ...
-
-### 🟡 Medium Priority
-
-1. ...
-
-### ⚪ Nitpicks
-
-1. ...
-
-### ✅ What's Working Well
-
-- [Positive observation 1]
-- [Positive observation 2]
-
-### Screenshots
-
-[Attach screenshots at 1440px width]
-```
-
----
-
-## Playwright MCP Quick Reference
+## Playwright MCP quick reference
 
 ```text
 # Navigation
@@ -278,7 +162,7 @@ mcp__playwright__browser_type(element, ref, text)
 mcp__playwright__browser_fill_form(fields)
 
 # Inspection
-mcp__playwright__browser_snapshot() — accessibility tree (better than screenshot)
+mcp__playwright__browser_snapshot()
 mcp__playwright__browser_take_screenshot(filename)
 mcp__playwright__browser_console_messages()
 
@@ -288,63 +172,46 @@ mcp__playwright__browser_resize(width, height)
 # Tabs
 mcp__playwright__browser_tabs(action: "list" | "new" | "close" | "select")
 
-# Cleanup (ALWAYS call when done — shared browser profile blocks other sessions)
+# Cleanup
 mcp__playwright__browser_close()
 ```
 
----
-
-## Design Principles Reference
-
-If no project-specific guidelines, use:
-
-**Hierarchy:** Important things look important
-**Consistency:** Same patterns for same actions
-**Feedback:** User always knows system state
-**Forgiveness:** Easy to undo, hard to break
-**Simplicity:** Remove until it breaks
+Always close the shared browser profile when done.
 
 ---
 
-## Common Issues Checklist
+## Issue triage matrix
 
-**Layout:**
+Use these design labels for triage while reviewing. Emit SOT severities in the structured report.
 
-- [ ] Z-index wars (overlapping elements)
-- [ ] Overflow hidden cutting content
-- [ ] Flexbox/grid alignment issues
+| Design label | Criteria | SOT severity | Action |
+|--------------|----------|--------------|--------|
+| **[Blocker]** | Blocks task completion, causes data loss, or creates a severe accessibility failure | CRITICAL | Must fix before merge |
+| **[High]** | Significant UX failure, major visual regression, or WCAG violation | HIGH | Should fix before merge |
+| **[Medium]** | Minor inconsistency, recoverable workflow issue, or edge case defect | MEDIUM | Can fix in follow-up |
+| **[Nitpick]** | Cosmetic polish with limited user impact | LOW | Optional |
 
-**Typography:**
-
-- [ ] Orphans/widows in text
-- [ ] Text truncation without tooltip
-- [ ] Missing font fallbacks
-
-**Interactive:**
-
-- [ ] Click targets too small
-- [ ] Missing loading states
-- [ ] Double-submit possible
-
-**Accessibility:**
-
-- [ ] Focus not visible
-- [ ] Color-only information
-- [ ] Missing form labels
+The standard rubric is in `components/severity-levels.md`; do not redefine it.
 
 ---
 
-**Inspired by:** [OneRedOak/claude-code-workflows](https://github.com/OneRedOak/claude-code-workflows)
+## Category constraint
+
+For design-review findings, use one of these categories from the structured schema:
+
+- Reliability
+- Operational Maintainability Risk
+- Correctness
+
+Prefer `Reliability` for user-visible UI behavior, accessibility, and workflow defects. Use `Correctness` when the rendered UI states or content are factually wrong. Use `Operational Maintainability Risk` only when the visible issue indicates a repeated design-system or pattern risk.
 
 ---
 
-## UNCERTAINTY DISCIPLINE
+## Uncertainty discipline
 
-If evidence is incomplete: lower confidence, reduce severity, move the
-observation into Non-Blocking Observations, and explicitly state the
-uncertainty. Do not present assumptions as facts. Do not use weasel
-words ("could potentially", "might allow", "in theory") to inflate
-report length — either the finding is grounded or it isn't.
+Report only findings grounded in rendered UI evidence, accessibility-tree evidence, or directly inspected source context. If evidence is incomplete, reduce severity and confidence or move the observation to `## Skipped (FP recheck)` with the concrete reason.
+
+Do not present assumptions as facts. Do not use hedged wording to inflate weak findings; either identify the concrete user impact or drop the finding.
 
 ---
 
