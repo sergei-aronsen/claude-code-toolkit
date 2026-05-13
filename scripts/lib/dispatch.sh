@@ -332,7 +332,39 @@ dispatch_rtk() {
         _dispatch_log_warning "brew not found — install Homebrew first: https://brew.sh"
         return 1
     fi
-    brew install rtk && rtk init -g </dev/null
+    # Audit 2026-05-13: rtk is installed from homebrew-core (well-reviewed
+    # trust boundary), but the wrapped install/init pair gives a third-party
+    # tool privileged rewrite power over every Bash command (see
+    # setup-security.sh combined PreToolUse hook). The hook itself now
+    # re-checks rewrites via cc-safety-net (audit 2026-05-13 #4) — this
+    # block surfaces the resolved version so the user/log shows what was
+    # actually installed and pinned at install time. TK_RTK_MIN_VERSION can
+    # opt the installer into refusing an older bottle.
+    if ! brew install rtk; then
+        _dispatch_log_warning "brew install rtk failed"
+        return 1
+    fi
+    if command -v rtk >/dev/null 2>&1; then
+        local rtk_version
+        rtk_version="$(rtk --version 2>/dev/null | head -n1)"
+        _dispatch_log_info "rtk installed: ${rtk_version:-unknown}"
+        if [[ -n "${TK_RTK_MIN_VERSION:-}" ]] && [[ -n "$rtk_version" ]]; then
+            # Strip leading non-digits, compare lexicographically on dotted
+            # numerics. POSIX `sort -V` is GNU-only; fall back to a literal
+            # equality / "starts with" check for the minimum case.
+            local rtk_numeric
+            rtk_numeric="$(echo "$rtk_version" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+            if [[ -n "$rtk_numeric" && "$rtk_numeric" != "${TK_RTK_MIN_VERSION}" ]]; then
+                local lowest
+                lowest="$(printf '%s\n%s\n' "$rtk_numeric" "$TK_RTK_MIN_VERSION" | sort -t. -k1,1n -k2,2n -k3,3n | head -n1)"
+                if [[ "$lowest" != "$TK_RTK_MIN_VERSION" ]]; then
+                    _dispatch_log_warning "rtk ${rtk_numeric} is below TK_RTK_MIN_VERSION=${TK_RTK_MIN_VERSION} — aborting before rtk init"
+                    return 1
+                fi
+            fi
+        fi
+    fi
+    rtk init -g </dev/null
 }
 
 # dispatch_statusline — install-statusline.sh.
@@ -495,12 +527,21 @@ dispatch_mcp_servers() {
         return 0
     fi
 
+    # v6.23.4: scrub TK_MCP_CATALOG_PATH from child env. Parent's
+    # main-TUI pre-collection block (install.sh:1847+) exports
+    # TK_MCP_CATALOG_PATH for its OWN mcp_catalog_load; the export
+    # then propagates to children via inheritance. The v6.23.1 F-1
+    # audit gate (install.sh:277) rejects any pre-set
+    # TK_MCP_CATALOG_PATH without TK_TEST=1, so child install.sh
+    # exits 1 before it can re-download the catalog itself. Unset
+    # the var here so the child sees a clean slate and triggers its
+    # own download (one extra ~16KB curl per dispatch — negligible).
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --integrations ${pass_args[@]+"${pass_args[@]}"}
+        env -u TK_MCP_CATALOG_PATH bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --integrations ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install.sh)"
-        bash "$sibling" --integrations ${pass_args[@]+"${pass_args[@]}"}
+        env -u TK_MCP_CATALOG_PATH bash "$sibling" --integrations ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
 
@@ -534,11 +575,14 @@ dispatch_skills() {
         return 0
     fi
 
+    # v6.23.4: same env-scrub as dispatch_mcp_servers. See comment
+    # there. Parent's TK_MCP_CATALOG_PATH leaks into child via env
+    # inheritance and trips the F-1 audit gate at install.sh:277.
     if _dispatch_is_curl_pipe; then
-        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --skills ${pass_args[@]+"${pass_args[@]}"}
+        env -u TK_MCP_CATALOG_PATH bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/install.sh") --skills ${pass_args[@]+"${pass_args[@]}"}
     else
         local sibling
         sibling="$(_dispatch_sibling_path install.sh)"
-        bash "$sibling" --skills ${pass_args[@]+"${pass_args[@]}"}
+        env -u TK_MCP_CATALOG_PATH bash "$sibling" --skills ${pass_args[@]+"${pass_args[@]}"}
     fi
 }

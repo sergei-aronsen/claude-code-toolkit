@@ -185,6 +185,7 @@ jobs:
         run: |
           bash scripts/tests/test-install-tui.sh
           bash scripts/tests/test-install-dispatch-h1.sh
+          bash scripts/tests/test-dispatch-env-scrub.sh
           bash scripts/tests/test-install-skills.sh
           bash scripts/tests/test-mcp-selector.sh
           bash scripts/tests/test-integrations-foundation.sh
