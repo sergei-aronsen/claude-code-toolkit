@@ -40,11 +40,11 @@ inheritance optimization documented in `install.sh:307-311` (avoid
 duplicate download) is sacrificed; in exchange the F-1 attack
 surface stays sealed.
 
-Tests:
-`scripts/tests/test-dispatch-env-scrub.sh` (new, 3 assertions): one
-static grep validating 4 `env -u TK_MCP_CATALOG_PATH bash` call
-sites in dispatch.sh, plus two runtime scenarios (dispatch_skills
-+ dispatch_mcp_servers sibling-path branch) where the parent has
+Tests: `scripts/tests/test-dispatch-env-scrub.sh` (new, 3
+assertions): one static grep validating 4 `env -u TK_MCP_CATALOG_PATH bash`
+call sites in dispatch.sh, plus two runtime scenarios
+(`dispatch_skills` then `dispatch_mcp_servers`, both sibling-path
+branch) where the parent has
 `TK_MCP_CATALOG_PATH=/tmp/parent-catalog-fake` and a stub
 `install.sh` writes its inherited value to a result file — both
 record `UNSET` post-fix. Wired into `.github/workflows/quality.yml`
