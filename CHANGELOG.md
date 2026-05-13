@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — GitHub MCP in `scripts/lib/integrations-catalog.json`
+
+Adds the official GitHub Remote MCP server to the curated catalog as
+the 30th entry. Slots into the `dev-tools` category alongside
+`serena`, `claude-context`, `playwright`. Uses the remote-transport
+shape pioneered by `calendly` and `datadog` — no local Docker, no
+npx wrapper, zero local runtime.
+
+Catalog entry:
+
+```json
+"github": {
+  "name": "github",
+  "display_name": "GitHub",
+  "category": "dev-tools",
+  "env_var_keys": [],
+  "install_args": [
+    "--transport", "http", "github",
+    "https://api.githubcopilot.com/mcp/"
+  ],
+  "description": "Official remote MCP — repos, PRs, issues, Actions, code search (OAuth or PAT)",
+  "requires_oauth": true,
+  "default_scope": "user"
+}
+```
+
+Renders as `claude mcp add --transport http github
+https://api.githubcopilot.com/mcp/`. First use triggers
+GitHub's OAuth flow in the browser; PAT fallback supported by the
+upstream endpoint when OAuth is unavailable. Surface: repos, PRs,
+issues, Actions, code search, releases, branches, secrets metadata —
+covers ~90% of `gh` CLI use cases inside Claude Code without leaving
+the agent loop.
+
+Counter bumps:
+
+- `scripts/tests/test-mcp-selector.sh:84` — 29 → 30
+- `scripts/tests/test-integrations-tui.sh:149-151` — 29 → 30 (3 lines)
+- `scripts/tests/test-integrations-catalog.sh:115-130` — A5
+  expected-count + comment
+- `scripts/tests/test-catalog-serena.sh:84` — band check already
+  accepted 20-30 inclusive; no edit needed
+
+All 4 impacted tests green locally (catalog 21/21, mcp-selector
+36/36, tui 27/27, serena 8/8). JSON valid (`jq empty`). Validate
+templates job clean. shellcheck unaffected (no shell-script edits).
+
+Why MUST-HAVE: GitHub is the canonical code-hosting surface for most
+toolkit users; previously absent from the catalog because the
+upstream `@modelcontextprotocol/server-github` was deprecated and
+GitHub's replacement is a Go binary (no `npx -y` wrapper). The
+**remote** MCP endpoint published by GitHub bypasses both problems —
+official, maintained, zero-install.
+
+Bitbucket NOT added: no remote MCP, no `npx`-installable wrapper, no
+Atlassian-hosted equivalent of `https://api.githubcopilot.com/mcp/`.
+Add when a remote endpoint or maintained Node wrapper appears.
+
 ### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
 
 Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit

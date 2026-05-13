@@ -192,6 +192,21 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "github": {
+        "name": "github",
+        "display_name": "GitHub",
+        "category": "dev-tools",
+        "env_var_keys": [],
+        "install_args": [
+          "--transport",
+          "http",
+          "github",
+          "https://api.githubcopilot.com/mcp/"
+        ],
+        "description": "Official remote MCP — repos, PRs, issues, Actions, code search (OAuth or PAT)",
+        "requires_oauth": true,
+        "default_scope": "user"
+      },
       "jira": {
         "name": "jira",
         "display_name": "Jira (Atlassian Cloud)",
