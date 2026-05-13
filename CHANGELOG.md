@@ -7,51 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed — dispatch_skills + dispatch_mcp_servers fail under main TUI (F-1 gate regression)
-
-Production-breaking regression introduced by the v6.23.1 F-1 audit
-gate (`scripts/install.sh:277`): under `curl | bash` install via the
-main TUI, when the user selects either the `skills` or `mcp-servers`
-catalog row, the parent `install.sh` pre-collection block at
-`install.sh:1847+` (gated by `TK_TUI_CONFIRMED=1` after main-TUI
-submit) exports `TK_MCP_CATALOG_PATH=<tmp>` for its own
-`mcp_catalog_load` call. That export then leaks into the child
-`bash <(curl ...) install.sh --skills | --integrations` spawned by
-`dispatch_skills` / `dispatch_mcp_servers` (`scripts/lib/dispatch.sh`)
-via standard env inheritance, and the child immediately hits the F-1
-gate at startup (TK_MCP_CATALOG_PATH set, TK_TEST≠1) → `exit 1`.
-Side-effect: curl error 56 ("Failure writing output to destination,
-passed 16366 returned 0") because bash exited before curl finished
-streaming the install script through the pipe.
-
-User-visible: install summary shows two failed rows with the
-audit-gate error message even though no install logic ran. Affects
-every main-TUI install path that touches skills or mcp-servers
-catalog selection from v6.23.1 onward.
-
-Fix: prepend `env -u TK_MCP_CATALOG_PATH` to every child `bash`
-invocation inside `dispatch_skills` and `dispatch_mcp_servers` (both
-curl-pipe and sibling-path branches). Child sees a clean slate, the
-F-1 gate stays satisfied, and the child re-downloads the catalog
-itself when it reaches its own `_is_curl_pipe && [[ -z
-TK_MCP_CATALOG_PATH ]]` block at `install.sh:317` / `install.sh:1934`.
-Cost: one extra ~16KB curl per dispatch — negligible. The original
-inheritance optimization documented in `install.sh:307-311` (avoid
-duplicate download) is sacrificed; in exchange the F-1 attack
-surface stays sealed.
-
-Tests: `scripts/tests/test-dispatch-env-scrub.sh` (new, 3
-assertions): one static grep validating 4 `env -u TK_MCP_CATALOG_PATH bash`
-call sites in dispatch.sh, plus two runtime scenarios
-(`dispatch_skills` then `dispatch_mcp_servers`, both sibling-path
-branch) where the parent has
-`TK_MCP_CATALOG_PATH=/tmp/parent-catalog-fake` and a stub
-`install.sh` writes its inherited value to a result file — both
-record `UNSET` post-fix. Wired into `.github/workflows/quality.yml`
-test-install-features job. shellcheck `-S warning` clean.
-
-PR pending; ships in v6.23.4.
-
 ### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
 
 Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit
@@ -125,6 +80,53 @@ template is reusable for the remaining 6 base audit prompts
   (MANDATORY)` section codifies the two-stage `pe` workflow as a
   project-level instruction. Every prompt-file edit must go through
   `pe` first, then a manual context-aware merge.
+
+## [6.23.4] - 2026-05-13
+
+### Fixed — dispatch_skills + dispatch_mcp_servers fail under main TUI (F-1 gate regression)
+
+Production-breaking regression introduced by the v6.23.1 F-1 audit
+gate (`scripts/install.sh:277`): under `curl | bash` install via the
+main TUI, when the user selects either the `skills` or `mcp-servers`
+catalog row, the parent `install.sh` pre-collection block at
+`install.sh:1847+` (gated by `TK_TUI_CONFIRMED=1` after main-TUI
+submit) exports `TK_MCP_CATALOG_PATH=<tmp>` for its own
+`mcp_catalog_load` call. That export then leaks into the child
+`bash <(curl ...) install.sh --skills | --integrations` spawned by
+`dispatch_skills` / `dispatch_mcp_servers` (`scripts/lib/dispatch.sh`)
+via standard env inheritance, and the child immediately hits the F-1
+gate at startup (TK_MCP_CATALOG_PATH set, TK_TEST≠1) → `exit 1`.
+Side-effect: curl error 56 ("Failure writing output to destination,
+passed 16366 returned 0") because bash exited before curl finished
+streaming the install script through the pipe.
+
+User-visible: install summary shows two failed rows with the
+audit-gate error message even though no install logic ran. Affects
+every main-TUI install path that touches skills or mcp-servers
+catalog selection from v6.23.1 onward.
+
+Fix: prepend `env -u TK_MCP_CATALOG_PATH` to every child `bash`
+invocation inside `dispatch_skills` and `dispatch_mcp_servers` (both
+curl-pipe and sibling-path branches). Child sees a clean slate, the
+F-1 gate stays satisfied, and the child re-downloads the catalog
+itself when it reaches its own `_is_curl_pipe && [[ -z
+TK_MCP_CATALOG_PATH ]]` block at `install.sh:317` / `install.sh:1934`.
+Cost: one extra ~16KB curl per dispatch — negligible. The original
+inheritance optimization documented in `install.sh:307-311` (avoid
+duplicate download) is sacrificed; in exchange the F-1 attack
+surface stays sealed.
+
+Tests: `scripts/tests/test-dispatch-env-scrub.sh` (new, 3
+assertions): one static grep validating 4 `env -u TK_MCP_CATALOG_PATH bash`
+call sites in dispatch.sh, plus two runtime scenarios
+(`dispatch_skills` then `dispatch_mcp_servers`, both sibling-path
+branch) where the parent has
+`TK_MCP_CATALOG_PATH=/tmp/parent-catalog-fake` and a stub
+`install.sh` writes its inherited value to a result file — both
+record `UNSET` post-fix. Wired into `.github/workflows/quality.yml`
+test-install-features job. shellcheck `-S warning` clean.
+
+PR #117 merged 0101c9a.
 
 ## [6.23.3] - 2026-05-13
 
