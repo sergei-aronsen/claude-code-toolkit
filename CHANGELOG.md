@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `gh` CLI companion for the GitHub MCP
+
+v6.24.0 added the GitHub Remote MCP to `components.mcp`, but the row
+rendered as `[CLI:—]` because `components.cli` had no `github` entry
+— toolkit didn't know the canonical companion CLI is GitHub's own
+`gh`. The TUI status indicator therefore couldn't tell users whether
+the partner CLI was present (`✓`) or installable (`✗`).
+
+Added `components.cli.github` to
+`scripts/lib/integrations-catalog.json`:
+
+```json
+"github": {
+  "detect_cmd": "gh",
+  "install": {
+    "darwin": "brew install gh",
+    "linux": "mkdir -p ~/.local/bin && cd /tmp && VER=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p') && curl -fsSL \"https://github.com/cli/cli/releases/download/v${VER}/gh_${VER}_linux_amd64.tar.gz\" -o gh.tgz && tar -xzf gh.tgz && cp gh_${VER}_linux_amd64/bin/gh ~/.local/bin/ && rm -rf gh.tgz gh_${VER}_linux_amd64"
+  },
+  "post_install_hint": "gh auth login  # browser OAuth"
+}
+```
+
+Darwin: `brew install gh` (mirrors `stripe`, `supabase`).
+Linux: binary download to `~/.local/bin/` (mirrors `stripe-cli` and
+`aws-cloudwatch-logs` pattern — no sudo, no apt-keyring dance). Pins
+to "latest" via GitHub releases API to avoid frequent catalog
+churn. x86_64 only for v1 — arm64 Linux deferred (rare for toolkit
+target audience: solo founders on macOS / x86_64 CI).
+
+Now the row renders `[CLI:✓]` when `gh` is on `$PATH` or `[CLI:✗]`
+when absent (toolkit installer prompts to install).
+
+Counter bump: `scripts/tests/test-integrations-catalog.sh:165-175`
+A8 expected count 8 → 9 + comment update. Validator
+(`scripts/validate-integrations-catalog.py`) accepts the new entry:
+30 mcp + 9 cli + 10 categories.
+
+PR pending; ships in v6.24.1.
+
 ## [6.24.0] - 2026-05-13
 
 ### Added — GitHub MCP in `scripts/lib/integrations-catalog.json`
