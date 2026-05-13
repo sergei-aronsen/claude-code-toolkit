@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.24.1] - 2026-05-13
+
 ### Added — `gh` CLI companion for the GitHub MCP
 
 v6.24.0 added the GitHub Remote MCP to `components.mcp`, but the row
@@ -44,7 +46,7 @@ A8 expected count 8 → 9 + comment update. Validator
 (`scripts/validate-integrations-catalog.py`) accepts the new entry:
 30 mcp + 9 cli + 10 categories.
 
-PR pending; ships in v6.24.1.
+PR #121 merged 44f3e91.
 
 ## [6.24.0] - 2026-05-13
 
