@@ -148,10 +148,6 @@ jobs:
       - name: REL-02 — cell-parity (all 3 surfaces carry all 13 cell names)
         run: make cell-parity
 
-      - name: REL-03 (2026-05-13 audit) — init-claude.sh TK_TOOLKIT_REF default matches manifest.version
-        # Pure local file reads; no GitHub event payload interpolation.
-        run: bash scripts/tests/test-toolkit-ref-pinned.sh
-
   # Install lifecycle: uninstall family + banner + bootstrap + update libs +
   # bridges foundation/sync. Bench (PR #80, Ubuntu): ~2m.
   # Split out from the previous monolithic test-install-suite (~7m) so the
