@@ -7,36 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed — skill detection prefix-agnostic (mirror of v6.23.2 memo fix)
-
-`scripts/lib/skills.sh:is_skill_installed` hard-coded
-`~/.claude/skills/<name>/`, matching only the toolkit's own
-`skills_install` writer layout. When users install skills via a
-skills-marketplace that prepends a 1-char prefix (e.g.
-`~/.claude/skills/i-<name>/`), the probe missed every install and the
-TUI rendered `[ ] <skill>` for the entire 24-skill catalog even with
-all of them functional.
-
-Two coordinated patches in `scripts/lib/skills.sh`:
-
-1. `is_skill_installed` — accept `<name>/` OR `?-<name>/` (single-char
-   prefix + dash + name). Covers marketplace's `i-` prefix and any
-   alternate 1-char scheme without false-positiving on long-prefix
-   sibling skills.
-2. `skills_install` — bail with rc=2 (already-installed) when
-   `?-<name>/` exists, even under `--force`. Prevents
-   marketplace+toolkit duplicate installs that Claude Code would load
-   as two separate skills with different `name:` frontmatter.
-
-Tests: 7 new assertions across S7 (detection-marketplace-prefix, 3
-cases: `i-` prefix, `p-` prefix, absent) and S8 (install-refuses-
-marketplace, 4 cases: rc=2 without --force, rc=2 with --force, no
-duplicate, marketplace content preserved). All 22 assertions in
-`test-install-skills.sh` pass. shellcheck `-S warning` clean.
-
-Same class as v6.23.2 (`claude-memo` probe). Probe-by-content-or-
-schema-aware-path > probe-by-exact-directory-name when install layout
-varies across channels (toolkit standalone vs marketplace).
+### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
 
 Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit
 prompt as pilot validation of the mandatory `pe` (Prompt Generator)
@@ -109,6 +80,45 @@ template is reusable for the remaining 6 base audit prompts
   (MANDATORY)` section codifies the two-stage `pe` workflow as a
   project-level instruction. Every prompt-file edit must go through
   `pe` first, then a manual context-aware merge.
+
+## [6.23.3] - 2026-05-13
+
+### Fixed — skill detection prefix-agnostic (mirror of v6.23.2 memo fix)
+
+`scripts/lib/skills.sh:is_skill_installed` hard-coded
+`~/.claude/skills/<name>/`, matching only the toolkit's own
+`skills_install` writer layout. When users install skills via a
+skills-marketplace that prepends a 1-char prefix (e.g.
+`~/.claude/skills/i-<name>/`), the probe missed every install and the
+TUI rendered `[ ] <skill>` for the entire 24-skill catalog even with
+all of them functional.
+
+Two coordinated patches in `scripts/lib/skills.sh`:
+
+1. `is_skill_installed` — accept `<name>/` OR `?-<name>/` (single-char
+   prefix + dash + name). Covers marketplace's `i-` prefix and any
+   alternate 1-char scheme without false-positiving on long-prefix
+   sibling skills.
+2. `skills_install` — bail with rc=2 (already-installed) when
+   `?-<name>/` exists, even under `--force`. Prevents
+   marketplace+toolkit duplicate installs that Claude Code would load
+   as two separate skills with different `name:` frontmatter.
+
+Tests: 7 new assertions across S7 (detection-marketplace-prefix, 3
+cases: `i-` prefix, `p-` prefix, absent) and S8 (install-refuses-
+marketplace, 4 cases: rc=2 without --force, rc=2 with --force, no
+duplicate, marketplace content preserved). All 22 assertions in
+`test-install-skills.sh` pass. shellcheck `-S warning` clean.
+
+Same class as v6.23.2 (`claude-memo` probe). Probe-by-content-or-
+schema-aware-path > probe-by-exact-directory-name when install layout
+varies across channels (toolkit standalone vs marketplace).
+
+PR #115 merged b45e0e9.
+
+Also restores the `### Bucket 1 pilot — DESIGN_REVIEW.md optimized via
+\`pe\` pipeline` H3 heading under [Unreleased] that PR #115's Edit
+accidentally removed when it spliced the skill-detection block.
 
 ## [6.23.2] - 2026-05-13
 
