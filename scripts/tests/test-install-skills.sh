@@ -248,12 +248,112 @@ run_s6_install_sh_dry_run() {
     assert_eq "0" "$file_count" "S6: TK_SKILLS_HOME has zero entries post-dry-run"
 }
 
+# ─────────────────────────────────────────────────
+# S7_detection_marketplace_prefix — is_skill_installed accepts ?-<name>/
+# (skills-marketplace layout: `i-<name>/` and any other single-char prefix)
+# ─────────────────────────────────────────────────
+run_s7_detection_marketplace_prefix() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-install-skills.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S7_detection_marketplace_prefix: is_skill_installed honors ?-<name>/ --"
+
+    local SKILLS_HOME="$SANDBOX/skills"
+    # i- prefix (skills-marketplace convention).
+    mkdir -p "$SKILLS_HOME/i-ai-models"
+    touch "$SKILLS_HOME/i-ai-models/SKILL.md"
+    # p- prefix (hypothetical alternate marketplace).
+    mkdir -p "$SKILLS_HOME/p-pdf"
+    touch "$SKILLS_HOME/p-pdf/SKILL.md"
+
+    local rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed ai-models
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S7: is_skill_installed ai-models returns 0 when i-ai-models/ exists"
+
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed pdf
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S7: is_skill_installed pdf returns 0 when p-pdf/ exists"
+
+    # Negative: skill absent under any layout.
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed copywriting
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "1" "$rc" "S7: is_skill_installed copywriting returns 1 when neither layout present"
+}
+
+# ─────────────────────────────────────────────────
+# S8_install_refuses_marketplace — skills_install returns 2 when ?-<name>/
+# already exists (refuses to create duplicate alongside marketplace install)
+# ─────────────────────────────────────────────────
+run_s8_install_refuses_marketplace() {
+    local SANDBOX
+    SANDBOX="$(mktemp -d /tmp/test-install-skills.XXXXXX)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${SANDBOX:?}'" RETURN
+    echo "  -- S8_install_refuses_marketplace: bail when ?-<name>/ exists --"
+
+    local SKILLS_HOME="$SANDBOX/skills"
+    mkdir -p "$SKILLS_HOME/i-ai-models"
+    touch "$SKILLS_HOME/i-ai-models/SKILL.md"
+    echo "marketplace-content" > "$SKILLS_HOME/i-ai-models/MARKER.txt"
+
+    # No --force.
+    local rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
+    bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        skills_install ai-models
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "2" "$rc" "S8: skills_install ai-models returns 2 when i-ai-models/ exists"
+
+    # --force MUST also refuse (toolkit doesn't own marketplace dirs).
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
+    bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        skills_install ai-models --force
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "2" "$rc" "S8: skills_install --force still returns 2 (refuses to clobber marketplace)"
+
+    # No duplicate <name>/ written.
+    if [[ ! -d "$SKILLS_HOME/ai-models" ]]; then
+        assert_pass "S8: no duplicate ${SKILLS_HOME}/ai-models/ created"
+    else
+        assert_fail "S8: no duplicate ${SKILLS_HOME}/ai-models/ created" "duplicate written"
+    fi
+
+    # Marketplace content untouched.
+    if [[ -f "$SKILLS_HOME/i-ai-models/MARKER.txt" ]]; then
+        assert_pass "S8: marketplace MARKER.txt preserved (no recursion into ?-<name>/)"
+    else
+        assert_fail "S8: marketplace MARKER.txt preserved" "marker file destroyed"
+    fi
+}
+
 run_s1_catalog_correctness
 run_s2_detection_two_state
 run_s3_skills_install_basic
 run_s4_idempotency_no_force
 run_s5_force_overwrite
 run_s6_install_sh_dry_run
+run_s7_detection_marketplace_prefix
+run_s8_install_refuses_marketplace
 
 echo ""
 echo "PASS=$PASS FAIL=$FAIL"

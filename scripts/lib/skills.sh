@@ -154,9 +154,12 @@ _skills_description() {
 }
 
 # is_skill_installed <name> — directory probe.
-# Returns 0 when ~/.claude/skills/<name>/ exists, 1 when absent.
-# Two-state return (no CLI dependency — skills have no binary requirement).
-# Override probe root with TK_SKILLS_HOME for hermetic tests.
+# Returns 0 when ~/.claude/skills/<name>/ OR ~/.claude/skills/?-<name>/
+# exists (single-char-prefix form covers skills-marketplace's `i-<name>/`
+# layout and any other 1-char prefix scheme — `p-`, `m-`, etc.). Returns
+# 1 when absent. Two-state return (no CLI dependency — skills have no
+# binary requirement). Override probe root with TK_SKILLS_HOME for
+# hermetic tests.
 is_skill_installed() {
     local name="${1:-}"
     if [[ -z "$name" ]]; then
@@ -165,7 +168,14 @@ is_skill_installed() {
     fi
     local home
     home="$(_skills_default_home)"
-    [[ -d "${home}/${name}" ]]
+    # Toolkit's own layout (no prefix).
+    [[ -d "${home}/${name}" ]] && return 0
+    # Marketplace layout: single-char prefix + dash + name.
+    local d
+    for d in "${home}/"?-"${name}"; do
+        [[ -d "$d" ]] && return 0
+    done
+    return 1
 }
 
 # skills_status_array — populate TUI_INSTALLED[] for the install.sh --skills branch.
@@ -243,6 +253,18 @@ skills_install() {
         echo -e "${RED}✗${NC} skills_install: source missing: $src" >&2
         return 1
     fi
+    # Refuse to write ${target} when a marketplace-prefixed install
+    # (e.g. i-<name>/) already provides the skill. Without this guard,
+    # `--force` reinstall would create a duplicate <name>/ alongside
+    # the existing ?-<name>/ and Claude Code would load both as
+    # separate skills (different `name:` frontmatter). Toolkit does
+    # not own marketplace-managed dirs — leave them untouched.
+    local prefixed
+    for prefixed in "${home}/"?-"${name}"; do
+        if [[ -d "$prefixed" ]]; then
+            return 2
+        fi
+    done
     if [[ -d "$target" && "$force" -ne 1 ]]; then
         return 2
     fi
