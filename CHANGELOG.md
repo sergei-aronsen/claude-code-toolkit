@@ -7,30 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed — claude-memo detection prefix-agnostic (probe by signature file)
-
-`scripts/install.sh` claude-memo install detection (TUI probe + dispatch
-idempotency) hard-coded the skill path as
-`~/.claude/skills/memo-skill/SKILL.md`, matching only the toolkit's
-standalone `install-claude-memo.sh` layout. When users install the
-skill via a skills-marketplace that prefixes directories (e.g.
-`~/.claude/skills/i-memo-skill/`) — or any other custom prefix — the
-probe missed the install and the TUI rendered `[ ] claude-memo` even
-with a fully functional skill + populated vault.
-
-Switched both probes to glob a unique signature file —
-`scripts/memo_engine.py`, present in every claude-memo install and in
-no other skill — under `~/.claude/skills/*/scripts/memo_engine.py`.
-The glob is prefix-agnostic and works under Bash 3.2 (macOS) without
-`shopt -s nullglob`: the `for f in PATTERN; do [[ -f "$f" ]] && ...; done`
-form silently falls through when the pattern doesn't expand.
-
-Files: `scripts/install.sh` (L1514-1532 probe, L2203-2210 dispatch).
-Smoke tested across 5 scenarios (`i-` prefix, no prefix, custom
-`p-memo-2026` prefix, no skill, skill-only-no-vault) — all expected
-results. shellcheck `-S warning` clean. No test refs to the old path
-in `scripts/tests/`.
-
 ### Bucket 1 pilot — DESIGN_REVIEW.md optimized via `pe` pipeline
 
 Bucket 1 of the v6.21.0 sequenced plan opens with the smallest audit
@@ -104,6 +80,34 @@ template is reusable for the remaining 6 base audit prompts
   (MANDATORY)` section codifies the two-stage `pe` workflow as a
   project-level instruction. Every prompt-file edit must go through
   `pe` first, then a manual context-aware merge.
+
+## [6.23.2] - 2026-05-13
+
+### Fixed — claude-memo detection prefix-agnostic (probe by signature file)
+
+`scripts/install.sh` claude-memo install detection (TUI probe + dispatch
+idempotency) hard-coded the skill path as
+`~/.claude/skills/memo-skill/SKILL.md`, matching only the toolkit's
+standalone `install-claude-memo.sh` layout. When users install the
+skill via a skills-marketplace that prefixes directories (e.g.
+`~/.claude/skills/i-memo-skill/`) — or any other custom prefix — the
+probe missed the install and the TUI rendered `[ ] claude-memo` even
+with a fully functional skill + populated vault.
+
+Switched both probes to glob a unique signature file —
+`scripts/memo_engine.py`, present in every claude-memo install and in
+no other skill — under `~/.claude/skills/*/scripts/memo_engine.py`.
+The glob is prefix-agnostic and works under Bash 3.2 (macOS) without
+`shopt -s nullglob`: the `for f in PATTERN; do [[ -f "$f" ]] && ...; done`
+form silently falls through when the pattern doesn't expand.
+
+Files: `scripts/install.sh` (L1514-1532 probe, L2203-2210 dispatch).
+Smoke tested across 5 scenarios (`i-` prefix, no prefix, custom
+`p-memo-2026` prefix, no skill, skill-only-no-vault) — all expected
+results. shellcheck `-S warning` clean. No test refs to the old path
+in `scripts/tests/`.
+
+PR #113 merged 9c60244.
 
 ## [6.23.1] - 2026-05-13
 
