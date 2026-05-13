@@ -588,6 +588,14 @@
         },
         "post_install_hint": "firecrawl --version  # set FIRECRAWL_API_KEY env"
       },
+      "github": {
+        "detect_cmd": "gh",
+        "install": {
+          "darwin": "brew install gh",
+          "linux": "mkdir -p ~/.local/bin && cd /tmp && VER=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p') && curl -fsSL \"https://github.com/cli/cli/releases/download/v${VER}/gh_${VER}_linux_amd64.tar.gz\" -o gh.tgz && tar -xzf gh.tgz && cp gh_${VER}_linux_amd64/bin/gh ~/.local/bin/ && rm -rf gh.tgz gh_${VER}_linux_amd64"
+        },
+        "post_install_hint": "gh auth login  # browser OAuth"
+      },
       "playwright": {
         "detect_cmd": "playwright",
         "install": {
