@@ -74,11 +74,19 @@ TEMPLATES_ROOT="${SPLICE_TEMPLATES_DIR:-$REPO_ROOT/templates}"
 # ─────────────────────────────────────────────────
 FP_RECHECK_BODY="$(awk 'found || /^## /{found=1; print}' "$FP_RECHECK_SOT")"
 OUTPUT_FORMAT_BODY="$(awk 'found || /^## /{found=1; print}' "$OUTPUT_FORMAT_SOT")"
+# fp-control-gates body: lines BETWEEN '## FALSE-POSITIVE CONTROL' (exclusive)
+# and the next H2 ('## Audit-Specific Customization' in the SOT). The wrapping
+# H2 is emitted by the splice block itself, so the extracted body MUST NOT
+# carry its own leading H2 (would collide with the wrapper).
+FP_CONTROL_BODY="$(awk '/^## FALSE-POSITIVE CONTROL/{found=1; next} found && /^## /{exit} found{print}' "$FP_CONTROL_SOT")"
 
 [ -n "$FP_RECHECK_BODY" ]    || { echo "ERROR: empty FP-recheck body extracted" >&2;    exit 1; }
 [ -n "$OUTPUT_FORMAT_BODY" ] || { echo "ERROR: empty OUTPUT FORMAT body extracted" >&2; exit 1; }
+[ -n "$FP_CONTROL_BODY" ]    || { echo "ERROR: empty FP-control-gates body extracted" >&2; exit 1; }
 [[ "$FP_RECHECK_BODY"    == "## "* ]] || { echo "ERROR: FP-recheck body does not start with ##" >&2;    exit 1; }
 [[ "$OUTPUT_FORMAT_BODY" == "## "* ]] || { echo "ERROR: OUTPUT FORMAT body does not start with ##" >&2; exit 1; }
+# FP_CONTROL_BODY MUST NOT start with ## (heading is added by splice wrapper)
+[[ "$FP_CONTROL_BODY" != "## "* ]] || { echo "ERROR: FP-control body starts with ## (must be heading-stripped)" >&2; exit 1; }
 
 # F-006: SOT body H2 (## Procedure / ## Skipped … / ## Report Path / ## Full
 # Report Skeleton …) collides with the outer wrapper H2 (## <N>. SELF-CHECK
@@ -207,6 +215,23 @@ write_spliced_file() {
         printf '%s\n' '- `components/audit-fp-control-gates.md` — three-gate FALSE-POSITIVE CONTROL wrapper (Adversarial → 6-step recheck → Calibration). Gate 2 procedure is `## SELF-CHECK` below.'
     } > "$block_dir/rubric.txt"
 
+    # Block 6 (v6.24.2): fp-control-gates body — emitted just before the
+    # rubric-anchors block. Provides the canonical three-gate FALSE-POSITIVE
+    # CONTROL wrapper (Adversarial → 6-step recheck → Calibration) inline in
+    # every audit prompt. Closes wave-2 findings F-260 (CODE_REVIEW), F-324
+    # (DESIGN_REVIEW), F-363 (PERFORMANCE audits) — previously only
+    # SECURITY_AUDIT.md and (post-v6.24.2) CODE_REVIEW.md inlined this body
+    # manually; remaining audits had only a rubric-anchors citation.
+    {
+        printf '## FALSE-POSITIVE CONTROL\n'
+        printf '<!-- v42-splice: fp-control-gates -->\n'
+        # FP_CONTROL_BODY already starts with a blank line from the SOT (the
+        # blank between `## FALSE-POSITIVE CONTROL` and its first paragraph
+        # survives the heading-skip extraction). No extra '\n' here — adding
+        # one creates a double-blank MD012 violation.
+        printf '%s\n' "$FP_CONTROL_BODY"
+    } > "$block_dir/fpc.txt"
+
     # Block 5: Council Handoff footer (D-08)
     # Em-dash below is U+2014 (0xE2 0x80 0x94) — do NOT replace with hyphen-minus.
     {
@@ -230,6 +255,7 @@ write_spliced_file() {
         "$block_dir/of.txt" \
         "$block_dir/ch.txt" \
         "$block_dir/rubric.txt" \
+        "$block_dir/fpc.txt" \
         "$existing_selfcheck_line" \
         "$selfcheck_end_line" \
         "$existing_reportfmt_line" \
@@ -239,11 +265,13 @@ write_spliced_file() {
 import sys
 
 src, dst = sys.argv[1], sys.argv[2]
-callout_f, fp_f, of_f, ch_f, rubric_f = sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7]
-sc_start  = int(sys.argv[8])
-sc_end    = int(sys.argv[9])
-rf_start  = int(sys.argv[10])
-rf_end    = int(sys.argv[11])
+callout_f, fp_f, of_f, ch_f, rubric_f, fpc_f = (
+    sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7], sys.argv[8]
+)
+sc_start  = int(sys.argv[9])
+sc_end    = int(sys.argv[10])
+rf_start  = int(sys.argv[11])
+rf_end    = int(sys.argv[12])
 
 def read_block(path):
     with open(path, 'r', encoding='utf-8') as fh:
@@ -254,6 +282,7 @@ fp_blk     = read_block(fp_f)
 of_blk     = read_block(of_f)
 ch_blk     = read_block(ch_f)
 rubric_blk = read_block(rubric_f)
+fpc_blk    = read_block(fpc_f)
 
 def ensure_single_trailing_blank(buf):
     """Remove all trailing blank lines then append exactly one blank line."""
@@ -295,7 +324,11 @@ while i < len(lines):
     # v6.15.3: emit rubric-anchors citation immediately before SELF-CHECK
     # so the audit reader sees the canonical SOT pointers right next to
     # the FP-recheck procedure they gate.
+    # v6.24.2: emit fp-control-gates block BEFORE rubric-anchors so the
+    # three-gate wrapper (Adversarial → 6-step recheck → Calibration)
+    # appears in every audit prompt regardless of audit type.
     if has_sc and lineno == sc_start:
+        append_block(out, fpc_blk)
         append_block(out, rubric_blk)
         append_block(out, fp_blk)
         in_skip = True
@@ -314,6 +347,7 @@ while i < len(lines):
 
     # Block 2b: Insert fp_blk BEFORE report-format heading (no existing SELF-CHECK)
     if not has_sc and has_rf and lineno == rf_start:
+        append_block(out, fpc_blk)
         append_block(out, rubric_blk)
         append_block(out, fp_blk)
         ensure_single_trailing_blank(out)
@@ -334,6 +368,7 @@ while i < len(lines):
 
 # EOF fallbacks
 if not has_sc and not has_rf:
+    append_block(out, fpc_blk)
     append_block(out, rubric_blk)
     append_block(out, fp_blk)
     out.append('\n')
@@ -424,6 +459,7 @@ fp_idx      = find_line('<!-- v42-splice: fp-recheck-section -->')
 of_idx      = find_line('<!-- v42-splice: output-format-section -->')
 ch_idx      = find_line('<!-- v42-splice: council-handoff -->')
 rubric_idx  = find_line('<!-- v42-splice: rubric-anchors -->')
+fpc_idx     = find_line('<!-- v42-splice: fp-control-gates -->')
 
 ranges = []  # list of (start, end) line-index pairs to delete (end exclusive)
 
@@ -439,6 +475,26 @@ if callout_idx >= 0:
     if end < len(lines) and lines[end].strip() == '':
         end += 1
     ranges.append((callout_idx, end))
+
+# ─── fp-control-gates (v6.24.2): three-gate FALSE-POSITIVE CONTROL wrapper.
+# Region = parent_h2(fpc_idx) — the '## FALSE-POSITIVE CONTROL' line —
+# through (rubric_idx) exclusive. The body contains only ### Gate N
+# headings, never another ## heading, so rubric_idx (the immediately-
+# following splice block) is a safe end boundary.
+if fpc_idx >= 0:
+    start = parent_h2(fpc_idx)
+    if rubric_idx > fpc_idx:
+        end = rubric_idx
+    elif fp_idx > fpc_idx:
+        end = parent_h2(fp_idx)
+    elif of_idx > fpc_idx:
+        end = parent_h2(of_idx)
+    elif ch_idx > fpc_idx:
+        end = parent_h2(ch_idx)
+    else:
+        end = len(lines)
+    if start >= 0 and end > start:
+        ranges.append((start, end))
 
 # ─── rubric-anchors (v6.15.3): fixed 7-line block emitted by the splice
 # (sentinel, blank, **bold intro**, blank, list1, list2, list3) plus a
@@ -567,11 +623,11 @@ insert_blocks() {
 
     write_spliced_file "$f" "$tmp" "$sc_heading" "$of_heading"
 
-    # ── Post-write sanity: tempfile must contain all 5 sentinels (v6.15.3) ──
+    # ── Post-write sanity: tempfile must contain all 6 sentinels (v6.24.2) ──
     local tmp_sentinels
     tmp_sentinels=$(grep -cF '<!-- v42-splice:' "$tmp" || true)
-    if [ "$tmp_sentinels" -ne 5 ]; then
-        echo "ERROR: post-splice tempfile has $tmp_sentinels/5 sentinels: $f" >&2
+    if [ "$tmp_sentinels" -ne 6 ]; then
+        echo "ERROR: post-splice tempfile has $tmp_sentinels/6 sentinels: $f" >&2
         rm -f "$tmp"
         return 1
     fi
@@ -592,7 +648,7 @@ while IFS= read -r f; do
     # D-09: sentinel detection
     total=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
 
-    if [ "$total" -eq 5 ]; then
+    if [ "$total" -eq 6 ]; then
         if [ "$FORCE" -eq 1 ]; then
             if [ "$DRY_RUN" -eq 1 ]; then
                 echo "[dry-run] would re-splice (force): ${f#"$REPO_ROOT/"}"
@@ -614,10 +670,10 @@ while IFS= read -r f; do
             continue
         fi
     fi
-    if [ "$total" -gt 0 ] && [ "$total" -lt 5 ]; then
+    if [ "$total" -gt 0 ] && [ "$total" -lt 6 ]; then
         if [ "$FORCE" -eq 1 ]; then
             if [ "$DRY_RUN" -eq 1 ]; then
-                echo "[dry-run] would strip+splice (force, partial $total/5): ${f#"$REPO_ROOT/"}"
+                echo "[dry-run] would strip+splice (force, partial $total/6): ${f#"$REPO_ROOT/"}"
                 SPLICED=$((SPLICED + 1))
                 continue
             fi
@@ -629,7 +685,7 @@ while IFS= read -r f; do
                 continue
             fi
         else
-            echo "ERROR: partial-splice ($total/5 sentinels): ${f#"$REPO_ROOT/"}" >&2
+            echo "ERROR: partial-splice ($total/6 sentinels): ${f#"$REPO_ROOT/"}" >&2
             ERRORS=$((ERRORS + 1))
             continue
         fi

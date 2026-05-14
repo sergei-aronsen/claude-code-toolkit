@@ -46,7 +46,7 @@ You MUST NOT use as evidence:
 
 - the auditor's prose, `**Claim:**`, `**Why it is real:**`, or
   `**Suggested fix:**` bullets;
-- claimed exploit scenarios or claimed impact;
+- claimed failure scenarios, exploit scenarios, or claimed impact (the model must verify the scenario from code, not from the auditor's prose);
 - comments outside code blocks;
 - external project knowledge or framework defaults not visible in the code;
 - runtime configuration / deployment / environment assumptions;
@@ -148,7 +148,7 @@ Invalid reasons (do NOT use FALSE_POSITIVE for):
 - "the framework may handle it" → use NEEDS_MORE_CONTEXT;
 - "a function name suggests validation" → cite the actual implementation or
   use NEEDS_MORE_CONTEXT;
-- "the exploit seems unlikely" → not an evidence-based reason.
+- "the exploit / failure / regression seems unlikely" → not an evidence-based reason on its own; cite the code that disproves it or use NEEDS_MORE_CONTEXT.
 
 ### NEEDS_MORE_CONTEXT
 
@@ -173,8 +173,8 @@ Reason about confidence in three levels:
   no essential element depends on unstated context.
 - **MEDIUM** — embedded code strongly supports the verdict; only minor
   non-essential context is missing. Do NOT use MEDIUM to compensate for
-  missing exploitability, reachability, input source, authorization context,
-  configuration, or runtime behavior.
+  missing reachability, input source, failure-mode / exploitability,
+  authorization context, configuration, or runtime behavior.
 - **LOW** — relevant code is missing, partial, ambiguous, indirect, or
   assumption-dependent.
 
@@ -230,7 +230,7 @@ When no relevant code is visible at all, cite literally:
 Invalid justifications (rejected):
 
 - "This looks unsafe."
-- "Likely exploitable."
+- "Likely exploitable / likely a real failure / likely reachable."
 - "The auditor is correct."
 - "No issue found."
 - "Based on best practices."

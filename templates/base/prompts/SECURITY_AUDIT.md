@@ -219,20 +219,44 @@ A single ungated layer breaks the whole model. Enumerate every layer.
 
 ### Multi-Tenant Isolation
 
-For SaaS, this is the highest-blast-radius concern:
+For SaaS, this is the highest-blast-radius concern.
 
-- Every query carries `tenant_id` (or equivalent) in the WHERE clause
-- Background jobs propagate tenant context from the job payload, not from
-  global state
+Every data-access path must enforce tenant isolation through a **visible
+mechanism**. The mechanism can be any of:
+
+- `tenant_id` (or equivalent column) in the WHERE clause of every query
+- Database-level row-level security policies (Postgres RLS, etc.)
+- Schema-per-tenant or database-per-tenant isolation
+- A scoped repository / service-layer abstraction that injects tenant
+  scope on every read and write
+- A policy engine / authorization middleware applied before the data
+  layer
+- Materialized permission tables joined into every query
+- Search/vector indexes partitioned by tenant (one index per tenant) OR
+  every query carries an explicit tenant filter
+
+A finding is real when **no visible enforcement mechanism** can be
+traced from the entry point to the data layer. Do not flag a query
+that lacks an explicit `tenant_id` filter if a higher layer
+(repository, policy engine, RLS) is visibly enforcing scope.
+
+Also audit:
+
+- Background jobs propagate tenant context from the job payload, not
+  from global request state
 - Cache keys include tenant identity; eviction is scoped
-- Object storage paths are tenant-prefixed and signed-URL-scoped
-- Search indexes are tenant-partitioned OR every query filters
-- Webhooks include tenant identity in signed payload, not just header
-- Cross-tenant references (parent org / shared template) explicitly
-  verified, not implicit
+- Object storage paths are tenant-prefixed and signed-URL-scoped to the
+  issuing tenant
+- Webhooks include tenant identity in the signed payload, not just
+  header
+- Cross-tenant references (parent org / shared template) are
+  explicitly verified at every traversal, not assumed implicit
 
-A single missing `tenant_id` filter on a list endpoint = tenant-data
-exfiltration = CRITICAL.
+A single reachable path that bypasses every visible isolation mechanism
+on a list/read endpoint typically yields tenant-data exfiltration and
+CRITICAL severity. Downgrade if the exposed data is public-by-design
+or the bypass requires preconditions that materially constrain the
+attacker.
 
 ### Injection Sinks
 
@@ -298,19 +322,41 @@ framework default:
 
 ### AI / LLM / RAG Security
 
-- System prompt is protected from user override (sandwich pattern: system
-  prompt → untrusted user content → system reminder)
-- User-supplied content is treated as DATA, never instructions
-- Retrieved RAG context is sanitized + provenance-tagged; cross-tenant
-  RAG leakage prevented by index isolation
-- LLM output is treated as untrusted input when fed back into tools or
-  other LLMs
-- Tool execution is authorized per-call (the agent cannot call tools the
-  user lacks permission for)
-- Secrets are EXCLUDED from embeddings and vector stores (one leaked
-  embedding = persistent compromise)
-- Cost / token caps per-user + per-tenant + globally
-- Prompt-injection boundaries explicitly identified at each agent step
+The primary defenses are **server-side**, not prompt patterns. A
+well-crafted system prompt is detection-and-deterrence, not a security
+boundary — treat any control that depends on the model "choosing to
+comply" as advisory, not enforcement.
+
+Required server-side controls:
+
+- **Tool authorization is per-call and server-enforced.** The agent
+  cannot invoke tools, endpoints, or data sources the requesting user
+  lacks permission for. Authorization runs in the tool-dispatch layer
+  with the user's identity, not based on what the model says about
+  itself or its task.
+- **User content and retrieved RAG context are treated as untrusted
+  data**, never as instructions. Prompt-assembly boundaries are
+  explicit and structurally delimited.
+- **Tenant isolation across RAG.** Vector indexes, retrieval filters,
+  and document corpora are tenant-partitioned. Cross-tenant retrieval
+  is impossible at the index layer, not gated by a prompt instruction.
+- **Secrets are excluded from embeddings and vector stores.** Once
+  embedded, a secret leaks persistently across every query that returns
+  a nearby vector — embedding is effectively logging-to-disk in
+  plaintext.
+- **Model output is untrusted when fed into tools, other models, or
+  persisted state.** Validate, type-check, and re-authorize before
+  acting on it.
+- **Cost and rate limits per user, per tenant, and globally.** Token
+  caps, loop limits, fan-out limits, and inference-cost ceilings.
+- **Provenance tags on retrieved context** so downstream tool calls can
+  refuse to act on attacker-influenced retrievals (e.g. a public
+  document retrieved during a privileged action).
+
+The "sandwich pattern" (system prompt → user content → system reminder)
+is a useful structural delimiter, not a defense. Do not report its
+absence as a vulnerability; do report any control that depends on it
+as the sole boundary.
 
 ### Business Logic
 
@@ -366,28 +412,62 @@ For AI-native and multi-tenant SaaS, often the dominant attack surface:
 
 ### Dependency Risk
 
-- Lock files committed (`package-lock.json`, `composer.lock`,
-  `poetry.lock`, `Cargo.lock`, `go.sum`)
-- Known-CVE check (`npm audit`, `pip-audit`, `composer audit`, `govulncheck`)
-- New packages: typosquatting check (compare letter-by-letter against the
-  intended name)
-- Post-install scripts inspected for new dependencies
+A dependency finding is reportable only when at least one of the
+following is **visible in this codebase**:
+
+- A known CVE whose vulnerable code path is reachable in this app's
+  actual usage and configuration (not just present in the dependency
+  tree).
+- A newly introduced package with a suspicious name (typosquatting:
+  compare letter-by-letter against the canonical name), an unexpected
+  maintainer, or a sudden ownership transfer.
+- A dependency that runs `postinstall` / `preinstall` / `install`
+  scripts, build-time codegen, or any code at install time that
+  touches the file system, network, or secrets.
+- Missing or out-of-date lock file (`package-lock.json`,
+  `composer.lock`, `poetry.lock`, `Cargo.lock`, `go.sum`,
+  `pnpm-lock.yaml`, `uv.lock`) that opens dependency-confusion or
+  silent-upgrade risk.
+- A dependency that visibly runs in production with sensitive
+  privileges (filesystem, network, secrets, model output) and lacks
+  basic provenance.
+
+Do NOT dump raw `npm audit` / `pip-audit` / `composer audit` /
+`govulncheck` output as findings without per-CVE reachability analysis.
+"Listed in audit tool" alone is not exploitability.
 
 ### Transport, Headers, TLS
 
-Compact, framework-aware. Modern frameworks set most of these by default
-— flag ABSENCE only when the framework default is disabled:
+Modern frameworks set most of these by default. **Absence alone is not
+a finding** — every header-related finding requires a reachable attack
+vector in this codebase.
 
-- HTTPS required in production; HTTP redirects to HTTPS
-- HSTS set with reasonable max-age + `includeSubDomains` (do NOT
-  bikeshed the number)
-- `Content-Security-Policy` set (or `default-src 'none'` for APIs)
-- `X-Frame-Options: DENY` or `frame-ancestors` in CSP
-- `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin`
-- CORS: explicit origin list (never `*` with credentials)
+Report only when the visible vector below is present:
 
-`X-XSS-Protection` is dead — do NOT report its absence.
+- **HTTPS not enforced in production** — there is a reachable
+  authenticated route accepting unencrypted credentials, session
+  cookies, or tokens.
+- **CSP missing or `unsafe-inline` / `unsafe-eval`** — there is a
+  reachable raw-HTML sink, attribute-injection sink, or
+  user-controllable script vector on the same surface. CSP on a
+  pure-API surface with no HTML response is not a finding.
+- **`X-Frame-Options` / `frame-ancestors` missing** — there is a
+  reachable privileged state-changing action (settings change,
+  payment, role grant) on the same surface that would matter if framed.
+  Marketing pages don't qualify.
+- **CORS `*` with credentials, or wildcard reflection of `Origin`** —
+  authenticated endpoints return sensitive data and the wildcard /
+  reflection is reachable.
+- **Host header trusted without validation** — used to build password
+  reset, signup confirmation, OAuth callback, or signed-URL targets.
+- **`X-Content-Type-Options` missing** — user-uploaded content is
+  served from the same origin and a MIME-confusion sink is reachable.
+- **`Referrer-Policy` permissive** — sensitive tokens or IDs appear in
+  URLs that get referrer-leaked to third-party origins.
+
+`X-XSS-Protection`, `Expect-CT`, `Public-Key-Pins`, exact HSTS
+`max-age` values, and TLS-version enumeration are out of scope. Do NOT
+report their absence or weakness in isolation.
 
 ### SSRF / Open Redirect / Host Injection
 
@@ -444,13 +524,15 @@ Severity MUST reflect the realistic preconditions, not the worst-case
 imagined scenario. A bug requiring tenant-admin + race window + specific
 DB state is HIGH at most, not CRITICAL.
 
-### Severity Ceiling Table (precondition → maximum severity)
+### Severity Ceiling Table (precondition → default maximum severity)
 
-The **maximum severity** a finding may claim is bounded by its weakest
-precondition. Apply the lowest ceiling that matches; never inflate.
+This table sets the **default** maximum severity given the weakest
+precondition. Apply the lowest ceiling that matches; do not inflate
+beyond it without an explicit escalation reason recorded in the
+finding.
 
-| Required attacker class | Required interaction | Max severity |
-|-------------------------|----------------------|--------------|
+| Required attacker class | Required interaction | Default max severity |
+|-------------------------|----------------------|----------------------|
 | Unauthenticated, network-reachable | None | **CRITICAL** |
 | Unauthenticated, network-reachable | Click link / open page | HIGH |
 | Authenticated user (any tenant) | None | HIGH |
@@ -461,6 +543,26 @@ precondition. Apply the lowest ceiling that matches; never inflate.
 | Compromised external service (OAuth app, partner API) | None | HIGH |
 | Compromised external service | Specific webhook payload | MEDIUM |
 | Insider with shell access | Any | Out of scope (assume admin) |
+
+**Escalation exceptions.** The default ceiling may be exceeded when the
+finding meets at least one of:
+
+- **Cross-boundary impact.** A tenant-admin (or any single-tenant
+  actor) bug that yields cross-tenant compromise, platform-wide
+  compromise, RCE on shared infrastructure, or escape from the
+  tenant's blast radius is rated by the *new* boundary, not the
+  attacker class — typically HIGH or CRITICAL.
+- **Data-class escalation.** A finding that exposes a higher data
+  class (per `## DATA CLASSIFICATION` below) than the default ceiling
+  permits stays at the data class's floor.
+- **Automatable mass exploitation.** A bug whose preconditions are
+  satisfied by every account / every tenant by default (no individual
+  vulnerability needed) escalates by one level.
+
+When escalating, record the escalation reason inline in the finding
+(`Why it is real` or `Impact`), citing the specific boundary crossed
+or the higher data class exposed. Escalation without a recorded reason
+is inflation.
 
 Cross-multiply with `## DATA CLASSIFICATION` below for the final
 severity. A CRITICAL-ceiling finding that exposes only PII-LOW data
@@ -490,11 +592,15 @@ Severity scales with the sensitivity of exposed data:
 
 ## REALISTIC EXPLOITABILITY FILTER
 
+> **Axis:** exploitability / reachability. Pairs with `## SECURITY
+> RELEVANCE FILTER` below (scope axis) and `## FALSE-POSITIVE CONTROL`
+> (procedure axis). They are orthogonal — a finding can pass one and
+> fail another. Apply all three.
+
 This filter applies during **SELF-CHECK Steps 2-3** (data-flow trace +
-execution-context check). Each candidate finding is evaluated against
-both lists below before promoting to `## Findings`. A finding that
-matches the "do NOT report" list is dropped at Step 3 with
-`dropped_at_step: 3` and a reason citing the specific exclusion.
+execution-context check). A finding that matches the "do NOT report"
+list is dropped at Step 3 with `dropped_at_step: 3` and a reason
+citing the specific exclusion.
 
 Do NOT report vulnerabilities that require:
 
@@ -592,25 +698,76 @@ If you cannot point to the code, you cannot report the finding.
 
 ## SECURITY RELEVANCE FILTER
 
-Only report issues with one of:
+> **Axis:** scope / impact class. Pairs with `## REALISTIC
+> EXPLOITABILITY FILTER` (reachability axis) — every finding must pass
+> both. A reachable bug with no security impact belongs in
+> `CODE_REVIEW.md` or `PERFORMANCE_AUDIT.md`, not here.
 
-- **Confidentiality** impact (data exposure)
-- **Integrity** impact (unauthorized modification)
-- **Availability** impact (DoS, resource exhaustion)
-- **Authorization** impact (privilege escalation, scope bypass)
-- Realistic abuse potential (economic, reputational, regulatory)
+Report only issues whose impact maps to at least one of:
 
-Do NOT report:
+- **Confidentiality** — unauthorized data exposure or read.
+- **Integrity** — unauthorized modification, forgery, or state
+  corruption.
+- **Availability** — DoS, resource exhaustion, denial of legitimate
+  service.
+- **Authorization** — privilege escalation, scope bypass, missing
+  authentication on a privileged action.
+- **Abuse potential** — economic loss, reputational damage, or
+  regulatory exposure with a concrete realization path.
 
-- Stylistic preferences (variable naming, file structure)
-- Generic clean-code advice without security impact
-- Theoretical concerns without exploitability
-- Non-security maintainability issues (route to CODE_REVIEW.md, not here)
-- Performance concerns without DoS angle (route to PERFORMANCE_AUDIT.md)
+Route elsewhere (do NOT include in this report):
+
+- Stylistic preferences, naming, file structure → CODE_REVIEW.md.
+- Maintainability or refactor opportunities without security impact →
+  CODE_REVIEW.md.
+- Performance regressions without a DoS or amplification angle →
+  PERFORMANCE_AUDIT.md.
+- Database query inefficiency without exploitability → MYSQL_/
+  POSTGRES_PERFORMANCE_AUDIT.md.
+
+If a finding has both a security and a non-security angle, keep only
+the security claim here and let the other audit own the rest.
+
+---
+
+## CATEGORY ENUM (Audit-Type Override)
+
+The shared finding schema (see `components/audit-output-format.md`)
+lists a broad `Category` enum spanning all audit types. For
+SECURITY_AUDIT, restrict `**Category:**` to the security-specific
+values below. Code-review / performance / reliability categories from
+the shared enum MUST NOT appear in this audit's findings.
+
+Allowed `Category` values for security findings:
+
+- `Authentication`
+- `Authorization`
+- `Tenant Isolation`
+- `Data Exposure`
+- `Injection`
+- `SSRF`
+- `File Handling`
+- `Webhook Security`
+- `Queue/Async Security`
+- `Cache/CDN/Search`
+- `AI/LLM Security`
+- `Business Logic` *(security-relevant only: auth/state/billing
+  bypass; pure correctness bugs route to CODE_REVIEW.md)*
+- `Economic Abuse`
+- `Crypto/Secrets`
+- `Supply Chain`
+- `Transport/CORS/Host`
+- `Availability` *(DoS or resource-exhaustion vectors only)*
+
+If a candidate finding does not fit any of these categories, it is
+either out of scope for this audit (route to CODE_REVIEW.md or
+PERFORMANCE_AUDIT.md) or the category needs to be added to this list
+deliberately — never silently fall back to a code-review category.
 
 ---
 
 ## FALSE-POSITIVE CONTROL
+<!-- v42-splice: fp-control-gates -->
 
 Every candidate finding passes through three gates in this order. A
 finding that fails any gate is dropped (record the drop step and reason
@@ -633,49 +790,50 @@ surviving set as a whole).
 For every HIGH or CRITICAL finding, attempt to disprove it before
 reporting. Search explicitly for:
 
-- Upstream sanitization that defangs the input
-- Framework guarantees that block the path (see FRAMEWORK GUARANTEES
-  above)
+- Upstream sanitization / validation that defangs the input
+- Framework guarantees that block the path (escaping, ORM bindings,
+  CSRF middleware, transaction isolation)
 - Impossible execution paths (dead code, environment-gated branches,
-  feature flags off in production)
-- Privilege constraints that prevent the required attacker class from
+  feature flags off in production, code never imported / called)
+- Privilege constraints that prevent the required actor class from
   reaching the sink
-- Dead code that is never imported / called
-- Environmental limitations (the function exists but is never wired into
-  a route)
+- Environmental limitations (the function exists but is never wired
+  into a route, command, scheduled job, or webhook)
 
-A finding survives Gate 1 only if exploitability remains plausible
-after adversarial review. Document in your scratchpad which
-counter-evidence you considered and why it failed.
+A finding survives Gate 1 only if the failure mode (security:
+exploitability; performance: realistic latency hit; code-review:
+reachable regression) remains plausible after adversarial review.
+Document in your scratchpad which counter-evidence you considered and
+why it failed.
 
 ### Gate 2 — 6-step FP recheck (procedure check)
 
-The 6-step procedure is defined in `## SELF-CHECK` below (propagated
-from `components/audit-fp-recheck.md`). Each step has a fail-fast
-condition; drops are recorded in `## Skipped (FP recheck)` with the step
-number and a one-line reason citing concrete tokens from the source.
+The 6-step procedure is defined in `## SELF-CHECK` of the audit prompt
+(propagated from `components/audit-fp-recheck.md`). Each step has a
+fail-fast condition; drops are recorded in `## Skipped (FP recheck)`
+with the step number and a one-line reason citing concrete tokens from
+the source.
 
 ### Gate 3 — Calibration (severity + confidence sanity, anti-padding)
 
 After Gates 1 and 2, apply these rules to the surviving set:
 
-- **Confidence calibration.** If exploitability cannot be confirmed
+- **Confidence calibration.** If the failure mode cannot be confirmed
   from the embedded code, lower confidence (HIGH → MEDIUM → LOW) and
-  explicitly state the assumptions required in `Why it is real`. Prefer
-  omission over speculation.
-- **Severity calibration.** Re-rate severity using the actual exploit
-  scenario, not the rule label. A theoretical sink behind 3 unlikely
-  preconditions and no PII is not CRITICAL. Apply the precedence rule:
-  ATTACKER MODEL determines the base; DATA CLASSIFICATION raises the
-  floor when sensitive data is exposed; the higher of the two wins.
+  explicitly state the assumptions required in the finding's
+  description. Prefer omission over speculation.
+- **Severity calibration.** Re-rate severity using the actual realistic
+  scenario, not the rule label. Apply the Severity Ceiling Table from
+  `components/audit-severity-anchor.md`. For SECURITY: cross-multiply
+  with `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference the
+  latency / load thresholds in `## SEVERITY THRESHOLDS`. For
+  CODE_REVIEW: cross-reference `## SEVERITY AND CONFIDENCE`.
 - **No padding.** Five weak speculative MEDIUMs are worse than one
-  verified CRITICAL with a working exploit description. If you cannot
-  describe a concrete attack path the user would care about, drop or
+  verified CRITICAL with a working failure scenario. If you cannot
+  describe a concrete failure path the user would care about, drop or
   downgrade. Do NOT use weasel words (`could potentially`, `might
   allow`, `in theory`) to inflate the report — either the finding is
   grounded or it is not.
-
----
 
 <!-- v42-splice: rubric-anchors -->
 
@@ -690,14 +848,14 @@ After Gates 1 and 2, apply these rules to the surviving set:
 
 ### Procedure
 
-For every candidate finding, execute these six steps in order. Produce a `## SELF-CHECK` block per finding (in your scratchpad — not the final report) before deciding whether to report or drop it. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
+For every candidate finding, execute these six steps in order BEFORE deciding whether to report or drop it. The step-by-step reasoning is an internal trace — perform it mentally per finding and do NOT emit the trace itself into the report. The only artifacts the report contains are: (a) `## Skipped (FP recheck)` rows for drops, with `dropped_at_step` and a one-line reason; and (b) `## Findings` entries for survivors. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
 
 1. **Read context** — Open the source file at `<path>:<line>` and load ±20 lines around the flagged line. Read the full surrounding function or block; do not reason from the rule label alone.
-2. **Trace data flow** — Follow user input from its origin to the flagged sink. Name each hop (≤ 6 hops). If input never reaches the sink, the finding is a false positive — drop with `dropped_at_step: 2`.
-3. **Check execution context** — Identify whether the code runs in test / production / background worker / service worker / build script / CI. Patterns that look exploitable in production may be required by the platform in another context (e.g. `eval` inside a build-time codegen script).
-4. **Cross-reference exceptions** — Re-read `.claude/rules/audit-exceptions.md`. Look for entries on the same file or neighbouring lines that change the threat surface (e.g. an upstream sanitizer documented in another exception). Match key is byte-exact: same path, same line, same rule, same U+2014 em-dash separator.
-5. **Apply platform-constraint rule** — If the pattern is required by the platform (MV3 service-worker MUST NOT use dynamic `importScripts`, OAuth `client_id` MUST be in `manifest.json`, CSP requires inline-style hashes, etc.), the finding is a design trade-off, not a vulnerability. Drop with the constraint named in the reason.
-6. **Severity sanity check** — Re-rate severity using the actual exploit scenario, not the rule label. A theoretical XSS sink behind 3 unlikely preconditions and no PII is not CRITICAL. If you cannot describe a concrete attack path the user would care about, drop or downgrade.
+2. **Trace data flow** — Follow input from its origin to the flagged sink. Name each hop (≤ 6 hops). If input never reaches the sink, the finding is a false positive — drop with `dropped_at_step: 2`.
+3. **Check execution context** — Identify whether the code runs in test / production / background worker / service worker / build script / CI. Patterns that look problematic in production may be required by the platform in another context (e.g. `eval` inside a build-time codegen script; an `if (!isPaid)` inverted-flag guard inside a unit-test mock).
+4. **Cross-reference exceptions** — Re-read `.claude/rules/audit-exceptions.md`. Look for entries on the same file or neighbouring lines that change the failure surface (e.g. an upstream sanitizer or invariant documented in another exception). Match key is byte-exact: same path, same line, same rule, same U+2014 em-dash separator.
+5. **Apply platform-constraint rule** — If the pattern is required by the platform or framework (MV3 service-worker MUST NOT use dynamic `importScripts`, OAuth `client_id` MUST be in `manifest.json`, CSP requires inline-style hashes, a transactional boundary the ORM enforces, etc.), the finding is a design trade-off, not a defect. Drop with the constraint named in the reason.
+6. **Severity sanity check** — Re-rate severity using the actual failure scenario, not the rule label. A theoretical sink behind 3 unlikely preconditions and no realistic blast radius is not CRITICAL. If you cannot describe a concrete failure path that a user or the business would care about, drop or downgrade.
 
 If a finding survives all six steps, it proceeds to `## Findings` in the structured report.
 
@@ -710,7 +868,7 @@ Findings dropped at any step are listed in the report's `## Skipped (FP recheck)
 | path:line | rule | dropped_at_step | one_line_reason |
 |-----------|------|-----------------|-----------------|
 | `src/auth.ts:42` | `SEC-XSS` | 2 | `value flows through escapeHtml() at line 38 before reaching innerHTML` |
-| `lib/utils.py:5` | `SEC-EVAL` | 5 | `eval is required by build-time codegen; never reached at runtime` |
+| `src/orders.ts:88` | `LOG-INVERTED-COND` | 3 | `!isPaid guard runs inside the test-only mock at fixtures/orders.mock.ts:14; production path uses isPaid` |
 
 `dropped_at_step` MUST be an integer in the range 1-6 matching the step where the finding was dropped.
 
@@ -727,9 +885,10 @@ Promote it to `## Findings` using the entry schema documented in `components/aud
 These behaviors break the recheck and MUST NOT appear in any audit report:
 
 - Dropping a finding without recording the step number and reason — every drop is auditable.
-- Reasoning from the rule label instead of the code — the recheck exists because rule names are pattern-matched, not exploit-verified.
+- Reasoning from the rule label instead of the code — the recheck exists because rule names are pattern-matched, not failure-verified.
 - Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
-- Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
+- Emitting the internal recheck trace into the report (a `## SELF-CHECK` block per finding inside `## Findings`, a "step 1: …, step 2: …" walkthrough next to each finding, etc.) — the recheck is internal-only. Report ONLY the outcome: a row in `## Skipped (FP recheck)` if dropped, an entry in `## Findings` if survived.
+- Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op internally (a `cross-ref skipped: no allowlist file present` acknowledgement) but the step itself MUST be performed.
 
 ## OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
@@ -807,7 +966,7 @@ Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty secti
 
 ### Summary Section
 
-The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck`, with one row per severity (CRITICAL, HIGH, MEDIUM, LOW). The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations belong in the audit's scratchpad, never in `## Findings`. See the Full Report Skeleton below for the verbatim layout.
+The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck` and MUST contain exactly four rows in this order: CRITICAL, HIGH, MEDIUM, LOW. Render zeros (`0`) in any cell whose count is zero — do NOT omit rows for severities with no findings, and do NOT collapse `0`s to blank cells. The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations are NEVER emitted (neither in `## Findings` nor in `## Summary` nor anywhere else in the report). See the Full Report Skeleton below for the verbatim layout.
 
 ---
 
@@ -890,6 +1049,16 @@ When the ±10 range is clipped by the start or end of the file, emit a `<!-- Ran
 
 The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest of function` cuts. Council reasons from the actual code, not a paraphrase.
 
+#### No Literal Placeholders
+
+The skeleton uses square-bracketed placeholders such as `[fenced code block here — verbatim ±10 lines around src/users.ts:42, ts language fence]` and `[optional clamp note]` to DESCRIBE what to inject. These descriptions MUST NOT appear in the final report. When emitting an actual finding:
+
+- Replace `[fenced code block here — verbatim ±10 lines around <path>:<line>, <lang> language fence]` with the real fenced code block at the resolved path, line range, and language fence.
+- Replace `[fenced code block here — replacement using parameterized query]` (and similar `Suggested fix` placeholders) with the actual fenced replacement snippet.
+- Omit `[optional clamp note]` entirely when the ±10 window does not hit file bounds; emit the `<!-- Range clamped to file bounds (start-end) -->` line verbatim when it does.
+
+A report that ships literal `[fenced code block here ...]` text is malformed; Phase 15 will treat it as a broken finding.
+
 ---
 
 ### Skipped (allowlist) Section
@@ -951,7 +1120,10 @@ council_pass: pending
 
 | severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck |
 |----------|----------------|-------------------------|--------------------------|
+| CRITICAL | 0 | 0 | 0 |
 | HIGH | 1 | 1 | 1 |
+| MEDIUM | 0 | 0 | 0 |
+| LOW | 0 | 0 | 0 |
 
 ## Findings
 

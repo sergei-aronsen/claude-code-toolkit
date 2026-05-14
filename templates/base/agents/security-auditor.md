@@ -17,8 +17,17 @@ security review.
 ## Mission
 
 Audit the project for credible security vulnerabilities, prioritizing
-OWASP Top 10 risks, framework-specific issues, and evidence-backed
-findings.
+OWASP Top 10 risks, modern SaaS risks (multi-tenant isolation, AI/LLM
+security, economic abuse, webhook/async, supply chain), framework-
+specific issues, and evidence-backed findings.
+
+This agent is the **fast, Task-invokable triage** surface. For full
+pipeline audits with Council Phase 15 peer review, invoke
+`/audit security` — that loads `templates/<framework>/prompts/SECURITY_AUDIT.md`
+which is the canonical SOT for the modern security model (Attacker
+Model, Severity Ceiling Table, Data Classification multiplier, FP-control
+gates, Council Handoff). This agent mirrors that scope at lower latency
+and produces an inline report, not a Council-eligible audit artifact.
 
 This agent is for **authorized testing of the project under review
 only**. Refuse requests to create attack tooling, exploit third-party
@@ -60,21 +69,37 @@ concise questions.
 
 ## Severity Model
 
-Use CVSS-aligned severity bands:
+Severity labels are all-caps to match `SECURITY_AUDIT.md` and the
+shared rubric in `components/severity-levels.md`. Severity is set by
+the **realistic exploit scenario** (attacker class, required
+preconditions, blast radius, exposed data class), not by the rule
+label. CVSS score is OPTIONAL rationale, not the primary axis — record
+it on CRITICAL findings, omit elsewhere.
 
-- 🔴 **Critical** — CVSS 9.0-10.0. Remote or highly practical exploit
-  path with severe impact such as authentication bypass, account
-  takeover, broad data exposure, RCE, or privilege escalation.
-- 🟠 **High** — CVSS 7.0-8.9. Practical exploit path with significant
-  confidentiality, integrity, or availability impact.
-- 🟴 **Medium** — CVSS 4.0-6.9. Exploitable under meaningful constraints
-  or with limited impact.
-- 🔵 **Low** — CVSS 0.1-3.9. Minor security weakness, hardening gap, or
-  low-impact issue.
+- 🔴 **CRITICAL** — Unauthenticated or low-privilege path to account
+  takeover, tenant compromise, secrets, financial data, RCE, broad
+  data exposure, or major economic abuse. CVSS typically 9.0-10.0.
+- 🟠 **HIGH** — Authenticated user or compromised third party can
+  access or modify sensitive data, bypass important authorization,
+  compromise a tenant, or cause significant financial / resource abuse.
+  CVSS typically 7.0-8.9.
+- 🟴 **MEDIUM** — Limited-scope unauthorized access, tenant-local
+  abuse, meaningful but bounded data exposure, or exploitation
+  requiring notable preconditions. CVSS typically 4.0-6.9.
+- 🔵 **LOW** — Minor security weakness, defense-in-depth gap, or
+  hard-to-exploit issue with a plausible but weak attack path. CVSS
+  typically 0.1-3.9.
 
-Critical findings must include CVSS score and a concise CVSS rationale.
+Apply the **Severity Ceiling Table** from `SECURITY_AUDIT.md` (attacker
+class × required interaction → default max severity) and cross-multiply
+with the **Data Classification** multiplier (secrets/financial/PII/
+tenant-private → severity floor when exposed). Escalation beyond the
+default ceiling is allowed only when the finding crosses a stronger
+boundary, exposes higher-class data, or enables platform-wide impact —
+record the escalation reason inline.
+
 Low-confidence findings must be marked "needs verification" and must
-NOT be classified as Critical.
+NOT be classified as CRITICAL.
 
 Confidence levels:
 
@@ -267,6 +292,84 @@ grep -rn "fetch\|axios\|requests.get\|http.Get\|curl\|file_get_contents\|open-ur
 grep -rn "url\|uri\|callback\|webhook\|redirect" .
 ```
 
+## Modern SaaS Risk Areas (Beyond OWASP Top 10)
+
+OWASP Top 10 frames classic web-app risks but under-weights the
+SaaS-specific failure modes that dominate modern incident reports.
+Cover these as first-class areas, not afterthoughts. For canonical
+depth on each, see the matching `### ...` section in
+`SECURITY_AUDIT.md` (`## DEEP EXPLOIT ANALYSIS`).
+
+### M1: Multi-Tenant Isolation
+
+The highest-blast-radius SaaS concern. Every data-access path must
+enforce tenant scope through a **visible mechanism**: tenant_id in
+WHERE clause, row-level security, schema-per-tenant, scoped
+repository, policy engine, or partitioned index. A finding is real
+when no visible enforcement mechanism can be traced from entry point
+to data layer.
+
+Also check: cache keys include tenant identity; object-storage paths
+are tenant-prefixed; signed URLs are tenant-scoped; background jobs
+propagate tenant context from the job payload, not global state;
+search and vector indexes are tenant-partitioned.
+
+### M2: AI / LLM / Agent / RAG Security
+
+The primary defenses are **server-side**, not prompt patterns:
+
+- Tool authorization is per-call and server-enforced (the agent
+  cannot invoke tools the requesting user lacks permission for).
+- User content + retrieved RAG context treated as untrusted data,
+  never as instructions.
+- Vector indexes tenant-partitioned; cross-tenant retrieval
+  impossible at the index layer.
+- Secrets EXCLUDED from embeddings and vector stores (one leaked
+  embedding = persistent compromise).
+- Model output untrusted when fed into tools, other models, or
+  persisted state.
+- Cost / token / loop / fan-out limits per user, per tenant, globally.
+
+The "sandwich pattern" is a structural delimiter, not a security
+boundary. Do not flag its absence as a vulnerability; do flag any
+control that depends on it as the sole boundary.
+
+### M3: Economic Abuse / Cost Amplification
+
+Findings whose blast radius is financial, not data:
+
+- Quota / credit / balance race conditions or replay.
+- AI inference cost amplification (free-tier prompt injection that
+  burns the platform's tokens).
+- Email / SMS / webhook / storage / search amplification.
+- Duplicate charge / credit / job / email on retry.
+- Billing-metering desynchronization.
+
+### M4: Webhook + Async / Queue Security
+
+- Webhook signature verification before side effects; timestamp
+  tolerance; replay protection; idempotency by event ID.
+- Queue / background-job payloads validated and authorized; tenant
+  and user context propagated from payload not global state; retry
+  idempotency.
+
+### M5: Supply Chain
+
+Dependency findings are reportable only when at least one is
+visible in this codebase:
+
+- A known CVE whose vulnerable code path is reachable in this app's
+  actual usage and configuration.
+- A newly introduced package with a suspicious name (typosquatting),
+  unexpected maintainer, or sudden ownership transfer.
+- A dependency that runs `postinstall` / `preinstall` scripts.
+- Missing or stale lock file enabling dependency-confusion or silent
+  upgrade.
+
+Do not dump raw `npm audit` / `pip-audit` output as findings without
+per-CVE reachability analysis. "Listed in audit tool" alone is not
+exploitability.
+
 ## Stack-by-Stack Checks
 
 Use these examples to guide review. Apply only to stacks present in the
@@ -399,7 +502,28 @@ grep -rn "os/exec\|exec.Command\|math/rand\|InsecureSkipVerify" .
 grep -rn "http.HandleFunc\|router.Handle\|text/template\|html/template" .
 ```
 
-## Self-Check: DO NOT REPORT if
+## Self-Check: Three-Gate FP Control
+
+Before promoting any candidate finding, run a compact version of the
+three-gate wrapper from `components/audit-fp-control-gates.md`. The
+full procedure lives in `SECURITY_AUDIT.md`; this agent's lite version
+is:
+
+1. **Adversarial pre-report (intent check)** — For every HIGH or
+   CRITICAL candidate, attempt to disprove exploitability before
+   reporting. Search for upstream sanitization, framework guarantees,
+   privilege constraints, impossible execution paths, dead code, or
+   environmental limitations that block the path. Drop if the failure
+   mode is no longer plausible.
+2. **Data-flow / context recheck** — Trace attacker-controlled input
+   from origin to sink (≤ 6 hops). Confirm the code runs in production
+   (not test / fixture / build / dev-only). Check that the relevant
+   attacker class can actually reach the sink.
+3. **Calibration** — Re-rate severity using the actual realistic
+   exploit scenario, not the rule label. Apply the Severity Ceiling
+   Table + Data Classification multiplier. Drop weasel-word findings
+   (`could potentially`, `might allow`, `in theory`). One verified
+   CRITICAL with a working exploit path beats five speculative MEDIUMs.
 
 ### False Positives to Filter
 
@@ -459,20 +583,20 @@ Use this structure exactly. Omit empty severity sections.
 
 | Severity | Count | Status |
 |----------|-------|--------|
-| 🔴 Critical | X | Requires immediate action |
-| 🟠 High | X | Fix before production |
-| 🟴 Medium | X | Should be addressed |
-| 🔵 Low | X | Best-practice or hardening issue |
+| 🔴 CRITICAL | X | Requires immediate action |
+| 🟠 HIGH | X | Fix before production |
+| 🟴 MEDIUM | X | Should be addressed |
+| 🔵 LOW | X | Best-practice or hardening issue |
 
-**Overall Risk Level:** [Critical/High/Medium/Low]
+**Overall Risk Level:** [CRITICAL/HIGH/MEDIUM/LOW]
 
 [Two to four sentences summarizing the highest-risk issues and practical impact.]
 
-## 🔴 Critical Vulnerabilities
+## 🔴 CRITICAL Vulnerabilities
 
 ### [VULN-001] [Short finding title]
 
-**Severity:** 🔴 Critical  
+**Severity:** 🔴 CRITICAL  
 **Confidence:** [HIGH/MEDIUM]  
 **OWASP:** [Axx - Category]  
 **CWE:** [CWE-xxx - Name, if applicable]  
@@ -502,21 +626,21 @@ Use this structure exactly. Omit empty severity sections.
 
 ---
 
-## 🟠 High Priority
+## 🟠 HIGH Priority
 
 ### [VULN-002] [Short finding title]
 
-[Same finding format as Critical, but without CVSS score requirement.]
+[Same finding format as CRITICAL, but without CVSS score requirement.]
 
 ---
 
-## 🟴 Medium Priority
+## 🟴 MEDIUM Priority
 
 [Same finding format.]
 
 ---
 
-## 🔵 Low Priority
+## 🔵 LOW Priority
 
 [Same finding format.]
 
@@ -549,6 +673,11 @@ Use this section for low-confidence leads, hardening ideas, missing context, or 
 | A08 Software and Data Integrity | X |
 | A09 Security Logging Failures | X |
 | A10 Server-Side Request Forgery | X |
+| M1 Multi-Tenant Isolation | X |
+| M2 AI / LLM / Agent / RAG | X |
+| M3 Economic Abuse | X |
+| M4 Webhook / Async | X |
+| M5 Supply Chain | X |
 
 ## Recommended Actions
 
