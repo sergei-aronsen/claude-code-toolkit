@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.24.2] - 2026-05-14
+
+### Fixed — install TUI hang on unofficial MCPs + impeccable probe divergence
+
+Two bugs in the v6.16+ TUI install flow surfaced when a user selected
+only Telegram from the MCP sub-picker and ran a fresh `install.sh`
+from a project dir with prior impeccable install in `~/.agents/`.
+
+**Hang on unofficial MCPs after TUI submit (`scripts/lib/mcp.sh`)**
+
+`unofficial_confirm()` blocked indefinitely on a `[y/N]` prompt the
+user never saw. The parent `install.sh` wraps the
+`dispatch_mcp_servers` call in `( ... ) 2>"$stderr_tmp"`
+(install.sh:2272) so it can stash dispatcher stderr into a per-MCP
+tail buffer (D-28). That subshell also swallowed the
+`unofficial_confirm` prompt printed to stderr at mcp.sh:341-347, then
+`read -r reply <"$tty_src"` (mcp.sh:350) blocked forever on
+`/dev/tty` waiting for input the user had no way to know was
+expected. Same class of bug the comment at install.sh:1773-1777 had
+already flagged for `bridge_install_prompts`.
+
+Added a `TK_TUI_CONFIRMED=1` bypass to `unofficial_confirm()`. The
+main TUI already renders unofficial rows with a leading `[!]`
+glyph (install.sh:1996-2000) and the MCP sub-picker repeats that
+prefix, so submitting the row IS the consent — re-asking via a
+post-submit `[y/N]` is redundant. Bypass returns 0 silently (no
+stderr write) so the dispatcher-stderr capture stays clean. Scripted
+non-TUI callers (no `TK_TUI_CONFIRMED`) keep the original prompt
+contract.
+
+**Impeccable probe divergence (`scripts/lib/skills.sh`)**
+
+`is_skill_installed()` only probed `~/.claude/skills/<name>/` and
+`~/.claude/skills/?-<name>/`. Impeccable's upstream npx CLI writes
+to `~/.agents/<name>/` (install-impeccable.sh cds to `$HOME` to make
+its `findProjectRoot()` fall through to cwd), so a user with prior
+impeccable install saw the TUI render `[not installed]` then watched
+`npx impeccable@latest skills install` immediately bail "already
+installed (found in .agents/)" with exit 0, after which
+install-impeccable.sh's post-write check at line 114 fired the
+soft warning "npx command succeeded but
+~/.claude/skills/impeccable/SKILL.md not found".
+
+Added `~/.agents/<name>/` and `~/.agents/?-<name>/` as fallback
+probes after the primary `~/.claude/skills/` checks. New
+`TK_AGENTS_HOME` env seam for hermetic tests (mirrors
+`TK_SKILLS_HOME`). TUI now correctly renders impeccable as
+`[installed ✓]` when it lives under `.agents/`, the install loop
+skips the redundant npx invocation, and the soft warning no longer
+fires.
+
+### Tests
+
+`scripts/tests/test-integrations-tui.sh` (27 → 30 assertions):
+
+- A8b — `unofficial_confirm` with `TK_TUI_CONFIRMED=1` returns 0
+  even when `TK_INTEGRATIONS_TTY_SRC` points at a nonexistent path
+  (proves the bypass beats the fail-closed gate at mcp.sh:335).
+- A8c — `unofficial_confirm` with `TK_TUI_CONFIRMED=1` writes
+  nothing to stderr (would be silently captured by the parent
+  `2>"$tmp"` wrapper — even a "silent" prompt is the bug).
+
+`scripts/tests/test-install-skills.sh` (22 → 25 assertions):
+
+- S9  — `is_skill_installed impeccable` returns 0 when only
+  `$TK_AGENTS_HOME/impeccable/` exists.
+- S9b — prefix-glob form (`$TK_AGENTS_HOME/i-myskill/`) under the
+  `.agents/` root for symmetry with the primary root.
+- S9c — empty `.agents/` root does not cause false positive.
+
 ## [6.24.1] - 2026-05-13
 
 ### Added — `gh` CLI companion for the GitHub MCP
