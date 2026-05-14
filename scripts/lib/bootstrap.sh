@@ -57,54 +57,32 @@ _bootstrap_run_sp_default() {
 
 _bootstrap_run_gsd_default() {
     # Audit H1: GSD installer is a third-party `curl|bash` over HTTPS only.
-    # No checksum, no GPG signature, no pinned commit — repo takeover or
-    # account hijack of `gsd-build` becomes RCE under the installing user.
-    # Guarded by:
-    #   1) the [y/N] prompt in _bootstrap_prompt_and_run (see below),
-    #   2) an extra explicit URL display + warning here so the user has the
-    #      target visible before bytes are executed,
-    #   3) optional integrity check via TK_GSD_PIN_SHA256 — when set, the
-    #      installer is downloaded to a tempfile, sha256 verified, then run.
-    local url='https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh'
-    _bootstrap_log_warning "About to fetch + execute third-party installer:"
-    _bootstrap_log_warning "  $url"
-    _bootstrap_log_warning "  This runs arbitrary upstream code under your account."
-    if [[ -n "${TK_GSD_PIN_SHA256:-}" ]]; then
-        local tmp
-        # BSD mktemp (macOS): X-run must be at end of template. .sh suffix
-        # left X's literal and made re-runs collide. bash "$tmp" works
-        # regardless of extension.
-        tmp=$(mktemp "${TMPDIR:-/tmp}/gsd-installer.XXXXXX")
-        # Audit M3: shell-safe trap registration (printf '%q' for paths with `'`).
-        local _quoted_tmp
-        _quoted_tmp=$(printf '%q' "$tmp")
-        # shellcheck disable=SC2064
-        trap "rm -f $_quoted_tmp" RETURN
-        if ! curl -sSLf -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 "$url" -o "$tmp"; then
-            _bootstrap_log_warning "GSD installer download failed — aborting."
-            return 1
-        fi
-        local actual
-        if command -v sha256sum >/dev/null 2>&1; then
-            actual=$(sha256sum "$tmp" | awk '{print $1}')
-        elif command -v shasum >/dev/null 2>&1; then
-            actual=$(shasum -a 256 "$tmp" | awk '{print $1}')
-        else
-            _bootstrap_log_warning "Neither sha256sum nor shasum found — cannot verify TK_GSD_PIN_SHA256. Aborting."
-            return 1
-        fi
-        if [[ "$actual" != "$TK_GSD_PIN_SHA256" ]]; then
-            _bootstrap_log_warning "GSD installer SHA-256 mismatch:"
-            _bootstrap_log_warning "  expected: $TK_GSD_PIN_SHA256"
-            _bootstrap_log_warning "  actual:   $actual"
-            _bootstrap_log_warning "Aborting."
-            return 1
-        fi
-        _bootstrap_log_info "GSD installer SHA-256 verified"
-        bash "$tmp"
-        return $?
+    # Audit 2026-05-13: GSD migrated from a `curl|bash` installer to an npm
+    # package (`get-shit-done-cc`). The previous URL
+    # `raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh`
+    # now returns 404 — this bootstrap was silently broken for current GSD.
+    # The npm path is also safer: npm verifies the registry tarball's
+    # integrity hash from the package-lock, and the version is pinned by
+    # tag instead of `main` HEAD.
+    #
+    # Pin to TK_GSD_NPM_VERSION (env override) or to the manifest's pinned
+    # vendor tag. Set TK_GSD_NPM_VERSION=latest to opt in to whatever npm
+    # has today (NOT recommended for unattended installs).
+    local pkg_version="${TK_GSD_NPM_VERSION:-1.41.2}"
+    if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
+        _bootstrap_log_warning "TK_GSD_NPM_VERSION '${pkg_version}' is not a semver/tag — refusing to install."
+        return 1
     fi
-    bash <(curl -sSL -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 "$url")
+    _bootstrap_log_warning "About to install third-party package: get-shit-done-cc@${pkg_version} (via npx)"
+    _bootstrap_log_warning "  This runs arbitrary upstream code under your account."
+    if ! command -v npx >/dev/null 2>&1; then
+        _bootstrap_log_warning "npx not on PATH — install Node.js first to use GSD bootstrap."
+        return 1
+    fi
+    # `--yes` skips the npm prompt; the user already opted in via the [y/N]
+    # prompt in _bootstrap_prompt_and_run. `--` separates npx flags from
+    # package args (the package's own installer reads /dev/tty).
+    npx --yes "get-shit-done-cc@${pkg_version}"
 }
 
 _bootstrap_prompt_and_run() {

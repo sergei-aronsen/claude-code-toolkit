@@ -246,7 +246,19 @@ probe_gsd() {
 }
 
 upgrade_gsd() {
-    bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/install.sh) </dev/tty
+    # Audit 2026-05-13: GSD moved to npm; the previous `main/install.sh` URL
+    # returned 404. `npx get-shit-done-cc@<semver>` pulls a registry-verified
+    # tarball — strictly safer than curl|bash. Pin via TK_GSD_NPM_VERSION.
+    local pkg_version="${TK_GSD_NPM_VERSION:-latest}"
+    if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
+        echo "TK_GSD_NPM_VERSION '${pkg_version}' is not a semver/tag — refusing to upgrade." >&2
+        return 1
+    fi
+    if ! command -v npx >/dev/null 2>&1; then
+        echo "npx not on PATH — install Node.js first to upgrade GSD." >&2
+        return 1
+    fi
+    npx --yes "get-shit-done-cc@${pkg_version}" </dev/tty
 }
 
 probe_npm() {

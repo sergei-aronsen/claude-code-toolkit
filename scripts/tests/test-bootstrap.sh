@@ -257,6 +257,36 @@ echo ""
 run_s4
 echo ""
 run_s5
+echo ""
+
+# ─────────────────────────────────────────────────
+# S6 — (v6.24.4) regression: bootstrap MUST NOT reference the legacy
+# gsd-build/get-shit-done curl|bash URL. GSD migrated to the
+# get-shit-done-cc npm package; the old raw.githubusercontent.com path
+# now returns 404 and silently broke the bootstrap on every install.
+# ─────────────────────────────────────────────────
+echo "-- S6: legacy GSD curl|bash URL removed --"
+BOOTSTRAP_SRC="${REPO_ROOT}/scripts/lib/bootstrap.sh"
+if grep -vE '^[[:space:]]*#' "$BOOTSTRAP_SRC" \
+   | grep -qE 'raw\.githubusercontent\.com/gsd-build/get-shit-done.*install\.sh'; then
+    assert_fail "S6: legacy gsd-build/get-shit-done install.sh URL still active in bootstrap.sh" \
+        "GSD has moved to npm; bootstrap should call 'npx get-shit-done-cc@<semver>' instead"
+else
+    assert_pass "S6: legacy gsd-build/get-shit-done install.sh URL not active in bootstrap.sh (only allowed in comments)"
+fi
+if grep -qE 'npx[[:space:]]+--yes[[:space:]]+"?get-shit-done-cc' "$BOOTSTRAP_SRC"; then
+    assert_pass "S6: bootstrap.sh invokes the get-shit-done-cc npm package via npx"
+else
+    assert_fail "S6: bootstrap.sh does not invoke npx get-shit-done-cc" \
+        "missing 'npx --yes get-shit-done-cc@<ver>' invocation"
+fi
+if grep -qE 'TK_GSD_NPM_VERSION' "$BOOTSTRAP_SRC" \
+   && grep -qE '"\$pkg_version"[[:space:]]+=~[[:space:]]+\^\(latest\|' "$BOOTSTRAP_SRC"; then
+    assert_pass "S6: TK_GSD_NPM_VERSION semver/tag allowlist guard present"
+else
+    assert_fail "S6: TK_GSD_NPM_VERSION semver/tag allowlist guard missing" \
+        "version must be validated before passing into 'npx <pkg>@<ver>'"
+fi
 
 echo ""
 echo "Bootstrap test complete: PASS=$PASS FAIL=$FAIL"
