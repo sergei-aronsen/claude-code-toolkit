@@ -53,7 +53,7 @@
 #    function runs — overrides are documented to go through the
 #    TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD path-to-script seam instead.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
-[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD='bash <(curl -sSL -A "$TK_USER_AGENT" https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)'
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD="npx --yes get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.41.2}"
 
 # Hardcoded default execution paths — strings live in code, never in env.
 _dispatch_run_sp_default() {
@@ -61,10 +61,21 @@ _dispatch_run_sp_default() {
 }
 
 _dispatch_run_gsd_default() {
-    # Process substitution stays inside the function body so there is no
-    # untrusted string crossing the shell parser.
-    bash <(curl -sSL -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10 --retry 2 \
-        'https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh')
+    # Audit 2026-05-14 H-1: mirror lib/bootstrap.sh:54-86 (PR #125). GSD
+    # migrated from `curl|bash` to npm package `get-shit-done-cc`. The old
+    # raw.githubusercontent.com/gsd-build/... URL now 404s — this dispatcher
+    # was silently broken before. The npm path is also safer (registry
+    # integrity hash, pinned version tag).
+    local pkg_version="${TK_GSD_NPM_VERSION:-1.41.2}"
+    if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
+        _dispatch_log_warning "TK_GSD_NPM_VERSION '${pkg_version}' is not a semver/tag — refusing to install."
+        return 1
+    fi
+    if ! command -v npx >/dev/null 2>&1; then
+        _dispatch_log_warning "npx not on PATH — install Node.js first to use GSD."
+        return 1
+    fi
+    npx --yes "get-shit-done-cc@${pkg_version}"
 }
 
 # Default repo URL (overridable for testing or fork installs).

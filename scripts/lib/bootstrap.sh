@@ -162,14 +162,14 @@ bootstrap_base_plugins() {
     fi
 
     # GSD prompt block — independent of SP.
-    # Audit H1: prompt copy now flags the third-party + curl|bash nature so a
-    # user defaulting to "y" sees the trust boundary before pressing enter.
+    # Audit 2026-05-14 L-1: prompt copy reflects the v6.24.4 npm migration
+    # (old curl|bash + TK_GSD_PIN_SHA256 obsoleted).
     if [[ -d "$gsd_dir" ]]; then
         _bootstrap_log_info "get-shit-done already installed — skipping."
     else
         TK_BOOTSTRAP_OVERRIDE_CMD="${TK_BOOTSTRAP_GSD_CMD:-${TK_GSD_INSTALL_CMD:-}}" \
             _bootstrap_prompt_and_run "get-shit-done" \
-                "Install get-shit-done? Runs third-party curl|bash from raw.githubusercontent.com/gsd-build/get-shit-done (set TK_GSD_PIN_SHA256 to verify). [y/N] " \
+                "Install get-shit-done? Runs npx get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.41.2} (npm registry, integrity-verified). [y/N] " \
                 _bootstrap_run_gsd_default
     fi
 

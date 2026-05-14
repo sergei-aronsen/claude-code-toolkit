@@ -408,6 +408,14 @@ def build_pack_block(repo_root: Path, args: Any) -> dict:
             tokens = _estimate_tokens(text)
         else:
             _stderr(f"⚠️  auto-ignore pack attempt failed: {err}")
+            # Audit 2026-05-14 M-6: delete the oversize first-pass artifact
+            # so the next Council call regenerates the pack instead of
+            # serving the stale oversize file via pack_is_fresh() (which
+            # only checks mtime, not token count).
+            try:
+                output_path.unlink()
+            except FileNotFoundError:
+                pass
 
     oversize = tokens > budget
     if oversize and not pack_force:

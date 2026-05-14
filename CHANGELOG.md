@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.25.0] - 2026-05-14
+
+### Fixed — Audit sweep 2026-05-14 (3 HIGH + 6 MEDIUM + 2 LOW)
+
+Three parallel audits ran 2026-05-14 against the post-PR-#126 audit
+prompts (FP-control gates + per-audit CATEGORY ENUM overrides). 11
+findings closed; 6 LOW deferred to v6.25.1+ backlog.
+
+#### HIGH severity
+
+- `scripts/lib/dispatch.sh` — GSD dispatcher migrated from the dead
+  `bash <(curl raw.githubusercontent.com/gsd-build/...)` URL (404
+  since GSD's npm migration) to
+  `npx --yes get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.41.2}`. Mirrors
+  `lib/bootstrap.sh`'s PR #125 fix. Users selecting GSD from the main
+  TUI no longer hit silent 404.
+- `scripts/lib/mcp.sh:mcp_catalog_load` — collapsed ~301 jq forks (10
+  inside-loop × 30 entries + iterator) to 1 jq fork via a single
+  RS-joined record. `@tsv` was rejected because Bash `read` collapses
+  consecutive tab fields (caused a column shift bug on calendly's
+  empty `env_var_keys`). `~8s` saved on macOS cold install.
+- `scripts/init-claude.sh` — 10 serial `curl -sSLf` calls for
+  prerequisite libraries collapsed into one
+  `curl --parallel --parallel-max 10` batch (with version probe +
+  serial fallback for curl < 7.66, Ubuntu 18.04 and older). Source
+  order preserved exactly. Plus `download_files()` jq-fork explosion
+  (4 jq per manifest entry × ~125 entries = ~500 forks) collapsed to
+  a single RS-joined record. `~15-18s` saved on cold install.
+
+#### MEDIUM severity
+
+- `scripts/lib/mcp.sh` — user/local scope MCP wizard now uses the
+  same `${SLOT}` substitution form as project scope. The `env KEY=plaintext`
+  argv wrapper is gone; secrets persist in `~/.claude/mcp-config.env`
+  (0600, auto-sourced by `~/.zshrc` + `~/.bashrc` via v6.4.0 shell-rc
+  line) and Claude resolves `${KEY}` from its own environment at MCP
+  launch. Closes the propagation gap from v6.24.3's Council-API-keys
+  fix — same threat surface, same mitigation pattern.
+- `scripts/prompt-engineer/optimize_prompt.py` — new `_open_0600()`
+  helper (port of `brain.py:191-205`) applied to the timeline log and
+  every `output/<ts>/*` user-prompt artifact. Default umask 0022 was
+  leaking the bytes at 0644; same-host attackers (other unix user,
+  container side-car, dev box guest account) could read them between
+  write and explicit delete.
+- `scripts/prompt-engineer/optimize_prompt.py` — `threading.Lock` on
+  the `TimelineLogger`; every public writer (`step`, `section`, `kv`,
+  `block`, `event`, `close`) now wraps multi-line writes atomically.
+  `--provider all` fans out 3 worker threads via
+  `ThreadPoolExecutor` and previously interleaved block headers with
+  body lines between threads. Logs are now deterministic.
+- `scripts/council/pack.py` — `output_path.unlink()` after an
+  oversize retry-fail. Previously left the oversize first-pass on
+  disk; `pack_is_fresh()` only checks mtime so the next Council call
+  served the stale oversize cache instead of regenerating.
+- REL-03 strict mode — all 9 standalone installers (`init-claude.sh`,
+  `install.sh`, `install-statusline.sh`, `migrate-to-complement.sh`,
+  `setup-council.sh`, `setup-prompt-engineer.sh`, `setup-security.sh`,
+  `uninstall.sh`, `update-claude.sh`) now pin `TK_TOOLKIT_REF`'s
+  default to the manifest version. v6.24.5 covered only
+  `init-claude.sh`. `scripts/tests/test-toolkit-ref-pinned.sh`
+  rewritten as a multi-file walker that fails CI on any drift across
+  the 9 installers.
+
+#### LOW severity (inline)
+
+- `scripts/lib/bootstrap.sh:172` — GSD prompt text now reflects the
+  actual `npx get-shit-done-cc@<semver>` install path (was: stale
+  `curl|bash` + obsolete `TK_GSD_PIN_SHA256` reference from v6.23.x).
+- `scripts/lib/skills.sh` + `scripts/install.sh` — tarball fallback's
+  extraction tmpdir is now exported as `TK_SKILLS_MIRROR_TMPDIR` and
+  registered in a new `CLEANUP_DIRS` array picked up by the
+  EXIT-trap (`rm -rf` instead of the old `rm -f` which silently
+  failed on directories). Previously leaked 5-15 MB per `curl|bash`
+  install until the OS's `$TMPDIR` GC cycle reaped it.
+
+#### New tests
+
+- `scripts/tests/test-mcp-catalog-load.sh` — parallel-array length,
+  alphabetical sort, calendly-empty-env-keys regression, ≤2 jq forks.
+- `scripts/tests/test-prompt-engineer-perms.sh` — every `output/<ts>/*`
+  artifact + the timeline log are 0600.
+- `scripts/tests/test-prompt-engineer-thread-safety.sh` — 3-thread
+  90-block stress, fails on any interleaved `block()` record.
+- `scripts/tests/test-pack-cache-recovery.sh` — retry-fail unlinks
+  cache_path; next call regenerates instead of serving stale.
+- `scripts/tests/test-bootstrap.sh` — new S7+S8 close the dispatch.sh
+  H-1 migration (no legacy URL, `get-shit-done-cc` reference present,
+  display string updated).
+
+#### Migration notes
+
+- Users with v6.24.x user-scope MCP entries whose secret was provided
+  via the wizard before this release: a one-time
+  `claude mcp remove <name>` + re-add through the v6.25.0 wizard
+  transitions the entry to the `${SLOT}` substitution form. The
+  plaintext stays in `~/.claude/mcp-config.env` (0600) and the
+  v6.4.0 shell-rc auto-source line continues to load it.
+- Release-PR authors: REL-03 strict requires bumping `manifest.json:.version`,
+  ALL 9 `scripts/*.sh:TK_TOOLKIT_REF` defaults, and the CHANGELOG in
+  one commit. CI catches drift.
+
 ### Added — Prompt Engineer multi-provider support + timeline logging
 
 `scripts/prompt-engineer/optimize_prompt.py` is no longer Codex-only.

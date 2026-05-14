@@ -34,14 +34,46 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Optional
+
+
+def _open_0600(path: Path, mode: str = "w"):
+    """Open `path` for writing with file mode 0600. Mirror of brain.py:191-205.
+
+    Audit 2026-05-14 M-2: every artifact this script writes contains user
+    prompt content (potentially including secrets). Default umask 0022
+    leaks them at 0644. Force 0600 at open time so a same-host actor
+    (other unix user, container side-car, dev box guest account) cannot
+    read the bytes between write and explicit delete.
+    """
+    flags = os.O_CREAT | os.O_WRONLY
+    if mode == "a":
+        flags |= os.O_APPEND
+    elif mode == "w":
+        flags |= os.O_TRUNC
+    else:
+        raise ValueError(f"_open_0600: unsupported mode {mode!r}")
+    fd = os.open(str(path), flags, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+    except OSError:
+        pass
+    return os.fdopen(fd, mode, encoding="utf-8")
+
+
+def _write_text_0600(path: Path, content: str) -> None:
+    """Path.write_text equivalent that creates the file with mode 0600."""
+    with _open_0600(path, "w") as fh:
+        fh.write(content)
 
 OPTIMIZER_PROMPT = r"""You are a Prompt Engineering and AI Instruction Optimization System.
 
@@ -480,19 +512,29 @@ class TimelineLogger:
         self.path = path
         self.fh = None
         self.start = time.monotonic()
+        # Audit 2026-05-14 M-4: --provider all fans out to 3 threads
+        # (ThreadPoolExecutor). Without a lock, multi-line writers
+        # (step/section/block) interleave with each other and produce
+        # corrupt logs. Lock guards every public writer so each record
+        # lands atomically.
+        self._lock = threading.Lock()
         if path:
             path.parent.mkdir(parents=True, exist_ok=True)
-            self.fh = path.open("w", encoding="utf-8", buffering=1)
+            # Audit 2026-05-14 M-2: log file may contain rendered prompts
+            # with user secrets — force 0600 instead of umask-default 0644.
+            self.fh = _open_0600(path, "w")
             self._banner()
 
     def _banner(self) -> None:
         ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._w("=" * 78)
-        self._w(f" PROMPT ENGINEER — OPTIMIZATION TIMELINE")
-        self._w(f" Started: {ts}")
-        self._w("=" * 78)
+        with self._lock:
+            self._w("=" * 78)
+            self._w(" PROMPT ENGINEER — OPTIMIZATION TIMELINE")
+            self._w(f" Started: {ts}")
+            self._w("=" * 78)
 
     def _w(self, line: str = "") -> None:
+        # Internal-only; callers hold self._lock for multi-line records.
         if self.fh:
             self.fh.write(line + "\n")
 
@@ -502,45 +544,51 @@ class TimelineLogger:
         return f"[{ts}] (+{elapsed:7.2f}s)"
 
     def step(self, title: str) -> None:
-        self._w()
-        self._w("#" * 78)
-        self._w(f"# {self._stamp()} STEP — {title}")
-        self._w("#" * 78)
+        with self._lock:
+            self._w()
+            self._w("#" * 78)
+            self._w(f"# {self._stamp()} STEP — {title}")
+            self._w("#" * 78)
 
     def section(self, title: str) -> None:
-        self._w()
-        self._w(f"--- {self._stamp()} {title} ---")
+        with self._lock:
+            self._w()
+            self._w(f"--- {self._stamp()} {title} ---")
 
     def kv(self, key: str, value: object) -> None:
-        self._w(f"  {key}: {value}")
+        with self._lock:
+            self._w(f"  {key}: {value}")
 
     def block(self, title: str, body: str, max_chars: Optional[int] = None) -> None:
         cap = self.PREVIEW_CHARS if max_chars is None else max_chars
-        self._w()
-        self._w(f">>> {title} ({len(body)} chars) >>>")
-        if len(body) > cap > 0:
-            self._w(body[:cap])
-            self._w(f"... [truncated {len(body) - cap} chars] ...")
-        else:
-            self._w(body)
-        self._w(f"<<< END {title} <<<")
+        with self._lock:
+            self._w()
+            self._w(f">>> {title} ({len(body)} chars) >>>")
+            if len(body) > cap > 0:
+                self._w(body[:cap])
+                self._w(f"... [truncated {len(body) - cap} chars] ...")
+            else:
+                self._w(body)
+            self._w(f"<<< END {title} <<<")
 
     def event(self, message: str) -> None:
-        self._w(f"{self._stamp()} {message}")
+        with self._lock:
+            self._w(f"{self._stamp()} {message}")
 
     def close(self, summary: dict | None = None) -> None:
-        if not self.fh:
-            return
-        elapsed = time.monotonic() - self.start
-        self._w()
-        self._w("=" * 78)
-        self._w(f" DONE — total elapsed {elapsed:.2f}s")
-        if summary:
-            for k, v in summary.items():
-                self._w(f"   {k}: {v}")
-        self._w("=" * 78)
-        self.fh.close()
-        self.fh = None
+        with self._lock:
+            if not self.fh:
+                return
+            elapsed = time.monotonic() - self.start
+            self._w()
+            self._w("=" * 78)
+            self._w(f" DONE — total elapsed {elapsed:.2f}s")
+            if summary:
+                for k, v in summary.items():
+                    self._w(f"   {k}: {v}")
+            self._w("=" * 78)
+            self.fh.close()
+            self.fh = None
 
 
 PROVIDERS = ("claude", "codex", "gemini")
@@ -613,7 +661,9 @@ def run_provider(
             )
 
         t0 = time.monotonic()
-        with log_file.open("w", encoding="utf-8") as log:
+        # Audit 2026-05-14 M-2: subprocess raw-log contains the rendered
+        # prompt + stdout + stderr — wrap with 0600 instead of default 0644.
+        with _open_0600(log_file, "w") as log:
             log.write(f"$ {' '.join(cmd)}\n\n--- PROMPT ---\n{prompt}\n\n--- STDOUT ---\n")
             log.flush()
             try:
@@ -806,9 +856,9 @@ def run_all_mode(
 
     extracted: dict[str, str] = {}
     for p, resp in results.items():
-        (out_dir / f"01-{p}.md").write_text(resp, encoding="utf-8")
+        _write_text_0600(out_dir / f"01-{p}.md", resp)
         extracted[p] = extract_prompt_block(resp)
-        (out_dir / f"01-{p}-prompt.txt").write_text(extracted[p], encoding="utf-8")
+        _write_text_0600(out_dir / f"01-{p}-prompt.txt", extracted[p])
         timeline.event(
             f"STAGE 1 ({p}) — saved 01-{p}.md + 01-{p}-prompt.txt "
             f"(extracted {len(extracted[p])} chars)"
@@ -853,9 +903,9 @@ def run_all_mode(
         timeline.close()
         raise
 
-    (out_dir / "02-synthesis.md").write_text(synth_response, encoding="utf-8")
+    _write_text_0600(out_dir / "02-synthesis.md", synth_response)
     final_prompt = extract_prompt_block(synth_response)
-    (out_dir / "02-synthesis-prompt.txt").write_text(final_prompt, encoding="utf-8")
+    _write_text_0600(out_dir / "02-synthesis-prompt.txt", final_prompt)
     timeline.event(
         f"STAGE 2 — saved 02-synthesis.md + 02-synthesis-prompt.txt "
         f"({len(final_prompt)} chars)"
@@ -962,9 +1012,9 @@ def main() -> int:
     out_dir = Path(args.output_dir) / stamp
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    (out_dir / "00-original.txt").write_text(original_prompt, encoding="utf-8")
+    _write_text_0600(out_dir / "00-original.txt", original_prompt)
     if context:
-        (out_dir / "00-context.txt").write_text(context, encoding="utf-8")
+        _write_text_0600(out_dir / "00-context.txt", context)
 
     ctx_for_template = context if context else "(none)"
 
@@ -1032,9 +1082,9 @@ def main() -> int:
         timeline.close()
         raise
 
-    (out_dir / "01-optimized.md").write_text(v1_response, encoding="utf-8")
+    _write_text_0600(out_dir / "01-optimized.md", v1_response)
     v1_prompt_only = extract_prompt_block(v1_response)
-    (out_dir / "01-optimized-prompt.txt").write_text(v1_prompt_only, encoding="utf-8")
+    _write_text_0600(out_dir / "01-optimized-prompt.txt", v1_prompt_only)
     timeline.event(
         f"STAGE 1 — extracted optimized prompt block ({len(v1_prompt_only)} chars) "
         f"-> 01-optimized-prompt.txt"
@@ -1069,9 +1119,9 @@ def main() -> int:
         timeline.close()
         raise
 
-    (out_dir / "02-meta.md").write_text(v2_response, encoding="utf-8")
+    _write_text_0600(out_dir / "02-meta.md", v2_response)
     v2_prompt_only = extract_prompt_block(v2_response)
-    (out_dir / "02-meta-prompt.txt").write_text(v2_prompt_only, encoding="utf-8")
+    _write_text_0600(out_dir / "02-meta-prompt.txt", v2_prompt_only)
     timeline.event(
         f"STAGE 2 — extracted meta-optimized prompt ({len(v2_prompt_only)} chars) "
         f"-> 02-meta-prompt.txt"
@@ -1100,9 +1150,9 @@ def main() -> int:
         timeline.close()
         raise
 
-    (out_dir / "03-final.md").write_text(final_response, encoding="utf-8")
+    _write_text_0600(out_dir / "03-final.md", final_response)
     final_prompt_only = extract_prompt_block(final_response)
-    (out_dir / "03-final-prompt.txt").write_text(final_prompt_only, encoding="utf-8")
+    _write_text_0600(out_dir / "03-final-prompt.txt", final_prompt_only)
     timeline.event(
         f"STAGE 3 — extracted final synthesized prompt ({len(final_prompt_only)} chars) "
         f"-> 03-final-prompt.txt"
