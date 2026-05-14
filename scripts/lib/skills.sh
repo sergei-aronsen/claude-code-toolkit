@@ -158,18 +158,28 @@ _skills_description() {
 #   ~/.claude/skills/<name>/           — toolkit-managed layout (no prefix)
 #   ~/.claude/skills/?-<name>/         — marketplace layout (1-char prefix
 #                                        + dash, e.g. `i-<name>/`)
-#   ~/.agents/<name>/                  — alternate layout used by impeccable's
+#   ~/.agents/skills/<name>/           — alternate layout used by impeccable's
 #                                        upstream npx CLI when $HOME has no
 #                                        `.git` ancestor (install-impeccable.sh
-#                                        cds to $HOME for this reason). Without
-#                                        this fallback the TUI shows the row as
-#                                        not-installed yet the install attempt
-#                                        immediately bails "already installed
-#                                        (found in .agents/)" — user report
-#                                        2026-05-14.
+#                                        cds to $HOME for this reason). The
+#                                        upstream CLI writes under a `skills/`
+#                                        subdirectory plus a `.skill-lock.json`
+#                                        sibling, so the probe root is
+#                                        `~/.agents/skills/` — not `~/.agents/`.
+#                                        Without this fallback the TUI shows
+#                                        the row as not-installed yet the
+#                                        install attempt immediately bails
+#                                        "already installed (found in
+#                                        .agents/)" — user report 2026-05-14
+#                                        (v6.25.1).
+#   ~/.agents/skills/?-<name>/         — same root, prefix-glob form for
+#                                        marketplace-style entries
+#                                        (e.g. `i-impeccable/`).
 # Returns 1 when absent. Two-state return (no CLI dependency — skills have no
 # binary requirement). Override probe root with TK_SKILLS_HOME for hermetic
-# tests; override the alternate-layout root with TK_AGENTS_HOME.
+# tests; override the alternate-layout root with TK_AGENTS_HOME (the test seam
+# treats its value as the equivalent of `~/.agents/skills/`, i.e. the directory
+# that directly contains the per-skill entries).
 is_skill_installed() {
     local name="${1:-}"
     if [[ -z "$name" ]]; then
@@ -185,9 +195,13 @@ is_skill_installed() {
     for d in "${home}/"?-"${name}"; do
         [[ -d "$d" ]] && return 0
     done
-    # Alternate `.agents/` layout (impeccable's upstream CLI). Probe both
-    # plain and prefixed forms for symmetry with the primary root above.
-    local agents_home="${TK_AGENTS_HOME:-$HOME/.agents}"
+    # Alternate `.agents/skills/` layout (impeccable's upstream CLI). Probe
+    # both plain and prefixed forms for symmetry with the primary root above.
+    # The upstream CLI stores entries under a `skills/` subdirectory of
+    # `~/.agents/` (alongside `.skill-lock.json`), so the default root is
+    # `~/.agents/skills/` rather than `~/.agents/` — see comment block above
+    # for the regression context (v6.25.1).
+    local agents_home="${TK_AGENTS_HOME:-$HOME/.agents/skills}"
     [[ -d "${agents_home}/${name}" ]] && return 0
     for d in "${agents_home}/"?-"${name}"; do
         [[ -d "$d" ]] && return 0
