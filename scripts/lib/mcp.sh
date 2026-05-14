@@ -315,9 +315,10 @@ mcp_status_detect() {
 # unofficial_confirm <display_name> — Phase 34-02 (TUI-03) — gate install of an
 # entry whose `unofficial: true` flag is set. Reads from
 # ${TK_INTEGRATIONS_TTY_SRC:-/dev/tty}, fail-closed N (matches v4.3 UN-03 contract).
-# Bypassed when ALWAYS_YES=1 (set by --yes path).
+# Bypassed when ALWAYS_YES=1 (set by --yes path) or TK_TUI_CONFIRMED=1 (main TUI
+# submit already collected consent via the `[!]` prefix on the row label).
 # Returns:
-#   0 — user said yes (or --yes bypass) — install allowed
+#   0 — user said yes (or --yes / TUI-submit bypass) — install allowed
 #   1 — user said no / EOF / no readable TTY — install must be skipped
 unofficial_confirm() {
     local display="${1:-this entry}"
@@ -326,6 +327,23 @@ unofficial_confirm() {
     # --yes bypass. The exported flag from install.sh is also accepted as
     # ALWAYS_YES=1 for symmetry with bridge/bootstrap precedents.
     if [[ "${ALWAYS_YES:-0}" == "1" ]]; then
+        return 0
+    fi
+
+    # TUI-submit bypass (v6.24.2). The main install.sh TUI marks unofficial
+    # rows with a leading `[!]` glyph in TUI_DESCS (see install.sh ~line 1998)
+    # AND the MCP sub-picker repeats that prefix, so a user who toggled the
+    # row and pressed Submit already saw + accepted the warning. Re-asking
+    # via a y/N prompt here is not only redundant but invisible: the parent
+    # install.sh wraps the dispatch_mcp_servers call in
+    # `( ... ) 2>"$stderr_tmp"` (install.sh:2272), which swallows stderr.
+    # The prompt printed below would land in the tmpfile, never reach the
+    # terminal, and the `read` would block forever on /dev/tty waiting for
+    # input the user has no way to know is wanted (user report
+    # 2026-05-14: "висит, хотя я выбрал только Telegram"). Same class of
+    # bug the comment block at install.sh:1773-1777 flagged for
+    # bridge_install_prompts.
+    if [[ "${TK_TUI_CONFIRMED:-0}" == "1" ]]; then
         return 0
     fi
 

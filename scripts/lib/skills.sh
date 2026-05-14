@@ -154,12 +154,22 @@ _skills_description() {
 }
 
 # is_skill_installed <name> — directory probe.
-# Returns 0 when ~/.claude/skills/<name>/ OR ~/.claude/skills/?-<name>/
-# exists (single-char-prefix form covers skills-marketplace's `i-<name>/`
-# layout and any other 1-char prefix scheme — `p-`, `m-`, etc.). Returns
-# 1 when absent. Two-state return (no CLI dependency — skills have no
-# binary requirement). Override probe root with TK_SKILLS_HOME for
-# hermetic tests.
+# Returns 0 when any of these exist (in order):
+#   ~/.claude/skills/<name>/           — toolkit-managed layout (no prefix)
+#   ~/.claude/skills/?-<name>/         — marketplace layout (1-char prefix
+#                                        + dash, e.g. `i-<name>/`)
+#   ~/.agents/<name>/                  — alternate layout used by impeccable's
+#                                        upstream npx CLI when $HOME has no
+#                                        `.git` ancestor (install-impeccable.sh
+#                                        cds to $HOME for this reason). Without
+#                                        this fallback the TUI shows the row as
+#                                        not-installed yet the install attempt
+#                                        immediately bails "already installed
+#                                        (found in .agents/)" — user report
+#                                        2026-05-14.
+# Returns 1 when absent. Two-state return (no CLI dependency — skills have no
+# binary requirement). Override probe root with TK_SKILLS_HOME for hermetic
+# tests; override the alternate-layout root with TK_AGENTS_HOME.
 is_skill_installed() {
     local name="${1:-}"
     if [[ -z "$name" ]]; then
@@ -173,6 +183,13 @@ is_skill_installed() {
     # Marketplace layout: single-char prefix + dash + name.
     local d
     for d in "${home}/"?-"${name}"; do
+        [[ -d "$d" ]] && return 0
+    done
+    # Alternate `.agents/` layout (impeccable's upstream CLI). Probe both
+    # plain and prefixed forms for symmetry with the primary root above.
+    local agents_home="${TK_AGENTS_HOME:-$HOME/.agents}"
+    [[ -d "${agents_home}/${name}" ]] && return 0
+    for d in "${agents_home}/"?-"${name}"; do
         [[ -d "$d" ]] && return 0
     done
     return 1

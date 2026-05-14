@@ -218,6 +218,39 @@ TK_INTEGRATIONS_TTY_SRC="$no_file" bash -c "
 assert_eq "1" "$rc" "A8: unofficial_confirm with TTY 'n' returns 1"
 
 # ─────────────────────────────────────────────────
+# A8b — unofficial_confirm: TK_TUI_CONFIRMED=1 bypass returns 0 even when the
+#       TTY src is unreadable. Regression for the v6.24.2 hang where the
+#       parent install.sh wraps dispatch_mcp_servers in `2>"$tmp"`, swallowing
+#       the y/N prompt and blocking on read forever.
+# ─────────────────────────────────────────────────
+rc=0
+TK_TUI_CONFIRMED=1 TK_INTEGRATIONS_TTY_SRC="/nonexistent/$$.tty" bash -c "
+    # shellcheck disable=SC1091
+    source '${REPO_ROOT}/scripts/lib/mcp.sh'
+    unofficial_confirm 'Telegram'
+" 2>/dev/null || rc=$?
+assert_eq "0" "$rc" "A8b: unofficial_confirm with TK_TUI_CONFIRMED=1 returns 0 (bypasses TTY read)"
+
+# ─────────────────────────────────────────────────
+# A8c — unofficial_confirm: TK_TUI_CONFIRMED=1 bypass MUST NOT print to stderr.
+#       The prompt going to stderr is exactly what gets captured by the parent
+#       `( ... ) 2>"$tmp"` wrapper — even a "silent" question is the bug.
+# ─────────────────────────────────────────────────
+stderr_capture="$SANDBOX_ROOT/A8c_stderr"
+rc=0
+TK_TUI_CONFIRMED=1 TK_INTEGRATIONS_TTY_SRC="/nonexistent/$$.tty" bash -c "
+    # shellcheck disable=SC1091
+    source '${REPO_ROOT}/scripts/lib/mcp.sh'
+    unofficial_confirm 'Telegram'
+" 2>"$stderr_capture" || rc=$?
+assert_eq "0" "$rc" "A8c: unofficial_confirm rc still 0 under stderr capture"
+if [[ -s "$stderr_capture" ]]; then
+    assert_fail "A8c: stderr non-empty under TK_TUI_CONFIRMED=1 — would be swallowed by parent 2>\$tmp wrapper: $(cat "$stderr_capture")"
+else
+    assert_pass "A8c: stderr empty under TK_TUI_CONFIRMED=1 (no swallowed prompt)"
+fi
+
+# ─────────────────────────────────────────────────
 # A9 — install.sh --mcp-only --cli-only is mutex => rc=2 + stderr "mutually exclusive"
 # ─────────────────────────────────────────────────
 stderr_file="$SANDBOX_ROOT/mutex_err"

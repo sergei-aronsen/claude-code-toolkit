@@ -102,6 +102,43 @@ run_s2_detection_two_state() {
         exit \$?
     " 2>/dev/null || rc=$?
     assert_eq "1" "$rc" "S2: is_skill_installed pdf returns 1 when dir absent"
+
+    # S9 (v6.24.2) — .agents/ fallback for impeccable's upstream npx layout.
+    # Regression for user report 2026-05-14: TUI showed "[not installed]" for
+    # impeccable yet `npx impeccable skills install` bailed "already installed
+    # (found in .agents/)" because TUI probe only checked ~/.claude/skills/.
+    local AGENTS_HOME="$SANDBOX/agents"
+    mkdir -p "$AGENTS_HOME/impeccable"
+    touch "$AGENTS_HOME/impeccable/SKILL.md"
+
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$AGENTS_HOME" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed impeccable
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S9: is_skill_installed impeccable returns 0 when only \$TK_AGENTS_HOME/impeccable/ exists"
+
+    # S9b — prefix-glob form under .agents/ root (symmetry with primary root).
+    mkdir -p "$AGENTS_HOME/i-myskill"
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$AGENTS_HOME" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed myskill
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S9b: is_skill_installed myskill matches \$TK_AGENTS_HOME/i-myskill/"
+
+    # S9c — empty .agents/ root must NOT cause false positive.
+    local EMPTY_AGENTS="$SANDBOX/empty-agents"
+    mkdir -p "$EMPTY_AGENTS"
+    rc=0
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$EMPTY_AGENTS" bash -c "
+        source '${REPO_ROOT}/scripts/lib/skills.sh'
+        is_skill_installed impeccable
+        exit \$?
+    " 2>/dev/null || rc=$?
+    assert_eq "1" "$rc" "S9c: is_skill_installed impeccable still returns 1 when .agents/ exists but empty"
 }
 
 # ─────────────────────────────────────────────────
