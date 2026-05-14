@@ -289,6 +289,59 @@ else
 fi
 
 echo ""
+
+# ─────────────────────────────────────────────────
+# S7 — (v6.25.0 H-1) dispatch.sh must mirror bootstrap.sh: the
+# `_dispatch_run_gsd_default` path moved off the dead
+# raw.githubusercontent.com/gsd-build/get-shit-done URL onto the
+# get-shit-done-cc npm package, with the same TK_GSD_NPM_VERSION
+# semver/tag allowlist guard.
+# ─────────────────────────────────────────────────
+echo "-- S7: dispatch.sh GSD path migrated to get-shit-done-cc npm --"
+DISPATCH_SRC="${REPO_ROOT}/scripts/lib/dispatch.sh"
+if grep -q 'raw.githubusercontent.com/gsd-build/get-shit-done' "$DISPATCH_SRC"; then
+    assert_fail "S7: dispatch.sh references dead GSD URL" \
+        "GSD raw.githubusercontent.com/gsd-build path now 404s — must use npx get-shit-done-cc"
+else
+    assert_pass "S7: dispatch.sh no longer references dead GSD URL"
+fi
+if grep -q 'get-shit-done-cc' "$DISPATCH_SRC"; then
+    assert_pass "S7: dispatch.sh uses get-shit-done-cc npm package"
+else
+    assert_fail "S7: dispatch.sh missing get-shit-done-cc reference" \
+        "expected 'get-shit-done-cc' invocation in dispatcher"
+fi
+# The allowlist regex lives on its own line in dispatch.sh. Use a fixed-
+# string check that matches the exact regex literal in the source.
+if grep -qF 'latest|[0-9]+\.[0-9]+\.[0-9]+' "$DISPATCH_SRC"; then
+    assert_pass "S7: dispatch.sh keeps TK_GSD_NPM_VERSION allowlist (latest|semver regex)"
+else
+    assert_fail "S7: dispatch.sh missing TK_GSD_NPM_VERSION allowlist regex" \
+        "version must be validated against ^(latest|[0-9]+\\.[0-9]+\\.[0-9]+...)$ before npx invocation"
+fi
+
+echo ""
+
+# ─────────────────────────────────────────────────
+# S8 — (v6.25.0 H-1) TK_GSD_INSTALL_CMD display string (used in
+# dry-run "would run: ..." output) must advertise the new npx
+# get-shit-done-cc invocation, not the legacy curl|bash URL.
+# ─────────────────────────────────────────────────
+echo "-- S8: TK_GSD_INSTALL_CMD display string updated --"
+if grep -q 'TK_GSD_INSTALL_CMD=.*npx --yes get-shit-done-cc@' "$DISPATCH_SRC"; then
+    assert_pass "S8: TK_GSD_INSTALL_CMD display string mentions npx get-shit-done-cc@"
+else
+    assert_fail "S8: TK_GSD_INSTALL_CMD display string not updated" \
+        "expected 'npx --yes get-shit-done-cc@<ver>' in TK_GSD_INSTALL_CMD default"
+fi
+if grep -q 'TK_GSD_INSTALL_CMD=.*raw.githubusercontent.com/gsd-build' "$DISPATCH_SRC"; then
+    assert_fail "S8: TK_GSD_INSTALL_CMD still shows dead legacy URL" \
+        "display string must not advertise the 404 gsd-build install.sh URL"
+else
+    assert_pass "S8: TK_GSD_INSTALL_CMD no longer shows legacy URL"
+fi
+
+echo ""
 echo "Bootstrap test complete: PASS=$PASS FAIL=$FAIL"
 if [[ $FAIL -gt 0 ]]; then
     exit 1

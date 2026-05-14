@@ -370,5 +370,11 @@ skills_fetch_mirror_via_tarball() {
     fi
     export TK_SKILLS_MIRROR_PATH="$tar_dir/templates/skills-marketplace"
     export TK_SKILLS_INSTALL_IMPECCABLE_CMD="$tar_dir/scripts/install-impeccable.sh"
+    # Audit 2026-05-14 L-2: export the extraction tmpdir as well so the
+    # caller can register it for cleanup. The success path previously left
+    # tar_dir behind (~5-15 MB) for the lifetime of the host's $TMPDIR
+    # garbage-collection cycle. install.sh registers this in CLEANUP_PATHS
+    # after a successful call.
+    export TK_SKILLS_MIRROR_TMPDIR="$tar_dir"
     return 0
 }

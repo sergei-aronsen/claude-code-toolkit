@@ -142,49 +142,43 @@ mcp_catalog_load() {
     # Phase 36 (SCOPE-01/03): per-entry default scope ("user"|"project").
     # shellcheck disable=SC2034
     MCP_DEFAULT_SCOPE=()
-    local name
-    while IFS= read -r name; do
+    # Audit 2026-05-14 H-2: collapsed from ~301 jq forks (10 inside-loop ×
+    # 30 entries + iterator) to 1 jq fork via a single RS-joined record.
+    # Why RS (\u001e, ASCII 30) instead of @tsv: Bash's `read` treats tab
+    # as whitespace IFS, which collapses consecutive empty fields (e.g.
+    # calendly has empty env_var_keys → tab+tab → read merges them and all
+    # downstream columns shift by one). RS is a non-whitespace control byte
+    # that `read` preserves byte-for-byte. The catalog validator rejects RS
+    # in user-facing string fields, so it is unambiguous as a column delim.
+    # install_args[] keeps its existing US (\u001f) in-string join.
+    local _name _display _env_keys _install_args _desc _oauth _category _unofficial _cli_detect _default_scope
+    while IFS=$'\036' read -r _name _display _env_keys _install_args _desc _oauth _category _unofficial _cli_detect _default_scope; do
         # shellcheck disable=SC2034
-        MCP_NAMES+=("$name")
+        MCP_NAMES+=("$_name")
         # shellcheck disable=SC2034
-        MCP_DISPLAY+=("$(jq -r --arg n "$name" '.components.mcp[$n].display_name' "$catalog_path")")
+        MCP_DISPLAY+=("$_display")
         # shellcheck disable=SC2034
-        MCP_ENV_KEYS+=("$(jq -r --arg n "$name" '.components.mcp[$n].env_var_keys | join(";")' "$catalog_path")")
-        # Use $'\037' (unit separator, ASCII 31) to join install_args[] — survives spaces in args.
+        MCP_ENV_KEYS+=("$_env_keys")
         # shellcheck disable=SC2034
-        MCP_INSTALL_ARGS+=("$(jq -r --arg n "$name" '[.components.mcp[$n].install_args[] ] | join("")' "$catalog_path")")
+        MCP_INSTALL_ARGS+=("$_install_args")
         # shellcheck disable=SC2034
-        MCP_DESCS+=("$(jq -r --arg n "$name" '.components.mcp[$n].description' "$catalog_path")")
-        if [[ "$(jq -r --arg n "$name" '.components.mcp[$n].requires_oauth' "$catalog_path")" == "true" ]]; then
+        MCP_DESCS+=("$_desc")
+        if [[ "$_oauth" == "true" ]]; then
             # shellcheck disable=SC2034
             MCP_OAUTH+=(1)
         else
             # shellcheck disable=SC2034
             MCP_OAUTH+=(0)
         fi
-
-        # Phase 34-01: category — hard-required by CAT-03 validator. Default kept
-        # for defensive runtime read of historical (v4.6 schema-v1) catalogs;
-        # routes orphaned entries into the existing "dev-tools" bucket so they
-        # render in the TUI instead of vanishing under an empty-string sentinel.
-        # Matches the SCOPE-03 pattern on line 169 (fallback to a valid value).
         # shellcheck disable=SC2034
-        MCP_CATEGORY+=("$(jq -r --arg n "$name" '.components.mcp[$n].category // "dev-tools"' "$catalog_path")")
-
-        # Phase 34-01: unofficial flag (default 0; 1 only when set true).
-        if [[ "$(jq -r --arg n "$name" '.components.mcp[$n].unofficial // false' "$catalog_path")" == "true" ]]; then
+        MCP_CATEGORY+=("${_category:-dev-tools}")
+        if [[ "$_unofficial" == "true" ]]; then
             # shellcheck disable=SC2034
             MCP_UNOFFICIAL+=(1)
         else
             # shellcheck disable=SC2034
             MCP_UNOFFICIAL+=(0)
         fi
-
-        # Phase 34-01: CLI presence + detect_cmd. components.cli.<name> may be absent.
-        # `// empty` exits jq with no output when the path doesn't exist; capture and
-        # branch instead of relying on the brittle "null" string from `// null`.
-        local _cli_detect
-        _cli_detect="$(jq -r --arg n "$name" '.components.cli[$n].detect_cmd // empty' "$catalog_path")"
         if [[ -n "$_cli_detect" ]]; then
             # shellcheck disable=SC2034
             MCP_HAS_CLI+=(1)
@@ -196,12 +190,28 @@ mcp_catalog_load() {
             # shellcheck disable=SC2034
             MCP_CLI_DETECT+=("")
         fi
-
-        # Phase 36 (SCOPE-03): default_scope with silent fallback to "user" for pre-v5.0
-        # catalogs that lack the field. Matches the .category // "" form on line 133.
         # shellcheck disable=SC2034
-        MCP_DEFAULT_SCOPE+=("$(jq -r --arg n "$name" '.components.mcp[$n].default_scope // "user"' "$catalog_path")")
-    done < <(jq -r '.components.mcp | keys | sort | .[]' "$catalog_path")
+        MCP_DEFAULT_SCOPE+=("${_default_scope:-user}")
+    done < <(jq -r '
+        .components as $c
+        | $c.mcp
+        | to_entries
+        | sort_by(.key)
+        | .[]
+        | [
+            .key,
+            .value.display_name,
+            ((.value.env_var_keys // []) | join(";")),
+            ((.value.install_args // []) | join("\u001f")),
+            .value.description,
+            ((.value.requires_oauth // false) | tostring),
+            (.value.category // "dev-tools"),
+            ((.value.unofficial // false) | tostring),
+            ($c.cli[.key].detect_cmd // ""),
+            (.value.default_scope // "user")
+          ]
+        | join("\u001e")
+    ' "$catalog_path")
 }
 
 # mcp_categories_load — populate CATEGORIES_ORDER[] from the catalog's
@@ -810,8 +820,9 @@ mcp_wizard_run() {
         return 0
     fi
 
-    # Collect env vars (skipped for OAuth-only MCPs).
-    local exported_env=()
+    # Collect env vars (skipped for OAuth-only MCPs). M-1: real values
+    # never leave their persistence file; only ${KEY} substitution-form
+    # flags reach `claude mcp add` argv.
     if [[ "$oauth" -eq 1 ]]; then
         # OAuth-only MCPs let `claude mcp add` print its own "Added stdio MCP
         # server" line — no narration needed from us.
@@ -1005,12 +1016,16 @@ mcp_wizard_run() {
                 # stay in their storage file; only ${VAR} substitution forms
                 # reach claude in the post-loop invocation below.
             else
-                # User/local scope (UNCHANGED v4.6/v4.9 contract).
+                # User/local scope. Persist to ~/.claude/mcp-config.env
+                # (auto-sourced by ~/.zshrc + ~/.bashrc via v6.4.0 shell-rc
+                # line). Audit 2026-05-14 M-1: dropped argv-export of the
+                # plaintext value — the post-loop `claude mcp add` invocation
+                # now uses substitution-form (`-e KEY=${KEY}`) so the real
+                # secret never reaches /proc/<pid>/cmdline. Mirrors project-
+                # scope semantics introduced in v6.4.0 (PR #66).
                 if ! mcp_secrets_set "$env_key" "$collected_value"; then
                     return 1
                 fi
-                # Queue for export to child process only (scoped via `env` below).
-                exported_env+=("${env_key}=${collected_value}")
             fi
             # Overwrite local copy immediately — never let it linger as a named var.
             collected_value=""
@@ -1066,8 +1081,26 @@ mcp_wizard_run() {
             _i=$((_i + 1))
         done
         "$claude_bin" mcp add "${_env_flags[@]}" "${scoped_args[@]}"
-    elif [[ "${#exported_env[@]}" -gt 0 ]]; then
-        env "${exported_env[@]}" "$claude_bin" mcp add "${scoped_args[@]}"
+    elif [[ -n "$env_keys_csv" ]]; then
+        # Audit 2026-05-14 M-1: user/local scope now mirrors project scope
+        # by registering substitution-form `-e KEY=${KEY}` flags instead of
+        # leaking plaintext values via `env KEY=value claude mcp add ...`
+        # argv. Secrets persist in ~/.claude/mcp-config.env (0600) and
+        # auto-load into every interactive shell via the shell-rc line
+        # written by v6.4.0. Claude resolves ${KEY} from its own env at
+        # MCP launch.
+        local IFS_SAVED_M1="$IFS"
+        IFS=';'
+        # shellcheck disable=SC2206
+        local _m1_env_keys=( $env_keys_csv )
+        IFS="$IFS_SAVED_M1"
+        local _m1_env_flags=()
+        local _m1_ek
+        for _m1_ek in "${_m1_env_keys[@]}"; do
+            [[ -z "$_m1_ek" ]] && continue
+            _m1_env_flags+=( "-e" "${_m1_ek}=\${${_m1_ek}}" )
+        done
+        "$claude_bin" mcp add "${_m1_env_flags[@]}" "${scoped_args[@]}"
     else
         "$claude_bin" mcp add "${scoped_args[@]}"
     fi

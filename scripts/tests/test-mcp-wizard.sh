@@ -183,10 +183,16 @@ unset _MCP_SETALL_SCOPE MCP_SELECTED_SCOPE TUI_LABELS TUI_TO_MCP_IDX \
       MCP_DISPLAY MCP_UNOFFICIAL TUI_HEADER_TEXT HDR_BEFORE HDR_AFTER
 
 # ── Test 3: keyed MCP (context7) — env var plumbed to claude + secret persisted ──
+# Audit 2026-05-14 M-1: argv now carries the substitution-form `-e KEY=${KEY}`
+# instead of `env KEY=value claude ...`. Secrets stay in mcp-config.env and
+# load into the shell at claude launch via the v6.4.0 shell-rc auto-source line.
 printf 'test_secret_ctx7\n' > "$SANDBOX/tty.fix"
 TK_MCP_TTY_SRC="$SANDBOX/tty.fix" mcp_wizard_run context7
 ARGV_CONTENT="$(cat "$SANDBOX/claude.argv" 2>/dev/null || echo '')"
-assert_contains "env:CTX=test_secret_ctx7" "$ARGV_CONTENT" "T3: CONTEXT7_API_KEY plumbed to claude"
+assert_contains "-e CONTEXT7_API_KEY=\${CONTEXT7_API_KEY}" "$ARGV_CONTENT" \
+    "T3 (M-1): argv carries substitution-form CONTEXT7_API_KEY=\${CONTEXT7_API_KEY}"
+assert_not_contains "test_secret_ctx7" "$ARGV_CONTENT" \
+    "T3 (M-1): plaintext secret never reaches claude argv (no /proc/<pid>/cmdline exposure)"
 # Secret persisted to mcp-config.env
 cfg_file="$SANDBOX/.claude/mcp-config.env"
 if [[ -f "$cfg_file" ]] && grep -q "^CONTEXT7_API_KEY=test_secret_ctx7$" "$cfg_file"; then
@@ -310,10 +316,12 @@ assert_eq "$PRE_HASH_USER" "$POST_HASH_USER" \
 
 rm -f "$SANDBOX/claude.argv"
 
-# ── Test 8 (DISP-02): TK_MCP_SCOPE=user no-regression — keys to mcp-config.env ──
-# Real values land in ~/.claude/mcp-config.env, claude argv carries literal env
-# value via the `env KEY=V` exec wrapper (v4.9 contract preserved), and
-# <project>/.env UNTOUCHED (negative cross-store assertion).
+# ── Test 8 (DISP-02 + M-1): TK_MCP_SCOPE=user keys to mcp-config.env, NO argv leak ──
+# Audit 2026-05-14 M-1: user/local scope now mirrors project scope by passing
+# `-e KEY=${KEY}` substitution-form flags to `claude mcp add`. The plaintext
+# value persists in ~/.claude/mcp-config.env (auto-sourced by ~/.zshrc and
+# ~/.bashrc via v6.4.0 shell-rc line) and is resolved at MCP launch — never
+# reaching claude argv (no /proc/<pid>/cmdline exposure).
 rm -rf "$PROJECT"
 mkdir -p "$PROJECT"
 # Wipe mcp-config.env to a clean baseline for this test.
@@ -327,18 +335,22 @@ USER_RC=$?
 
 assert_eq "0" "$USER_RC" "T8 (DISP-02): wizard returns 0 on user-scope flow"
 
-# Real value in ~/.claude/mcp-config.env (v4.9 contract).
+# Real value in ~/.claude/mcp-config.env (unchanged from v4.9; load path
+# now via shell-rc auto-source rather than env-exec wrapper).
 if [[ -f "$USER_CFG" ]] && grep -q "^CONTEXT7_API_KEY=tk_user_secret_ctx7$" "$USER_CFG"; then
-    assert_pass "T8 (DISP-02): real value in ~/.claude/mcp-config.env (v4.9 contract)"
+    assert_pass "T8 (DISP-02): real value in ~/.claude/mcp-config.env"
 else
     assert_fail "T8 (DISP-02): real value in ~/.claude/mcp-config.env" \
                 "$(cat "$USER_CFG" 2>/dev/null || echo 'file missing')"
 fi
 
-# claude argv received the literal env value via the `env KEY=V` exec wrapper.
+# claude argv now carries substitution-form `-e KEY=${KEY}` instead of
+# `env KEY=value` wrapper.
 ARGV_CONTENT="$(cat "$SANDBOX/claude.argv" 2>/dev/null || echo '')"
-assert_contains "env:CTX=tk_user_secret_ctx7" "$ARGV_CONTENT" \
-    "T8 (DISP-02): user-scope passes literal value via env-exec wrapper (v4.9 contract)"
+assert_contains "-e CONTEXT7_API_KEY=\${CONTEXT7_API_KEY}" "$ARGV_CONTENT" \
+    "T8 (M-1): user-scope claude argv carries substitution-form -e CONTEXT7_API_KEY=\${CONTEXT7_API_KEY}"
+assert_not_contains "tk_user_secret_ctx7" "$ARGV_CONTENT" \
+    "T8 (M-1): plaintext secret never reaches claude argv (no /proc/<pid>/cmdline exposure)"
 assert_contains "scope:user" "$ARGV_CONTENT" \
     "T8 (DISP-02): mock parsed --scope user"
 

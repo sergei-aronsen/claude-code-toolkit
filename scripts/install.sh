@@ -40,7 +40,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Config
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
 # remains the highest-priority override (full URL with ref baked in).
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.25.0}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -190,9 +190,16 @@ fi
 # Detect curl|bash via BASH_SOURCE/$0; in that case download libs to mktemp.
 # ─────────────────────────────────────────────────
 CLEANUP_PATHS=()
+# Audit 2026-05-14 L-2: skills_fetch_mirror_via_tarball extracts the toolkit
+# tarball into a directory tree (~5-15 MB). The previous EXIT trap used
+# `rm -f` which silently fails on directories, leaking the extracted dir.
+CLEANUP_DIRS=()
 run_cleanup() {
     if [[ ${#CLEANUP_PATHS[@]} -gt 0 ]]; then
         rm -f "${CLEANUP_PATHS[@]}" || true
+    fi
+    if [[ ${#CLEANUP_DIRS[@]} -gt 0 ]]; then
+        rm -rf "${CLEANUP_DIRS[@]}" || true
     fi
 }
 trap 'run_cleanup' EXIT
@@ -591,6 +598,10 @@ if [[ "$SKILLS" -eq 1 ]]; then
             echo -e "${RED}✗${NC} Failed to fetch toolkit tarball for skills install — aborting" >&2
             echo -e "  Set TK_SKILLS_MIRROR_PATH manually if you have a local clone." >&2
             exit 1
+        fi
+        # Audit 2026-05-14 L-2: register the extracted tmpdir for EXIT cleanup.
+        if [[ -n "${TK_SKILLS_MIRROR_TMPDIR:-}" ]]; then
+            CLEANUP_DIRS+=("$TK_SKILLS_MIRROR_TMPDIR")
         fi
     fi
 fi

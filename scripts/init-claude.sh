@@ -35,7 +35,7 @@ NC='\033[0m'
 # `raw.githubusercontent.com/.../v6.24.5/.../init-claude.sh`), leave
 # TK_TOOLKIT_REF unset and it inherits the bundled default below —
 # guaranteeing every file in the install comes from the same tag.
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.24.5}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.25.0}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -232,38 +232,83 @@ DETECT_TMP=$(mktemp "${TMPDIR:-/tmp}/detect.XXXXXX");                 CLEANUP_PA
 LIB_INSTALL_TMP=$(mktemp "${TMPDIR:-/tmp}/install-lib.XXXXXX");       CLEANUP_PATHS+=("$LIB_INSTALL_TMP")
 LIB_DRO_TMP=$(mktemp "${TMPDIR:-/tmp}/dry-run-output-lib.XXXXXX");    CLEANUP_PATHS+=("$LIB_DRO_TMP")
 LIB_OPTIONAL_PLUGINS_TMP=$(mktemp "${TMPDIR:-/tmp}/optional-plugins-lib.XXXXXX"); CLEANUP_PATHS+=("$LIB_OPTIONAL_PLUGINS_TMP")
-LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
-# tui.sh ships the visible-prompt helper (tui_tty_read) consumed by
-# bootstrap.sh + bridges.sh + mcp.sh + the legacy tui_confirm_prompt.
-# Must be downloaded + sourced BEFORE those libs so their lazy-source guard
-# (`command -v tui_tty_read`) reports defined and skips the per-lib fallback
-# fetch (which fails under curl|bash because BASH_SOURCE resolves to /tmp/<lib>
-# with no sibling tui.sh).
 LIB_TUI_TMP=$(mktemp "${TMPDIR:-/tmp}/tui-lib.XXXXXX");               CLEANUP_PATHS+=("$LIB_TUI_TMP")
+LIB_BOOTSTRAP_TMP=$(mktemp "${TMPDIR:-/tmp}/bootstrap-lib.XXXXXX");   CLEANUP_PATHS+=("$LIB_BOOTSTRAP_TMP")
+LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");           CLEANUP_PATHS+=("$LIB_STATE_TMP")
+LIB_DETECT2_TMP=$(mktemp "${TMPDIR:-/tmp}/detect2-lib.XXXXXX");       CLEANUP_PATHS+=("$LIB_DETECT2_TMP")
+LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges-lib.XXXXXX");       CLEANUP_PATHS+=("$LIB_BRIDGES_TMP")
+MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX");             CLEANUP_PATHS+=("$MANIFEST_TMP")
 
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/detect.sh" -o "$DETECT_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download detect.sh — aborting"
-    exit 1
+# Audit 2026-05-14 H-3: parallel-download all 10 prerequisite files in one
+# curl call instead of 10 sequential round trips. macOS cold install saves
+# ~2-4s of pure TCP+TLS handshake overhead. curl --parallel needs 7.66+
+# (Oct 2019; default on macOS 11+ and Ubuntu 20.04+). Probe first; fall
+# back to serial for older curl.
+PREREQ_URLS=(
+    "$REPO_URL/scripts/detect.sh:$DETECT_TMP"
+    "$REPO_URL/scripts/lib/install.sh:$LIB_INSTALL_TMP"
+    "$REPO_URL/scripts/lib/dry-run-output.sh:$LIB_DRO_TMP"
+    "$REPO_URL/scripts/lib/optional-plugins.sh:$LIB_OPTIONAL_PLUGINS_TMP"
+    "$REPO_URL/scripts/lib/tui.sh:$LIB_TUI_TMP"
+    "$REPO_URL/scripts/lib/bootstrap.sh:$LIB_BOOTSTRAP_TMP"
+    "$REPO_URL/scripts/lib/state.sh:$LIB_STATE_TMP"
+    "$REPO_URL/scripts/lib/detect2.sh:$LIB_DETECT2_TMP"
+    "$REPO_URL/scripts/lib/bridges.sh:$LIB_BRIDGES_TMP"
+    "$REPO_URL/manifest.json:$MANIFEST_TMP"
+)
+
+_curl_supports_parallel() {
+    local v maj min
+    v=$(curl --version 2>/dev/null | head -1 | awk '{print $2}')
+    [[ -z "$v" ]] && return 1
+    IFS='.' read -r maj min _ <<< "$v"
+    [[ -z "$maj" || -z "$min" ]] && return 1
+    (( maj > 7 )) && return 0
+    (( maj == 7 && min >= 66 )) && return 0
+    return 1
+}
+
+if _curl_supports_parallel; then
+    CURL_ARGS=()
+    for spec in "${PREREQ_URLS[@]}"; do
+        CURL_ARGS+=( -o "${spec##*:}" "${spec%%:*}" )
+    done
+    if ! curl -sSLf -A "$TK_USER_AGENT" --parallel --parallel-max 10         --max-time 60 --connect-timeout 10 "${CURL_ARGS[@]}"; then
+        echo -e "${RED}✗${NC} Failed to download one or more prerequisite libraries — aborting"
+        exit 1
+    fi
+else
+    # Serial fallback for curl <7.66 (Ubuntu 18.04 and older).
+    for spec in "${PREREQ_URLS[@]}"; do
+        src_url="${spec%%:*}"
+        dest_path="${spec##*:}"
+        if ! curl -sSLf -A "$TK_USER_AGENT" --max-time 60 --connect-timeout 10             "$src_url" -o "$dest_path"; then
+            echo -e "${RED}✗${NC} Failed to download $(basename "$src_url") — aborting"
+            exit 1
+        fi
+    done
 fi
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/install.sh" -o "$LIB_INSTALL_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/install.sh — aborting"
-    exit 1
-fi
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/dry-run-output.sh" -o "$LIB_DRO_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/dry-run-output.sh — aborting"
-    exit 1
-fi
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/optional-plugins.sh" -o "$LIB_OPTIONAL_PLUGINS_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/optional-plugins.sh — aborting"
-    exit 1
-fi
-# Download tui.sh BEFORE bootstrap.sh so bootstrap's lazy-source guard sees
-# tui_tty_read already defined (it cannot find tui.sh next to itself when
-# bootstrap.sh lives in /tmp under curl|bash).
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/tui.sh" -o "$LIB_TUI_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/tui.sh — aborting"
-    exit 1
-fi
+
+# Per-file existence + non-empty check (curl --parallel returns one rc
+# for the whole batch — verify each output individually).
+for spec in "${PREREQ_URLS[@]}"; do
+    dest_path="${spec##*:}"
+    if [[ ! -s "$dest_path" ]]; then
+        echo -e "${RED}✗${NC} Empty download: $(basename "${spec%%:*}") — aborting"
+        exit 1
+    fi
+done
+
+# Comment out detect2.sh's inner `source ../detect.sh` line — detect.sh is
+# already loaded in this shell so we skip the broken-from-/tmp re-source.
+LIB_DETECT2_PATCHED=$(mktemp "${TMPDIR:-/tmp}/detect2-lib-patched.XXXXXX"); CLEANUP_PATHS+=("$LIB_DETECT2_PATCHED")
+sed -E 's|^source "\$\(cd .*detect\.sh"|# skipped: detect.sh already loaded by init-claude.sh (was: &)|' \
+    "$LIB_DETECT2_TMP" > "$LIB_DETECT2_PATCHED"
+
+# Source order matters: detect → install → dry-run-output → optional-plugins
+# → tui (must precede bootstrap so its lazy-source guard sees tui_tty_read
+# defined) → bootstrap → state (must precede bridges so its write_state guard
+# sees the function defined) → detect2 (patched) → bridges.
 # shellcheck source=/dev/null
 source "$DETECT_TMP"
 # shellcheck source=/dev/null
@@ -274,25 +319,8 @@ source "$LIB_DRO_TMP"
 source "$LIB_OPTIONAL_PLUGINS_TMP"
 # shellcheck source=/dev/null
 source "$LIB_TUI_TMP"
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bootstrap.sh" -o "$LIB_BOOTSTRAP_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/bootstrap.sh — aborting"
-    exit 1
-fi
 # shellcheck source=/dev/null
 source "$LIB_BOOTSTRAP_TMP"
-
-# Source lib/state.sh BEFORE bridges.sh — bridges.sh:46-50 sources state.sh
-# from its own directory if write_state is undefined. Under curl|bash, libs
-# are downloaded one at a time into /tmp; if state.sh is not yet present
-# next to bridges.sh in /tmp, the source fails with "No such file". Pre-load
-# state.sh here so the bridges.sh guard (`command -v write_state`) is true
-# and the inner source is skipped. The original late download/source at
-# the top of main() is no longer needed.
-LIB_STATE_TMP=$(mktemp "${TMPDIR:-/tmp}/state-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_STATE_TMP")
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/state.sh" -o "$LIB_STATE_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/state.sh — aborting"
-    exit 1
-fi
 # shellcheck source=/dev/null
 source "$LIB_STATE_TMP"
 # state.sh defaults STATE_FILE/LOCK_DIR to $HOME — re-assert per-project so
@@ -301,37 +329,8 @@ source "$LIB_STATE_TMP"
 STATE_FILE="$CLAUDE_DIR/toolkit-install.json"
 # shellcheck disable=SC2034
 LOCK_DIR="$CLAUDE_DIR/.toolkit-install.lock"
-
-# B3: bridges.sh calls is_gemini_installed / is_codex_installed (defined in
-# detect2.sh) at lines 626-627 + 690-691. Without detect2.sh sourced first,
-# those functions return 127 (command not found) and the caller's `|| continue`
-# silently skips both bridges. Mirrors the state.sh pre-source fix from commit 18a7039.
-#
-# detect2.sh internally `source`s ../detect.sh via BASH_SOURCE[0]. When run
-# from /tmp that resolves to /detect.sh which does not exist — failing under
-# set -e. detect.sh is already loaded above (line 169) into the current shell,
-# so we strip the inner source line before sourcing the patched file.
-LIB_DETECT2_TMP=$(mktemp "${TMPDIR:-/tmp}/detect2-lib.XXXXXX");      CLEANUP_PATHS+=("$LIB_DETECT2_TMP")
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/detect2.sh" -o "$LIB_DETECT2_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/detect2.sh — aborting"
-    exit 1
-fi
-# Comment out the inner `source ../detect.sh` line — detect.sh is already
-# loaded in this shell so we skip the broken-from-/tmp re-source.
-LIB_DETECT2_PATCHED=$(mktemp "${TMPDIR:-/tmp}/detect2-lib-patched.XXXXXX"); CLEANUP_PATHS+=("$LIB_DETECT2_PATCHED")
-sed -E 's|^source "\$\(cd .*detect\.sh"|# skipped: detect.sh already loaded by init-claude.sh (was: &)|' \
-    "$LIB_DETECT2_TMP" > "$LIB_DETECT2_PATCHED"
 # shellcheck source=/dev/null
 source "$LIB_DETECT2_PATCHED"
-
-# Phase 30 BRIDGE-UX-02: download lib/bridges.sh so the post-install bridge prompts
-# fire after .claude/ is populated. Sourced eagerly here (alongside other libs) so
-# the bridge_install_prompts call inside main() does not need a second download.
-LIB_BRIDGES_TMP=$(mktemp "${TMPDIR:-/tmp}/bridges-lib.XXXXXX");        CLEANUP_PATHS+=("$LIB_BRIDGES_TMP")
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/scripts/lib/bridges.sh" -o "$LIB_BRIDGES_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download lib/bridges.sh — aborting"
-    exit 1
-fi
 # shellcheck source=/dev/null
 source "$LIB_BRIDGES_TMP"
 
@@ -349,12 +348,8 @@ fi
 
 # Manifest version guard (Phase 2 D-01 — hard-fail on schema mismatch). Uses manifest_version
 # field (RESEARCH.md Pitfall 8 — NOT .version which is the product version). The remote
-# manifest is fetched here only for the guard; full per-file iteration happens in Plan 03-02.
-MANIFEST_TMP=$(mktemp "${TMPDIR:-/tmp}/manifest.XXXXXX");             CLEANUP_PATHS+=("$MANIFEST_TMP")
-if ! curl -sSLf -A "$TK_USER_AGENT" "$REPO_URL/manifest.json" -o "$MANIFEST_TMP"; then
-    echo -e "${RED}✗${NC} Failed to download manifest.json — aborting"
-    exit 1
-fi
+# manifest was fetched up-front alongside the prerequisite libs (H-3 parallel
+# batch); MANIFEST_TMP is already populated and verified non-empty.
 MANIFEST_VER=$(jq -r '.manifest_version' "$MANIFEST_TMP" 2>/dev/null || echo "")
 if [[ "$MANIFEST_VER" != "2" ]]; then
     echo -e "${RED}✗${NC} manifest.json has manifest_version=${MANIFEST_VER:-unknown}; this installer expects v2"
@@ -720,14 +715,14 @@ download_files() {
     # B2: skills_marketplace entries are DIRECTORIES (each contains SKILL.md +
     # SKILL-LICENSE.md), not files — curl can't fetch a dir from raw.github.
     # Filtered out at the jq stage; install.sh --skills handles them via cp -R.
+    # Audit 2026-05-14 M-3: collapsed 4 jq forks per entry × ~125 entries
+    # (~500 forks) to a single outer @-joined-record jq filter. RS ()
+    # delimits columns because Bash `read` treats tab as whitespace IFS and
+    # collapses consecutive empty fields (see scripts/lib/mcp.sh H-2 note).
     local path bucket skip reason full_dest fw_url base_url
     INSTALLED_PATHS=()
     SKIPPED_PATHS=()
-    while IFS= read -r entry; do
-        bucket=$(jq -r '.bucket' <<< "$entry")
-        path=$(jq -r '.path' <<< "$entry")
-        skip=$(jq -r '.skip' <<< "$entry")
-        reason=$(jq -r '.reason' <<< "$entry")
+    while IFS=$'\036' read -r bucket path skip reason; do
         if [[ "$skip" == "true" ]]; then
             # Audit LOG-MED-2 (2026-04-30 deep): manifest paths already begin
             # with the bucket as their first segment (e.g. "agents/code-reviewer.md").
@@ -783,13 +778,15 @@ download_files() {
                 fi
                 ;;
         esac
-    done < <(jq -c --argjson skip "$SKIP_LIST_JSON" '
-        .files | to_entries[] |
-        .key as $b | .value[] |
-        select($b != "skills_marketplace") |
-        { bucket: $b, path: .path,
-          skip: ([.path] | inside($skip)),
-          reason: ((.conflicts_with // []) | join(",")) }
+    done < <(jq -r --argjson skip "$SKIP_LIST_JSON" '
+        .files | to_entries[]
+        | .key as $b | .value[]
+        | select($b != "skills_marketplace")
+        | [ $b,
+            .path,
+            (([.path] | inside($skip)) | tostring),
+            ((.conflicts_with // []) | join(",")) ]
+        | join("")
     ' "$MANIFEST_FILE")
 
     # Download framework-specific extras (CLAUDE.md, settings.json, cheatsheets, experts)
