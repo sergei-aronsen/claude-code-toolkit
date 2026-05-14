@@ -322,7 +322,7 @@ scenario_s10_backcompat() {
     echo "── S10: BACKCOMPAT-01 — Phase 24/26/28 tests still PASS ──"
     local out
     out=$(bash "$REPO_ROOT/scripts/tests/test-bootstrap.sh" 2>&1 || true)
-    assert_contains "PASS=26 FAIL=0" "$out" "S10a: test-bootstrap.sh PASS=26 FAIL=0 unchanged"
+    assert_contains "PASS=29 FAIL=0" "$out" "S10a: test-bootstrap.sh PASS=29 FAIL=0 unchanged (was 26 pre-v6.24.4 GSD-npm S6 trio)"
     out=$(bash "$REPO_ROOT/scripts/tests/test-install-tui.sh" 2>&1 || true)
     assert_contains "PASS=60 FAIL=0" "$out" "S10b: test-install-tui.sh PASS=60 FAIL=0 unchanged"
     out=$(bash "$REPO_ROOT/scripts/tests/test-bridges-foundation.sh" 2>&1 || true)

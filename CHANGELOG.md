@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.24.4] - 2026-05-14
+
+### Fixed — GSD bootstrap silently broken (legacy curl|bash URL 404s)
+
+`scripts/lib/bootstrap.sh` and `scripts/update-deps.sh` both fetched
+GSD via:
+
+```text
+bash <(curl -sSL https://raw.githubusercontent.com/gsd-build/get-shit-done/main/scripts/install.sh)
+```
+
+GSD has since migrated from a self-hosted `curl|bash` installer to
+the npm package `get-shit-done-cc`. The legacy URL now returns 404,
+so every `init-claude.sh` install attempt would emit "GSD installer
+download failed" (bootstrap.sh) or "probe_gsd: install failed"
+(update-deps.sh) — and the user got no GSD.
+
+Switched both call sites to npx-from-registry:
+
+```bash
+local pkg_version="${TK_GSD_NPM_VERSION:-1.41.2}"  # bootstrap default
+if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
+    return 1
+fi
+npx --yes "get-shit-done-cc@${pkg_version}"
+```
+
+Strictly safer than the previous curl|bash:
+
+- npm verifies the registry tarball integrity hash from
+  `package-lock`; the previous flow had no checksum and no signed
+  installer.
+- Pinned by semver tag, not `main` HEAD — a repo takeover would no
+  longer instantly serve hostile bytes to every installer.
+- Per-package allowlist on `TK_GSD_NPM_VERSION` rejects anything
+  outside semver / `latest` so a `$pkg_version` env injection can't
+  smuggle `--registry=evil.example.com` or shell metacharacters into
+  the npx argv.
+
+The previous integrity hook (`TK_GSD_PIN_SHA256` plus the manual
+sha256sum/shasum verifier) is removed: it was an optional gate that
+nobody could use anyway (no published hash, no signed binary), and
+npm's registry hash + lock-pinning subsumes it.
+
+bootstrap.sh: pinned default `1.41.2` (current GSD release).
+update-deps.sh: default `latest` because update-deps is explicitly
+an upgrade tool; the user's intent there is "give me whatever's
+newest". Both honour `TK_GSD_NPM_VERSION` env override.
+
+### Tests
+
+`scripts/tests/test-bootstrap.sh` (26 → 29 assertions): S6 asserts
+that bootstrap.sh no longer carries an active `raw.githubusercontent.com/gsd-build/get-shit-done…install.sh`
+URL outside comments, references the npm package
+`get-shit-done-cc`, and guards `TK_GSD_NPM_VERSION` with the
+semver/tag allowlist.
+
+`scripts/tests/test-update-deps-repomix.sh` (4 → 7 assertions): U5
+mirrors S6 for `scripts/update-deps.sh`.
+
 ## [6.24.3] - 2026-05-14
 
 ### Security — Council header-injection defense + API key argv leak + RTK rewrite re-verify + repomix supply-chain

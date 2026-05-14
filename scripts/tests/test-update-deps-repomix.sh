@@ -88,6 +88,34 @@ else
     assert_fail "U4: $missing target file(s) missing" "_sync_repomix_pin would no-op silently"
 fi
 
+# ─────────────────────────────────────────────────
+# U5 (v6.24.4) — probe_gsd MUST NOT call the legacy
+# raw.githubusercontent.com/gsd-build/get-shit-done curl|bash URL.
+# GSD migrated to the get-shit-done-cc npm package; the old URL 404s.
+# ─────────────────────────────────────────────────
+echo "-- U5_gsd_npm_migration: probe_gsd uses npx, not legacy curl|bash --"
+UPDATE_SRC="${REPO_ROOT}/scripts/update-deps.sh"
+if grep -vE '^[[:space:]]*#' "$UPDATE_SRC" \
+   | grep -qE 'raw\.githubusercontent\.com/gsd-build/get-shit-done'; then
+    assert_fail "U5: legacy gsd-build/get-shit-done URL still active in update-deps.sh" \
+        "GSD migrated to npm; probe_gsd should call 'npx get-shit-done-cc@<semver>'"
+else
+    assert_pass "U5: legacy gsd-build/get-shit-done URL not active in update-deps.sh"
+fi
+if grep -qE 'npx[[:space:]]+--yes[[:space:]]+"?get-shit-done-cc' "$UPDATE_SRC"; then
+    assert_pass "U5: update-deps.sh invokes get-shit-done-cc via npx"
+else
+    assert_fail "U5: update-deps.sh does not invoke npx get-shit-done-cc" \
+        "missing 'npx --yes get-shit-done-cc@<ver>' invocation"
+fi
+if grep -qE 'TK_GSD_NPM_VERSION' "$UPDATE_SRC" \
+   && grep -qE '"\$pkg_version"[[:space:]]+=~[[:space:]]+\^\(latest\|' "$UPDATE_SRC"; then
+    assert_pass "U5: TK_GSD_NPM_VERSION semver/tag allowlist guard present"
+else
+    assert_fail "U5: TK_GSD_NPM_VERSION semver/tag allowlist guard missing" \
+        "version must be validated before passing into 'npx <pkg>@<ver>'"
+fi
+
 echo ""
 echo "Result: PASS=$PASS FAIL=$FAIL"
 [ "$FAIL" -eq 0 ]
