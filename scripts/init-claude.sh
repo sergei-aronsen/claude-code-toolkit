@@ -14,10 +14,28 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # Config
-# Audit H5: TK_TOOLKIT_REF lets users pin to a tag/SHA instead of mutable
-# `main`. Default `main` keeps backwards-compat. Example:
-#   TK_TOOLKIT_REF=v4.8.0 bash <(curl -sSL .../init-claude.sh)
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-main}"
+# Audit H5 / REL-03 (2026-05-14): TK_TOOLKIT_REF pins downstream file
+# fetches to a tag (or commit SHA) instead of mutable `main`. Default is
+# the latest released tag — every release-PR bumps this in lockstep with
+# `manifest.json:.version` and `scripts/tests/test-toolkit-ref-pinned.sh`
+# enforces the match in CI (validate-templates job).
+#
+# Why pin by default: a release-PR that shipped a default `main` would
+# guarantee every fresh `curl|bash` install fetches a half-mixed file set
+# (some old, some new) the moment HEAD moves. Pinning to the release tag
+# makes every install reproducible against the exact commit the release
+# binaries were cut from.
+#
+# Override to ride live HEAD (development / unreleased commits):
+#   TK_TOOLKIT_REF=main bash <(curl -sSL .../init-claude.sh)
+# Override to install a historical tag:
+#   TK_TOOLKIT_REF=v6.24.1 bash <(curl -sSL .../init-claude.sh)
+#
+# When this file is itself fetched FROM a tag URL (e.g.
+# `raw.githubusercontent.com/.../v6.24.5/.../init-claude.sh`), leave
+# TK_TOOLKIT_REF unset and it inherits the bundled default below —
+# guaranteeing every file in the install comes from the same tag.
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.24.5}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.

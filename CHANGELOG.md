@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.24.5] - 2026-05-14
+
+### Changed — TK_TOOLKIT_REF default pinned to release tag + REL-03 CI gate
+
+`scripts/init-claude.sh` previously defaulted `TK_TOOLKIT_REF` to
+`main`. Every `curl|bash` install therefore fetched every downstream
+file from the live `main` HEAD — even when the user copied the
+install command from a release page seconds after a tag was cut, the
+ongoing development commits would slip in. Practical impact: an
+install run mid-PR-merge could fetch some files at the new commit and
+others at the previous commit, leaving the consumer's `.claude/` with
+a mix from two different toolkit versions.
+
+Switched the default to the current release tag (`v6.24.5`). When a
+user opts into bleeding-edge they pass `TK_TOOLKIT_REF=main`
+explicitly — same way they already pin to historical tags
+(`TK_TOOLKIT_REF=v6.24.1`). Every release-PR is now required to bump
+**both** `manifest.json:.version` and the bundled
+`TK_TOOLKIT_REF=${TK_TOOLKIT_REF:-vX.Y.Z}` default in `init-claude.sh`
+in lockstep.
+
+`scripts/tests/test-toolkit-ref-pinned.sh` (new — audit REL-03)
+enforces the contract:
+
+- Parses `TK_TOOLKIT_REF` default with the regex
+  `^TK_TOOLKIT_REF="\$\{TK_TOOLKIT_REF:-`.
+- Fails if the default literally equals `main` (release installs must
+  pin to a tag).
+- Fails if the default does not match `v<manifest.version>` exactly.
+- Prints a remediation hint naming both files that need to move
+  together.
+
+Wired into the `validate-templates` job in
+`.github/workflows/quality.yml` so a release-PR that forgets to bump
+one side cannot merge.
+
+### Migration notes
+
+- Authors of release-PRs: bump three places in one commit —
+  `manifest.json:.version`, `init-claude.sh:TK_TOOLKIT_REF` default,
+  `CHANGELOG.md` entry. The CI `validate` job already aligns
+  `manifest.version` and `CHANGELOG`; REL-03 adds `init-claude.sh`.
+- Users with `TK_TOOLKIT_REF=main` in their shell rc (intentional
+  bleeding-edge) keep their existing behaviour — the env override
+  still wins over the bundled default.
+
 ## [6.24.4] - 2026-05-14
 
 ### Fixed — GSD bootstrap silently broken (legacy curl|bash URL 404s)

@@ -142,6 +142,9 @@ jobs:
       - name: DESK-02/DESK-04 — Skills Desktop-safety audit (>= 4 PASS threshold)
         run: make validate-skills-desktop
 
+      - name: REL-03 — TK_TOOLKIT_REF default pinned to manifest.version
+        run: bash scripts/tests/test-toolkit-ref-pinned.sh
+
       - name: MKT-03 — marketplace structural smoke (skipped without TK_HAS_CLAUDE_CLI)
         run: make validate-marketplace
 
