@@ -4,7 +4,7 @@
 #
 # Runs the splice script TWICE on a scratch copy of templates/, asserts:
 #   1. Run 1 splices all 35 files (Processed line: "35 spliced, 0 already-spliced, 0 errors")
-#   2. Each spliced file carries exactly 5 v42-splice sentinels (v6.15.3 added rubric-anchors)
+#   2. Each spliced file carries exactly 6 v42-splice sentinels (v6.24.2 added fp-control-gates)
 #   3. Each spliced file carries the 4 grep-verifiable contract markers
 #   4. Run 2 produces zero diff (diff -r empty) and reports "0 spliced, 30 already-spliced"
 #
@@ -90,15 +90,15 @@ SLOT_FAIL=0
 while IFS= read -r f; do
     rel="${f#"$SCRATCH/"}"
 
-    # 3.1: exactly 5 v42-splice sentinels per file (v6.15.3: rubric-anchors added)
+    # 3.1: exactly 6 v42-splice sentinels per file (v6.24.2: fp-control-gates added)
     count=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
-    if [ "$count" != "5" ]; then
-        report_fail "sentinel count: expected 5, got $count in $rel"
+    if [ "$count" != "6" ]; then
+        report_fail "sentinel count: expected 6, got $count in $rel"
         SENTINEL_FAIL=$((SENTINEL_FAIL + 1))
     fi
 
     # 3.2: each named sentinel present exactly once
-    for name in callout rubric-anchors fp-recheck-section output-format-section council-handoff; do
+    for name in callout fp-control-gates rubric-anchors fp-recheck-section output-format-section council-handoff; do
         n=$(grep -cF "<!-- v42-splice: ${name} -->" "$f" 2>/dev/null || true)
         if [ "$n" != "1" ]; then
             report_fail "sentinel ${name}: expected 1, got $n in $rel"
@@ -133,7 +133,7 @@ done < <(find "$SCRATCH/templates" -path '*/prompts/*.md' \
 # (base) × 6 audit prompt types.
 
 if [ "$SENTINEL_FAIL" -eq 0 ]; then
-    report_pass "sentinel invariants: all 6 audit files carry exactly 5 named v42-splice sentinels (rubric-anchors added v6.15.3)"
+    report_pass "sentinel invariants: all 6 audit files carry exactly 6 named v42-splice sentinels (fp-control-gates added v6.24.2)"
 fi
 if [ "$MARKER_FAIL" -eq 0 ]; then
     report_pass "contract markers: all 6 audit files contain 'Council Handoff' + '1. **Read context**'"
@@ -186,10 +186,10 @@ PARTIAL_LOG="$SCRATCH/partial.log"
 if SPLICE_TEMPLATES_DIR="$SCRATCH/templates" bash "$SPLICE_SCRIPT" > "$PARTIAL_LOG" 2>&1; then
     report_fail "partial-splice: script should have exited 1 but exited 0"
 else
-    if grep -qF 'partial-splice (4/5 sentinels)' "$PARTIAL_LOG"; then
-        report_pass "partial-splice: script detects 4/5 sentinels and errors out"
+    if grep -qF 'partial-splice (5/6 sentinels)' "$PARTIAL_LOG"; then
+        report_pass "partial-splice: script detects 5/6 sentinels and errors out"
     else
-        report_fail "partial-splice: script errored but message did not include '4/5 sentinels'"
+        report_fail "partial-splice: script errored but message did not include '5/6 sentinels'"
         head -10 "$PARTIAL_LOG" || true
     fi
 fi

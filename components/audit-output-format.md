@@ -77,7 +77,7 @@ Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty secti
 
 ## Summary Section
 
-The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck`, with one row per severity (CRITICAL, HIGH, MEDIUM, LOW). The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations belong in the audit's scratchpad, never in `## Findings`. See the Full Report Skeleton below for the verbatim layout.
+The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck` and MUST contain exactly four rows in this order: CRITICAL, HIGH, MEDIUM, LOW. Render zeros (`0`) in any cell whose count is zero — do NOT omit rows for severities with no findings, and do NOT collapse `0`s to blank cells. The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations are NEVER emitted (neither in `## Findings` nor in `## Summary` nor anywhere else in the report). See the Full Report Skeleton below for the verbatim layout.
 
 ---
 
@@ -160,6 +160,16 @@ When the ±10 range is clipped by the start or end of the file, emit a `<!-- Ran
 
 The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest of function` cuts. Council reasons from the actual code, not a paraphrase.
 
+### No Literal Placeholders
+
+The skeleton uses square-bracketed placeholders such as `[fenced code block here — verbatim ±10 lines around src/users.ts:42, ts language fence]` and `[optional clamp note]` to DESCRIBE what to inject. These descriptions MUST NOT appear in the final report. When emitting an actual finding:
+
+- Replace `[fenced code block here — verbatim ±10 lines around <path>:<line>, <lang> language fence]` with the real fenced code block at the resolved path, line range, and language fence.
+- Replace `[fenced code block here — replacement using parameterized query]` (and similar `Suggested fix` placeholders) with the actual fenced replacement snippet.
+- Omit `[optional clamp note]` entirely when the ±10 window does not hit file bounds; emit the `<!-- Range clamped to file bounds (start-end) -->` line verbatim when it does.
+
+A report that ships literal `[fenced code block here ...]` text is malformed; Phase 15 will treat it as a broken finding.
+
 ---
 
 ## Skipped (allowlist) Section
@@ -221,7 +231,10 @@ council_pass: pending
 
 | severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck |
 |----------|----------------|-------------------------|--------------------------|
+| CRITICAL | 0 | 0 | 0 |
 | HIGH | 1 | 1 | 1 |
+| MEDIUM | 0 | 0 | 0 |
+| LOW | 0 | 0 | 0 |
 
 ## Findings
 

@@ -69,6 +69,17 @@ Never claim verification of build, tests, linting, type checking,
 migrations, or runtime behavior unless the relevant command was actually
 executed in the session.
 
+### Where Quick Check Appears in the Report
+
+Render the Quick Check table as the FIRST sub-block inside `## Summary`,
+above the severity table. Use an H3 (`### Quick Check`) to introduce it
+so the severity table immediately below remains the dominant Summary
+artifact. Omit the Quick Check sub-block entirely only when every row
+would be `Not applicable` (the diff is documentation-only or otherwise
+not runnable). Phase 15's parser anchors on `## Summary` and the
+severity-table column header, so the Quick Check H3 above the table does
+not affect parsing.
+
 ---
 
 ## SEVERITY AND CONFIDENCE
@@ -235,6 +246,75 @@ report length — either the finding is grounded or it isn't.
 
 ---
 
+## FALSE-POSITIVE CONTROL
+<!-- v42-splice: fp-control-gates -->
+
+Every candidate finding passes through three gates in this order. A
+finding that fails any gate is dropped (record the drop step and reason
+in `## Skipped (FP recheck)`); a finding that survives all three is
+promoted to `## Findings`.
+
+```text
+1. Adversarial self-review  → intent check  (per finding, mandatory for HIGH / CRITICAL)
+2. 6-step FP recheck        → procedure check  (per finding, every severity — see SELF-CHECK below)
+3. Calibration              → severity + confidence sanity, anti-padding (per report)
+```
+
+The order is fixed: adversarial review first (cheap, kills bad
+hypotheses), procedure recheck second (expensive, requires reading
+±20 lines and tracing data flow), calibration third (applies to the
+surviving set as a whole).
+
+### Gate 1 — Adversarial self-review (intent check)
+
+For every HIGH or CRITICAL finding, attempt to disprove it before
+reporting. Search explicitly for:
+
+- Upstream sanitization / validation that defangs the input
+- Framework guarantees that block the path (escaping, ORM bindings,
+  CSRF middleware, transaction isolation)
+- Impossible execution paths (dead code, environment-gated branches,
+  feature flags off in production, code never imported / called)
+- Privilege constraints that prevent the required actor class from
+  reaching the sink
+- Environmental limitations (the function exists but is never wired
+  into a route, command, scheduled job, or webhook)
+
+A finding survives Gate 1 only if the failure mode (security:
+exploitability; performance: realistic latency hit; code-review:
+reachable regression) remains plausible after adversarial review.
+Document in your scratchpad which counter-evidence you considered and
+why it failed.
+
+### Gate 2 — 6-step FP recheck (procedure check)
+
+The 6-step procedure is defined in `## SELF-CHECK` of the audit prompt
+(propagated from `components/audit-fp-recheck.md`). Each step has a
+fail-fast condition; drops are recorded in `## Skipped (FP recheck)`
+with the step number and a one-line reason citing concrete tokens from
+the source.
+
+### Gate 3 — Calibration (severity + confidence sanity, anti-padding)
+
+After Gates 1 and 2, apply these rules to the surviving set:
+
+- **Confidence calibration.** If the failure mode cannot be confirmed
+  from the embedded code, lower confidence (HIGH → MEDIUM → LOW) and
+  explicitly state the assumptions required in the finding's
+  description. Prefer omission over speculation.
+- **Severity calibration.** Re-rate severity using the actual realistic
+  scenario, not the rule label. Apply the Severity Ceiling Table from
+  `components/audit-severity-anchor.md`. For SECURITY: cross-multiply
+  with `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference the
+  latency / load thresholds in `## SEVERITY THRESHOLDS`. For
+  CODE_REVIEW: cross-reference `## SEVERITY AND CONFIDENCE`.
+- **No padding.** Five weak speculative MEDIUMs are worse than one
+  verified CRITICAL with a working failure scenario. If you cannot
+  describe a concrete failure path the user would care about, drop or
+  downgrade. Do NOT use weasel words (`could potentially`, `might
+  allow`, `in theory`) to inflate the report — either the finding is
+  grounded or it is not.
+
 <!-- v42-splice: rubric-anchors -->
 
 **Audit rubric anchors** (canonical sources of truth — do not redefine inline):
@@ -248,14 +328,14 @@ report length — either the finding is grounded or it isn't.
 
 ### Procedure
 
-For every candidate finding, execute these six steps in order. Produce a `## SELF-CHECK` block per finding (in your scratchpad — not the final report) before deciding whether to report or drop it. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
+For every candidate finding, execute these six steps in order BEFORE deciding whether to report or drop it. The step-by-step reasoning is an internal trace — perform it mentally per finding and do NOT emit the trace itself into the report. The only artifacts the report contains are: (a) `## Skipped (FP recheck)` rows for drops, with `dropped_at_step` and a one-line reason; and (b) `## Findings` entries for survivors. Each step has a fail-fast condition: if the finding fails any step, drop it and record the reason in `## Skipped (FP recheck)` (see schema below). Do not skip steps. Do not reorder.
 
 1. **Read context** — Open the source file at `<path>:<line>` and load ±20 lines around the flagged line. Read the full surrounding function or block; do not reason from the rule label alone.
-2. **Trace data flow** — Follow user input from its origin to the flagged sink. Name each hop (≤ 6 hops). If input never reaches the sink, the finding is a false positive — drop with `dropped_at_step: 2`.
-3. **Check execution context** — Identify whether the code runs in test / production / background worker / service worker / build script / CI. Patterns that look exploitable in production may be required by the platform in another context (e.g. `eval` inside a build-time codegen script).
-4. **Cross-reference exceptions** — Re-read `.claude/rules/audit-exceptions.md`. Look for entries on the same file or neighbouring lines that change the threat surface (e.g. an upstream sanitizer documented in another exception). Match key is byte-exact: same path, same line, same rule, same U+2014 em-dash separator.
-5. **Apply platform-constraint rule** — If the pattern is required by the platform (MV3 service-worker MUST NOT use dynamic `importScripts`, OAuth `client_id` MUST be in `manifest.json`, CSP requires inline-style hashes, etc.), the finding is a design trade-off, not a vulnerability. Drop with the constraint named in the reason.
-6. **Severity sanity check** — Re-rate severity using the actual exploit scenario, not the rule label. A theoretical XSS sink behind 3 unlikely preconditions and no PII is not CRITICAL. If you cannot describe a concrete attack path the user would care about, drop or downgrade.
+2. **Trace data flow** — Follow input from its origin to the flagged sink. Name each hop (≤ 6 hops). If input never reaches the sink, the finding is a false positive — drop with `dropped_at_step: 2`.
+3. **Check execution context** — Identify whether the code runs in test / production / background worker / service worker / build script / CI. Patterns that look problematic in production may be required by the platform in another context (e.g. `eval` inside a build-time codegen script; an `if (!isPaid)` inverted-flag guard inside a unit-test mock).
+4. **Cross-reference exceptions** — Re-read `.claude/rules/audit-exceptions.md`. Look for entries on the same file or neighbouring lines that change the failure surface (e.g. an upstream sanitizer or invariant documented in another exception). Match key is byte-exact: same path, same line, same rule, same U+2014 em-dash separator.
+5. **Apply platform-constraint rule** — If the pattern is required by the platform or framework (MV3 service-worker MUST NOT use dynamic `importScripts`, OAuth `client_id` MUST be in `manifest.json`, CSP requires inline-style hashes, a transactional boundary the ORM enforces, etc.), the finding is a design trade-off, not a defect. Drop with the constraint named in the reason.
+6. **Severity sanity check** — Re-rate severity using the actual failure scenario, not the rule label. A theoretical sink behind 3 unlikely preconditions and no realistic blast radius is not CRITICAL. If you cannot describe a concrete failure path that a user or the business would care about, drop or downgrade.
 
 If a finding survives all six steps, it proceeds to `## Findings` in the structured report.
 
@@ -268,7 +348,7 @@ Findings dropped at any step are listed in the report's `## Skipped (FP recheck)
 | path:line | rule | dropped_at_step | one_line_reason |
 |-----------|------|-----------------|-----------------|
 | `src/auth.ts:42` | `SEC-XSS` | 2 | `value flows through escapeHtml() at line 38 before reaching innerHTML` |
-| `lib/utils.py:5` | `SEC-EVAL` | 5 | `eval is required by build-time codegen; never reached at runtime` |
+| `src/orders.ts:88` | `LOG-INVERTED-COND` | 3 | `!isPaid guard runs inside the test-only mock at fixtures/orders.mock.ts:14; production path uses isPaid` |
 
 `dropped_at_step` MUST be an integer in the range 1-6 matching the step where the finding was dropped.
 
@@ -285,9 +365,10 @@ Promote it to `## Findings` using the entry schema documented in `components/aud
 These behaviors break the recheck and MUST NOT appear in any audit report:
 
 - Dropping a finding without recording the step number and reason — every drop is auditable.
-- Reasoning from the rule label instead of the code — the recheck exists because rule names are pattern-matched, not exploit-verified.
+- Reasoning from the rule label instead of the code — the recheck exists because rule names are pattern-matched, not failure-verified.
 - Reusing a generic `one_line_reason` across multiple findings — every reason MUST cite tokens from the specific code block.
-- Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op (record `cross-ref skipped: no allowlist file present`) but the step itself MUST be acknowledged in the SELF-CHECK trace.
+- Emitting the internal recheck trace into the report (a `## SELF-CHECK` block per finding inside `## Findings`, a "step 1: …, step 2: …" walkthrough next to each finding, etc.) — the recheck is internal-only. Report ONLY the outcome: a row in `## Skipped (FP recheck)` if dropped, an entry in `## Findings` if survived.
+- Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op internally (a `cross-ref skipped: no allowlist file present` acknowledgement) but the step itself MUST be performed.
 
 ## OUTPUT FORMAT (Structured Report Schema — Phase 14)
 <!-- v42-splice: output-format-section -->
@@ -365,7 +446,7 @@ Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty secti
 
 ### Summary Section
 
-The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck`, with one row per severity (CRITICAL, HIGH, MEDIUM, LOW). The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations belong in the audit's scratchpad, never in `## Findings`. See the Full Report Skeleton below for the verbatim layout.
+The Summary table has columns `severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck` and MUST contain exactly four rows in this order: CRITICAL, HIGH, MEDIUM, LOW. Render zeros (`0`) in any cell whose count is zero — do NOT omit rows for severities with no findings, and do NOT collapse `0`s to blank cells. The rubric is in `components/severity-levels.md` — do not redefine. INFO is NOT a reportable finding severity; informational observations are NEVER emitted (neither in `## Findings` nor in `## Summary` nor anywhere else in the report). See the Full Report Skeleton below for the verbatim layout.
 
 ---
 
@@ -448,6 +529,16 @@ When the ±10 range is clipped by the start or end of the file, emit a `<!-- Ran
 
 The code block MUST be verbatim — no ellipses, no redaction, no `// ... rest of function` cuts. Council reasons from the actual code, not a paraphrase.
 
+#### No Literal Placeholders
+
+The skeleton uses square-bracketed placeholders such as `[fenced code block here — verbatim ±10 lines around src/users.ts:42, ts language fence]` and `[optional clamp note]` to DESCRIBE what to inject. These descriptions MUST NOT appear in the final report. When emitting an actual finding:
+
+- Replace `[fenced code block here — verbatim ±10 lines around <path>:<line>, <lang> language fence]` with the real fenced code block at the resolved path, line range, and language fence.
+- Replace `[fenced code block here — replacement using parameterized query]` (and similar `Suggested fix` placeholders) with the actual fenced replacement snippet.
+- Omit `[optional clamp note]` entirely when the ±10 window does not hit file bounds; emit the `<!-- Range clamped to file bounds (start-end) -->` line verbatim when it does.
+
+A report that ships literal `[fenced code block here ...]` text is malformed; Phase 15 will treat it as a broken finding.
+
 ---
 
 ### Skipped (allowlist) Section
@@ -509,7 +600,10 @@ council_pass: pending
 
 | severity | count_reported | count_skipped_allowlist | count_skipped_fp_recheck |
 |----------|----------------|-------------------------|--------------------------|
+| CRITICAL | 0 | 0 | 0 |
 | HIGH | 1 | 1 | 1 |
+| MEDIUM | 0 | 0 | 0 |
+| LOW | 0 | 0 | 0 |
 
 ## Findings
 
