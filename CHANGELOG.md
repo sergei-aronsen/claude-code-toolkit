@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `scripts/lib/skills.sh:is_skill_installed` — `.agents/` fallback path
+  corrected from `$HOME/.agents/` to `$HOME/.agents/skills/`. The
+  upstream `impeccable` CLI writes per-skill entries under a `skills/`
+  subdirectory of `~/.agents/` (alongside `.skill-lock.json`), so the
+  old default never matched the real layout. User report 2026-05-14:
+  install-time `npx impeccable` bailed `Impeccable skills are already
+  installed (found in .agents/)` (CLI saw `~/.agents/skills/i-impeccable/`)
+  yet every subsequent install run still offered impeccable as
+  uninstalled because the toolkit probe checked the wrong directory.
+  Added `S9d` (default-resolution positive) and `S9e` (negative: legacy
+  `~/.agents/impeccable/` without `skills/` level must not false-positive)
+  regression tests. Hardened test isolation across S2/S3/S4/S5/S6/S7/S8
+  by passing `TK_AGENTS_HOME=$SANDBOX/no-agents` so the new default does
+  not leak host `~/.agents/skills/` state into hermetic suites.
+
 ## [6.25.0] - 2026-05-14
 
 ### Fixed — Audit sweep 2026-05-14 (3 HIGH + 6 MEDIUM + 2 LOW)

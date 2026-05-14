@@ -88,7 +88,7 @@ run_s2_detection_two_state() {
     touch "$SKILLS_HOME/ai-models/SKILL.md"
 
     local rc=0
-    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$SANDBOX/no-agents" bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
         is_skill_installed ai-models
         exit \$?
@@ -96,7 +96,7 @@ run_s2_detection_two_state() {
     assert_eq "0" "$rc" "S2: is_skill_installed ai-models returns 0 when dir exists"
 
     rc=0
-    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$SANDBOX/no-agents" bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
         is_skill_installed pdf
         exit \$?
@@ -139,6 +139,36 @@ run_s2_detection_two_state() {
         exit \$?
     " 2>/dev/null || rc=$?
     assert_eq "1" "$rc" "S9c: is_skill_installed impeccable still returns 1 when .agents/ exists but empty"
+
+    # S9d (v6.25.1) — default-resolution regression: with no TK_AGENTS_HOME
+    # override the probe must walk ~/.agents/skills/ (NOT ~/.agents/). User
+    # report 2026-05-14: probe defaulted to $HOME/.agents and missed entries
+    # under $HOME/.agents/skills/i-impeccable/ (upstream impeccable layout),
+    # so the TUI showed impeccable as not-installed on every subsequent run
+    # even though the upstream CLI had already written the skill.
+    local FAKE_HOME="$SANDBOX/fake-home"
+    mkdir -p "$FAKE_HOME/.agents/skills/i-impeccable"
+    rc=0
+    HOME="$FAKE_HOME" TK_SKILLS_HOME="$SKILLS_HOME" \
+        env -u TK_AGENTS_HOME bash -c "
+            source '${REPO_ROOT}/scripts/lib/skills.sh'
+            is_skill_installed impeccable
+            exit \$?
+        " 2>/dev/null || rc=$?
+    assert_eq "0" "$rc" "S9d: is_skill_installed impeccable resolves default \$HOME/.agents/skills/i-impeccable/"
+
+    # S9e — default-resolution negative: $HOME/.agents exists but no
+    # skills/ subdirectory → probe must NOT false-positive.
+    local FAKE_HOME_NOSKILLS="$SANDBOX/fake-home-noskills"
+    mkdir -p "$FAKE_HOME_NOSKILLS/.agents/impeccable"
+    rc=0
+    HOME="$FAKE_HOME_NOSKILLS" TK_SKILLS_HOME="$SKILLS_HOME" \
+        env -u TK_AGENTS_HOME bash -c "
+            source '${REPO_ROOT}/scripts/lib/skills.sh'
+            is_skill_installed impeccable
+            exit \$?
+        " 2>/dev/null || rc=$?
+    assert_eq "1" "$rc" "S9e: is_skill_installed impeccable returns 1 when only legacy \$HOME/.agents/impeccable/ exists (no skills/ level)"
 }
 
 # ─────────────────────────────────────────────────
@@ -156,6 +186,7 @@ run_s3_skills_install_basic() {
 
     local rc=0
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
@@ -192,6 +223,7 @@ run_s4_idempotency_no_force() {
 
     # First install
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "source '${REPO_ROOT}/scripts/lib/skills.sh'; skills_install pdf" >/dev/null 2>&1
 
@@ -200,6 +232,7 @@ run_s4_idempotency_no_force() {
 
     local rc=0
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
@@ -230,6 +263,7 @@ run_s5_force_overwrite() {
     mkdir -p "$SKILLS_HOME"
 
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "source '${REPO_ROOT}/scripts/lib/skills.sh'; skills_install tailwind-design-system" >/dev/null 2>&1
 
@@ -237,6 +271,7 @@ run_s5_force_overwrite() {
 
     local rc=0
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
@@ -269,6 +304,7 @@ run_s6_install_sh_dry_run() {
     local output rc=0
     output="$(
         TK_SKILLS_HOME="$SKILLS_HOME" \
+        TK_AGENTS_HOME="$SANDBOX/no-agents" \
         TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
         TK_TUI_TTY_SRC="$SANDBOX/no-tty-device" \
         bash "${REPO_ROOT}/scripts/install.sh" --skills --yes --dry-run 2>&1
@@ -305,7 +341,7 @@ run_s7_detection_marketplace_prefix() {
     touch "$SKILLS_HOME/p-pdf/SKILL.md"
 
     local rc=0
-    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$SANDBOX/no-agents" bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
         is_skill_installed ai-models
         exit \$?
@@ -313,7 +349,7 @@ run_s7_detection_marketplace_prefix() {
     assert_eq "0" "$rc" "S7: is_skill_installed ai-models returns 0 when i-ai-models/ exists"
 
     rc=0
-    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$SANDBOX/no-agents" bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
         is_skill_installed pdf
         exit \$?
@@ -322,7 +358,7 @@ run_s7_detection_marketplace_prefix() {
 
     # Negative: skill absent under any layout.
     rc=0
-    TK_SKILLS_HOME="$SKILLS_HOME" bash -c "
+    TK_SKILLS_HOME="$SKILLS_HOME" TK_AGENTS_HOME="$SANDBOX/no-agents" bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
         is_skill_installed copywriting
         exit \$?
@@ -349,6 +385,7 @@ run_s8_install_refuses_marketplace() {
     # No --force.
     local rc=0
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
@@ -360,6 +397,7 @@ run_s8_install_refuses_marketplace() {
     # --force MUST also refuse (toolkit doesn't own marketplace dirs).
     rc=0
     TK_SKILLS_HOME="$SKILLS_HOME" \
+    TK_AGENTS_HOME="$SANDBOX/no-agents" \
     TK_SKILLS_MIRROR_PATH="${REPO_ROOT}/templates/skills-marketplace" \
     bash -c "
         source '${REPO_ROOT}/scripts/lib/skills.sh'
