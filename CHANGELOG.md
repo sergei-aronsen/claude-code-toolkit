@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Prompt Engineer multi-provider support + timeline logging
+
+`scripts/prompt-engineer/optimize_prompt.py` is no longer Codex-only.
+A new `--provider {claude,codex,gemini,all,ask}` flag selects which
+CLI drives the optimizer; default `ask` shows an interactive menu on
+TTY and falls back to `claude` when stdin is not a TTY (CI / pipes).
+
+- `claude` → `claude -p` (stdin) — Claude Code itself as a subprocess
+- `codex` → existing `codex exec` path
+- `gemini` → `gemini -p ""` (stdin)
+- `all` → fan-out to every available provider in parallel via
+  `concurrent.futures.ThreadPoolExecutor`, then synthesize a best-of
+  final via one extra call. Synthesizer preference: claude > codex >
+  gemini. Per-provider artifacts
+  (`01-{claude,codex,gemini}.md/.txt/.log`) preserved alongside
+  `02-synthesis-prompt.txt` (the deliverable).
+- `--multi-pass` (3-stage pipeline) stays single-provider only;
+  rejected with `--provider all`.
+
+New `--log` flag writes a single human-readable timeline file at
+`logs/prompt-engineer-<timestamp>.log` showing every stage with
+timestamps, elapsed time, the rendered system prompt that was sent to
+the provider, the raw response, durations, and stage decisions.
+`--log-file PATH` and `--log-dir DIR` override the default path.
+Audit how an optimization run unfolds without grep-ing the per-stage
+raw `codex exec` / `claude -p` logs.
+
+`scripts/setup-prompt-engineer.sh` and the `setup_prompt_engineer`
+block in `scripts/init-claude.sh` now check for all three provider
+CLIs and require at least one (vs. previously requiring codex
+specifically). Missing providers warn but do not block install.
+
+`commands/prompt-engineer.md` rewritten to surface `--provider`,
+`all`-mode flow diagram, per-mode artifact tables, and provider-
+specific install hints.
+
+`.gitignore` adds explicit `logs/` (the existing `*.log` rule already
+covered the files; the directory line is for clarity).
+
 ## [6.24.5] - 2026-05-14
 
 ### Changed — TK_TOOLKIT_REF default pinned to release tag + REL-03 CI gate

@@ -41,3 +41,6 @@ _external/
 .planning/codebase/
 .planning/audits/
 output/
+
+# Prompt Engineer timeline logs (`pe --log` writes to ./logs/)
+logs/

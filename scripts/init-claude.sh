@@ -1019,10 +1019,11 @@ setup_cost_routing() {
     fi
 }
 
-# Setup Prompt Engineer (integrated). Single-prompt optimizer over Codex CLI.
+# Setup Prompt Engineer (integrated). Multi-provider single-prompt optimizer.
 # Non-interactive — just downloads optimize_prompt.py + README + slash command
-# and writes a `pe` shell alias. Codex CLI is recommended (not enforced) since
-# the same dependency is surfaced by setup_council above.
+# and writes a `pe` shell alias. At least one of claude / codex / gemini CLIs
+# is required at runtime; install warns about each missing provider but only
+# fails if none are present (claude is the default and most users have it).
 setup_prompt_engineer() {
     local pe_dir="$HOME/.claude/prompt-engineer"
     local commands_dir="$HOME/.claude/commands"
@@ -1030,7 +1031,7 @@ setup_prompt_engineer() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║   Prompt Engineer Setup                    ║${NC}"
-    echo -e "${CYAN}║   Single-Prompt Optimizer (Codex CLI)      ║${NC}"
+    echo -e "${CYAN}║   Multi-provider (Claude/Codex/Gemini)     ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
     echo ""
 
@@ -1097,9 +1098,25 @@ setup_prompt_engineer() {
         echo -e "  ${GREEN}✓${NC} 'pe' alias already present in $shell_rc"
     fi
 
-    if ! command -v codex &>/dev/null; then
-        echo -e "  ${YELLOW}⚠${NC} Codex CLI not found — required to run /prompt-engineer"
-        echo -e "      Install: ${YELLOW}npm install -g @openai/codex${NC} then sign in with OpenAI"
+    # Provider CLIs — at least one is required at runtime
+    local pe_providers_found=0
+    for cli in claude codex gemini; do
+        if command -v "$cli" &>/dev/null; then
+            pe_providers_found=$((pe_providers_found + 1))
+        fi
+    done
+    if [[ "$pe_providers_found" -eq 0 ]]; then
+        echo -e "  ${YELLOW}⚠${NC} No provider CLI found (claude/codex/gemini)"
+        echo -e "      /prompt-engineer needs at least one of:"
+        echo -e "      - claude (Claude Code itself; default provider)"
+        echo -e "      - codex: ${YELLOW}npm install -g @openai/codex${NC}"
+        echo -e "      - gemini: ${YELLOW}npm install -g @google/gemini-cli${NC}"
+    else
+        echo -e "  ${GREEN}✓${NC} $pe_providers_found provider CLI(s) available"
+        for cli in claude codex gemini; do
+            command -v "$cli" &>/dev/null || \
+                echo -e "      (optional: $cli CLI not installed)"
+        done
     fi
 }
 

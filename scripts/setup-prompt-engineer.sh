@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Prompt Engineer Setup Script
-# Installs the single-prompt optimizer (Codex CLI / ChatGPT)
+# Installs the single-prompt optimizer.
+# Drives Claude Code / Codex / Gemini CLIs via --provider.
 #
 # Usage:
 #   bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/setup-prompt-engineer.sh)
@@ -31,7 +32,7 @@ PE_DIR="$CLAUDE_DIR/prompt-engineer"
 
 echo -e "${CYAN}╔═══════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║     Prompt Engineer Setup                     ║${NC}"
-echo -e "${CYAN}║     Single-Prompt Optimizer (Codex CLI)       ║${NC}"
+echo -e "${CYAN}║     Multi-provider (Claude / Codex / Gemini)  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -65,15 +66,37 @@ if ! command -v curl &>/dev/null; then
 fi
 echo -e "  ${GREEN}✓${NC} curl"
 
-# Codex CLI — required runtime dependency
-if ! command -v codex &>/dev/null; then
-    echo -e "  ${YELLOW}⚠${NC} Codex CLI not found"
-    echo -e "      Install: npm install -g @openai/codex"
-    echo -e "      Then sign in with your OpenAI account"
-    echo -e "      Prompt Engineer cannot run until codex is on PATH"
-else
-    echo -e "  ${GREEN}✓${NC} Codex CLI found"
+# Provider CLIs — at least one is required at runtime
+PROVIDERS_FOUND=0
+for cli in claude codex gemini; do
+    if command -v "$cli" &>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} $cli CLI found"
+        PROVIDERS_FOUND=$((PROVIDERS_FOUND + 1))
+    else
+        case "$cli" in
+            claude)
+                echo -e "  ${YELLOW}⚠${NC} claude CLI not found (Claude Code itself)"
+                echo -e "      Install: see https://docs.anthropic.com/en/docs/claude-code"
+                ;;
+            codex)
+                echo -e "  ${YELLOW}⚠${NC} codex CLI not found (optional)"
+                echo -e "      Install: npm install -g @openai/codex"
+                ;;
+            gemini)
+                echo -e "  ${YELLOW}⚠${NC} gemini CLI not found (optional)"
+                echo -e "      Install: npm install -g @google/gemini-cli"
+                ;;
+        esac
+    fi
+done
+
+if [[ "$PROVIDERS_FOUND" -eq 0 ]]; then
+    echo -e "  ${RED}✗${NC} No provider CLI found on PATH"
+    echo -e "      Prompt Engineer cannot run until at least one of"
+    echo -e "      claude / codex / gemini is installed."
+    exit 1
 fi
+echo -e "  ${GREEN}✓${NC} $PROVIDERS_FOUND provider CLI(s) available"
 
 echo ""
 
@@ -154,9 +177,11 @@ echo -e "${GREEN}║     Installation complete                     ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "Try it (after reloading your shell):"
-echo -e "  ${CYAN}pe path/to/prompt.md${NC}"
+echo -e "  ${CYAN}pe path/to/prompt.md${NC}                          # interactive menu"
+echo -e "  ${CYAN}pe path/to/prompt.md --provider claude${NC}         # explicit"
+echo -e "  ${CYAN}pe path/to/prompt.md --provider all --log${NC}      # fan-out + timeline"
+echo -e "  ${CYAN}pe path/to/prompt.md --multi-pass${NC}              # 3-stage pipeline"
 echo -e "  ${CYAN}echo \"Rewrite as a tone-control prompt\" | pe -${NC}"
-echo -e "  ${CYAN}pe path/to/prompt.md --multi-pass${NC}"
 echo ""
 echo -e "Docs: ${CYAN}$PE_DIR/README.md${NC}"
 echo -e "Slash command (Claude Code): ${CYAN}/prompt-engineer <path>${NC}"
