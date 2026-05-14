@@ -141,6 +141,26 @@ for _sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         pass
 
 
+def _assert_header_safe(value, name):
+    """Defense in depth — reject CR/LF/NUL inside a value that flows into a
+    `-H @file` header (Gemini/OpenAI/OpenRouter). A newline in the API key
+    would inject an additional header into the curl request (e.g., user
+    accidentally pastes `key\\nX-Forwarded-For: 1.1.1.1` from a multi-line
+    snippet). Raises ValueError so the request is never sent.
+
+    Called before building the header tempfile in ask_gemini_api,
+    ask_openrouter, and ask_chatgpt.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"{name} must be a string, got {type(value).__name__}")
+    for ch in ("\n", "\r", "\x00"):
+        if ch in value:
+            raise ValueError(
+                f"{name} contains CR/LF/NUL — refusing to build HTTP headers "
+                f"(would leak via header injection)"
+            )
+
+
 def _write_secure_tempfile(content, prefix):
     """Create a 0600 tempfile atomically and write `content` to it.
 
@@ -1801,6 +1821,10 @@ def ask_gemini_api(prompt, model, api_key, config=None):
     """Query Gemini via REST API using curl."""
     if not api_key:
         return "Error: Gemini API key not set (check config or GEMINI_API_KEY env)"
+    try:
+        _assert_header_safe(api_key, "gemini api_key")
+    except ValueError as exc:
+        return f"Error: {exc}"
 
     # Audit BRAIN-H4 (Gemini parity, 2026-04-28): write the API key to a 0600
     # tempfile and pass via `-H @file` so it never appears in `ps aux` /
@@ -1979,6 +2003,10 @@ def ask_openrouter(prompt, api_key, models, system_prompt=None):
 
     if not api_key:
         return "Error: OpenRouter API key not set (check config.fallback.openrouter.api_key)"
+    try:
+        _assert_header_safe(api_key, "openrouter api_key")
+    except ValueError as exc:
+        return f"Error: {exc}"
 
     last_error = "Error: OpenRouter chain exhausted (no models configured)"
     for model in models or []:
@@ -2098,6 +2126,10 @@ def ask_chatgpt(prompt, config, system_prompt=None):
 
     if not api_key:
         return "Error: OpenAI API key not set (check config or OPENAI_API_KEY env)"
+    try:
+        _assert_header_safe(api_key, "openai api_key")
+    except ValueError as exc:
+        return f"Error: {exc}"
 
     payload = {
         "model": model,

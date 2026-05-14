@@ -23,10 +23,13 @@ The dict returned by build_pack_block contains:
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -214,18 +217,54 @@ def _budget(env: dict | None = None) -> int:
     return BUDGET_SOFT_DEFAULT
 
 
+_REMOTE_URL_ALLOWED_SCHEMES = ("https", "http")
+
+
 def _validate_remote_url(url: str) -> tuple[bool, str]:
-    """Reject URLs with embedded credentials (user:pass@host pattern)."""
+    """Gate the value passed to `repomix --remote VAL`.
+
+    repomix forwards the value to `git clone`, which interprets any string
+    starting with `-` as a flag (e.g., `--upload-pack=/bin/sh -c …`, a known
+    RCE class). It also accepts non-HTTP schemes (ssh://, git+ssh://, file://)
+    that we don't want to use as LLM input. This validator enforces:
+
+      * non-empty
+      * no leading `-` (defeats argv injection into git clone)
+      * scheme ∈ {http, https} via urlparse
+      * no embedded credentials (`user:pass@host`)
+      * hostname is not localhost / private / link-local (defense in depth
+        against accidental SSRF when running in a CI-like context)
+    """
     if not url:
         return False, "empty remote URL"
-    if "@" in url and "://" in url:
-        # Strip scheme then inspect netloc
-        try:
-            netloc = url.split("://", 1)[1].split("/", 1)[0]
-        except IndexError:
-            return False, "malformed URL"
-        if "@" in netloc:
-            return False, "URL contains embedded credentials — refuse to log"
+    if url.startswith("-"):
+        return False, "URL must not start with '-' (argv injection)"
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except ValueError:
+        return False, "malformed URL"
+    if parsed.scheme not in _REMOTE_URL_ALLOWED_SCHEMES:
+        return False, f"scheme '{parsed.scheme}' not allowed (use https/http)"
+    if "@" in (parsed.netloc or ""):
+        return False, "URL contains embedded credentials — refuse to log"
+    hostname = parsed.hostname or ""
+    if not hostname:
+        return False, "missing hostname"
+    lowered = hostname.lower()
+    if lowered in {"localhost", "0.0.0.0", "broadcasthost"}:
+        return False, "localhost / broadcast addresses not allowed"
+    # Reject literal private / link-local / loopback IPs. Hostnames that
+    # resolve to such IPs are out of scope (repomix may itself follow a DNS
+    # lookup; we don't pre-resolve to avoid TOCTOU surprises).
+    try:
+        ip = ipaddress.ip_address(lowered)
+    except ValueError:
+        ip = None
+    if ip is not None and (
+        ip.is_private or ip.is_loopback or ip.is_link_local
+        or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+    ):
+        return False, f"IP {lowered} is not a public address"
     return True, ""
 
 
@@ -235,7 +274,18 @@ def _generate_one_shot(
     remote_url: str | None,
     extra_ignore: str | None,
 ) -> tuple[bool, str]:
-    """Run a single repomix invocation; write stdout to output_path."""
+    """Run a single repomix invocation; write stdout to output_path.
+
+    Audit 2026-05-13 (supply-chain): when packing a local repo we used to set
+    `cwd=repo_root`, which makes `npx` prefer a `node_modules/.bin/repomix`
+    inside that repo over the pinned npm-registry build. A hostile project
+    can ship that binary in its tree and hijack every Council invocation.
+    To neutralize this, we now invoke `npx` from a directory that does NOT
+    contain a node_modules tree (the system temp dir) and pass the repo path
+    to repomix as a positional argument. If the repo carries its own
+    `repomix.config.json`, we forward it explicitly via `--config` so
+    config discovery still works.
+    """
     argv = [
         "--stdout",
         "--compress",
@@ -247,8 +297,26 @@ def _generate_one_shot(
     if extra_ignore:
         argv += ["--ignore", extra_ignore]
 
-    cwd = None if remote_url else repo_root
-    ok, stdout, stderr = _run_repomix(argv, cwd=cwd)
+    # Per-call isolated tmpdir as cwd. This is the load-bearing defense:
+    # `npx` resolves binaries from `<cwd>/node_modules/.bin/` first, so any
+    # cwd that contains a hostile `node_modules/.bin/repomix` (planted in the
+    # repo we are packing, or in `/tmp/node_modules/.bin/` by a same-UID
+    # attacker) would hijack the call. A freshly-minted tmpdir has no
+    # node_modules, forcing npx to fetch the pinned registry version.
+    sandbox = tempfile.mkdtemp(prefix="council-repomix-")
+    try:
+        if not remote_url:
+            # Local mode: pass repo_root positionally so repomix knows what
+            # to pack. Forward repomix.config.json explicitly because config
+            # discovery starts from cwd (now sandbox) and would otherwise
+            # miss the repo's own config.
+            argv.append(str(repo_root))
+            cfg = repo_root / "repomix.config.json"
+            if cfg.is_file():
+                argv += ["--config", str(cfg)]
+        ok, stdout, stderr = _run_repomix(argv, cwd=Path(sandbox))
+    finally:
+        shutil.rmtree(sandbox, ignore_errors=True)
     if not ok:
         return False, stderr or "repomix invocation failed"
     if not stdout.strip():

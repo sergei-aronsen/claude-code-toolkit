@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.24.3] - 2026-05-14
+
+### Security — Council header-injection defense + API key argv leak + RTK rewrite re-verify + repomix supply-chain
+
+Four defense-in-depth tightenings on the install / Council code path.
+No exploit observed; all are pre-emptive closures against same-host
+attackers or hostile repos that the toolkit already touches at
+install time.
+
+**Council HTTP header injection (`scripts/council/{brain,mcp-server,pack}.py`)**
+
+`ask_gemini_api` / `ask_openrouter` / `ask_chatgpt` build a 0600
+tempfile and pass it to `curl -H @file` so the API key never appears
+in `ps aux` (audit BRAIN-H4, 2026-04-28). If the key value carries
+`\n`, `\r`, or `\x00` — for instance a user pasted a multi-line snippet
+into the config wizard — those bytes are reinterpreted by curl as
+"start of a new header line", injecting an arbitrary HTTP header into
+the outbound request (classic CRLF injection class, e.g. silently
+appending `X-Forwarded-For: 1.1.1.1`).
+
+Added `_assert_header_safe(value, name)` which rejects CR/LF/NUL
+inside any value that flows into `-H @file`. Called from every header-
+building site in the three Council scripts. Bad value → `ValueError`
+surfaced as `Error: <name> contains CR/LF/NUL …` and the request is
+never sent.
+
+**API keys leaking via /proc/<pid>/cmdline (`scripts/init-claude.sh`, `scripts/setup-council.sh`)**
+
+The wizard's config-write step JSON-encoded each Gemini / OpenAI /
+OpenRouter key by passing it through `python3 -c 'import json,sys;
+print(json.dumps(sys.argv[1]))' "$KEY"`. The key was visible in
+`/proc/<pid>/cmdline` on Linux for the lifetime of that python child
+process — any same-host process under the same UID (or root) could
+read it. macOS hides argv from same-UID `ps` but other tooling
+(security agents, perf profilers) can still capture it.
+
+Switched all five key-encoding sites to read from stdin
+(`printf %s "$KEY" | python3 -c '… sys.stdin.read()'`). Stdin is not
+exposed via cmdline and is gone the instant the python child exits.
+
+**RTK auto-rewrite bypasses cc-safety-net (`scripts/setup-security.sh`)**
+
+The Phase-N RTK PreToolUse hook normalises Bash commands ("rewrite
+`rm /tmp/foo` to `rm -- /tmp/foo`"). When `cc-safety-net` is also
+installed the combined hook runs cc-safety-net FIRST, then RTK. The
+post-RTK auto-allow path however emitted
+`permissionDecision: "allow"` directly on the rewritten command
+without ever consulting cc-safety-net again. A hostile RTK release
+(or a compromised npm registry mirror) could rewrite a benign
+`rm /tmp/foo` into `rm -rf $HOME` and the user would auto-approve
+the rewritten form — cc-safety-net would never see it because the
+pre-rewrite check already returned `allow`.
+
+Added a second cc-safety-net round trip: synthesise a
+`PreToolUse` payload with `tool_input` replaced by the rewritten
+value and pipe it through `cc-safety-net --claude-code`. If the
+re-check returns `"deny"`, emit safety-net's verdict instead of
+RTK's allow. Reason string now reads
+`"RTK auto-rewrite (re-verified by cc-safety-net)"`.
+
+**Repomix npx supply-chain hijack (`scripts/council/pack.py`)**
+
+`_generate_one_shot` invoked `npx repomix` with `cwd=repo_root` for
+local packing. `npx` resolves binaries from
+`<cwd>/node_modules/.bin/` first, so a hostile project we are
+packing for Council review could ship a malicious
+`node_modules/.bin/repomix` and hijack every invocation. Even with
+no node_modules in the repo, a same-UID attacker could plant one in
+`/tmp` and race the call.
+
+`_generate_one_shot` now creates a per-call tmpdir
+(`tempfile.mkdtemp(prefix='council-repomix-')`) and uses THAT as
+cwd. Repo path is passed positionally; the repo's own
+`repomix.config.json` is forwarded explicitly via `--config`
+because discovery starts from cwd (now the sandbox) and would
+otherwise miss it.
+
+Also tightened `_validate_remote_url(url)` used by
+`--pack-remote`: was only checking for embedded credentials. Now
+also rejects:
+
+- empty value
+- leading `-` (defeats argv injection into the downstream
+  `git clone` — e.g. `--upload-pack=/bin/sh -c …`, known RCE class)
+- non-http(s) schemes (no ssh://, git+ssh://, file://)
+- localhost / 0.0.0.0 / broadcast hostnames
+- literal private / loopback / link-local / multicast / reserved IPs
+  (defense in depth against accidental SSRF; hostnames that resolve
+  to such IPs are out of scope to avoid TOCTOU surprises)
+
 ## [6.24.2] - 2026-05-14
 
 ### Fixed — install TUI hang on unofficial MCPs + impeccable probe divergence

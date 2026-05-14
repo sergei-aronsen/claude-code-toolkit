@@ -413,16 +413,18 @@ if [[ -f "$CONFIG_FILE" ]]; then
     echo -e "  ${YELLOW}⚠${NC} config.json already exists, preserving"
 else
     # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
+    # Audit 2026-05-13: API keys are passed via stdin (not argv) so they never
+    # appear in /proc/<pid>/cmdline on Linux during the wizard's config-write step.
     # shellcheck disable=SC2016
-    GEMINI_MODE_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_MODE")
+    GEMINI_MODE_JSON=$(printf %s "$GEMINI_MODE" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     # shellcheck disable=SC2016
-    GEMINI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$GEMINI_KEY")
+    GEMINI_KEY_JSON=$(printf %s "$GEMINI_KEY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     # shellcheck disable=SC2016
-    OPENAI_MODE_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_MODE")
+    OPENAI_MODE_JSON=$(printf %s "$OPENAI_MODE" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     # shellcheck disable=SC2016
-    OPENAI_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENAI_KEY")
+    OPENAI_KEY_JSON=$(printf %s "$OPENAI_KEY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     # shellcheck disable=SC2016
-    OPENROUTER_KEY_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$OPENROUTER_KEY")
+    OPENROUTER_KEY_JSON=$(printf %s "$OPENROUTER_KEY" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
     # Audit L2: set restrictive umask BEFORE the heredoc so the file is created
     # with mode 0600 atomically. Previously the file was created with the inherited
