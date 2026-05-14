@@ -1554,10 +1554,19 @@ TUI_DESCS+=("Persistent engineering memory — vault + 4 hooks (downloads ~1.1GB
 # When NO_BRIDGES=true the rows are STILL omitted from arrays so default-set, TUI render,
 # and dispatch loop all see a 6-element world (= unchanged BACKCOMPAT-01 invariant).
 #
-# Idempotency probe: bridge_create_project writes next to $PWD/CLAUDE.md, so the
-# bridge file lives at $PWD/{GEMINI,AGENTS}.md. We confirm ownership by grepping
-# the auto-generated banner ("claude-code-toolkit") in the first 5 lines —
-# distinguishes our file from a user-written GEMINI.md/AGENTS.md.
+# Idempotency probe: the main-TUI dispatch shim (search this file for
+# BRIDGE-UX-01) calls `bridge_create_global` — never `bridge_create_project` —
+# so the canonical bridge files live under the per-target global dirs:
+#   gemini → $(_bridge_global_dir gemini)/GEMINI.md  (= $HOME/.gemini/GEMINI.md)
+#   codex  → $(_bridge_global_dir codex)/AGENTS.md   (= $HOME/.codex/AGENTS.md)
+# We confirm ownership by grepping the auto-generated banner
+# ("claude-code-toolkit") in the first 5 lines — distinguishes the toolkit's
+# bridge from a hand-written GEMINI.md/AGENTS.md the user may already keep at
+# that path. The earlier `$PWD/{GEMINI,AGENTS}.md` probe (added in #64) was a
+# leftover from the original `bridge_create_project` plan; the dispatch shim
+# was switched to global in v4.8 (#14) and the probe was never updated, so
+# the TUI re-offered both bridges on every install run even after a
+# successful install (user report 2026-05-14, v6.25.2).
 _bridge_target_installed() {
     local file="$1"
     [[ -f "$file" ]] || return 1
@@ -1568,25 +1577,27 @@ if [[ "$NO_BRIDGES" != "true" ]]; then
         _gem_ver="$(_bridge_cli_version gemini)"
         _gem_suffix="${_gem_ver:+@${_gem_ver}}"
         _gem_installed=0
-        _bridge_target_installed "$PWD/GEMINI.md" && _gem_installed=1
+        _gem_global_path="$(_bridge_global_dir gemini)/GEMINI.md"
+        _bridge_target_installed "$_gem_global_path" && _gem_installed=1
         TUI_LABELS+=("gemini-bridge")
         TUI_GROUPS+=("Bridges")
         TUI_INSTALLED+=("$_gem_installed")
         TUI_REQUIRED+=("0")
         TUI_DESCS+=("Gemini CLI bridge (CLAUDE.md -> GEMINI.md) [detected: gemini${_gem_suffix}]")
-        unset _gem_ver _gem_suffix _gem_installed
+        unset _gem_ver _gem_suffix _gem_installed _gem_global_path
     fi
     if [[ "${IS_COD:-0}" -eq 1 ]]; then
         _cod_ver="$(_bridge_cli_version codex)"
         _cod_suffix="${_cod_ver:+@${_cod_ver}}"
         _cod_installed=0
-        _bridge_target_installed "$PWD/AGENTS.md" && _cod_installed=1
+        _cod_global_path="$(_bridge_global_dir codex)/AGENTS.md"
+        _bridge_target_installed "$_cod_global_path" && _cod_installed=1
         TUI_LABELS+=("codex-bridge")
         TUI_GROUPS+=("Bridges")
         TUI_INSTALLED+=("$_cod_installed")
         TUI_REQUIRED+=("0")
         TUI_DESCS+=("OpenAI Codex CLI bridge (CLAUDE.md -> AGENTS.md) [detected: codex${_cod_suffix}]")
-        unset _cod_ver _cod_suffix _cod_installed
+        unset _cod_ver _cod_suffix _cod_installed _cod_global_path
     fi
 fi
 
@@ -2226,8 +2237,8 @@ for ((i=0; i<_disp_count; i++)); do
                      done
                      [[ $local_memo_skill -eq 1 && -f "$local_memo_vault/INDEX.md" ]] && local_re_installed=1 || true
                      unset local_memo_vault local_memo_skill local_f ;;
-        gemini-bridge) _bridge_target_installed "$PWD/GEMINI.md" && local_re_installed=1 || true ;;
-        codex-bridge)  _bridge_target_installed "$PWD/AGENTS.md" && local_re_installed=1 || true ;;
+        gemini-bridge) _bridge_target_installed "$(_bridge_global_dir gemini)/GEMINI.md" && local_re_installed=1 || true ;;
+        codex-bridge)  _bridge_target_installed "$(_bridge_global_dir codex)/AGENTS.md"  && local_re_installed=1 || true ;;
         mcp_servers) : ;;    # Marketplace pickers always run when checked — the sub-TUI handles its own idempotency.
         skills)        : ;;
     esac
