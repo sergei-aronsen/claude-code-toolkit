@@ -1,21 +1,33 @@
 #!/usr/bin/env python3
-"""Prompt optimizer using Codex CLI (ChatGPT).
+"""Multi-provider prompt optimizer.
 
-Default: single-pass optimization with built-in internal meta-optimization.
+Drives one of: Claude Code (`claude -p`), Codex (`codex exec`), or
+Gemini (`gemini -p ""`) via subprocess + stdin. Selected with
+`--provider {claude|codex|gemini|all|ask}` (default: `ask`).
 
-Optional multi-pass mode (--multi-pass):
-  1. Send original prompt to optimizer -> v1.
-  2. External meta-optimize v1 -> v2.
-  3. Synthesize original + v1 + v2 -> v3 final.
+Modes:
+  - single-pass (default): one provider call with built-in internal
+    meta-optimization pass.
+  - `--multi-pass`: legacy 3-stage pipeline (optimize -> external meta
+    -> synthesis), single provider only.
+  - `--provider all`: fan-out to every available provider in parallel,
+    then synthesize a best-of final via one extra call. Synthesizer
+    preference: claude > codex > gemini.
 
-All artifacts saved to ./output/<timestamp>/.
+Optional `--log` writes a human-readable timeline log of every stage
+(rendered prompts, durations, responses, decisions) to
+`logs/prompt-engineer-<timestamp>.log`.
 
-Vendored from https://github.com/sergei-aronsen/prompt-optimizer with two
-local bug fixes:
+All artifacts saved to `./output/<timestamp>/`.
 
-- 600s timeout on `codex exec` subprocess (prevents indefinite hangs)
-- `try/finally` around the named temporary file so it cannot leak when
-  `codex exec` raises before the explicit `unlink`.
+Vendored from https://github.com/sergei-aronsen/prompt-optimizer with
+local fixes:
+
+- 600s timeout on every provider subprocess (prevents indefinite hangs)
+- `try/finally` around the Codex named temporary file so it cannot leak
+  when `codex exec` raises before the explicit `unlink`.
+- Generic `run_provider()` abstraction over the original single-provider
+  `run_codex()`.
 """
 
 from __future__ import annotations
@@ -27,7 +39,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
+from typing import Optional
 
 OPTIMIZER_PROMPT = r"""You are a Prompt Engineering and AI Instruction Optimization System.
 
@@ -325,6 +339,75 @@ Prompt to meta-optimize:
 {{PROMPT_TO_IMPROVE}}
 """
 
+SYNTHESIS_MULTI_PROVIDER_PROMPT = r"""You are a senior prompt engineering reviewer.
+
+You are given the SAME source prompt, optimized independently by three
+different model providers. Your task is to produce ONE final prompt that
+combines the strongest patterns from each, without bloat.
+
+Rules:
+- Compare side by side along: clarity, structure, intent preservation,
+  output control, conciseness, robustness.
+- Extract the strongest techniques, structural choices, and instruction
+  patterns from each provider.
+- Produce a single FINAL prompt combining the best practices.
+- Do not blindly pick the longest version. Maximize clarity,
+  controllability, reliability, and preservation of original intent.
+- Remove any bloat, redundancy, or low-signal instructions any provider
+  introduced.
+
+Output format:
+
+# Comparison
+
+| Dimension | Claude | Codex | Gemini | Winner |
+|---|---|---|---|---|
+| clarity |  |  |  |  |
+| structure |  |  |  |  |
+| intent preservation |  |  |  |  |
+| output control |  |  |  |  |
+| conciseness |  |  |  |  |
+| robustness |  |  |  |  |
+
+# Best Practices Adopted
+
+- bullet list of specific techniques taken from each provider and why
+
+# Final Prompt
+
+```text
+[final synthesized prompt — deployment-ready]
+```
+
+# Notes
+
+- short explanation of any trade-offs
+
+Context provided by the user, if any:
+{{CONTEXT}}
+
+ORIGINAL source prompt (user's starting point):
+<<<ORIGINAL>>>
+{{ORIGINAL}}
+<<<END ORIGINAL>>>
+
+CLAUDE optimization:
+<<<CLAUDE>>>
+{{CLAUDE}}
+<<<END CLAUDE>>>
+
+CODEX optimization:
+<<<CODEX>>>
+{{CODEX}}
+<<<END CODEX>>>
+
+GEMINI optimization:
+<<<GEMINI>>>
+{{GEMINI}}
+<<<END GEMINI>>>
+"""
+
+
 SYNTHESIS_PROMPT = r"""You are a senior prompt engineering reviewer.
 
 You are given three versions of the same prompt:
@@ -383,32 +466,153 @@ V2:
 """
 
 
-def run_codex(prompt: str, model: str | None, log_file: Path) -> str:
-    """Call `codex exec`, return last agent message text.
+class TimelineLogger:
+    """Human-readable per-step timeline log for --log mode.
 
-    The named temp file is wrapped in try/finally so it cannot leak if the
-    subprocess raises before the explicit `unlink`. A 600s timeout prevents
-    Codex from hanging the parent process indefinitely.
+    Writes a single file showing each pipeline stage with timestamps,
+    elapsed time, rendered prompt/response previews, and Codex CLI
+    invocations. Disabled when path is None (no I/O cost).
     """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".md", delete=False, encoding="utf-8"
-    ) as out:
-        out_path = Path(out.name)
 
-    try:
+    PREVIEW_CHARS = 4000
+
+    def __init__(self, path: Optional[Path]):
+        self.path = path
+        self.fh = None
+        self.start = time.monotonic()
+        if path:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.fh = path.open("w", encoding="utf-8", buffering=1)
+            self._banner()
+
+    def _banner(self) -> None:
+        ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._w("=" * 78)
+        self._w(f" PROMPT ENGINEER — OPTIMIZATION TIMELINE")
+        self._w(f" Started: {ts}")
+        self._w("=" * 78)
+
+    def _w(self, line: str = "") -> None:
+        if self.fh:
+            self.fh.write(line + "\n")
+
+    def _stamp(self) -> str:
+        elapsed = time.monotonic() - self.start
+        ts = dt.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        return f"[{ts}] (+{elapsed:7.2f}s)"
+
+    def step(self, title: str) -> None:
+        self._w()
+        self._w("#" * 78)
+        self._w(f"# {self._stamp()} STEP — {title}")
+        self._w("#" * 78)
+
+    def section(self, title: str) -> None:
+        self._w()
+        self._w(f"--- {self._stamp()} {title} ---")
+
+    def kv(self, key: str, value: object) -> None:
+        self._w(f"  {key}: {value}")
+
+    def block(self, title: str, body: str, max_chars: Optional[int] = None) -> None:
+        cap = self.PREVIEW_CHARS if max_chars is None else max_chars
+        self._w()
+        self._w(f">>> {title} ({len(body)} chars) >>>")
+        if len(body) > cap > 0:
+            self._w(body[:cap])
+            self._w(f"... [truncated {len(body) - cap} chars] ...")
+        else:
+            self._w(body)
+        self._w(f"<<< END {title} <<<")
+
+    def event(self, message: str) -> None:
+        self._w(f"{self._stamp()} {message}")
+
+    def close(self, summary: dict | None = None) -> None:
+        if not self.fh:
+            return
+        elapsed = time.monotonic() - self.start
+        self._w()
+        self._w("=" * 78)
+        self._w(f" DONE — total elapsed {elapsed:.2f}s")
+        if summary:
+            for k, v in summary.items():
+                self._w(f"   {k}: {v}")
+        self._w("=" * 78)
+        self.fh.close()
+        self.fh = None
+
+
+PROVIDERS = ("claude", "codex", "gemini")
+SUBPROCESS_TIMEOUT = 600
+
+
+def _provider_cmd(provider: str, model: str | None, out_path: Path | None) -> list[str]:
+    """Construct the CLI command for a provider. `out_path` only used by Codex."""
+    if provider == "codex":
         cmd = [
-            "codex",
-            "exec",
-            "--skip-git-repo-check",
-            "--color",
-            "never",
-            "-o",
-            str(out_path),
+            "codex", "exec", "--skip-git-repo-check", "--color", "never",
+            "-o", str(out_path), "-",
         ]
         if model:
-            cmd += ["-m", model]
-        cmd.append("-")  # read prompt from stdin
+            cmd[-1:-1] = ["-m", model]
+        return cmd
+    if provider == "claude":
+        cmd = ["claude", "-p"]
+        if model:
+            cmd += ["--model", model]
+        return cmd
+    if provider == "gemini":
+        cmd = ["gemini", "-p", ""]
+        if model:
+            cmd[2:2] = ["-m", model]  # insert before empty -p arg
+        return cmd
+    raise ValueError(f"unknown provider: {provider}")
 
+
+def run_provider(
+    provider: str,
+    prompt: str,
+    model: str | None,
+    log_file: Path,
+    timeline: Optional[TimelineLogger] = None,
+    stage_label: str | None = None,
+) -> str:
+    """Call a provider CLI, return last agent message text.
+
+    Codex writes its response to a temp file via `-o`. Claude and Gemini
+    print to stdout. All three accept the rendered prompt via stdin.
+
+    Wrapped in try/finally for temp-file cleanup. 600s timeout prevents
+    indefinite hangs. When `timeline` is provided, records command,
+    prompt preview, duration, response preview, and stderr.
+    """
+    if provider not in PROVIDERS:
+        raise ValueError(f"unknown provider: {provider}")
+    if stage_label is None:
+        stage_label = f"{provider} exec"
+
+    out_path: Path | None = None
+    if provider == "codex":
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as out:
+            out_path = Path(out.name)
+
+    try:
+        cmd = _provider_cmd(provider, model, out_path)
+
+        if timeline:
+            timeline.section(f"{stage_label} — invoke {provider.upper()} CLI")
+            timeline.kv("command", " ".join(cmd))
+            timeline.kv("model", model or "(provider default)")
+            timeline.kv("stdin bytes", len(prompt.encode("utf-8")))
+            timeline.kv("raw log", str(log_file))
+            timeline.block(
+                f"{stage_label} — RENDERED PROMPT SENT TO {provider.upper()}", prompt
+            )
+
+        t0 = time.monotonic()
         with log_file.open("w", encoding="utf-8") as log:
             log.write(f"$ {' '.join(cmd)}\n\n--- PROMPT ---\n{prompt}\n\n--- STDOUT ---\n")
             log.flush()
@@ -419,26 +623,102 @@ def run_codex(prompt: str, model: str | None, log_file: Path) -> str:
                     text=True,
                     capture_output=True,
                     check=False,
-                    timeout=600,
+                    timeout=SUBPROCESS_TIMEOUT,
                 )
             except subprocess.TimeoutExpired as exc:
                 log.write(f"\n--- TIMEOUT after {exc.timeout}s ---\n")
+                if timeline:
+                    timeline.event(f"{stage_label} — TIMEOUT after {exc.timeout}s")
                 raise RuntimeError(
-                    f"codex exec timed out after {exc.timeout}s. See {log_file}"
+                    f"{provider} timed out after {exc.timeout}s. See {log_file}"
                 ) from exc
             log.write(proc.stdout)
             log.write("\n--- STDERR ---\n")
             log.write(proc.stderr)
 
+        duration = time.monotonic() - t0
+
         if proc.returncode != 0:
+            if timeline:
+                timeline.event(
+                    f"{stage_label} — FAILED exit={proc.returncode} duration={duration:.2f}s"
+                )
+                timeline.block(f"{stage_label} — STDERR", proc.stderr or "(empty)")
             raise RuntimeError(
-                f"codex exec failed (exit {proc.returncode}). See {log_file}"
+                f"{provider} failed (exit {proc.returncode}). See {log_file}"
             )
 
-        text = out_path.read_text(encoding="utf-8")
-        return text.strip()
+        if provider == "codex":
+            text = out_path.read_text(encoding="utf-8").strip()
+        else:
+            text = proc.stdout.strip()
+
+        if timeline:
+            timeline.event(
+                f"{stage_label} — OK exit=0 duration={duration:.2f}s response={len(text)} chars"
+            )
+            if proc.stderr.strip():
+                timeline.block(f"{stage_label} — STDERR (non-empty)", proc.stderr.strip(), 1500)
+            timeline.block(f"{stage_label} — RESPONSE FROM {provider.upper()}", text)
+
+        return text
     finally:
-        out_path.unlink(missing_ok=True)
+        if out_path is not None:
+            out_path.unlink(missing_ok=True)
+
+
+def run_codex(
+    prompt: str,
+    model: str | None,
+    log_file: Path,
+    timeline: Optional[TimelineLogger] = None,
+    stage_label: str = "codex exec",
+) -> str:
+    """Backward-compatible wrapper preserved for any external caller."""
+    return run_provider("codex", prompt, model, log_file, timeline, stage_label)
+
+
+def detect_providers() -> dict[str, bool]:
+    """Return {provider: bool_available} for each provider CLI on PATH."""
+    return {p: shutil.which(p) is not None for p in PROVIDERS}
+
+
+def pick_provider_interactive(available: dict[str, bool]) -> str:
+    """TTY menu to pick provider. Falls back to claude when not a TTY."""
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        return "claude"
+
+    options: list[tuple[str, str]] = []
+    for p in PROVIDERS:
+        suffix = "" if available[p] else " (NOT INSTALLED)"
+        options.append((p, f"{p}{suffix}"))
+    all_installed = all(available.values())
+    options.append((
+        "all",
+        "all" + ("" if all_installed else " (skips missing CLIs)"),
+    ))
+
+    print("\nPick provider for prompt optimization:", file=sys.stderr)
+    for i, (_, label) in enumerate(options, start=1):
+        print(f"  {i}) {label}", file=sys.stderr)
+    print(file=sys.stderr)
+
+    while True:
+        try:
+            choice = input("Choice [1]: ").strip() or "1"
+        except (EOFError, KeyboardInterrupt):
+            print("\naborted", file=sys.stderr)
+            raise SystemExit(130)
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            picked = options[int(choice) - 1][0]
+            if picked in PROVIDERS and not available[picked]:
+                print(
+                    f"error: {picked} CLI not installed. Pick again.",
+                    file=sys.stderr,
+                )
+                continue
+            return picked
+        print(f"error: invalid choice {choice!r}", file=sys.stderr)
 
 
 def extract_prompt_block(response: str) -> str:
@@ -459,21 +739,210 @@ def render(template: str, **values: str) -> str:
     return out
 
 
+def run_all_mode(
+    *,
+    original_prompt: str,
+    ctx_for_template: str,
+    model: str | None,
+    out_dir: Path,
+    timeline: TimelineLogger,
+    available: dict[str, bool],
+) -> int:
+    """Fan out the first optimization pass to every available provider in
+    parallel, then synthesize a single best-of final prompt via one extra
+    call. Synthesizer preference: claude > codex > gemini.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    runnable = [p for p in PROVIDERS if available[p]]
+    missing = [p for p in PROVIDERS if not available[p]]
+    if not runnable:
+        print("error: no provider CLIs found on PATH", file=sys.stderr)
+        timeline.close()
+        return 2
+    if missing:
+        timeline.event(f"--provider all: skipping unavailable: {missing}")
+        print(f"warning: skipping unavailable: {', '.join(missing)}", file=sys.stderr)
+
+    rendered = render(
+        OPTIMIZER_PROMPT,
+        CONTEXT=ctx_for_template,
+        PROMPT_TO_IMPROVE=original_prompt,
+    )
+
+    timeline.step(f"1/2 — FAN-OUT to {len(runnable)} provider(s) in parallel")
+    print(f"[1/2] Fan-out -> {', '.join(runnable)}")
+    timeline.kv("providers", ", ".join(runnable))
+    timeline.kv("rendered input chars", len(rendered))
+
+    results: dict[str, str] = {}
+    errors: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=len(runnable)) as pool:
+        futures = {
+            pool.submit(
+                run_provider,
+                p,
+                rendered,
+                model,
+                out_dir / f"01-{p}.log",
+                timeline,
+                f"STAGE 1 ({p})",
+            ): p
+            for p in runnable
+        }
+        for fut in as_completed(futures):
+            p = futures[fut]
+            try:
+                results[p] = fut.result()
+            except Exception as exc:
+                errors[p] = str(exc)
+                timeline.event(f"STAGE 1 ({p}) — ABORTED: {exc}")
+                print(f"warning: {p} failed: {exc}", file=sys.stderr)
+
+    if not results:
+        print("error: all providers failed", file=sys.stderr)
+        timeline.close({"failed providers": ", ".join(errors)})
+        return 1
+
+    extracted: dict[str, str] = {}
+    for p, resp in results.items():
+        (out_dir / f"01-{p}.md").write_text(resp, encoding="utf-8")
+        extracted[p] = extract_prompt_block(resp)
+        (out_dir / f"01-{p}-prompt.txt").write_text(extracted[p], encoding="utf-8")
+        timeline.event(
+            f"STAGE 1 ({p}) — saved 01-{p}.md + 01-{p}-prompt.txt "
+            f"(extracted {len(extracted[p])} chars)"
+        )
+
+    synth_provider = next(
+        (p for p in ("claude", "codex", "gemini") if p in results), None
+    )
+    if synth_provider is None:
+        print("error: no provider available to synthesize", file=sys.stderr)
+        timeline.close()
+        return 1
+
+    timeline.step(f"2/2 — SYNTHESIS via {synth_provider} (best-of)")
+    print(f"[2/2] Synthesis via {synth_provider} -> {out_dir}/02-synthesis.md")
+    synth_input = render(
+        SYNTHESIS_MULTI_PROVIDER_PROMPT,
+        CONTEXT=ctx_for_template,
+        ORIGINAL=original_prompt,
+        CLAUDE=extracted.get("claude", "(provider not run)"),
+        CODEX=extracted.get("codex", "(provider not run)"),
+        GEMINI=extracted.get("gemini", "(provider not run)"),
+    )
+    present = [p for p in PROVIDERS if p in extracted]
+    timeline.event(
+        f"template SYNTHESIS_MULTI_PROVIDER_PROMPT rendered "
+        f"(present: {present}, missing: {[p for p in PROVIDERS if p not in present]})"
+    )
+    timeline.kv("rendered input chars", len(synth_input))
+
+    try:
+        synth_response = run_provider(
+            synth_provider,
+            synth_input,
+            model,
+            out_dir / "02-synthesis.log",
+            timeline=timeline,
+            stage_label=f"STAGE 2 (synthesis via {synth_provider})",
+        )
+    except Exception as exc:
+        timeline.event(f"STAGE 2 — ABORTED: {exc}")
+        timeline.close()
+        raise
+
+    (out_dir / "02-synthesis.md").write_text(synth_response, encoding="utf-8")
+    final_prompt = extract_prompt_block(synth_response)
+    (out_dir / "02-synthesis-prompt.txt").write_text(final_prompt, encoding="utf-8")
+    timeline.event(
+        f"STAGE 2 — saved 02-synthesis.md + 02-synthesis-prompt.txt "
+        f"({len(final_prompt)} chars)"
+    )
+    timeline.block("STAGE 2 — FINAL SYNTHESIZED PROMPT", final_prompt)
+
+    print(f"\nDone. Final prompt: {out_dir}/02-synthesis-prompt.txt")
+    timeline.close({
+        "final prompt": str(out_dir / "02-synthesis-prompt.txt"),
+        "mode": "all (fan-out + synthesis)",
+        "synthesizer": synth_provider,
+        "providers used": ", ".join(results),
+        "providers failed": ", ".join(errors) or "(none)",
+    })
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("prompt_file", help="Path to the prompt to optimize, or '-' for stdin")
     parser.add_argument("--context", "-c", help="Path to a context file", default=None)
     parser.add_argument("--output-dir", "-o", default="output", help="Where to write artifacts")
-    parser.add_argument("--model", "-m", default=None, help="Codex model override")
+    parser.add_argument(
+        "--model", "-m", default=None,
+        help="Model override for the chosen provider (passed as -m to codex, "
+             "--model to claude, -m to gemini).",
+    )
+    parser.add_argument(
+        "--provider", "-p",
+        choices=list(PROVIDERS) + ["all", "ask"],
+        default="ask",
+        help="Which CLI to drive: claude, codex, gemini, all (parallel + "
+             "synthesis), or ask (interactive menu on TTY; falls back to "
+             "claude when stdin is not a TTY). Default: ask.",
+    )
     parser.add_argument(
         "--multi-pass",
         action="store_true",
-        help="Run legacy 3-stage pipeline: optimize -> external meta -> synthesis",
+        help="Run legacy 3-stage pipeline (optimize -> external meta -> "
+             "synthesis). Single-provider only; rejected with --provider all.",
+    )
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help="Write a human-readable timeline log of every stage to "
+             "logs/prompt-engineer-<timestamp>.log",
+    )
+    parser.add_argument(
+        "--log-file",
+        default=None,
+        help="Explicit path for the --log timeline file. Implies --log.",
+    )
+    parser.add_argument(
+        "--log-dir",
+        default="logs",
+        help="Directory for --log timeline files (default: ./logs).",
     )
     args = parser.parse_args()
 
-    if not shutil.which("codex"):
-        print("error: `codex` CLI not found on PATH", file=sys.stderr)
+    available = detect_providers()
+
+    # Resolve provider
+    provider = args.provider
+    if provider == "ask":
+        provider = pick_provider_interactive(available)
+
+    if provider != "all" and provider in PROVIDERS and not available[provider]:
+        print(
+            f"error: `{provider}` CLI not found on PATH. "
+            f"Install it or pass --provider {{claude|codex|gemini|all}}.",
+            file=sys.stderr,
+        )
+        return 2
+    if provider == "all" and not any(available.values()):
+        print(
+            "error: no provider CLIs found on PATH "
+            "(need at least one of claude/codex/gemini).",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.multi_pass and provider == "all":
+        print(
+            "error: --multi-pass is incompatible with --provider all. "
+            "Use --multi-pass with a single provider.",
+            file=sys.stderr,
+        )
         return 2
 
     if args.prompt_file == "-":
@@ -499,33 +968,118 @@ def main() -> int:
 
     ctx_for_template = context if context else "(none)"
 
-    print(f"[1/{'3' if args.multi_pass else '1'}] Optimization -> {out_dir}/01-optimized.md")
+    log_path: Optional[Path] = None
+    if args.log_file:
+        log_path = Path(args.log_file)
+    elif args.log:
+        log_path = Path(args.log_dir) / f"prompt-engineer-{stamp}.log"
+
+    timeline = TimelineLogger(log_path)
+    if provider == "all":
+        mode = "all (fan-out + synthesis)"
+    elif args.multi_pass:
+        mode = f"multi-pass via {provider} (3 stages)"
+    else:
+        mode = f"single-pass via {provider} (1 stage)"
+
+    if log_path:
+        print(f"Timeline log -> {log_path}")
+    timeline.section("CONFIGURATION")
+    timeline.kv("mode", mode)
+    timeline.kv("provider", provider)
+    timeline.kv("provider availability", available)
+    timeline.kv("prompt source", args.prompt_file)
+    timeline.kv("prompt chars", len(original_prompt))
+    timeline.kv("context source", args.context or "(none)")
+    timeline.kv("context chars", len(context))
+    timeline.kv("model override", args.model or "(provider default)")
+    timeline.kv("output dir", str(out_dir))
+    timeline.block("ORIGINAL PROMPT", original_prompt)
+    if context:
+        timeline.block("CONTEXT", context)
+
+    if provider == "all":
+        return run_all_mode(
+            original_prompt=original_prompt,
+            ctx_for_template=ctx_for_template,
+            model=args.model,
+            out_dir=out_dir,
+            timeline=timeline,
+            available=available,
+        )
+
+    # Single-provider path
+    total_stages = 3 if args.multi_pass else 1
+    label_prefix = f"STAGE 1 ({provider} optimize)"
+
+    timeline.step(f"1/{total_stages} — OPTIMIZE via {provider} (built-in meta-pass)")
+    print(f"[1/{total_stages}] Optimization via {provider} -> {out_dir}/01-optimized.md")
     v1_input = render(
         OPTIMIZER_PROMPT,
         CONTEXT=ctx_for_template,
         PROMPT_TO_IMPROVE=original_prompt,
     )
-    v1_response = run_codex(v1_input, args.model, out_dir / "01-optimized.log")
+    timeline.event("template OPTIMIZER_PROMPT rendered with CONTEXT + PROMPT_TO_IMPROVE")
+    timeline.kv("rendered input chars", len(v1_input))
+
+    try:
+        v1_response = run_provider(
+            provider, v1_input, args.model, out_dir / "01-optimized.log",
+            timeline=timeline, stage_label=label_prefix,
+        )
+    except Exception as exc:
+        timeline.event(f"STAGE 1 — ABORTED: {exc}")
+        timeline.close()
+        raise
+
     (out_dir / "01-optimized.md").write_text(v1_response, encoding="utf-8")
     v1_prompt_only = extract_prompt_block(v1_response)
     (out_dir / "01-optimized-prompt.txt").write_text(v1_prompt_only, encoding="utf-8")
+    timeline.event(
+        f"STAGE 1 — extracted optimized prompt block ({len(v1_prompt_only)} chars) "
+        f"-> 01-optimized-prompt.txt"
+    )
+    timeline.block("STAGE 1 — EXTRACTED OPTIMIZED PROMPT", v1_prompt_only)
 
     if not args.multi_pass:
         print(f"\nDone. Final prompt: {out_dir}/01-optimized-prompt.txt")
+        timeline.close({
+            "final prompt": str(out_dir / "01-optimized-prompt.txt"),
+            "mode": mode,
+        })
         return 0
 
-    print(f"[2/3] External meta-optimization -> {out_dir}/02-meta.md")
+    timeline.step(f"2/3 — EXTERNAL META-OPTIMIZATION via {provider}")
+    print(f"[2/3] External meta-optimization via {provider} -> {out_dir}/02-meta.md")
     v2_input = render(
         EXTERNAL_META_PROMPT,
         CONTEXT=ctx_for_template,
         PROMPT_TO_IMPROVE=v1_prompt_only,
     )
-    v2_response = run_codex(v2_input, args.model, out_dir / "02-meta.log")
+    timeline.event("template EXTERNAL_META_PROMPT rendered with CONTEXT + V1")
+    timeline.kv("rendered input chars", len(v2_input))
+
+    try:
+        v2_response = run_provider(
+            provider, v2_input, args.model, out_dir / "02-meta.log",
+            timeline=timeline, stage_label=f"STAGE 2 ({provider} meta)",
+        )
+    except Exception as exc:
+        timeline.event(f"STAGE 2 — ABORTED: {exc}")
+        timeline.close()
+        raise
+
     (out_dir / "02-meta.md").write_text(v2_response, encoding="utf-8")
     v2_prompt_only = extract_prompt_block(v2_response)
     (out_dir / "02-meta-prompt.txt").write_text(v2_prompt_only, encoding="utf-8")
+    timeline.event(
+        f"STAGE 2 — extracted meta-optimized prompt ({len(v2_prompt_only)} chars) "
+        f"-> 02-meta-prompt.txt"
+    )
+    timeline.block("STAGE 2 — EXTRACTED META-OPTIMIZED PROMPT", v2_prompt_only)
 
-    print(f"[3/3] Synthesis (best-of) -> {out_dir}/03-final.md")
+    timeline.step(f"3/3 — SYNTHESIS via {provider} (best-of original + V1 + V2)")
+    print(f"[3/3] Synthesis via {provider} -> {out_dir}/03-final.md")
     synth_input = render(
         SYNTHESIS_PROMPT,
         CONTEXT=ctx_for_template,
@@ -533,12 +1087,33 @@ def main() -> int:
         V1=v1_prompt_only,
         V2=v2_prompt_only,
     )
-    final_response = run_codex(synth_input, args.model, out_dir / "03-final.log")
+    timeline.event("template SYNTHESIS_PROMPT rendered with CONTEXT + ORIGINAL + V1 + V2")
+    timeline.kv("rendered input chars", len(synth_input))
+
+    try:
+        final_response = run_provider(
+            provider, synth_input, args.model, out_dir / "03-final.log",
+            timeline=timeline, stage_label=f"STAGE 3 ({provider} synthesis)",
+        )
+    except Exception as exc:
+        timeline.event(f"STAGE 3 — ABORTED: {exc}")
+        timeline.close()
+        raise
+
     (out_dir / "03-final.md").write_text(final_response, encoding="utf-8")
     final_prompt_only = extract_prompt_block(final_response)
     (out_dir / "03-final-prompt.txt").write_text(final_prompt_only, encoding="utf-8")
+    timeline.event(
+        f"STAGE 3 — extracted final synthesized prompt ({len(final_prompt_only)} chars) "
+        f"-> 03-final-prompt.txt"
+    )
+    timeline.block("STAGE 3 — FINAL SYNTHESIZED PROMPT", final_prompt_only)
 
     print(f"\nDone. Final prompt: {out_dir}/03-final-prompt.txt")
+    timeline.close({
+        "final prompt": str(out_dir / "03-final-prompt.txt"),
+        "mode": mode,
+    })
     return 0
 
 
