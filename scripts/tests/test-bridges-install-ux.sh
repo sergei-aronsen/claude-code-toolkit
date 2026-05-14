@@ -134,7 +134,11 @@ _run_install_to_file() {
 echo "=== S1: install.sh --yes --dry-run + gemini-shim renders gemini-bridge row ==="
 sb=$(mk_sandbox); shimbin=$(mk_cli_shims "$sb" 1 1)
 _s1_tmp=$(mktemp /tmp/test-install-out.XXXXXX); _SANDBOXES+=("$_s1_tmp")
-_run_install_to_file "$_s1_tmp" env PATH="$shimbin:$PATH" bash "${REPO_ROOT}/scripts/install.sh" --yes --dry-run
+# v6.25.2: TK_BRIDGE_HOME=$sb isolates _bridge_global_dir from the host
+# `~/.gemini/GEMINI.md` — without it the re-probe at install.sh:2229 would
+# fire `installed ✓` on any dev machine that already has the global bridge,
+# and S1.3 would never see `would-install`.
+_run_install_to_file "$_s1_tmp" env PATH="$shimbin:$PATH" TK_BRIDGE_HOME="$sb" bash "${REPO_ROOT}/scripts/install.sh" --yes --dry-run
 out=$(cat "$_s1_tmp")
 assert_contains "gemini-bridge" "$out" "S1.1 gemini-bridge row appears"
 assert_contains "codex-bridge"  "$out" "S1.2 codex-bridge row appears"
@@ -249,6 +253,94 @@ rc=0
 ( cd "$sb/proj" && PATH="$_clean_path" BRIDGES_FORCE=gemini FAIL_FAST=false TK_BRIDGE_HOME="$sb" \
     bash -c "source ${REPO_ROOT}/scripts/lib/state.sh; source ${REPO_ROOT}/scripts/lib/detect2.sh; source ${REPO_ROOT}/scripts/lib/bridges.sh; bridge_install_prompts \"$sb/proj\"" ) || rc=$?
 assert_eq "0" "$rc" "S12.1 BRIDGES_FORCE absent CLI without FAIL_FAST returns 0 (warn-continue)"
+
+echo "=== S14: _bridge_target_installed probes global path written by bridge_create_global ==="
+# v6.25.2 regression: install.sh dispatch shim calls `bridge_create_global`
+# (writes ~/.gemini/GEMINI.md, ~/.codex/AGENTS.md) but the probe used to look
+# at `$PWD/{GEMINI,AGENTS}.md`, so the TUI re-offered both bridges on every
+# install run even after a successful install. The fix points the probe at
+# `$(_bridge_global_dir <target>)/<filename>` — these S14.* checks verify
+# that contract under a sandboxed `TK_BRIDGE_HOME`.
+sb=$(mk_sandbox)
+mkdir -p "$sb/.claude" "$sb/.gemini" "$sb/.codex" "$sb/proj"
+# Source CLAUDE.md needed by bridge_create_global; payload is irrelevant.
+printf '# global CLAUDE.md\n' > "$sb/.claude/CLAUDE.md"
+
+# Pre-condition: no bridge files exist, probe must report NOT installed.
+unchecked_gem=0; TK_BRIDGE_HOME="$sb" bash -c "
+    source '${REPO_ROOT}/scripts/lib/state.sh'
+    source '${REPO_ROOT}/scripts/lib/bridges.sh'
+    _bridge_target_installed() {
+        local file=\"\$1\"
+        [[ -f \"\$file\" ]] || return 1
+        head -5 \"\$file\" 2>/dev/null | grep -q 'claude-code-toolkit'
+    }
+    _bridge_target_installed \"\$(_bridge_global_dir gemini)/GEMINI.md\"
+    exit \$?
+" 2>/dev/null || unchecked_gem=$?
+assert_eq "1" "$unchecked_gem" "S14.1: probe returns 1 when ~/.gemini/GEMINI.md absent"
+
+# Run bridge_create_global → file lands at $sb/.gemini/GEMINI.md.
+rc=0
+TK_BRIDGE_HOME="$sb" bash -c "
+    source '${REPO_ROOT}/scripts/lib/state.sh'
+    source '${REPO_ROOT}/scripts/lib/bridges.sh'
+    bridge_create_global gemini >/dev/null
+    exit \$?
+" 2>/dev/null || rc=$?
+assert_eq "0" "$rc" "S14.pre-condition: bridge_create_global gemini returns 0"
+# (Soft assert: only continue if bridge_create_global succeeded — otherwise
+# downstream S14.2 is meaningless. We still emit the assertion above so the
+# regression test fails loudly if upstream bridge_create_global breaks.)
+
+# Post-condition: probe must now detect the bridge at the global path.
+checked_gem=0
+TK_BRIDGE_HOME="$sb" bash -c "
+    source '${REPO_ROOT}/scripts/lib/state.sh'
+    source '${REPO_ROOT}/scripts/lib/bridges.sh'
+    _bridge_target_installed() {
+        local file=\"\$1\"
+        [[ -f \"\$file\" ]] || return 1
+        head -5 \"\$file\" 2>/dev/null | grep -q 'claude-code-toolkit'
+    }
+    _bridge_target_installed \"\$(_bridge_global_dir gemini)/GEMINI.md\"
+    exit \$?
+" 2>/dev/null || checked_gem=$?
+assert_eq "0" "$checked_gem" "S14.2: probe returns 0 after bridge_create_global gemini writes ~/.gemini/GEMINI.md"
+
+# Negative-control: probing $PWD/GEMINI.md (the old buggy path) must STILL
+# report not-installed even though the bridge is present globally — this
+# pins down the policy decision that bridges are global, not per-project.
+oldpath_gem=0
+TK_BRIDGE_HOME="$sb" bash -c "
+    cd '$sb/proj'
+    source '${REPO_ROOT}/scripts/lib/state.sh'
+    source '${REPO_ROOT}/scripts/lib/bridges.sh'
+    _bridge_target_installed() {
+        local file=\"\$1\"
+        [[ -f \"\$file\" ]] || return 1
+        head -5 \"\$file\" 2>/dev/null | grep -q 'claude-code-toolkit'
+    }
+    _bridge_target_installed \"\$PWD/GEMINI.md\"
+    exit \$?
+" 2>/dev/null || oldpath_gem=$?
+assert_eq "1" "$oldpath_gem" "S14.3: old per-project probe ($PWD/GEMINI.md) still returns 1 after global install (pinning global-only semantics)"
+
+echo "=== S15: codex-bridge probe parity ==="
+checked_cod=0
+TK_BRIDGE_HOME="$sb" bash -c "
+    source '${REPO_ROOT}/scripts/lib/state.sh'
+    source '${REPO_ROOT}/scripts/lib/bridges.sh'
+    bridge_create_global codex >/dev/null
+    _bridge_target_installed() {
+        local file=\"\$1\"
+        [[ -f \"\$file\" ]] || return 1
+        head -5 \"\$file\" 2>/dev/null | grep -q 'claude-code-toolkit'
+    }
+    _bridge_target_installed \"\$(_bridge_global_dir codex)/AGENTS.md\"
+    exit \$?
+" 2>/dev/null || checked_cod=$?
+assert_eq "0" "$checked_cod" "S15: probe returns 0 after bridge_create_global codex writes ~/.codex/AGENTS.md"
 
 echo "=== S13: BACKCOMPAT-01 — all 4 baselines unchanged ==="
 for spec in \

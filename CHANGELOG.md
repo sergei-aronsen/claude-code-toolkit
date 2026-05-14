@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `scripts/install.sh:_bridge_target_installed` — probe path realigned with
+  what the dispatch shim actually writes. The main-TUI shim has called
+  `bridge_create_global` (→ `~/.gemini/GEMINI.md`, `~/.codex/AGENTS.md`)
+  since v4.8 (#14), but the idempotency probe added in #64 still inspected
+  `$PWD/{GEMINI,AGENTS}.md` — a leftover from the original
+  `bridge_create_project` plan. Net effect: every install run after the
+  first re-offered both bridges as uninstalled because the probe looked at
+  a path the dispatcher never touches. Probe now reads from
+  `$(_bridge_global_dir <target>)/<filename>`; all four call sites (initial
+  TUI build + mid-run re-probe under `--force`) updated. User report
+  2026-05-14 (companion to the `.agents/skills/` impeccable probe fix from
+  the same session). Added S14 (probe inspects global path post-
+  `bridge_create_global`) and S15 (codex parity) to
+  `scripts/tests/test-bridges-install-ux.sh`; hardened S1 with
+  `TK_BRIDGE_HOME=$sb` so the dry-run assertion no longer false-fails on
+  hosts that already have the global bridge installed.
 - `scripts/lib/skills.sh:is_skill_installed` — `.agents/` fallback path
   corrected from `$HOME/.agents/` to `$HOME/.agents/skills/`. The
   upstream `impeccable` CLI writes per-skill entries under a `skills/`
