@@ -312,11 +312,31 @@ if command -v rtk &>/dev/null && command -v jq &>/dev/null; then
         if [ -n "$REWRITTEN" ] && [ "$CMD" != "$REWRITTEN" ]; then
             ORIGINAL_INPUT=$(echo "$INPUT" | jq -c '.tool_input')
             UPDATED_INPUT=$(echo "$ORIGINAL_INPUT" | jq --arg cmd "$REWRITTEN" '.command = $cmd')
+
+            # Audit 2026-05-13: re-run cc-safety-net on the REWRITTEN command
+            # before auto-allowing it. Without this, RTK (a third-party npm
+            # package) has full power to mutate a benign command into a
+            # destructive one (`rm /tmp/foo` → `rm -rf $HOME`); cc-safety-net's
+            # first check is on the pre-rewrite command and would not see the
+            # new value. Build a synthetic PreToolUse payload that mirrors the
+            # original (tool_name, etc.) but with the rewritten tool_input,
+            # then re-check.
+            if command -v cc-safety-net &>/dev/null; then
+                RECHECK_INPUT=$(echo "$INPUT" | jq --argjson updated "$UPDATED_INPUT" '.tool_input = $updated')
+                RECHECK_RESULT=$(echo "$RECHECK_INPUT" | cc-safety-net --claude-code 2>/dev/null)
+                if echo "$RECHECK_RESULT" | grep -q '"deny"' 2>/dev/null; then
+                    # Rewrite produced something safety-net rejects — surface
+                    # safety-net's deny verdict, do NOT auto-allow.
+                    echo "$RECHECK_RESULT"
+                    exit 0
+                fi
+            fi
+
             jq -n --argjson updated "$UPDATED_INPUT" \
                 '{ "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
                     "permissionDecision": "allow",
-                    "permissionDecisionReason": "RTK auto-rewrite",
+                    "permissionDecisionReason": "RTK auto-rewrite (re-verified by cc-safety-net)",
                     "updatedInput": $updated
                 }}'
             exit 0

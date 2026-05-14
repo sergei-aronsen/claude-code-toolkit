@@ -1417,17 +1417,20 @@ CONFIGEOF
     # Create config
     if [[ ! -f "$council_dir/config.json" ]]; then
         # BUG-03: JSON-escape key values so literal `"`, `\`, newline in keys do not break JSON
+        # Audit 2026-05-13: API keys are passed via stdin (not argv) so they never
+        # appear in /proc/<pid>/cmdline on Linux — closes a brief same-host leak
+        # window during the wizard's config-write step.
         local gemini_mode_json gemini_key_json openai_mode_json openai_key_json openrouter_key_json
         # shellcheck disable=SC2016
-        gemini_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_mode")
+        gemini_mode_json=$(printf %s "$gemini_mode" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
         # shellcheck disable=SC2016
-        gemini_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$gemini_key")
+        gemini_key_json=$(printf %s "$gemini_key" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
         # shellcheck disable=SC2016
-        openai_mode_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_mode")
+        openai_mode_json=$(printf %s "$openai_mode" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
         # shellcheck disable=SC2016
-        openai_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openai_key")
+        openai_key_json=$(printf %s "$openai_key" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
         # shellcheck disable=SC2016
-        openrouter_key_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$openrouter_key")
+        openrouter_key_json=$(printf %s "$openrouter_key" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
         # Audit L2: umask 0177 in subshell so config.json is created 0600 atomically.
         # SIGINT between heredoc and chmod previously left API keys world-readable.

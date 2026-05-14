@@ -27,6 +27,7 @@ import json
 import os
 import sys
 import contextlib
+import datetime as _dt
 import importlib.util
 from pathlib import Path
 
@@ -38,6 +39,73 @@ BRAIN_PATH = Path(__file__).parent / "brain.py"
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "supreme-council"
 SERVER_VERSION = "0.1.0"
+
+# Audit 2026-05-13: cap MCP-initiated Council spend per UTC day. The stdio MCP
+# transport has no authentication; any local process that can speak JSON-RPC
+# to this server can otherwise drain the user's API budget. Set via env
+# COUNCIL_MCP_DAILY_USD_CAP (float). 0 / unset disables the gate.
+USAGE_LOG_PATH = Path.home() / ".claude" / "council" / "usage.jsonl"
+MCP_DAILY_USD_CAP_ENV = "COUNCIL_MCP_DAILY_USD_CAP"
+
+
+def _today_spent_usd():
+    """Sum cost_usd entries in usage.jsonl whose ts is today (UTC). Returns
+    a float; absent / malformed records are skipped silently."""
+    if not USAGE_LOG_PATH.is_file():
+        return 0.0
+    today = _dt.datetime.utcnow().strftime("%Y-%m-%d")
+    total = 0.0
+    try:
+        with USAGE_LOG_PATH.open("r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                ts = rec.get("ts", "")
+                if not isinstance(ts, str) or not ts.startswith(today):
+                    continue
+                cost = rec.get("cost_usd", 0.0)
+                try:
+                    total += float(cost)
+                except (TypeError, ValueError):
+                    continue
+    except OSError:
+        return 0.0
+    return total
+
+
+def _mcp_cost_cap_usd():
+    """Read COUNCIL_MCP_DAILY_USD_CAP. Returns None if unset / non-positive."""
+    raw = os.environ.get(MCP_DAILY_USD_CAP_ENV, "").strip()
+    if not raw:
+        return None
+    try:
+        cap = float(raw)
+    except ValueError:
+        return None
+    if cap <= 0:
+        return None
+    return cap
+
+
+def _enforce_daily_cap_or_raise():
+    """Raise RuntimeError when today's spend has already exceeded the cap.
+    No-op when the cap is unset. Called at the start of any MCP tool that
+    consumes provider tokens."""
+    cap = _mcp_cost_cap_usd()
+    if cap is None:
+        return
+    spent = _today_spent_usd()
+    if spent >= cap:
+        raise RuntimeError(
+            f"Daily MCP cap reached: today's Council spend is "
+            f"${spent:.4f} >= ${cap:.4f}. Unset / raise "
+            f"{MCP_DAILY_USD_CAP_ENV} to continue."
+        )
 
 
 def _load_brain():
@@ -168,6 +236,7 @@ def _capture_stdout(callable_):
 def tool_council_validate(args):
     if _BRAIN is None:
         raise RuntimeError("brain.py not loaded — install Council via setup-council.sh")
+    _enforce_daily_cap_or_raise()
     plan = args.get("plan", "").strip()
     if not plan:
         raise ValueError("plan is required")
@@ -186,6 +255,7 @@ def tool_council_validate(args):
 def tool_council_audit_review(args):
     if _BRAIN is None:
         raise RuntimeError("brain.py not loaded — install Council via setup-council.sh")
+    _enforce_daily_cap_or_raise()
     report_path = args.get("report_path", "").strip()
     if not report_path:
         raise ValueError("report_path is required")
