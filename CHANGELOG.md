@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/install.sh` main TUI now surfaces **open-design**
+  ([nexu-io/open-design](https://github.com/nexu-io/open-design)) as the
+  first row of the Optional group, directly under `toolkit`. Previously
+  the local-first prototyping web UI (HTML / PDF / PPTX / MP4 from
+  prompts, default port 7456) was only reachable by running
+  `scripts/setup-open-design.sh` standalone — invisible to anyone
+  installing via `bash <(curl -sSL .../install.sh)`. Default-off
+  (`TUI_REQUIRED[3]=0`): Space-to-select. Wiring:
+  - `scripts/lib/detect2.sh` — new `is_open_design_installed()` probe
+    (`${OPEN_DESIGN_DIR:-$HOME/open-design}/.git` exists). Exported as
+    `IS_OD` by `detect2_cache`.
+  - `scripts/install.sh` — TUI_LABELS / TUI_GROUPS / TUI_INSTALLED /
+    TUI_REQUIRED / TUI_DESCS extended in lockstep (7 entries, was 6);
+    main dispatch loop re-probe extended to `open_design` label;
+    `_local_label_to_dispatch_name` maps `open-design` → `open_design`
+    (Bash function names cannot contain hyphens, mirrors `claude-memo`
+    handling).
+  - `scripts/lib/dispatch.sh` — `TK_DISPATCH_ORDER` inserts `open-design`
+    between `toolkit` and `security`; new `dispatch_open_design()`
+    wrapper mirrors `dispatch_council` semantics (`--dry-run` honoured,
+    `TK_DISPATCH_OVERRIDE_OPEN_DESIGN` test seam under `TK_TEST=1`,
+    `--yes`/`--force` swallowed before pass-through because
+    `setup-open-design.sh` is idempotent and has no such flags).
+  - Tests: new `scripts/tests/test-open-design-tui.sh` (13 assertions
+    across detection probe, TUI ordering, dispatch order, dispatcher
+    contract, label→name mapping); `test-install-tui.sh` bumped to
+    PASS=61 (added `mock-od-ran` + `Installed: 9` assertions + 8th
+    override env var to S3_yes; S5_force gains
+    `TK_DISPATCH_OVERRIDE_OPEN_DESIGN` to survive the 9-component
+    dispatch loop); `test-install-dispatch-h1.sh` gains the override
+    so PASS=6; `test-bridges-sync.sh` baseline updated 60 → 61.
+
 ## [6.25.1] - 2026-05-15
 
 ### Fixed

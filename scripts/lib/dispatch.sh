@@ -10,6 +10,7 @@
 #   dispatch_security     — invokes setup-security.sh [--yes] [--force]
 #   dispatch_rtk          — invokes brew install rtk && rtk init -g </dev/null
 #   dispatch_statusline   — invokes install-statusline.sh [--yes]
+#   dispatch_open_design  — invokes setup-open-design.sh [--yes]
 #   dispatch_council      — invokes setup-council.sh [--yes] [--force]
 # Globals (read): BASH_SOURCE, 0, TK_REPO_URL, TK_SP_INSTALL_CMD,
 #                 TK_GSD_INSTALL_CMD, TK_DISPATCH_OVERRIDE_*
@@ -108,7 +109,13 @@ if [[ -z "${TK_DISPATCH_ORDER[*]:-}" ]]; then
     # is the LAST thing on screen — that block contains action items the
     # user must execute, so keeping it terminal-final maximises its
     # visibility (user feedback 2026-05-01).
-    TK_DISPATCH_ORDER=(superpowers gsd toolkit security rtk statusline council claude-memo gemini-bridge codex-bridge skills mcp-servers)
+    # OD-TUI-01 (v6.26.0): open-design dispatched immediately after toolkit so its
+    # row in the main TUI sits at the top of the Optional group (visual order =
+    # dispatch order, with the minor exception that bridges and marketplace
+    # pickers always trail). Position is BEFORE security so a user picking only
+    # open-design gets a single clone + docker-compose up with no other side
+    # effects.
+    TK_DISPATCH_ORDER=(superpowers gsd toolkit open-design security rtk statusline council claude-memo gemini-bridge codex-bridge skills mcp-servers)
 fi
 
 # Internal log helpers — underscore prefix.
@@ -413,6 +420,54 @@ dispatch_statusline() {
     else
         local sibling
         sibling="$(_dispatch_sibling_path install-statusline.sh)"
+        bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
+    fi
+}
+
+# dispatch_open_design — setup-open-design.sh wrapper.
+# Wires nexu-io/open-design (local-first prototyping web UI on http://localhost:7456,
+# emits HTML / PDF / PPTX / MP4 from prompts). Defaults to --mode docker (no Node
+# on the host); the upstream repo is cloned into ${OPEN_DESIGN_DIR:-$HOME/open-design}.
+# Mirrors dispatch_council semantics: --dry-run is honoured at the dispatcher level
+# (prints "would run …" and returns 0). --force is honoured at the parent level —
+# the dispatcher does NOT forward it because setup-open-design.sh has no --force
+# flag (it is idempotent: clone becomes fast-forward, docker compose up becomes a
+# no-op). --yes is forwarded so non-interactive runs do not stall on confirmations
+# the upstream script may add later.
+dispatch_open_design() {
+    local force=0 dry_run=0 yes=0
+    local pass_args=()
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)   force=1   ;;
+            --dry-run) dry_run=1 ;;
+            --yes)     yes=1     ;;
+            *) pass_args+=("$1") ;;
+        esac
+        shift
+    done
+    : "$force" "$yes"
+
+    # Test seam: TK_TEST=1 gate (mirrors dispatch_council).
+    if [[ -n "${TK_DISPATCH_OVERRIDE_OPEN_DESIGN:-}" && "${TK_TEST:-0}" == "1" ]]; then
+        if [[ "$dry_run" -eq 1 ]]; then
+            echo "[+ INSTALL] open-design (would run override: $TK_DISPATCH_OVERRIDE_OPEN_DESIGN)"
+            return 0
+        fi
+        bash "$TK_DISPATCH_OVERRIDE_OPEN_DESIGN" ${pass_args[@]+"${pass_args[@]}"}
+        return $?
+    fi
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        echo "[+ INSTALL] open-design (would run: bash <(curl -sSL $TK_REPO_URL/scripts/setup-open-design.sh)${pass_args[*]:+ ${pass_args[*]}})"
+        return 0
+    fi
+
+    if _dispatch_is_curl_pipe; then
+        bash <(curl -sSL -A "$TK_USER_AGENT" "$TK_REPO_URL/scripts/setup-open-design.sh") ${pass_args[@]+"${pass_args[@]}"}
+    else
+        local sibling
+        sibling="$(_dispatch_sibling_path setup-open-design.sh)"
         bash "$sibling" ${pass_args[@]+"${pass_args[@]}"}
     fi
 }
