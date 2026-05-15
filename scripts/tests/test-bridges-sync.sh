@@ -324,7 +324,7 @@ scenario_s10_backcompat() {
     out=$(bash "$REPO_ROOT/scripts/tests/test-bootstrap.sh" 2>&1 || true)
     assert_contains "PASS=34 FAIL=0" "$out" "S10a: test-bootstrap.sh PASS=34 FAIL=0 unchanged (was 29 pre-v6.25.0 npx-version S7+S8 trios)"
     out=$(bash "$REPO_ROOT/scripts/tests/test-install-tui.sh" 2>&1 || true)
-    assert_contains "PASS=61 FAIL=0" "$out" "S10b: test-install-tui.sh PASS=61 FAIL=0 (was 60 pre-v6.26.0 OD-TUI-01 open-design row + S3_yes mock)"
+    assert_contains "PASS=60 FAIL=0" "$out" "S10b: test-install-tui.sh PASS=60 FAIL=0 (was 61 pre-v6.26.1, restored after open-design removal)"
     out=$(bash "$REPO_ROOT/scripts/tests/test-bridges-foundation.sh" 2>&1 || true)
     assert_contains "PASS=5 FAIL=0" "$out" "S10c: test-bridges-foundation.sh PASS=5 FAIL=0 unchanged"
 }
