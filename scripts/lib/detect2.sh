@@ -7,13 +7,12 @@
 #   is_codex_installed        — BRIDGE-DET-02: command -v codex
 #   is_gemini_installed       — BRIDGE-DET-01: command -v gemini
 #   is_gsd_installed          — wraps HAS_GSD from detect.sh (DET-01)
-#   is_open_design_installed  — DET-06: $OPEN_DESIGN_DIR/.git present
 #   is_rtk_installed          — DET-04: command -v rtk
 #   is_security_installed     — DET-02: cc-safety-net on PATH AND hook wired
 #   is_statusline_installed   — DET-03: ~/.claude/statusline.sh + statusLine key
 #   is_superpowers_installed  — wraps HAS_SP from detect.sh (DET-01)
 #   is_toolkit_installed      — DET-05: ~/.claude/toolkit-install.json exists
-# Globals (write, optional): IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_GEM IS_COD IS_OD
+# Globals (write, optional): IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_GEM IS_COD
 # (cache vars, populated only if the caller invokes detect2_cache).
 #
 # IMPORTANT: No errexit/nounset/pipefail here — sourced files must not alter caller error mode.
@@ -133,20 +132,6 @@ is_rtk_installed() {
     command -v rtk >/dev/null 2>&1
 }
 
-# DET-06: Open Design (nexu-io/open-design) probe — directory + .git presence.
-# setup-open-design.sh clones the upstream repo into $OPEN_DESIGN_DIR (default
-# $HOME/open-design) in BOTH --mode docker AND --mode source paths, so the
-# .git marker is the canonical "installed at least once" signal regardless of
-# mode. Container running-state is intentionally NOT probed here: the user
-# may have run `setup-open-design.sh --stop` and still wants the row to read
-# "installed ✓" (re-running setup is idempotent and a no-op when the clone is
-# fresh). Wiring into the main TUI as the first row of the Optional group
-# happens in install.sh (TUI_LABELS) + lib/dispatch.sh (TK_DISPATCH_ORDER).
-is_open_design_installed() {
-    local dir="${OPEN_DESIGN_DIR:-$HOME/open-design}"
-    [[ -d "$dir/.git" ]]
-}
-
 # DET-03: statusline.sh exists AND statusLine key wired in settings.json.
 # Top-level "statusLine" key per install-statusline.sh — NOT ".statusLine.enabled".
 # Audit S-LOW-1 (2026-04-30 deep): bare `grep -q '"statusLine"'` matched any
@@ -183,6 +168,5 @@ detect2_cache() {
     IS_SL=0;  is_statusline_installed  && IS_SL=1  || true
     IS_COD=0; is_codex_installed       && IS_COD=1 || true
     IS_GEM=0; is_gemini_installed      && IS_GEM=1 || true
-    IS_OD=0;  is_open_design_installed && IS_OD=1  || true
-    export IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_COD IS_GEM IS_OD
+    export IS_SP IS_GSD IS_TK IS_SEC IS_RTK IS_SL IS_COD IS_GEM
 }

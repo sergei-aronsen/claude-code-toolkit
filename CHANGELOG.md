@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **open-design row removed from `scripts/install.sh` TUI.** Reverts the
+  OD-TUI-01 wiring shipped in v6.26.0 (#133). Rationale: the default
+  `dispatch_open_design()` invocation forwarded no `--mode` flag, so
+  `setup-open-design.sh` ran its docker pre-flight unconditionally and
+  hard-failed (`exit 1`) on every host without Docker Desktop / OrbStack
+  — surfacing a `failed (exit 1)` row in the install summary that no
+  amount of TUI clicking could resolve. `setup-open-design.sh` is
+  retained as a standalone script (manual invocation:
+  `bash scripts/setup-open-design.sh --mode source|docker`); the
+  per-row TUI option is gone. Affected files:
+  - `scripts/install.sh` — `TUI_LABELS` / `TUI_GROUPS` /
+    `TUI_GROUP_DESCS` / `TUI_INSTALLED` / `TUI_REQUIRED` / `TUI_DESCS`
+    shrunk from 7 to 6 entries; `open-design` removed from
+    `_local_label_to_dispatch_name`; `open_design` removed from the
+    re-probe `case` in the main dispatch loop.
+  - `scripts/lib/dispatch.sh` — `dispatch_open_design()` function
+    deleted; `TK_DISPATCH_ORDER` shrunk from 13 to 12 entries
+    (`open-design` slot removed between `toolkit` and `security`);
+    docstring `Exposes:` line dropped.
+  - `scripts/lib/detect2.sh` — `is_open_design_installed()` probe
+    deleted; `IS_OD` cache var dropped from `detect2_cache()` and the
+    exported globals doc comment.
+  - Tests: `scripts/tests/test-open-design-tui.sh` and
+    `scripts/tests/test-setup-open-design.sh` deleted;
+    `test-install-tui.sh` S3_yes / S5_force lose
+    `TK_DISPATCH_OVERRIDE_OPEN_DESIGN` plus the `mock-od-ran` /
+    `Installed: 9` assertions (new baseline PASS=60);
+    `test-install-dispatch-h1.sh` drops the override env var (still
+    PASS=6); `test-bridges-sync.sh:S10b` baseline reverted 61 → 60.
+  - `components/open-design.md` and `scripts/setup-open-design.sh`
+    retained on disk so the manual install path (`--mode source` for
+    Docker-less hosts) keeps working.
+
 ## [6.26.0] - 2026-05-15
 
 ### Added
