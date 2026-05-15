@@ -182,11 +182,12 @@ run_s3_yes() {
     mkdir -p "$FAKE_BIN"
     # No installed components in clean sandbox.
 
-    # Mock all eight dispatchers (council added in Phase v4.8.1 install-
-    # bug-fixes; claude-memo added in this PR).
+    # Mock all nine dispatchers (council added in Phase v4.8.1 install-
+    # bug-fixes; claude-memo added in v6.2.x; open-design added in OD-TUI-01 v6.26.0).
     local MOCK_SP="$SANDBOX/mock-sp.sh"      ; mk_mock "$MOCK_SP"      "mock-sp-ran"      0
     local MOCK_GSD="$SANDBOX/mock-gsd.sh"    ; mk_mock "$MOCK_GSD"     "mock-gsd-ran"     0
     local MOCK_TK="$SANDBOX/mock-tk.sh"      ; mk_mock "$MOCK_TK"      "mock-tk-ran"      0
+    local MOCK_OD="$SANDBOX/mock-od.sh"      ; mk_mock "$MOCK_OD"      "mock-od-ran"      0
     local MOCK_SEC="$SANDBOX/mock-sec.sh"    ; mk_mock "$MOCK_SEC"     "mock-sec-ran"     0
     local MOCK_RTK="$SANDBOX/mock-rtk.sh"    ; mk_mock "$MOCK_RTK"     "mock-rtk-ran"     0
     local MOCK_SL="$SANDBOX/mock-sl.sh"      ; mk_mock "$MOCK_SL"      "mock-sl-ran"      0
@@ -202,6 +203,7 @@ run_s3_yes() {
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$MOCK_SP" \
         TK_DISPATCH_OVERRIDE_GSD="$MOCK_GSD" \
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
+        TK_DISPATCH_OVERRIDE_OPEN_DESIGN="$MOCK_OD" \
         TK_DISPATCH_OVERRIDE_SECURITY="$MOCK_SEC" \
         TK_DISPATCH_OVERRIDE_RTK="$MOCK_RTK" \
         TK_DISPATCH_OVERRIDE_STATUSLINE="$MOCK_SL" \
@@ -213,10 +215,11 @@ run_s3_yes() {
 
     assert_eq      "0" "$RC"          "S3_yes: install.sh exits 0 with --yes"
     assert_contains "mock-tk-ran"     "$OUTPUT" "S3_yes: toolkit dispatcher invoked"
+    assert_contains "mock-od-ran"     "$OUTPUT" "S3_yes: open-design dispatcher invoked (OD-TUI-01 v6.26.0)"
     assert_contains "mock-sec-ran"    "$OUTPUT" "S3_yes: security dispatcher invoked"
     assert_contains "mock-council-ran" "$OUTPUT" "S3_yes: council dispatcher invoked (v4.8.1 7th component)"
     assert_contains "mock-memo-ran"   "$OUTPUT" "S3_yes: claude-memo dispatcher invoked (8th component)"
-    assert_contains "Installed: 8"    "$OUTPUT" "S3_yes: summary shows 8 installed (claude-memo added in this PR)"
+    assert_contains "Installed: 9"    "$OUTPUT" "S3_yes: summary shows 9 installed (open-design added 9th in OD-TUI-01)"
 }
 
 # ─────────────────────────────────────────────────
@@ -291,6 +294,7 @@ run_s5_force() {
         TK_DISPATCH_OVERRIDE_TOOLKIT="$MOCK_TK" \
         TK_DISPATCH_OVERRIDE_SUPERPOWERS="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_GSD="$_NOOP_SCRIPT" \
+        TK_DISPATCH_OVERRIDE_OPEN_DESIGN="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_SECURITY="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_RTK="$_NOOP_SCRIPT" \
         TK_DISPATCH_OVERRIDE_STATUSLINE="$_NOOP_SCRIPT" \

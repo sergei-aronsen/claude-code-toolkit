@@ -345,7 +345,7 @@ assert_eq "0" "$checked_cod" "S15: probe returns 0 after bridge_create_global co
 echo "=== S13: BACKCOMPAT-01 — all 4 baselines unchanged ==="
 for spec in \
     "test-bootstrap.sh:PASS=34 FAIL=0" \
-    "test-install-tui.sh:PASS=60 FAIL=0" \
+    "test-install-tui.sh:PASS=61 FAIL=0" \
     "test-bridges-foundation.sh:PASS=5 FAIL=0" \
     "test-bridges-sync.sh:PASS=25 FAIL=0"
 do

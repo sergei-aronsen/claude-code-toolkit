@@ -1474,10 +1474,17 @@ fi
 # Component metadata — labels, groups, descriptions.
 # Index order matches TK_DISPATCH_ORDER from dispatch.sh.
 # ─────────────────────────────────────────────────
+# OD-TUI-01 (v6.26.0): open-design row pinned to the top of the Optional
+# group (index 3, immediately after toolkit/Core). Rationale: setup-open-design.sh
+# was previously invisible to anyone running `bash <(curl ... install.sh)` — it
+# only got discovered via docs/components. Surfacing it as the first Optional
+# row makes the nexu-io/open-design local prototyping web UI a one-keystroke
+# install. Default-off (TUI_REQUIRED[3]=0) so users who don't want it skip
+# with Space; default ON would force a Docker pull on every fresh install.
 # shellcheck disable=SC2034  # TUI_* arrays consumed by tui_checklist in tui.sh (D-01)
-TUI_LABELS=("superpowers" "get-shit-done" "toolkit" "security" "rtk" "statusline")
+TUI_LABELS=("superpowers" "get-shit-done" "toolkit" "open-design" "security" "rtk" "statusline")
 # shellcheck disable=SC2034  # TUI_GROUPS consumed by tui_checklist in tui.sh (D-01)
-TUI_GROUPS=("Bootstrap"   "Bootstrap"      "Core"    "Optional" "Optional" "Optional")
+TUI_GROUPS=("Bootstrap"   "Bootstrap"      "Core"    "Optional"    "Optional" "Optional" "Optional")
 # Per-section dim subtitle. Parallel pair (Bash 3.2 has no associative arrays).
 # TUI_GROUP_NAMES[k] is the section name; TUI_GROUP_DESCS[k] is the matching
 # subtitle rendered in dim under the section header.
@@ -1492,21 +1499,22 @@ TUI_GROUP_NAMES=(
 TUI_GROUP_DESCS=(
     "Foundation plugins this toolkit complements (skills + workflow). Skip if you don't want them."
     "The toolkit itself — commands, agents, prompts, skills, rules for the project. Required."
-    "Add-ons: security rules, token saver, statusline, multi-AI council. Pick what you want."
+    "Add-ons: open-design web UI, security rules, token saver, statusline, multi-AI council. Pick what you want."
     "Mirror. Auto-regenerated GEMINI.md / AGENTS.md copies of CLAUDE.md so other AI CLIs read the same context."
 )
-TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_SEC" "$IS_RTK" "$IS_SL")
+TUI_INSTALLED=("$IS_SP" "$IS_GSD" "$IS_TK" "$IS_OD" "$IS_SEC" "$IS_RTK" "$IS_SL")
 # TUI_REQUIRED: 1 = mandatory (always pre-checked, immutable, dim-rendered).
 # Toolkit is the whole reason install.sh exists — deselecting it would skip the
 # core install and leave a confused user. Mark required so the row reads as
 # "[required]" and Space is a no-op on it.
 # shellcheck disable=SC2034  # TUI_REQUIRED consumed by tui_checklist
-TUI_REQUIRED=("0" "0" "1" "0" "0" "0")
+TUI_REQUIRED=("0" "0" "1" "0" "0" "0" "0")
 # shellcheck disable=SC2034  # TUI_DESCS consumed by tui_checklist in tui.sh (D-20)
 TUI_DESCS=(
     "Skills + code-reviewer agent (claude plugin)"
     "Phase-based workflow (curl install)"
     "Claude Code Toolkit core (init-claude.sh)"
+    "Local-first prototyping web UI on :7456 (nexu-io/open-design, Docker)"
     "Global security rules + cc-safety-net hook"
     "60-90% token savings on dev commands"
     "macOS rate-limit statusline (Keychain)"
@@ -2194,6 +2202,9 @@ _local_label_to_dispatch_name() {
         # claude-memo → claude_memo (Bash function names cannot contain
         # hyphens). dispatch_claude_memo lives in scripts/lib/dispatch.sh.
         claude-memo)   echo "claude_memo" ;;
+        # open-design → open_design (same hyphen-rewrite rule as claude-memo).
+        # dispatch_open_design lives in scripts/lib/dispatch.sh.
+        open-design)   echo "open_design" ;;
         # Bridges keep their kebab-case label — the dispatch loop has a
         # dedicated bridge branch (case "$local_name" in gemini-bridge|
         # codex-bridge) that handles them without invoking dispatch_*.
@@ -2229,6 +2240,7 @@ for ((i=0; i<_disp_count; i++)); do
         security)    is_security_installed    && local_re_installed=1 || true ;;
         rtk)         is_rtk_installed         && local_re_installed=1 || true ;;
         statusline)  is_statusline_installed  && local_re_installed=1 || true ;;
+        open_design) is_open_design_installed && local_re_installed=1 || true ;;
         council)     [[ -f "$HOME/.claude/council/brain.py" ]] && local_re_installed=1 || true ;;
         claude_memo) local_memo_vault="${MEMO_VAULT_PATH:-$HOME/memo-vault}"
                      local_memo_skill=0
