@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **4 framework `DEPLOY_CHECKLIST.md` files deleted**
+  (`templates/{laravel,rails,python,go}/prompts/DEPLOY_CHECKLIST.md`).
+  Per-stack triage (4 parallel `cavecrew-investigator` agents) showed
+  these files (a) mirror-drift the base prompt for sections 1-4 with
+  stack-specific tool names; (b) **omit base safety gates**:
+  `0a PRE-DEPLOY BASELINE`, `5.4 Auth/Crypto/Session`,
+  `5.5 CSRF/Rate-limit`, `7.4 Post-Deploy Comparison`, `8.2 Rollback
+  Triggers table`, `8.3 Time Boundaries`; (c) carry misplaced audit
+  machinery (`SELF-CHECK`, `OUTPUT FORMAT`, `Council Handoff`) that the
+  v6.15.0 propagator-comment already declared excluded from
+  DEPLOY_CHECKLIST as a runbook (not an audit prompt). Net effect: a
+  Laravel/Rails/Python/Go user consulting the framework variant got a
+  **worse** checklist than a generic user. The install fallback chain
+  (`scripts/install.sh` / `scripts/init-claude.sh` / `scripts/init-local.sh`)
+  already routes framework→base when the FW file is absent — no script
+  changes needed.
+
+### Added
+
+- **`components/deploy-templates/go.md`, `python.md`, `rails.md`** —
+  stack-specific operational runbook templates extracted from the
+  deleted FW DEPLOY files. Cover: production build flags + version embed
+  (Go), systemd unit + multi-stage Docker + pprof / hey verification
+  (Go), gunicorn + Celery deploy script + Alembic rollback + Celery
+  inspect (Python), Puma + Sidekiq + Nginx deploy script with Sidekiq
+  stats and Capistrano rollback (Rails), stack-specific rollback triggers
+  (goroutine leak / Celery crash / Sidekiq retry climb). Referenced from
+  `templates/base/prompts/DEPLOY_CHECKLIST.md` `Stack Specifics`
+  section. Laravel has no genuinely unique operational content beyond
+  what's already in the base snippet, so no Laravel component was
+  created.
+
+### Changed
+
+- `templates/base/prompts/DEPLOY_CHECKLIST.md` — `Stack Specifics`
+  section now opens with a table linking to the three new
+  `components/deploy-templates/<stack>.md` files for full runbook
+  templates beyond the minimum graceful-restart snippet.
+- `scripts/tests/test-template-propagation.sh` — source file count
+  baseline 11 → 7 (6 base audits + 1 base DEPLOY_CHECKLIST). Comment
+  block updated to reflect v6.27.0 deletion.
+
 ## [6.26.1] - 2026-05-16
 
 ### Removed

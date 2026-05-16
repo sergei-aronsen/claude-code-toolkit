@@ -385,6 +385,18 @@ on-call decider does not improvise mid-incident.
 
 ## Stack Specifics
 
+The snippets below cover the minimum graceful-restart / migration /
+verify primitives per stack. For operational runbook templates
+(systemd unit, multi-stage Dockerfile, full deploy + rollback scripts,
+Celery / Sidekiq introspection, pprof / hey load test), consult the
+matching component:
+
+| Stack | Component |
+|-------|-----------|
+| Go | `components/deploy-templates/go.md` |
+| Python | `components/deploy-templates/python.md` |
+| Rails | `components/deploy-templates/rails.md` |
+
 ### Laravel
 
 ```bash
