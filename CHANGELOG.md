@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.26.1] - 2026-05-16
+
 ### Removed
 
 - **open-design row removed from `scripts/install.sh` TUI.** Reverts the
