@@ -40,19 +40,21 @@ fi
 # 1.2: copy templates/ to scratch
 cp -r "$REPO_ROOT/templates" "$SCRATCH/templates"
 
-# 1.3: count source files. v6.22.0: framework audit prompts deleted (drift vs
-# modernized base). Remaining = 6 audit prompts (base) + 5 DEPLOY_CHECKLIST
-# (base+laravel+rails+python+go) = 11 total.
+# 1.3: count source files. v6.22.0: framework audit prompts deleted (drift
+# vs modernized base). v6.27.0: 4 framework DEPLOY_CHECKLIST files deleted
+# (mirror drift + dropped safety gates); stack-specific operational
+# templates extracted to `components/deploy-templates/{go,python,rails}.md`.
+# Remaining = 6 audit prompts (base) + 1 DEPLOY_CHECKLIST (base) = 7 total.
 SRC_COUNT=$(find "$SCRATCH/templates" -path '*/prompts/*.md' \
     \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
        -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
        -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o -name 'DEPLOY_CHECKLIST.md' -o \
        -name 'DESIGN_REVIEW.md' \) | wc -l | tr -d ' ')
 
-if [ "$SRC_COUNT" = "11" ]; then
-    report_pass "source file count: 11 prompt files (6 base audits + 5 DEPLOY_CHECKLIST)"
+if [ "$SRC_COUNT" = "7" ]; then
+    report_pass "source file count: 7 prompt files (6 base audits + 1 base DEPLOY_CHECKLIST)"
 else
-    report_fail "source file count: expected 11, got $SRC_COUNT"
+    report_fail "source file count: expected 7, got $SRC_COUNT"
 fi
 
 # =============================================================================
