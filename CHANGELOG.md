@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.28.0] - 2026-05-16
+
+### Added
+
+- **`templates/base/prompts/SECURITY_AUDIT.md` — modernization Phase 1
+  (Wave-3 meta-audit, 6 of 12 HIGH coverage gaps closed):**
+  - `### JWT & Token Verification` (new H3) — `alg: none` reject at
+    parser, algorithm confusion (HS256-vs-RS256), `kid` allowlist,
+    `jwk`/`jku`/`x5u` header rejection, unverified-decode trap,
+    `iss`/`aud`/`exp`/`nbf` validation, server-side revocation, RFC
+    9068 `at+jwt` `typ` confusion.
+  - `### Prototype Pollution & Object Confusion` (new H3) —
+    `__proto__`/`constructor`/`prototype` keys in deep-merge / set /
+    clone helpers (`lodash.merge` <4.17.20, `lodash.set`, `qs`
+    <6.7.3, hand-rolled), JSON-into-object copy loops, NoSQL
+    operator injection (`{ "$ne": null }`). Concrete exploit
+    gadgets: template-engine RCE (EJS / Handlebars / Pug),
+    `child_process` argument injection, authorization-middleware
+    bypass.
+  - `### ReDoS & Pattern-Engine Catastrophic Backtracking` (new H3)
+    — nested quantifiers, overlapping alternatives, dynamic
+    `new RegExp(userInput)`, `String.matchAll` / `re.search` /
+    `Pattern.matcher` without timeout. Defenses: `re2` /
+    non-backtracking engines, timeouts, input-length caps,
+    `safe-regex` / `recheck` / `redos-detector` in CI.
+  - `### HTTP Request Smuggling` (new H3 under Transport) — CL.TE,
+    TE.CL, TE.TE, CL.0 / 0.CL, H2.CL primitives plus
+    pipeline-disagreement detection. Visible-vector requirement
+    rules out generic "behind a proxy" findings.
+  - OAuth flow bullet under `### Authentication & Session
+    Lifecycle` expanded from one line into a six-leg checklist:
+    `state` discipline, mandatory PKCE on public clients,
+    `redirect_uri` exact byte-match (no wildcard subdomain, no
+    path-prefix relaxation, no IDN homograph, no fragment / query
+    merge), scope-downgrade refusal, refresh-token reuse detection,
+    account-linking takeover requiring verified-email match on
+    both sides.
+  - `### AI / LLM / RAG Security` expanded with named attack
+    classes: indirect prompt injection (RAG documents, fetched web
+    pages, third-party API responses, tool output reflection, PDFs
+    with hidden text, multimodal image-text injection),
+    output-reflection injection, memory / agent-state poisoning.
+    Defenses are structural — per-user tool dispatch, provenance
+    tags (`trusted` / `tenant-owned` / `public-web` /
+    `attacker-supplied`), pre-tool-call audit filter — not
+    prompt-pattern-based.
+- **`## QUICK CHECK` table extended 12 → 17 entries**: JWT verify
+  call sites (`jwt.verify`, `jwt.decode`, `jwks-rsa`), deep-merge /
+  set helpers on user input, dynamic regex construction, reverse
+  proxy / CDN re-framing of `Content-Length` / `Transfer-Encoding`,
+  RAG retrieval / tool output fed back into a model prompt.
+- **`.planning/research/meta-audit-wave3-2026-05-16.md`** — Wave-3
+  meta-audit research artifact consolidating 192 findings (1 CRIT,
+  53 HIGH, 80 MED, 58 LOW) across the 7 base audit prompts, plus a
+  recommended v6.28.0-v6.34.0 release sequence.
+
+### Changed
+
+- All v42-splice / parser-sensitive content survives byte-exact:
+  six `<!-- v42-splice: NAME -->` sentinels, `_pending — run
+  /council audit-review_` U+2014 em-dash slot,
+  `1. **Read context**` / `6. **Severity sanity check**`
+  SELF-CHECK anchors, `### Finding F-NNN` schema labels, YAML
+  frontmatter example, `<output_format>` skeleton, Extension to
+  Language Fence Map table. No `## CATEGORY ENUM` churn — six new
+  attack classes all map to existing entries (`Authentication`,
+  `Injection`, `Availability`, `Transport/CORS/Host`, `AI/LLM
+  Security`).
+
+### Deferred (KNOWN-DEBT — target v6.28.1)
+
+Six remaining HIGH-severity Wave-3 SECURITY_AUDIT.md findings:
+
+- SSRF v6 expansion (IPv6 link-local `fe80::`, unique-local
+  `fc00::/7` split, DNS rebinding pin).
+- Deserialization extended (insecure-by-design libraries beyond
+  the current Python/Ruby triad).
+- Cookie attributes section — `SameSite` / `Secure` / `HttpOnly` /
+  `Partitioned`.
+- Slopsquatting (AI-suggested-dep typosquatting, distinct from
+  classic typosquatting already covered).
+- Inline rubric drift at calibration section (duplicates spliced
+  `rubric-anchors` SOT) — requires
+  `audit-uncertainty-discipline.md` SOT touch.
+- CSP `strict-dynamic` vs nonce vs hash distinction.
+
 ## [6.27.0] - 2026-05-16
 
 ### Removed
