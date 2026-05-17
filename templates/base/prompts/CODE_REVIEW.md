@@ -483,6 +483,25 @@ Do not report:
 - unnecessary architectural generalization
 - refactors without measurable benefit
 
+**Concrete examples — DROP vs KEEP:**
+
+| Finding | Verdict | Why |
+| ------- | ------- | --- |
+| "Rename `usr` → `user` for clarity" | DROP | Stylistic; no semantic benefit |
+| "Extract this 12-line block into a helper" | DROP | Premature abstraction; no duplication |
+| "Add JSDoc to this private function" | DROP | No operationally important behavior missing |
+| "Use `Array.from` instead of spread" | DROP | Framework preference; no measurable impact |
+| "Could use `Map` for slightly faster lookup" | DROP | Speculative micro-optimization on a non-hot path |
+| "Missing test for the null-input branch" | KEEP | Concrete uncovered risk (null deref in prod) |
+| "This regex backtracks O(2^n) on `aaaa…aX`" | KEEP | ReDoS — measurable defect, exploitable |
+| "Auth check missing on `/admin/delete-user`" | KEEP | Concrete authorization gap; reachable |
+| "Type `any` here hides a real union" | KEEP | Type weakness produces realistic defect at call site |
+| "Three near-identical 40-line blocks above" | KEEP | Duplication has measurable maintenance cost |
+
+The pattern: a finding **KEEPS** when it names (a) a concrete defect or
+risk, (b) a reachable code path, AND (c) a cost that beats the cost of
+fixing it. A finding **DROPS** when any of the three is missing.
+
 ---
 
 ## UNCERTAINTY DISCIPLINE

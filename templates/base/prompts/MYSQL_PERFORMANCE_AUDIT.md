@@ -730,6 +730,16 @@ SELECT
 | 30-300 | HIGH | Replica falling behind; failover blocked |
 | > 300 OR NULL | CRITICAL | Replication broken — inspect `Last_*_Error` |
 
+**Per-RTO calibration.** The bands above are the default; calibrate
+them against the project's actual Recovery Time Objective. The
+threshold for HIGH should be `RTO / 2` (so the on-call has half the
+RTO to fix lag before the failover deadline passes). CRITICAL is
+`> RTO`. Example: RTO = 60 s → HIGH at lag > 30 s, CRITICAL at lag
+> 60 s. Project RTO lives in `## 0.1 PROJECT SPECIFICS` of the
+host audit (e.g., DEPLOY_CHECKLIST or PERFORMANCE_AUDIT); a finding
+that cites lag severity must reference the project's RTO, not the
+generic 30/300 s defaults.
+
 **Common causes of lag:**
 
 - Single-threaded SQL applier on a multi-threaded source workload —
