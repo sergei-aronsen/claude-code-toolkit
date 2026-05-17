@@ -1,6 +1,14 @@
 # Severity Levels
 
-Standard severity levels for audits and code review.
+Short reference card for audit report Summary tables.
+
+**This file is the table reference cited by the spliced output-format
+Summary blocks (`templates/base/prompts/*.md` `## OUTPUT FORMAT`), not
+a second labels source.** The canonical labels + Severity Ceiling
+Table live in `components/audit-severity-anchor.md` (Wave-3 CODE_REVIEW
+F-005 reconcile, v6.32.0). When in doubt about how to label a finding,
+go to the anchor; this card just lists the four reportable levels for
+output formatting.
 
 ## Level Table
 
