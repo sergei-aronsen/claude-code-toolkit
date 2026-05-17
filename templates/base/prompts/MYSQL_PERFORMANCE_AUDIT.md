@@ -24,6 +24,39 @@
 
 ---
 
+## 0.1 SEVERITY THRESHOLDS (MySQL-Specific Calibration)
+
+MySQL-specific severity rubric. The spliced FALSE-POSITIVE CONTROL
+block below points `cross-reference ## SEVERITY THRESHOLDS` at this
+section — keep the heading text byte-exact so the cross-reference
+resolves locally. Numbers are SLO-grade defaults; override per
+project when `.claude/rules/project-context.md` declares tighter or
+looser operational targets.
+
+| Signal | LOW | MEDIUM | HIGH | CRITICAL |
+| ------ | --- | ------ | ---- | -------- |
+| `events_statements_summary_by_digest` `avg_ms` (OLTP read path) | < 50 ms | 50-200 ms | 200-1000 ms | > 1000 ms |
+| `events_statements_summary_by_digest` `avg_ms` (OLTP write path) | < 100 ms | 100-500 ms | 500-2000 ms | > 2000 ms |
+| `scan_ratio` (`ROWS_EXAMINED / ROWS_SENT`, SELECT only) | 1-10 | 10-100 | 100-1000 | > 1000 |
+| InnoDB buffer pool hit ratio (`1 - reads/read_requests`) | > 99% | 95-99% | 90-95% | < 90% |
+| Connection saturation (`Threads_connected / max_connections`) | < 60% | 60-80% | 80-95% | > 95% |
+| `Innodb_row_lock_time_avg` (ms) | < 10 | 10-100 | 100-1000 | > 1000 |
+| Replication lag (`Seconds_Behind_Master` / `Seconds_Behind_Source`) | < 5 s | 5-30 s | 30-300 s | > 300 s |
+| Table fragmentation (`DATA_FREE / DATA_LENGTH`) | < 10% | 10-30% | 30-50% | > 50% |
+| Auto-increment usage (INT signed) | < 50% | 50-70% | 70-85% | > 85% |
+| `Slow_queries` rate per minute | < 1 | 1-10 | 10-100 | > 100 |
+| `Innodb_history_list_length` (undo log purge backlog) | < 1k | 1k-10k | 10k-1M | > 1M |
+| Temp tables on disk (`Created_tmp_disk_tables / Created_tmp_tables`) | < 10% | 10-30% | 30-50% | > 50% |
+
+A finding **cannot** be elevated above `MEDIUM` without one of: a
+captured `performance_schema.events_statements_summary_by_digest`
+row, an `EXPLAIN ANALYZE` plan (MySQL 8.0.18+), an `EXPLAIN
+FORMAT=JSON` plan, a `SHOW ENGINE INNODB STATUS` snapshot, or a
+slow-query-log entry. See `## 4.1 EXPLAIN ANALYZE Evidence Gate`
+for the binding rule.
+
+---
+
 ## Statistics Access
 
 ### Check for sys schema
@@ -292,6 +325,53 @@ shows up in `ROWS_EXAMINED` not `scan_ratio`.
 - `ORDER BY` without index → Composite index
 - `JSON_EXTRACT(col, '$.key')` in WHERE → Create Virtual Generated Column + Index
 
+### 4.1 EXPLAIN ANALYZE Evidence Gate (F-002)
+
+Every HIGH or CRITICAL slow-query finding MUST cite a captured plan
+in the `Why it is real` field. A query the auditor merely
+**suspects** is slow does not survive Gate 2 (`## SELF-CHECK` step 2
+— Trace data flow). Acceptable evidence kinds for slow-query
+HIGH/CRITICAL:
+
+1. `EXPLAIN ANALYZE` output (MySQL 8.0.18+, preferred) — measures
+   actual rows and timing instead of just planner estimates.
+2. `EXPLAIN FORMAT=JSON` plan (any MySQL 5.6+, when 8.0.18 not
+   available) — includes `cost_info`, `used_columns`,
+   `attached_condition`, `used_key_parts`.
+3. `performance_schema.events_statements_summary_by_digest` row
+   with `COUNT_STAR`, `SUM_TIMER_WAIT`, `SUM_ROWS_EXAMINED`,
+   `SUM_ROWS_SENT`.
+4. `slow_query_log` line (when `long_query_time` is configured and
+   the query has been observed in production).
+5. `SHOW ENGINE INNODB STATUS` excerpt showing the matching
+   transaction stuck on row locks.
+
+A finding without one of (1)-(5) is downgraded to MEDIUM or moved
+to Non-Blocking Observations.
+
+```sql
+-- Preferred: EXPLAIN ANALYZE on 8.0.18+
+EXPLAIN ANALYZE
+SELECT /* the query under audit */;
+
+-- Fallback: EXPLAIN FORMAT=JSON (any 5.6+)
+EXPLAIN FORMAT=JSON
+SELECT /* the query under audit */;
+```
+
+**Estimate vs actual divergence.** `EXPLAIN ANALYZE` prints both
+estimated and actual rows per loop. When the ratio is > 100× or
+< 0.01× the optimizer has stale statistics — run
+`ANALYZE TABLE <table>` and re-capture before deciding finding
+severity.
+
+**`EXPLAIN ANALYZE` caveat.** Unlike `EXPLAIN`, `ANALYZE` **executes**
+the query. Do not run against destructive `UPDATE` / `DELETE` /
+`INSERT` statements in production audit context — use `EXPLAIN
+FORMAT=JSON` for DML, and validate the plan from the
+`events_statements_summary_by_digest` row + `slow_query_log`
+instead.
+
 ---
 
 ## 5. Unused Indexes
@@ -379,6 +459,46 @@ foreach (Site::with('lastCheck')->get() as $site) {
 }
 ```
 
+### 6.1 Unbounded `get()` and Result-Set Materialization (F-024)
+
+Laravel `Model::all()` and `Builder::get()` without an explicit
+`limit()` / chunking materialize the entire result set into PHP
+memory. The query itself looks innocent (`SELECT * FROM <table>`)
+and runs fast on a small table, then OOMs the worker the day a
+batch import grows the table 50×.
+
+```php
+// Bad — materializes every row, blows up at scale
+User::where('status', 'active')->get();
+Order::all();
+$rows = DB::table('events')->where('created_at', '>', $cutoff)->get();
+
+// Good — paginate, chunk, or cursor
+User::where('status', 'active')->paginate(50);
+
+Order::chunk(500, function ($orders) {
+    // process each batch
+});
+
+foreach (DB::table('events')->where(...)->cursor() as $event) {
+    // lazy generator, one row at a time
+}
+```
+
+**Audit signal** — search the diff for `->get()`, `->all()`,
+`::all()`, `->pluck(` without a preceding `->limit(` /
+`->paginate(` / `->chunk(` / `->cursor(` and verify the underlying
+table has an enforced upper bound on `WHERE` matches. A `get()` on
+a soft-deleted-rows scope or a multi-tenant query without
+`tenant_id` filter is always a finding.
+
+The same pattern shows up in other ORMs: Active Record
+`Model.find_each` / `.in_batches` instead of `.all`; Django
+`QuerySet.iterator(chunk_size=N)` instead of `list(qs)`; SQLAlchemy
+`session.execute(...).yield_per(N)` instead of `.scalars().all()`;
+Prisma `findMany({take, cursor})` paged loop instead of unbounded
+`findMany`.
+
 ---
 
 ## 7. Deadlocks
@@ -449,6 +569,184 @@ ORDER BY DATA_FREE DESC;
 - Table > 1GB → plan archiving/partitioning
 - `jobs` table bloated → problem with workers
 - High `frag_pct` → UUID v4 fragmentation or frequent deletes
+
+---
+
+## 8.1 Covering Index and Leftmost-Prefix Rules
+
+A **covering index** contains every column the query reads — the
+optimizer can satisfy the query from the index alone and skip the
+table read (`Using index` in `EXPLAIN`). A composite index follows
+the **leftmost-prefix rule**: an index on `(a, b, c)` serves
+`WHERE a=…`, `WHERE a=… AND b=…`, `WHERE a=… AND b=… AND c=…` —
+but NOT `WHERE b=…` or `WHERE c=…` alone.
+
+```sql
+-- Find queries that could be covered (high rows_examined,
+-- few columns in SELECT)
+SELECT
+    LEFT(DIGEST_TEXT, 80) as query,
+    COUNT_STAR as calls,
+    ROUND(SUM_ROWS_EXAMINED / NULLIF(COUNT_STAR, 0), 0) as rows_per_call
+FROM performance_schema.events_statements_summary_by_digest
+WHERE SCHEMA_NAME = DATABASE()
+    AND DIGEST_TEXT LIKE 'SELECT%'
+    AND SUM_ROWS_EXAMINED > 10000
+ORDER BY rows_per_call DESC
+LIMIT 15;
+```
+
+For each candidate, run `EXPLAIN FORMAT=JSON` and check:
+
+- `using_index: true` → already covered.
+- `using_index: false` AND the `SELECT` returns ≤ 4 columns →
+  candidate for a covering composite index.
+
+**Leftmost-prefix detection (skipped index columns):**
+
+```sql
+-- EXPLAIN shows the actual key_len used vs the index's full length;
+-- a partial match means later columns are unused.
+EXPLAIN FORMAT=JSON
+SELECT /* the query */ \G
+-- Look for `used_key_parts` in the JSON.
+```
+
+Typical mistake: index `(a, b, c)` but the query is `WHERE b=? AND
+c=?` — index unused, full scan. Fix by either reordering the index
+to `(b, c, a)` (if `a` predicate is rare) or adding a second index
+`(b, c)`.
+
+**Index merge** (MySQL 5.6+) can union two single-column indexes
+but is usually slower than a properly-ordered composite — flag
+`Using union(idx_a,idx_b)` in `EXPLAIN` as a redesign signal.
+
+---
+
+## 8.2 INSTANT vs INPLACE DDL Matrix (MySQL 8.0+)
+
+MySQL 8.0 added `ALGORITHM=INSTANT` for many `ALTER TABLE`
+operations. Knowing the difference between `INSTANT`, `INPLACE`,
+and `COPY` saves hours of downtime on large tables.
+
+| Operation | 8.0+ Algorithm | Locks Table? | Downtime |
+| --------- | -------------- | ------------ | -------- |
+| `ADD COLUMN … DEFAULT …` (at end) | `INSTANT` | No | < 1 s |
+| `ADD COLUMN` (any position 8.0.29+) | `INSTANT` | No | < 1 s |
+| `DROP COLUMN` (8.0.29+) | `INSTANT` | No | < 1 s |
+| `RENAME COLUMN` | `INSTANT` | No | < 1 s |
+| `ADD INDEX` (secondary) | `INPLACE` | No (online) | minutes |
+| `DROP INDEX` (secondary) | `INPLACE` | No (online) | seconds |
+| `ADD COLUMN … AUTO_INCREMENT` | `COPY` | Yes | hours |
+| `CHANGE COLUMN` (type change) | `COPY` | Yes | hours |
+| `OPTIMIZE TABLE` | `INPLACE` (5.6+) | No (online) | hours |
+| `ADD FOREIGN KEY` | `INPLACE` | No, but locks writes | minutes |
+
+Always specify the algorithm explicitly so a fallback to `COPY`
+fails the migration loudly instead of silently locking the table:
+
+```sql
+ALTER TABLE users
+  ADD COLUMN last_login_at TIMESTAMP NULL,
+  ALGORITHM=INSTANT, LOCK=NONE;
+```
+
+If the operation is not INSTANT-eligible the statement errors with
+`ALGORITHM=INSTANT is not supported for this operation` — the
+migration author then chooses INPLACE with explicit lock policy or
+schedules a maintenance window.
+
+**INSTANT add column limit (8.0.29+):** at most 64 INSTANT-added
+columns per table before a table rebuild is required. Track usage
+via `information_schema.INNODB_TABLES.INSTANT_COLS`.
+
+---
+
+## 8.3 Replication Lag Queries
+
+Lagged replicas serve stale reads, break read-your-writes, and
+block failover. Monitor lag explicitly — `SHOW REPLICA STATUS` is
+the canonical source.
+
+```sql
+-- 8.0.22+: REPLICA, older: SLAVE
+SHOW REPLICA STATUS \G
+-- Look for:
+--   Seconds_Behind_Source (NULL if not running)
+--   Retrieved_Gtid_Set vs Executed_Gtid_Set (GTID gap = pending events)
+--   Last_IO_Error / Last_SQL_Error
+--   Replica_IO_Running / Replica_SQL_Running (both should be 'Yes')
+```
+
+```sql
+-- GTID gap detection (multi-source / chain replication)
+SELECT
+    @@gtid_executed AS executed,
+    @@gtid_purged   AS purged;
+```
+
+| `Seconds_Behind_Source` | Status | Action |
+| ----------------------- | ------ | ------ |
+| 0-5 | OK | - |
+| 5-30 | Warning | Investigate hot writes on source |
+| 30-300 | HIGH | Replica falling behind; failover blocked |
+| > 300 OR NULL | CRITICAL | Replication broken — inspect `Last_*_Error` |
+
+**Common causes of lag:**
+
+- Single-threaded SQL applier on a multi-threaded source workload —
+  enable parallel replication: `replica_parallel_workers = 4-16`,
+  `replica_parallel_type = LOGICAL_CLOCK`.
+- Long-running query on source that takes minutes to replay.
+- A large `ALTER TABLE` running on the replica in serial mode.
+- Disk-write saturation on the replica.
+
+```sql
+-- Parallel applier status
+SHOW REPLICA STATUS \G
+-- Look for: Replica_Parallel_Workers, Replica_SQL_Running_State
+```
+
+---
+
+## 8.4 slow_query_log Integration
+
+The slow query log is the audit's primary production observation
+channel. Without it, the auditor relies on `events_statements_summary_by_digest`
+snapshots which lose per-execution context (exact bind values,
+client host, user).
+
+```sql
+-- Enable (runtime, persists until restart)
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 1.0;          -- 1 second
+SET GLOBAL log_queries_not_using_indexes = 'ON';
+SET GLOBAL log_slow_admin_statements = 'OFF';
+
+-- Persist across restart: add to my.cnf:
+-- [mysqld]
+-- slow_query_log = 1
+-- slow_query_log_file = /var/log/mysql/slow.log
+-- long_query_time = 1.0
+-- log_queries_not_using_indexes = 1
+```
+
+**Audit checks:**
+
+- `slow_query_log = ON` AND `long_query_time` ≤ 1.0 on production.
+  A 10-second threshold misses 95% of OLTP slowness.
+- `log_output = FILE` (not `TABLE`) — table logging serializes
+  through a single InnoDB table and itself becomes a bottleneck.
+- Log file rotated (logrotate or `mysqladmin flush-logs`) and
+  parsed via `mysqldumpslow -s t -t 20 /var/log/mysql/slow.log` or
+  `pt-query-digest` for grouping.
+- `log_slow_replica_statements = ON` on replicas — catches queries
+  the source executed fast but the replica replays slowly.
+
+Every HIGH or CRITICAL slow-query finding citing the slow log MUST
+include: timestamp, `Query_time`, `Lock_time`, `Rows_examined`,
+`Rows_sent`. A `slow.log` excerpt without those fields is not
+evidence.
 
 ---
 

@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/MYSQL_PERFORMANCE_AUDIT.md` — MySQL 8.0+
+  coverage and evidence gates (Wave-3 meta-audit, MYSQL F-001 / F-002
+  / F-024 closed):**
+  - New `## 0.1 SEVERITY THRESHOLDS (MySQL-Specific Calibration)`
+    table with 12 SLO signals (`avg_ms` OLTP read and write paths,
+    `scan_ratio` for SELECT, InnoDB buffer pool hit ratio,
+    connection saturation, `Innodb_row_lock_time_avg`, replication
+    lag, table fragmentation, auto-increment usage,
+    `Slow_queries` rate, `Innodb_history_list_length`, temp tables
+    on disk). Closes **F-001 phantom cross-reference** — the
+    spliced FALSE-POSITIVE CONTROL Gate 3 block points
+    `cross-reference ## SEVERITY THRESHOLDS` at PERFORMANCE prompts;
+    MYSQL file now has the local anchor so the xref resolves.
+    Mirror of v6.33.0 POSTGRES F-203 fix.
+  - New `### 4.1 EXPLAIN ANALYZE Evidence Gate (F-002)` requiring
+    every HIGH or CRITICAL slow-query finding to cite `EXPLAIN
+    ANALYZE` (8.0.18+ preferred), `EXPLAIN FORMAT=JSON` (5.6+
+    fallback), `performance_schema.events_statements_summary_by_digest`
+    row, `slow_query_log` line, or `SHOW ENGINE INNODB STATUS`
+    excerpt. Adds estimate-vs-actual divergence rule and the
+    INSTANT-execution caveat for DML.
+  - New `### 6.1 Unbounded get() and Result-Set Materialization
+    (F-024)` documenting Laravel `Model::all()` and `Builder::get()`
+    without `limit()` / `paginate()` / `chunk()` / `cursor()`, plus
+    parallel patterns in Active Record (`find_each`,
+    `in_batches`), Django (`QuerySet.iterator`), SQLAlchemy
+    (`yield_per`), and Prisma (`take`, `cursor`).
+  - New `## 8.1 Covering Index and Leftmost-Prefix Rules` — covering-
+    index detection via `EXPLAIN FORMAT=JSON used_index: true`,
+    leftmost-prefix mismatch detection via `used_key_parts`, index
+    merge as a redesign signal.
+  - New `## 8.2 INSTANT vs INPLACE DDL Matrix (MySQL 8.0+)` — full
+    operation matrix INSTANT / INPLACE / COPY, the 64-INSTANT-column
+    limit (8.0.29+), explicit `ALGORITHM=INSTANT, LOCK=NONE` recipe.
+  - New `## 8.3 Replication Lag Queries` — `SHOW REPLICA STATUS`
+    canonical, GTID gap detection, severity bands on
+    `Seconds_Behind_Source`, parallel-applier tuning
+    (`replica_parallel_workers`, `replica_parallel_type`).
+  - New `## 8.4 slow_query_log Integration` — enable / persist
+    config, audit checks (`long_query_time` ≤ 1.0,
+    `log_output = FILE`, `log_slow_replica_statements = ON`),
+    evidence requirements (timestamp + `Query_time` + `Lock_time` +
+    `Rows_examined` + `Rows_sent`).
+
 ## [6.33.0] - 2026-05-17
 
 ### Added
