@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/DESIGN_REVIEW.md` — WCAG 2.2 refresh and
+  system-preference / locale-variant audit gates (Wave-3 meta-audit,
+  DESIGN_REVIEW modernization gap):**
+  - Phase 5 anchor moved from WCAG 2.1 AA → WCAG 2.2 AA (ratified
+    Oct 2023). Treats 2.1 AA as baseline and adds the four new 2.2 AA
+    success criteria explicitly:
+    - **2.4.11 Focus Not Obscured (Minimum)** — keyboard-focus must
+      not be hidden behind sticky headers / footers / toasts /
+      cookie-consent banners / chat widgets.
+    - **2.5.7 Dragging Movements** — every drag operation
+      (drag-and-drop reorder, slider, map pan, signature pad) needs
+      a non-dragging alternative reaching the same end state.
+    - **2.5.8 Target Size (Minimum)** — pointer targets ≥ 24×24 CSS
+      px or ≥ 24px spacing; exceptions for inline links, UA-default
+      controls, and "essential" targets.
+    - **3.3.8 Accessible Authentication (Minimum)** — auth flows
+      must not rely solely on a cognitive-function test;
+      passkey/WebAuthn/OAuth/magic-link/password-manager-autofill
+      path required; `autocomplete="current-password"` /
+      `autocomplete="one-time-code"`; paste not blocked.
+  - **System-preference & locale-variant gates** (orthogonal to WCAG
+    SCs, required for accessible delivery):
+    - `prefers-reduced-motion: reduce` — animations > 0.5s, parallax,
+      decorative motion must dampen.
+    - `prefers-color-scheme: dark` — dark-mode audited as first-class
+      UI (contrast ratios, mode-swap logo regressions, focus-ring
+      visibility against dark backgrounds).
+    - `forced-colors: active` (Windows High Contrast Mode) — borders
+      and focus rings survive system-color replacement; use
+      `forced-color-adjust` with `Highlight` / `LinkText` /
+      `ButtonText`.
+    - RTL locales — `dir="rtl"`, icon mirroring (chevrons,
+      back-arrows), bidi text (mixed LTR digits in RTL strings),
+      ICU date/number formatting.
+    - Screen-reader announcement gates — dynamic content
+      (toasts, validation results, async-loaded sections, wizard
+      step changes) must reach AT via `aria-live` / `role="status"` /
+      `role="alert"`.
+  - Field-semantics override added at the bottom of Phase 5:
+    measurement-based findings (contrast ratios, target-size px,
+    WCAG SC numbers) accept the **computed number** in
+    `Why it is real` (e.g., `Contrast: 3.8:1 at #6c7280 on #ffffff`)
+    in lieu of "concrete tokens visible in the Code block".
+    Closes F-106 design-finding evidence-schema mismatch.
+
+### Changed
+
+- **Canonical audit slug `design-review` → `ui-design-review`
+  (Wave-3 DESIGN F-106 identity split closed):** the file scope is
+  UI/UX-only but the historical `design-review` slug suggested
+  system architecture. Canonical slug is now `ui-design-review`;
+  `design-review` resolves at dispatch time as a back-compat alias
+  (same pattern as the existing `code` → `code-review` and
+  `deploy` → `deploy-checklist` aliases). The prompt **filename**
+  stays `DESIGN_REVIEW.md` to keep splice anchors and the v6.22.0
+  base-only audit-prompt set byte-stable. Edits:
+  - `components/audit-output-format.md` Type-Slug-to-Prompt-File
+    Map updated; `### Council Verdict Slot` and YAML frontmatter
+    examples still cite `audit_type` agnostically (the slug is
+    free-form text in the schema).
+  - `commands/audit.md` Types section renames the slug entry and
+    extends the back-compat alias paragraph.
+  - Re-propagated to all 6 base audit prompts via
+    `scripts/propagate-audit-pipeline-v42.sh --force` so every
+    spliced Type-Slug-to-Prompt-File Map carries the new slug.
+
+### Splice / SOT invariants verified post-edit
+
+- All 6 `<!-- v42-splice: ... -->` sentinels in every base audit
+  prompt intact and byte-exact.
+- All 3 `_pending — run /council audit-review_` em-dash slots
+  (U+2014) byte-exact across the 6 base prompts.
+- SELF-CHECK anchors `1. **Read context**` and
+  `6. **Severity sanity check**` byte-exact.
+- `make check` 10/10 green.
+- Propagator dry-run reports 6 already-spliced post-fan-out
+  (idempotent).
+
 ## [6.29.0] - 2026-05-17
 
 ### Added

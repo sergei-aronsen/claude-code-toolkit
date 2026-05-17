@@ -20,10 +20,10 @@ Run a structured project audit (security / performance / code-review / deploy-ch
 - `deploy-checklist` — Pre-deployment readiness check (`DEPLOY_CHECKLIST.md`)
 - `mysql-performance` — MySQL query and schema audit (`MYSQL_PERFORMANCE_AUDIT.md`)
 - `postgres-performance` — PostgreSQL query and schema audit (`POSTGRES_PERFORMANCE_AUDIT.md`)
-- `design-review` — Architecture and design review (`DESIGN_REVIEW.md`)
+- `ui-design-review` — UI / UX design review (`DESIGN_REVIEW.md`). Covers visual polish, interaction, responsiveness, accessibility, and robustness from the rendered UI. Does **not** cover system architecture (that is `code-review`'s scope).
 - `full` — Run all 7 audits in sequence; each produces its own typed report (no `full-*.md` aggregate).
 
-**Aliases (backward compat):** `code` resolves to `code-review`; `deploy` resolves to `deploy-checklist`. Aliases resolve at dispatch time; the report filename ALWAYS uses the canonical slug.
+**Aliases (backward compat):** `code` resolves to `code-review`; `deploy` resolves to `deploy-checklist`; `design-review` resolves to `ui-design-review` (slug renamed in v6.30.0 to clarify UI-only scope; prompt file keeps historical name `DESIGN_REVIEW.md` for splice stability). Aliases resolve at dispatch time; the report filename ALWAYS uses the canonical slug.
 
 **Scope (optional):**
 
