@@ -223,6 +223,18 @@ claude mcp add --scope user serena \
 No API key required — runs locally via language servers. Toolkit's MCP
 wizard (`scripts/init-claude.sh`) handles registration automatically.
 
+> **Serena v1.3.0 (pinned in `manifest.vendor_pins` at v6.38.0).** New
+> language servers: **Svelte**, **Ada/SPARK**, **GDScript** (Godot,
+> TCP-based no-install), **1C/OneScript (BSL)**. Tool descriptions
+> reworded to align with Claude Code's new tool-search UX. Behavioral
+> note for projects upgrading from v1.2.0: projects can no longer
+> override `base_modes` — use the new `added_modes` field, and the
+> default config switched from `default_modes` → `base_modes` for
+> interactive/editing. Toolkit ships no `project.yml`, so this only
+> matters if you maintain a Serena project config of your own.
+
+---
+
 > **Morph Fast Tools removed in v6.1.** The `@morphllm/morphmcp` and
 > `@morphllm/morphsdk` packages have no public source and ship user
 > code to a closed SaaS. Replacement guidance:
