@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.34.0] - 2026-05-17
+
 ### Added
 
 - **`templates/base/prompts/MYSQL_PERFORMANCE_AUDIT.md` — MySQL 8.0+
