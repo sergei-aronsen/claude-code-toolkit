@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/POSTGRES_PERFORMANCE_AUDIT.md` — PG 16+
+  coverage and evidence gates (Wave-3 meta-audit, POSTGRES F-201 / F-202
+  / F-203 closed):**
+  - New `## 0.1 SEVERITY THRESHOLDS (PostgreSQL-Specific Calibration)`
+    table covering 11 SLO signals (`mean_exec_time` OLTP read and
+    write paths, cache hit ratio, connection saturation, long-running
+    txn age, `idle in transaction` count, table bloat ratio, sequence
+    usage, XID consumption, replication lag, temp files volume,
+    checkpoint frequency). Closes **F-203 phantom cross-reference** —
+    the spliced FALSE-POSITIVE CONTROL block at Gate 3 points
+    `cross-reference ## SEVERITY THRESHOLDS` at PERFORMANCE prompts;
+    the PG file now has the local anchor so the xref resolves
+    instead of dangling.
+  - New `### 4.1 EXPLAIN Evidence Gate (F-201)` requiring every
+    HIGH or CRITICAL slow-query finding to cite `EXPLAIN (ANALYZE,
+    BUFFERS, VERBOSE, SETTINGS)` output, a `pg_stat_statements` row,
+    an `auto_explain` log line, or a `pg_stat_activity` snapshot.
+    Without evidence the finding downgrades to MEDIUM or moves to
+    Non-Blocking Observations. Adds estimate-vs-actual divergence
+    rule (re-`ANALYZE` when row estimates miss by 100×).
+  - New `## 10.1 XID Wraparound (Transaction ID Exhaustion) —
+    F-202`: per-database and per-table `age(datfrozenxid)` queries,
+    four-band severity table OK / Warning / HIGH / CRITICAL, root
+    causes (long-running txn, replication slot, starved autovacuum,
+    `vacuum_freeze_min_age`), `pg_stat_activity backend_xmin` query
+    to find the blocker. XID wraparound is the single most-cited
+    PostgreSQL outage class.
+  - New `## 10.2 pg_stat_io (PG 16+ Per-Backend I/O Accounting)` —
+    per backend-type and per I/O-context counters, eviction and
+    extend and reuse interpretations, ring-buffer signal on
+    `bulkread`.
+  - New `## 10.3 Replication Slot Orphan Check` — WAL retention plus
+    pinned XID query, severity table covering both active-but-lagged
+    and inactive-orphan cases, cross-reference to
+    `max_slot_wal_keep_size` (PG 13+) and `pg_stat_replication_slots`
+    (PG 15+).
+  - New `## 10.4 HOT Updates and Fillfactor` — HOT ratio query,
+    severity bands, `ALTER TABLE … SET (fillfactor = N)` recipe with
+    rewrite caveat.
+  - New `## 10.5 Autovacuum Per-Table Tuning` — overdue-tables
+    query, per-table override examples for append-mostly and
+    update-heavy patterns, PG 13+ `autovacuum_vacuum_insert_scale_factor`.
+  - New `## 10.6 JIT Compilation Threshold` — `jit_above_cost`
+    rubric for OLTP, signals JIT is hurting (Generation time vs
+    execution time, post-upgrade regression), recommended OLTP
+    tuning.
+  - New `## 10.7 Parallel Plan Investigation` — `Workers Planned vs
+    Launched` divergence, `parallel_setup_cost` calibration for OLTP,
+    per-query `SET LOCAL max_parallel_workers_per_gather` override.
+
 ## [6.32.0] - 2026-05-17
 
 ### Added

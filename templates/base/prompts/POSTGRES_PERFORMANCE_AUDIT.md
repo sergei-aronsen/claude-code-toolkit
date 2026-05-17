@@ -24,6 +24,38 @@
 
 ---
 
+## 0.1 SEVERITY THRESHOLDS (PostgreSQL-Specific Calibration)
+
+PostgreSQL-specific severity rubric. The spliced FALSE-POSITIVE CONTROL
+block below points `cross-reference ## SEVERITY THRESHOLDS` at this
+section — keep the heading text byte-exact so the cross-reference
+resolves locally. Numbers are SLO-grade defaults; override per project
+when `.claude/rules/project-context.md` declares tighter or looser
+operational targets.
+
+| Signal | LOW | MEDIUM | HIGH | CRITICAL |
+| ------ | --- | ------ | ---- | -------- |
+| `pg_stat_statements` `mean_exec_time` (OLTP read path) | < 50 ms | 50-200 ms | 200-1000 ms | > 1000 ms |
+| `pg_stat_statements` `mean_exec_time` (OLTP write path) | < 100 ms | 100-500 ms | 500-2000 ms | > 2000 ms |
+| Cache hit ratio (`pg_stat_database.blks_hit / (blks_hit+blks_read)`) | > 99% | 95-99% | 90-95% | < 90% |
+| Connection saturation (`pg_stat_activity` count / `max_connections`) | < 60% | 60-80% | 80-95% | > 95% |
+| Long-running txn (`xact_start` age, OLTP) | < 1 min | 1-5 min | 5-30 min | > 30 min |
+| `idle in transaction` count | 0-2 | 3-5 | 6-20 | > 20 |
+| Table bloat (`n_dead_tup / n_live_tup`) | < 10% | 10-25% | 25-50% | > 50% |
+| Sequence usage (`SERIAL` int4) | < 50% | 50-70% | 70-85% | > 85% |
+| XID consumption since last freeze (`age(datfrozenxid)`) | < 200M | 200M-1B | 1B-1.5B | > 1.5B |
+| Replication lag (`pg_wal_lsn_diff(sent_lsn, replay_lsn)`) | < 1 MB | 1-100 MB | 100 MB-1 GB | > 1 GB |
+| Temp files volume (`pg_stat_database.temp_bytes` per hour) | < 100 MB | 100 MB-1 GB | 1-10 GB | > 10 GB |
+| Checkpoint frequency (`pg_stat_bgwriter.checkpoints_req / checkpoints_timed`) | < 0.1 | 0.1-0.3 | 0.3-0.5 | > 0.5 |
+
+A finding **cannot** be elevated above `MEDIUM` without one of: a
+captured `pg_stat_statements` row, an `EXPLAIN (ANALYZE, BUFFERS)`
+plan, a `pg_locks`/`pg_stat_activity` snapshot, or a `pg_stat_io`
+read showing the predicted I/O pattern. See `## 4.1 EXPLAIN Evidence
+Gate` for the binding rule.
+
+---
+
 ## Preliminary Setup
 
 ### Enable pg_stat_statements
@@ -250,6 +282,43 @@ LIMIT 15;
 
 **blocks_per_call > 1000** — candidate for optimization.
 
+### 4.1 EXPLAIN Evidence Gate (F-201)
+
+Every HIGH or CRITICAL slow-query finding MUST cite a captured
+`EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS)` plan in the
+`Why it is real` field. A query the auditor merely **suspects** is
+slow does not survive Gate 2 (`## SELF-CHECK` step 2 — Trace data
+flow). Acceptable evidence kinds for slow-query HIGH/CRITICAL:
+
+1. `EXPLAIN (ANALYZE, BUFFERS)` output (preferred) — captures real
+   row counts vs estimates, buffer reads, JIT cost.
+2. `pg_stat_statements` row with `mean_exec_time`, `calls`,
+   `shared_blks_read`, `temp_blks_written`.
+3. `auto_explain` log line (when `auto_explain.log_min_duration` is
+   set and the slow query has been observed in production).
+4. `pg_stat_activity` snapshot showing the same query in `state =
+   'active'` longer than the rubric threshold.
+
+A finding without one of (1)-(4) is downgraded to MEDIUM or moved to
+Non-Blocking Observations.
+
+```sql
+-- Capture for the suspect query (replace placeholder):
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS, FORMAT TEXT)
+SELECT /* the query under audit */;
+```
+
+When the live database is read-only or the query is DDL/DML that
+must not run in audit context, use `EXPLAIN` (without `ANALYZE`)
+plus the `pg_stat_statements` row for `mean_exec_time` and
+`shared_blks_read` as the evidence pair. Note in the finding which
+evidence is estimated and which is measured.
+
+**Estimate vs actual divergence.** When `EXPLAIN ANALYZE` shows
+`rows=N (actual rows=M)` with `M / N > 100×` or `< 0.01×`, the
+planner has stale statistics — run `ANALYZE <table>` and re-capture
+before deciding the finding severity.
+
 ---
 
 ## 5. Index Usage
@@ -466,6 +535,297 @@ LIMIT 5;
 | < 50% | OK | - |
 | 50-80% | Warning | Plan migration to `BIGINT` |
 | > 80% | Critical | Migrate to `BIGINT` ASAP |
+
+---
+
+## 10.1 XID Wraparound (Transaction ID Exhaustion) — F-202
+
+PostgreSQL uses a 32-bit transaction ID space. Once consumption
+approaches 2 billion since the last freeze, the database enters
+forced-vacuum mode and at ~10M-from-wraparound shuts down to prevent
+data corruption. XID wraparound is the single most-cited PostgreSQL
+outage class — audit on every engagement.
+
+```sql
+-- Per-database age (oldest unfrozen XID)
+SELECT
+    datname,
+    age(datfrozenxid) as xid_age,
+    ROUND(age(datfrozenxid) * 100.0 / 2147483647, 2) as percent_to_wraparound
+FROM pg_database
+ORDER BY age(datfrozenxid) DESC;
+```
+
+```sql
+-- Per-table age (find the laggards)
+SELECT
+    schemaname || '.' || relname as table,
+    age(relfrozenxid) as xid_age,
+    pg_size_pretty(pg_relation_size(c.oid)) as size,
+    n_dead_tup,
+    last_autovacuum
+FROM pg_stat_user_tables s
+JOIN pg_class c ON c.relname = s.relname
+WHERE age(relfrozenxid) > 200000000
+ORDER BY age(relfrozenxid) DESC
+LIMIT 20;
+```
+
+| `age(datfrozenxid)` | Status | Action |
+| ------------------- | ------ | ------ |
+| < 200M | OK | - |
+| 200M-1B | Warning | Tune `autovacuum_freeze_max_age`; investigate any table with `age > 800M` |
+| 1B-1.5B | HIGH | Manual `VACUUM (FREEZE, VERBOSE)` on the laggard tables; budget downtime window |
+| > 1.5B | CRITICAL | Emergency freeze — risk of `autovacuum_freeze_max_age` triggering forced anti-wraparound vacuum that locks writes |
+
+**Common causes of stuck freeze:**
+
+1. A long-running transaction or replication slot holding back
+   `pg_database.datfrozenxid` (see `## 10.3 Replication Slot Orphan
+   Check`).
+2. Autovacuum disabled or starved on a hot table.
+3. `vacuum_freeze_min_age` set too high (default 50M) for a
+   high-write workload.
+
+```sql
+-- Find the oldest blocker
+SELECT
+    pid,
+    datname,
+    usename,
+    state,
+    backend_xmin,
+    age(backend_xmin) as xmin_age,
+    now() - xact_start as txn_age
+FROM pg_stat_activity
+WHERE backend_xmin IS NOT NULL
+ORDER BY age(backend_xmin) DESC
+LIMIT 5;
+```
+
+---
+
+## 10.2 pg_stat_io (PG 16+ Per-Backend I/O Accounting)
+
+PostgreSQL 16 introduced `pg_stat_io` — per-backend-type, per-I/O-context
+counters that replace much of the manual `pg_statio_*` math. Use it
+to identify which backend type (`client backend`, `autovacuum worker`,
+`background worker`, `walsender`, `walreceiver`) drives shared-buffer
+churn and disk reads.
+
+```sql
+-- Top I/O consumers by backend type
+SELECT
+    backend_type,
+    object,
+    context,
+    reads,
+    writes,
+    extends,
+    hits,
+    evictions,
+    reuses,
+    ROUND(hits::numeric / NULLIF(hits + reads, 0) * 100, 2) as hit_pct
+FROM pg_stat_io
+WHERE reads + writes + extends > 0
+ORDER BY (reads + writes) DESC
+LIMIT 20;
+```
+
+**Signals:**
+
+- `evictions > 0` on `client backend` rows means working-set exceeds
+  `shared_buffers` — increase `shared_buffers` or rewrite the hot
+  query.
+- High `extends` on `autovacuum worker` indicates aggressive table
+  growth + lagging vacuum.
+- `reuses > 0` on `bulkread` context is a healthy ring-buffer signal
+  (sequential scans should reuse, not pollute the cache).
+
+`pg_stat_io` resets follow the same rules as `pg_stat_database` —
+record uptime alongside the snapshot.
+
+---
+
+## 10.3 Replication Slot Orphan Check
+
+Inactive replication slots silently pin WAL segments and `xmin`,
+causing both disk-fill and XID-wraparound risk. Orphaned slots are
+the second-most-cited PG outage class after wraparound.
+
+```sql
+SELECT
+    slot_name,
+    slot_type,
+    database,
+    active,
+    pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) as wal_retained,
+    age(xmin) as xid_age_pinned,
+    age(catalog_xmin) as catalog_xid_age_pinned
+FROM pg_replication_slots
+ORDER BY pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) DESC;
+```
+
+| `wal_retained` | `active` | Severity | Action |
+| -------------- | -------- | -------- | ------ |
+| < 100 MB | true | OK | - |
+| 100 MB-1 GB | true | Warning | Investigate consumer lag |
+| > 1 GB | true | HIGH | Consumer is falling behind — fix or drop slot |
+| any | false | HIGH | Inactive slot — drop with `pg_drop_replication_slot('<name>')` after confirming no consumer plans to resume |
+| any | false + `age(xmin) > 1B` | CRITICAL | Inactive slot pinning XIDs near wraparound — drop immediately |
+
+PG 13+ supports `max_slot_wal_keep_size` to cap retention; check
+`current_setting('max_slot_wal_keep_size')`. PG 15+ adds
+`pg_stat_replication_slots` for throughput metrics (`spill_bytes`,
+`stream_bytes`).
+
+---
+
+## 10.4 HOT Updates and Fillfactor
+
+A Heap-Only Tuple (HOT) update happens when an `UPDATE` does NOT
+change any indexed column AND the new tuple fits in the same page as
+the old one. HOT updates skip index maintenance, which is a major
+write-amplification win on heavily-updated tables.
+
+```sql
+-- HOT ratio per table
+SELECT
+    schemaname || '.' || relname as table,
+    n_tup_upd as updates,
+    n_tup_hot_upd as hot_updates,
+    ROUND(n_tup_hot_upd::numeric / NULLIF(n_tup_upd, 0) * 100, 1) as hot_pct
+FROM pg_stat_user_tables
+WHERE n_tup_upd > 10000
+ORDER BY n_tup_upd DESC
+LIMIT 20;
+```
+
+| `hot_pct` | Status | Action |
+| --------- | ------ | ------ |
+| > 80% | OK | - |
+| 50-80% | Warning | Investigate which `UPDATE` paths touch indexed columns |
+| < 50% | HIGH | Lower fillfactor (`ALTER TABLE … SET (fillfactor = 80)`); audit indexes that mismatch hot UPDATE columns |
+
+**Lowering fillfactor** (default 100 for heap, 90 for B-tree)
+reserves free space on each page for HOT update slots. Rule of
+thumb: a heavy-write OLTP table with `update_pct > 30%` benefits
+from `fillfactor=80`-`90`.
+
+```sql
+-- Set fillfactor for new pages (existing pages need rewrite via VACUUM FULL or pg_repack)
+ALTER TABLE <table> SET (fillfactor = 85);
+```
+
+---
+
+## 10.5 Autovacuum Per-Table Tuning
+
+Default autovacuum settings target a generic workload. Hot tables
+(append-heavy, update-heavy, or partition heads) usually need
+per-table overrides.
+
+```sql
+-- Tables overdue for autovacuum
+SELECT
+    schemaname || '.' || relname as table,
+    n_live_tup,
+    n_dead_tup,
+    ROUND(n_dead_tup::numeric / NULLIF(n_live_tup, 0) * 100, 1) as dead_pct,
+    last_autovacuum,
+    last_autoanalyze,
+    autovacuum_count,
+    autoanalyze_count
+FROM pg_stat_user_tables
+WHERE n_dead_tup > 10000
+ORDER BY dead_pct DESC NULLS LAST
+LIMIT 20;
+```
+
+**Per-table tuning examples:**
+
+```sql
+-- Append-mostly table (small dead-tuple fraction)
+ALTER TABLE events SET (
+    autovacuum_vacuum_scale_factor = 0.02,   -- default 0.2
+    autovacuum_analyze_scale_factor = 0.01   -- default 0.1
+);
+
+-- Heavily-updated table (lower trigger thresholds)
+ALTER TABLE orders SET (
+    autovacuum_vacuum_scale_factor = 0.05,
+    autovacuum_vacuum_cost_limit = 2000,     -- default 200
+    autovacuum_vacuum_cost_delay = 2         -- ms, default 2
+);
+```
+
+PG 13+ adds `autovacuum_vacuum_insert_scale_factor` to trigger
+freeze-aware vacuum on append-only workloads — set it to `0.05`-`0.1`
+on partitioned event tables.
+
+---
+
+## 10.6 JIT Compilation Threshold
+
+PG 11+ enables JIT compilation when planner cost exceeds
+`jit_above_cost` (default `100_000`). For repeated short queries
+that miss the threshold the JIT cost adds latency without benefit;
+for one-off analytical queries it pays off. The default thresholds
+were tuned for analytical workloads and frequently misfire on OLTP.
+
+```sql
+-- Confirm current thresholds
+SELECT name, setting, unit
+FROM pg_settings
+WHERE name IN ('jit', 'jit_above_cost', 'jit_inline_above_cost', 'jit_optimize_above_cost');
+```
+
+**Signals JIT is hurting OLTP:**
+
+- `EXPLAIN (ANALYZE)` reports `JIT: Functions=N, Generation=Xms`
+  where Generation time > query execution time.
+- `pg_stat_statements` shows `mean_exec_time` regressed after a PG
+  major upgrade with no schema change.
+
+**Recommended OLTP tuning:** `jit = on`, `jit_above_cost = 500000`,
+or `jit = off` if all queries are short-lived. Validate by toggling
+on a session and re-running the workload.
+
+---
+
+## 10.7 Parallel Plan Investigation
+
+PG 9.6+ supports parallel query. Audit when parallel plans help or
+hurt:
+
+```sql
+-- Parallel-plan-eligible settings
+SELECT name, setting
+FROM pg_settings
+WHERE name IN (
+    'max_parallel_workers',
+    'max_parallel_workers_per_gather',
+    'parallel_setup_cost',
+    'parallel_tuple_cost',
+    'min_parallel_table_scan_size',
+    'min_parallel_index_scan_size'
+);
+```
+
+**Signals to flag:**
+
+- `EXPLAIN ANALYZE` shows `Workers Planned: N` but `Workers
+  Launched: 0` — the system is starved of parallel workers; raise
+  `max_parallel_workers` or reduce concurrent demand.
+- A short OLTP query with `Parallel Seq Scan` — `parallel_setup_cost`
+  (default 1000) is too low for this workload; raise to `10000`.
+- `Gather` node sits above a small result set (< 1k rows) — parallel
+  is overhead, not speedup.
+
+```sql
+-- Override per-query when needed
+SET LOCAL max_parallel_workers_per_gather = 0;  -- disable for this txn
+```
 
 ---
 
