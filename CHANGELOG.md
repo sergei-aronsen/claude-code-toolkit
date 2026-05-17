@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`manifest.json` — `skills_pins` schema (scaffold)** parallel to
+  `vendor_pins`. Per-entry shape `{repo, tag, commit, pinned_at,
+  _status}` mirrors `vendor_pins` so `scripts/update-deps.sh
+  probe_skill_pin` can detect drift between this mirror and the
+  canonical upstream repo. Initial scaffold pins only the two
+  catalog skills whose upstream URL was provably grounded in repo
+  content: `huashu-design` → `alchaincyf/huashu-design` (MIT) and
+  `resend` → `resend/resend-skills` (frontmatter homepage). Both
+  entries ship with `commit: null`, `pinned_at: null`,
+  `_status: "needs-initial-pin"` — first run of `update-deps.sh`
+  surfaces the upstream HEAD so the maintainer can paste it into
+  `manifest.skills_pins.<name>.commit`.
+- **`scripts/update-deps.sh` — `probe_skill_pin` function** that
+  reads `manifest.skills_pins.<name>` and reports
+  `<installed>\t<latest>` for any pinned skill. `installed` =
+  short SHA from `manifest.skills_pins.<name>.commit` (or `—` when
+  `_status: needs-initial-pin`); `latest` = `git ls-remote --quiet
+  <repo> HEAD` short SHA. Drift surfaces in the dashboard the
+  same way `vendor_pins` drift does.
+- **Two new `register_dep` rows** wire `huashu-design` and
+  `resend` into the dashboard under category `Skill`. Upgrade
+  helpers are deliberately stubs in v6.35.0: pin refresh is a
+  maintainer-only operation (`git ls-remote <repo> HEAD`, update
+  manifest, re-sync mirror) because the mirror is hand-vendored,
+  not a live `git clone`.
+
+### Research backlog
+
+- 21 of 23 catalog skills (`ai-models`, `analytics-tracking`,
+  `chrome-extension-development`, `copywriting`, `docx`,
+  `find-skills`, `firecrawl`, `i18n-localization`, `memo-skill`,
+  `next-best-practices`, `notebooklm`, `pdf`, `seo-audit`,
+  `shadcn`, `stripe-best-practices`, `tailwind-design-system`,
+  `typescript-advanced-types`, `ui-ux-pro-max`,
+  `vercel-composition-patterns`, `vercel-react-best-practices`,
+  `webapp-testing`) lack a grounded upstream URL in repo content.
+  Pinning each one requires manual research (find the canonical
+  upstream repo, default branch, current HEAD SHA). Add new
+  `skills_pins` entries one at a time as URLs are confirmed; do
+  not invent. The `register_dep` row follows the entry.
+
 ## [6.34.0] - 2026-05-17
 
 ### Added

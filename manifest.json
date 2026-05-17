@@ -55,6 +55,23 @@
       "pinned_at": "2026-05-12"
     }
   },
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill to detect drift between this mirror and the canonical upstream repo. Initial scaffold (v6.35.0) ships with only the 2 catalog skills whose upstream URL was grounded in repo content (huashu-design, resend). The remaining 21 catalog skills lack a grounded upstream URL — see CHANGELOG [6.35.0] research-backlog notes. Add new entries one at a time as upstream URLs are confirmed; do not invent.",
+  "skills_pins": {
+    "huashu-design": {
+      "repo": "https://github.com/alchaincyf/huashu-design",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null,
+      "_status": "needs-initial-pin"
+    },
+    "resend": {
+      "repo": "https://github.com/resend/resend-skills",
+      "tag": null,
+      "commit": null,
+      "pinned_at": null,
+      "_status": "needs-initial-pin"
+    }
+  },
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
   "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. v6.1 audit (docs/research/v6-post-ship-audit-2026-05-06.md, F-2) found that the surviving agents/code-reviewer.md annotation was broken against Superpowers 5.1.0+ (SP dropped agents/ directory; equivalent is now skills/requesting-code-review). TK's code-reviewer is also materially different from SP's — annotation removed in v6.1. v6.1 audit F-1 found that the only true duplication remaining is skills/gsd-mode-selector/SKILL.md against GSD's gsd-help skill — annotated.",
   "files": {
