@@ -511,6 +511,52 @@ wait for users to report regressions.
 - [ ] All new features confirmed OFF by default
 - [ ] Flag-flip path tested on a non-production user before announcing
 
+### 7.6 Canary Promotion Statistical Gate (conditional)
+
+Trigger: deploy type is **Canary** (see Section 0.2) or rolling deploy
+where the first N% slice is observed before ramp.
+
+Canary slices are small (typically 1-10% of traffic). Comparing canary
+metrics directly against control with the 7.4 bands is **statistically
+underpowered** — error-rate differences below the noise floor of a
+small slice will pass the gate falsely (false-green) or fail it falsely
+(false-red). Use confidence intervals, not point estimates.
+
+- [ ] **Minimum sample size** before evaluating the gate:
+  - Per-endpoint requests: `n_canary ≥ max(1000, 30 × expected_errors)`
+    for binary signals (error rate, success rate). Below this, defer
+    the gate by extending the canary window — do **not** promote on
+    fewer samples.
+  - Latency: `n_canary ≥ 500` per endpoint for p95 comparison; `≥ 5000`
+    for p99 (long-tail noise dominates).
+- [ ] **Statistical comparison** (canary vs control, not vs baseline):
+  - Error rate: two-proportion z-test or Fisher exact test (small N).
+    Promote only when the 95% CI on `(p_canary − p_control)` excludes
+    the 7.4 "warn" threshold (i.e., upper bound < baseline + 0.5pp).
+  - Latency p95: Mann-Whitney U or bootstrap CI on the difference of
+    medians/p95s. Promote when 95% CI excludes the 7.4 "warn"
+    threshold (upper bound < baseline × 1.2).
+- [ ] **Sequential testing guardrail.** If the gate is checked at
+  multiple checkpoints during the canary (e.g., 5 min / 15 min /
+  60 min), apply an alpha-spending correction (e.g., Pocock or
+  O'Brien-Fleming) — or pre-commit to a single decision point.
+  Otherwise the gate effectively runs at `1 − (1 − 0.05)^k` and
+  produces false-aborts at scale.
+- [ ] **Heterogeneity check.** Canary slice should be representative
+  of control — same region mix, same user-tier mix, same authenticated
+  / anonymous ratio. A canary skewed toward one cohort (e.g., 90%
+  US-East internal traffic) compares apples to oranges and the gate
+  is invalid regardless of N.
+- [ ] **Promote / hold / abort decision** captured in deploy ticket
+  with: sample sizes per signal, observed point estimate, 95% CI,
+  decision threshold, decision. Auditable post-incident.
+
+If you cannot satisfy the minimum sample size in the planned canary
+window, the deploy is **not** a statistically gated canary — it is a
+risk-bearing fast-forward. Either extend the window, increase the
+canary percentage, or downgrade the deploy type and apply the 7.4
+gate instead.
+
 ---
 
 ## 8. ROLLBACK PLAN
@@ -567,6 +613,7 @@ matching component:
 | Go | `components/deploy-templates/go.md` |
 | Python | `components/deploy-templates/python.md` |
 | Rails | `components/deploy-templates/rails.md` |
+| Edge / Multi-Region (Cloudflare Workers, Vercel Edge, Lambda@Edge) | `components/deploy-templates/edge.md` |
 
 ### Laravel
 

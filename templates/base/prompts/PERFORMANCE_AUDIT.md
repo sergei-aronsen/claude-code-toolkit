@@ -300,7 +300,20 @@ only when the project is on Next.js App Router (the file convention
       a static shell + dynamic holes. A finding citing PPR must
       identify which holes are dynamic and confirm each dynamic
       boundary has its own `<Suspense>` fallback — otherwise the
-      shell waits on the dynamic data.
+      shell waits on the dynamic data. **Cache-stability edge case:**
+      the static shell is keyed by the route + build ID; the dynamic
+      hole is keyed independently. On deploy, the new build ID
+      invalidates the shell — but a CDN edge that has only the shell
+      cached (and never co-located the dynamic hole) serves the new
+      shell while still attempting to satisfy the dynamic hole against
+      pre-deploy `Data Cache` entries. If the dynamic hole's data
+      shape changed in the deploy (added field, renamed key, removed
+      property), the shell renders with a malformed hole until the
+      `Data Cache` repopulates. Audit any PPR deploy that ships a
+      schema change in the dynamic hole's data source: either purge
+      the Data Cache for the affected route at deploy time, or
+      version the cache key (`tags: [\`product-${schemaVersion}\`]`)
+      so the new build reads only matching-schema entries.
 - [ ] **`<Image>` / `<Script>` / `<Font>` discipline.**
       `next/image` without `priority` on above-the-fold LCP image
       delays LCP by one render cycle. `next/script` with default

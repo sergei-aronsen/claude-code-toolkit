@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **LOW long-tail cleanup batch** (v6.42.0 scope; closes 5 of 10 Wave-3
+  LOW findings — the other 5 were already closed inline by Wave-3
+  v6.28.0 → v6.40.0 releases). Net: ~210 LOC additive across 5 files
+  plus 1 new component. All v42-splice / em-dash / parser-token invariants
+  preserved byte-exact (6/6/6 splice sentinels + 3/3/3 em-dash slots
+  intact post-edit across CODE_REVIEW.md / PERFORMANCE_AUDIT.md /
+  MYSQL_PERFORMANCE_AUDIT.md).
+  - **CODE-F-004**: `CODE_REVIEW.md ## LOW-VALUE REVIEW FILTER` gains
+    a concrete DROP/KEEP examples table — 10 example findings split
+    5 DROP / 5 KEEP — with explicit reasoning that a finding KEEPS
+    iff it names (a) concrete defect, (b) reachable code path, AND
+    (c) cost beats fix cost.
+  - **DEPLOY-F-012**: new `components/deploy-templates/edge.md`
+    (~200 LOC) — multi-region and edge-runtime deploy runbook
+    covering rollout strategy, edge-specific Phase 0a baseline signals
+    (`wall-clock-time`, `subrequest-count`, per-region cache hit /
+    cold-start / error rate, KV/R2/D1/DynamoDB Global Tables
+    replication lag), cache invalidation patterns (Cloudflare,
+    Vercel, CloudFront), multi-region database consistency
+    (read-after-write, cross-region transactions, failover), per-region
+    verification, and three rollback strategies (re-deploy, traffic-
+    shift, flag-gated). Wired into `DEPLOY_CHECKLIST.md ## Stack
+    Specifics` registry.
+  - **DEPLOY-F-013**: new `DEPLOY_CHECKLIST.md § 7.6 Canary Promotion
+    Statistical Gate` — minimum sample size per signal (binary vs
+    latency p95/p99), two-proportion z-test / Fisher exact / Mann-
+    Whitney U / bootstrap CI for canary-vs-control comparison, alpha-
+    spending correction (Pocock / O'Brien-Fleming) for sequential
+    testing across multiple checkpoints, heterogeneity (cohort-mix)
+    check, and explicit decision-record requirement (sample sizes,
+    point estimate, 95% CI, threshold, decision).
+  - **MYSQL-F-005**: `MYSQL_PERFORMANCE_AUDIT.md § 8.3` replication-lag
+    band table gains a **Per-RTO calibration** note — HIGH threshold
+    should be `RTO / 2`, CRITICAL is `> RTO`. Worked example: RTO
+    60 s → HIGH at lag > 30 s, CRITICAL at lag > 60 s. Findings
+    must cite the project's RTO from `## 0.1 PROJECT SPECIFICS`,
+    not the generic 30/300 s defaults.
+  - **PERF-F-003**: `PERFORMANCE_AUDIT.md § 3.7` PPR bullet extended
+    with a **cache-stability edge case** — static shell keyed by
+    build ID, dynamic hole keyed independently; on schema change in
+    the dynamic hole's data source, new shell renders against stale
+    pre-deploy Data Cache entries until repopulation. Mitigations:
+    explicit Data Cache purge at deploy time, or version the cache
+    key (`tags: [\`product-${schemaVersion}\`]`).
+
+### Deferred (already closed inline by Wave-3)
+
+5 of the 10 LOW findings from `wave3-medium-low-triage-2026-05-17.md`
+were re-verified during v6.42.0 scoping and found already-closed by
+the time they were triaged:
+
+- **MYSQL-F-004** — `MYSQL_PERFORMANCE_AUDIT.md § 8.1` already
+  covers covering-index and leftmost-prefix examples with EXPLAIN
+  patterns and `Using union(...)` index-merge as redesign signal
+  (shipped in v6.34.0).
+- **PERF-F-002** — `PERFORMANCE_AUDIT.md § 6.4` already cross-
+  references the Severity Ceiling Table in
+  `components/audit-severity-anchor.md` for cache-band-to-canonical-
+  severity mapping (shipped in v6.36.0/v6.39.0).
+- **SECURITY-F-017** — `SECURITY_AUDIT.md § Session Cookie
+  Attributes & Scope` already names cookie-tossing and prefix-locked
+  cookies (`__Host-`) + length-limit defenses (shipped in v6.28.1).
+- **SECURITY-F-018** — `SECURITY_AUDIT.md § Transport / Headers`
+  already distinguishes `script-src-elem` / `script-src-attr` in
+  Trusted-Types-aware browsers as a CSP3 audit signal (shipped in
+  v6.28.1).
+- **SECURITY-F-019** — `SECURITY_AUDIT.md § Dependency Risk` already
+  enumerates 5 slopsquatting audit signals (package age < 30 days,
+  no-other-packages maintainer, sole-dependency-is-real-library, name
+  fits the `<canonical>-{helper,utils,...}` pattern, AI-assisted
+  commit) plus per-registry exact-match verification (shipped in
+  v6.28.1).
+
+POSTGRES-F-204/205/206 were already closed by v6.40.0 (§ 10.5 / 10.6 /
+10.7) and were never in v6.42.0 scope.
+
 ## [6.41.0] - 2026-05-17
 
 ### Added
