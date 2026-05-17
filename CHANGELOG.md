@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.38.0] - 2026-05-17
+
 ### Changed
 
 - **Vendor pin refresh batch — 4 vendors bumped** (v6.38.0 scope; per
