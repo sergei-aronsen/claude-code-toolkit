@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Wave-3 MEDIUM cleanup batch — 7 long-tail findings closed
+  across 5 base prompts** (per
+  `.planning/research/wave3-medium-low-triage-2026-05-17.md`).
+  Single-PR additive batch; closes CODE-F-002, DEPLOY-F-006,
+  DEPLOY-F-009, DEPLOY-F-010, MYSQL-F-003, PERF-F-001, SECURITY-F-015.
+  - **`templates/base/prompts/CODE_REVIEW.md` — `### Read the
+    change's intent before reviewing`** (CODE-F-002). New sub-section
+    under `## GOAL` listing five intent sources auditor must read
+    before flagging: PR title and body, recent commit messages,
+    linked issue, earlier review comments, audit-exceptions file.
+    Findings that ignore stated intent fail Gate 1 (adversarial
+    review). When intent is unclear, lower confidence on every
+    dependent finding instead of inventing one.
+  - **`templates/base/prompts/DEPLOY_CHECKLIST.md` — `### 6.0a
+    Artifact attestation`** (DEPLOY-F-006). Phase 6 entry-gate
+    extension verifying version match (artifact tag = merged SHA),
+    checksum / digest pinning (`image@sha256:<digest>`, not floating
+    tag), provenance attestation (`cosign verify`, `gh attestation
+    verify`, `slsa-verifier`), and CI-green proof captured. Failed
+    attestation blocks Phase 6.1.
+  - **`templates/base/prompts/DEPLOY_CHECKLIST.md` — `### 4.5 Queue
+    / Event Message Compatibility (conditional)`** (DEPLOY-F-009).
+    New conditional section with trigger-grep over
+    `kafka|rabbit|amqp|sqs|sns|pubsub|nats|kinesis|eventbridge|
+    celery|sidekiq|bullmq|resque|delayed_job|asynq|message-bus`.
+    Six checkboxes covering schema versioning, forward-compatible
+    consumer-first rollout, DLQ configuration, in-flight backlog
+    drain before breaking change, idempotency keys, replay safety.
+  - **`templates/base/prompts/DEPLOY_CHECKLIST.md` — `### 4.4
+    Feature Flags` extended** (DEPLOY-F-010). New checkbox
+    cross-referencing `components/feature-flag-lifecycle.md` 5-stage
+    model (introduce → ramp → stabilize → decommission → remove).
+    Flag at 100% for > 90 days enters Stage 4 cleanup; reviewer
+    rejects PRs that introduce flags without written exit conditions.
+  - **`templates/base/prompts/MYSQL_PERFORMANCE_AUDIT.md` —
+    `### 0.1.1 Per-audit measurable severity rubric`** (MYSQL-F-003,
+    F-103 KNOWN-DEBT closure). Formalizes multi-axis severity:
+    `Severity = max(SignalBand, BlastRadius, UserVisibility,
+    DataConsequence)`. Four concrete cross-axis rules: synchronous ×
+    high-QPS elevates; background × low-QPS caps at MEDIUM; lock
+    waits on checkout path elevate to CRITICAL; replication lag
+    > 300 s never below HIGH.
+  - **`templates/base/prompts/PERFORMANCE_AUDIT.md` — `### 0.2.1
+    Latency × Blast-Radius × QPS multi-axis rubric`** (PERF-F-001).
+    Performance counterpart to MYSQL-F-003. Same `max(...)`
+    formula adapted to latency band + blast radius + user
+    visibility + cost. Five cross-axis rules including error-budget
+    burn elevation to CRITICAL when < 10% budget remaining.
+  - **`templates/base/prompts/SECURITY_AUDIT.md` — SSRF IPv4
+    encoding-variant detection corpus** (SECURITY-F-015). Adds an
+    equivalence-class test corpus (16 `127.0.0.1`-equivalent forms,
+    6 cloud-metadata variants, 7 URL-parser-confusion forms) every
+    `is_safe_url` / `validate_outbound_host` validator MUST reject.
+    Codebase grep targets named explicitly so the auditor can
+    locate every SSRF-blocking function in the project.
+
 ## [6.35.0] - 2026-05-17
 
 ### Added

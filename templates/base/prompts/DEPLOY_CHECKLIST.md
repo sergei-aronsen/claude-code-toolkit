@@ -209,6 +209,54 @@ not a measurable claim.
 - [ ] New features default OFF; explicit allow-list controls who sees them
 - [ ] Flag-system reachability verified (the flag service responds and
   returns expected values for the deploy host)
+- [ ] **Flag lifecycle stage recorded** per
+  `components/feature-flag-lifecycle.md` (the 5-stage model:
+  introduce → ramp → stabilize → decommission → remove). Every flag
+  the deploy touches has an owner, an exit condition, and a target
+  removal date; a flag that has been at 100% for > 90 days enters
+  Stage 4 (decommission) — schedule cleanup before adding new flags.
+  Reviewer rejects a PR that introduces a flag without a written
+  exit condition.
+
+### 4.5 Queue / Event Message Compatibility (conditional)
+
+**Trigger** — Phase 4.5 is mandatory when the diff touches any
+producer or consumer of a durable message bus
+(`git diff origin/main..HEAD -- <queue-related-globs> |
+grep -E 'kafka|rabbit|amqp|sqs|sns|pubsub|nats|kinesis|eventbridge|
+celery|sidekiq|bullmq|resque|delayed_job|asynq|message-bus'`).
+
+Durable queues outlive a single deploy. A producer that writes a new
+schema version while a consumer still expects the old one corrupts
+in-flight data; a consumer that reads the new schema before the
+producer ships it stalls or dead-letters every message in the
+backlog.
+
+- [ ] **Schema versioning explicit** — every message has a `version`
+  field (or equivalent header) and the consumer dispatches on it.
+  Adding a required field to `v1` without bumping to `v2` is a
+  breaking change in disguise.
+- [ ] **Forward-compatible consumer first, producer second** — deploy
+  the consumer that accepts both `v1` and `v2` first, let it bake
+  for at least one full backlog drain, THEN deploy the producer
+  that writes `v2`. Reverse order strands `v2` messages on `v1`
+  consumers.
+- [ ] **Dead-letter queue (DLQ) configured + monitored** — a message
+  that fails N attempts moves to a DLQ instead of poison-pilling
+  the worker. Alert on DLQ depth > 0; alert harder on DLQ depth
+  growth rate.
+- [ ] **In-flight backlog drained or pinned to old version** before
+  rolling out a breaking schema. `kafka-consumer-groups.sh
+  --describe`, `rabbitmqctl list_queues`, `aws sqs
+  get-queue-attributes` confirm zero in-flight before cutover.
+- [ ] **Idempotency key on every produced message** — duplicate
+  delivery is the default in at-least-once systems. The consumer
+  must safely re-process. Audit the message handler against
+  `## 8.2 Triggers` "duplicate writes" rollback signal.
+- [ ] **Replay safety verified** — replaying the last 1 hour of
+  messages does not produce duplicate side effects (idempotent
+  consumer) or, if not idempotent, replay is gated behind an
+  explicit ops switch. Disaster recovery exercise.
 
 ---
 
@@ -326,6 +374,41 @@ state. Treat this as a hard gate, not a vibe check:
 An unchecked entry-gate box blocks Phase 6.1. The gate is verified
 once, immediately before 6.1 starts; it does not re-run between 6.1
 / 6.2 / 6.3 (atomicity guarantee from the callout above).
+
+### 6.0a Artifact attestation (Phase 6 entry gate continued)
+
+Before Phase 6.1 starts, prove that the artifact about to deploy is
+the one CI signed off on. A build-server compromise, a manually-
+retagged image, or a CI race that swapped artifacts under the same
+tag are real attack and accident surfaces — defend by attesting.
+
+- [ ] **Version match** — the artifact tag matches the merged commit
+  SHA. `git rev-parse HEAD` on the deploy host equals the SHA in the
+  artifact metadata (Docker image label `org.opencontainers.image.revision`,
+  npm package `gitHead`, JAR `Implementation-Build`, Go `runtime/debug
+  ReadBuildInfo`). Mismatch means rebuild, do not deploy "close enough".
+- [ ] **Checksum / digest pinned** — the deploy command names the
+  artifact by content digest, not floating tag. Docker:
+  `image@sha256:<digest>` not `image:v1.2.3` and definitely not
+  `image:latest`. npm: pinned `package-lock.json` `integrity` hash.
+  Maven / Gradle: dependency lock file committed. PyPI: `--require-
+  hashes` in `pip install`.
+- [ ] **Provenance attestation verified** — if the build pipeline
+  emits SLSA / Sigstore / cosign signatures, verify the signature
+  before deploying. `cosign verify --certificate-identity ...`,
+  `gh attestation verify ./artifact --repo <org>/<repo>`,
+  `slsa-verifier verify-artifact`. Unsigned artifacts are tolerated
+  only when the repo is private and the build pipeline is the only
+  publisher; signed artifacts are required for any public-facing or
+  multi-tenant production target.
+- [ ] **CI-green proof captured** — link the deploy ticket to the
+  green CI run for the exact SHA. A merged PR is not the same as
+  a green CI run (rebased / squashed merges can land code CI never
+  saw). Re-run CI on the post-merge SHA if any doubt.
+
+A failed attestation check blocks Phase 6.1 the same way an unchecked
+6.0 entry-gate box does. Maintenance mode stays off (we have not yet
+started); the deployer either rebuilds or aborts.
 
 ### 6.1 Pre-Deploy
 

@@ -22,6 +22,37 @@ unless the diff directly introduces correctness-breaking authorization,
 unsafe state transitions, or destructive data exposure within the modified
 execution flow.
 
+### Read the change's intent before reviewing
+
+A review without intent is a checklist exercise. Before flagging anything,
+read every signal of WHY the change is being made:
+
+- **PR title and body** — the author's framing of the problem, the chosen
+  approach, and explicit non-goals.
+- **Latest commit messages on the branch** — `git log --oneline
+  origin/main..HEAD` shows the granularity of intent. Squash-merged
+  branches lose this — fall back to the PR body.
+- **Linked issue / ticket** — bug reports name the failure mode, feature
+  requests name the constraint. The body of a referenced GitHub issue,
+  Jira ticket, or Linear story is often more authoritative than the PR
+  body for "why now".
+- **Earlier review comments** (when re-reviewing a stacked or revised PR) —
+  decisions already discussed are out of scope for re-litigation.
+- **Existing `.claude/rules/audit-exceptions.md`** entries on the same
+  files (`## SELF-CHECK` step 4 below). A finding the team explicitly
+  decided to allow is not a regression.
+
+A finding that ignores the stated intent — "this should be an event
+instead of a synchronous call" when the PR body explicitly says "we
+need synchronous semantics for this checkout step" — fails Gate 1
+(adversarial self-review). Capture intent BEFORE running the rest of
+the audit; do not retrofit it after the fact.
+
+When the intent is genuinely unclear (e.g., a refactor PR with no body
+and three unrelated changes), state the ambiguity in
+`## Non-Blocking Observations` and lower confidence on every finding
+that hinges on the unclear intent.
+
 ---
 
 ## PROJECT SPECIFICS — [Project Name]
