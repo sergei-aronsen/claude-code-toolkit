@@ -27,36 +27,47 @@ execution flow.
 ## PROJECT SPECIFICS — [Project Name]
 
 Optional project-specific guidance. If this section is not filled in, ignore
-it. Do not mention placeholder content in the final report.
+it. Do not mention placeholder content in the final report. The bullets
+below use HTML-comment placeholders (`<!-- fill in -->`) so the parser does
+not confuse unfilled stub text for actual guidance — an empty bullet stays
+empty in rendered markdown.
 
 **Accepted decisions (no need to fix):**
 
-- [Intentional architectural decisions]
+- <!-- fill in: intentional architectural decisions, e.g. "service layer
+  deliberately calls model::create instead of ORM ::save for batch path" -->
 
 **Key files for review:**
 
-- [Where business logic is]
-- [Where controllers/routes are]
-- [Where UI components are]
+- <!-- fill in: where business logic lives, e.g. `app/Services/**`,
+  `src/domain/**`, `internal/<bounded-context>/**` -->
+- <!-- fill in: where controllers/routes live, e.g. `app/Http/Controllers`,
+  `src/app/**/route.ts`, `cmd/api/handlers/**` -->
+- <!-- fill in: where UI components live, e.g. `src/components/**`,
+  `resources/views/**` -->
 
 **Project patterns:**
 
-- [Which patterns are used]
+- <!-- fill in: established patterns, e.g. "Result<T,E> over thrown
+  exceptions in service layer", "Eloquent observers for audit log",
+  "tRPC procedures for client/server bridge" -->
 
 ---
 
 ## QUICK CHECK (5 minutes)
 
 Report only checks that were actually performed. Do not infer
-test/build/lint status from code inspection alone.
+test/build/lint status from code inspection alone. The `Command` column
+names the concrete invocation expected for that row; record the actual
+command run in the report so a reader can reproduce the result.
 
-| Check | Status |
-| ------- | -------- |
-| Syntax errors | Verified / Failed / Not verified / Not applicable |
-| Linter | Verified / Failed / Not verified / Not applicable |
-| Build | Verified / Failed / Not verified / Not applicable |
-| Tests | Verified / Failed / Not verified / Not applicable |
-| Debug code present | Verified / Failed / Not verified / Not applicable |
+| Check | Command (example) | Status |
+| ----- | ----------------- | ------ |
+| Syntax errors | `<lang-parser> <changed-files>` (e.g. `node --check`, `python -m py_compile`, `go vet ./...`, `php -l`) | Verified / Failed / Not verified / Not applicable |
+| Linter | `<project lint task>` (e.g. `npm run lint`, `make lint`, `ruff check .`, `golangci-lint run`, `phpstan analyse`) | Verified / Failed / Not verified / Not applicable |
+| Build | `<project build task>` (e.g. `npm run build`, `tsc --noEmit`, `go build ./...`, `cargo build`, `mvn -B compile`) | Verified / Failed / Not verified / Not applicable |
+| Tests | `<project test task>` (e.g. `npm test`, `pytest -q`, `go test ./...`, `php artisan test`, `cargo test`) | Verified / Failed / Not verified / Not applicable |
+| Debug code present | `git diff --diff-filter=A` plus `grep -nE 'console\\.log\|dd\\(\|var_dump\|pp\\(\|fmt\\.Println\|dbg!\\(\|debugger;'` over the diff | Verified / Failed / Not verified / Not applicable |
 
 Status labels:
 
@@ -87,11 +98,14 @@ not affect parsing.
 Severity and confidence are orthogonal axes. Both are required on every
 HIGH or CRITICAL finding.
 
-**Severity** — use the canonical rubric in `components/severity-levels.md`
-(CRITICAL / HIGH / MEDIUM / LOW). INFO is NOT a reportable finding
-severity; informational observations belong in the auditor's scratchpad,
-never in `## Findings`. Do NOT redefine severity in the report. Re-rate
-using the actual failure scenario, not the rule label. Do not inflate.
+**Severity** — use the canonical labels and Severity Ceiling Table in
+`components/audit-severity-anchor.md` (CRITICAL / HIGH / MEDIUM / LOW;
+`components/severity-levels.md` is the short reference card cited by
+the spliced output-format Summary table, not a second labels source).
+INFO is NOT a reportable finding severity; informational observations
+belong in the auditor's scratchpad, never in `## Findings`. Do NOT
+redefine severity in the report. Re-rate using the actual failure
+scenario, not the rule label. Do not inflate.
 
 **Confidence** — auditor-judged certainty in the finding's reachability:
 
@@ -136,8 +150,15 @@ Prioritize findings in this order:
 2. Invalid state transitions or data consistency risks
 3. Concurrency / async issues
 4. Architecture-related correctness or reliability risks
-5. Performance issues with realistic production impact
-6. Operational maintainability risks with measurable support or reliability cost
+5. Operational maintainability risks with measurable support or reliability cost
+
+Performance issues belong to `PERFORMANCE_AUDIT.md` (cache,
+queries, payload size, p95 latency budgets) and the per-stack DB-perf
+prompts (`MYSQL_PERFORMANCE_AUDIT.md`, `POSTGRES_PERFORMANCE_AUDIT.md`).
+A correctness bug that **happens to** manifest as slowness (e.g., a
+loop that re-enters on every request, an off-by-one that triggers a
+table-scan) belongs here; a tuning regression that is otherwise
+correct belongs in the perf audit.
 
 Before reporting any finding: understand the intent of the change, trace
 affected execution paths, validate assumptions against actual code, and
@@ -167,14 +188,29 @@ future usage, or external integrations not present in the diff.
 
 Check the directly affected execution flow for:
 
-- inverted conditions
-- missing edge cases
-- invalid state transitions
-- race conditions
-- partial updates
-- transactional inconsistencies
-- stale cache flows
-- async ordering issues
+- **Inverted conditions** — e.g. `if (!isPaid) { grantAccess(); }` where
+  the boolean was negated in the diff and the surrounding code still
+  reads the un-negated form.
+- **Missing edge cases** — e.g. paginator handles `page=1..N` but not
+  `page=0`, `page=-1`, `page=NaN`, or an empty result set.
+- **Invalid state transitions** — e.g. an order can move from `paid` to
+  `pending` because the new handler does not validate the source state
+  against the allowed-transitions table.
+- **Race conditions** — e.g. read-modify-write on a counter without a
+  row lock or atomic increment; two requests both see `count=4`, both
+  write `count=5`.
+- **Partial updates** — e.g. a service writes to two tables without a
+  transaction; if the second write fails, the first is left committed
+  and the entity is inconsistent.
+- **Transactional inconsistencies** — e.g. an event is published to a
+  message bus before the DB transaction commits; the consumer reads a
+  row that does not yet exist (or never will, if the txn rolls back).
+- **Stale cache flows** — e.g. a write path updates the DB but the
+  cache invalidation step is conditional on a flag that is `false` in
+  production; readers see the old value indefinitely.
+- **Async ordering issues** — e.g. two `await`s assume FIFO completion
+  but the underlying queue is unordered, or a `Promise.all` is treated
+  as ordered when the consumer indexes by position.
 
 Prioritize logic correctness over style.
 
@@ -207,6 +243,188 @@ Check:
 Findings here must pass the LOW-VALUE REVIEW FILTER below: skip purely
 stylistic preferences, premature abstractions, and refactors without
 measurable maintenance benefit.
+
+---
+
+## MODERN-STACK CATEGORIES
+
+The 2024-2026 mainstream stack adds failure modes the original
+`BUSINESS LOGIC VALIDATION` list does not name. Audit each of the
+following when the diff touches the corresponding surface. These are
+**correctness** categories, not style; flag only when a real execution
+path reaches the failure mode.
+
+### Async / await pitfalls (every async-capable language)
+
+- **Unawaited promise.** A diff calls an `async` function and discards
+  the returned promise (`asyncFn()` instead of `await asyncFn()`). The
+  caller proceeds, the inner work runs detached, and exceptions become
+  unhandled rejections. Visible in TS/JS, Python (`asyncio.create_task`
+  without `await`), .NET (`Task` discarded), Swift (`Task { }` without
+  `await Task.value`).
+- **Fire-and-forget that hits user data.** Fire-and-forget is fine for
+  best-effort telemetry; it is **not** fine when the side effect is
+  user-visible (database write, audit log, email). Audit every
+  unawaited async call site against this rule.
+- **Sequential `await` chain instead of `Promise.all` / `gather`.**
+  Two independent awaits in sequence (`const a = await fetchA(); const
+  b = await fetchB();`) double latency unnecessarily. Flag only when
+  the two values do not depend on each other.
+- **`await` inside a `forEach`.** JavaScript / TS only: `arr.forEach(async x => await op(x))` does not wait — the loop returns before `op` finishes. Use `for...of` or `Promise.all(arr.map(...))`.
+- **Cancellation propagation.** Python `asyncio` and Go `context` both
+  propagate cancellation through the call chain; a function that
+  swallows `CancelledError` / ignores `ctx.Done()` becomes uncancellable
+  and leaks goroutines / tasks. See dedicated subsections below.
+
+### React Server Components & client boundary (App Router / Remix v2+)
+
+For projects on Next.js App Router (`app/` directory) or RSC-aware
+frameworks:
+
+- **`'use client'` at a high-level layout** pulls every nested
+  component into the client bundle. Audit the highest `'use client'`
+  file in any tree the diff touches.
+- **Server-only data in a Client Component.** Passing a server-only
+  object (DB row, file handle, env var) through a Client Component
+  prop serializes it via React's flight wire — secrets leak to the
+  client. Audit prop types crossing the boundary.
+- **`async` Client Component.** Client Components cannot be async in
+  React 19+ stable; a diff that introduces `'use client'` on an
+  `async` function is a hard error at runtime.
+- **Server-action input validation.** A `'use server'` function
+  receives data from the **client**. Validate every input (type, size,
+  shape, authorization) — server actions are not magic-trusted.
+  Treat them like POST endpoints.
+- **`<Suspense>` boundary placement.** A single top-level `<Suspense>`
+  around the whole route defeats streaming. Each independent data
+  dependency wants its own boundary.
+
+### TypeScript strict regressions
+
+- **`any` introduced where the surrounding code was typed.** A `: any`
+  parameter, an `as any` cast, an explicit `// @ts-ignore` /
+  `// @ts-expect-error` — flag when the surrounding module is otherwise
+  strict-typed. `any` is a regression-spreading agent: every callsite
+  loses inference downstream.
+- **`as unknown as X` double-cast.** Almost always hides a real type
+  error. Audit the underlying mismatch; the double-cast is a
+  diagnostic, not a fix.
+- **`strict: false` toggled or strictness lowered in `tsconfig.json`.**
+  Including `strictNullChecks: false`, `noImplicitAny: false`,
+  `exactOptionalPropertyTypes: false`. Lowering strictness in
+  `tsconfig.json` is a project-wide regression — flag CRITICAL.
+- **Non-null assertion in business logic.** `value!.field` in a
+  user-data path silently turns "undefined" into a runtime crash.
+  Acceptable in test fixtures; not in production code paths.
+
+### Go context propagation
+
+- **`context.Background()` instead of caller's ctx.** Spawning a
+  goroutine with `context.Background()` cuts the cancellation chain.
+  The caller's request can complete (or be cancelled) but the
+  background work runs on. Pass the caller's `ctx` unless the work
+  must outlive the request.
+- **Missing `ctx.Err()` check in long-running loops.** A `for`/`select`
+  that does not check `ctx.Done()` cannot be cancelled.
+- **Timeout without `defer cancel()`.** `ctx, cancel := context.WithTimeout(...)` without a `defer cancel()` leaks the timer until the
+  parent ctx fires.
+
+### Python async cancellation
+
+- **Bare `except Exception` swallows `asyncio.CancelledError`** in
+  Python ≤ 3.7; from 3.8+ `CancelledError` derives from
+  `BaseException`, but legacy code that explicitly catches `Exception`
+  still risks swallowing cancellation in old projects. Audit every
+  `except Exception` inside a coroutine — re-raise `CancelledError`.
+- **`asyncio.create_task` without keeping a reference.** The task is
+  garbage-collected mid-execution. Always assign the return value to
+  a name or a collection.
+- **Blocking IO in an async function.** `requests.get`, `time.sleep`,
+  synchronous DB drivers — block the event loop for every concurrent
+  request. Switch to `httpx` / `asyncio.sleep` / async drivers.
+
+### LLM-in-app safety (when the app itself calls an LLM)
+
+- **Prompt assembled by string concatenation of user data.** Use a
+  template with explicit placeholders and validation; never
+  `f"You are a helpful assistant. The user said: {user_input}"`
+  without sandwiching (system instructions before AND after the
+  user-data block).
+- **Tool authorization missing.** An LLM function-call/tool-use loop
+  that lets the model invoke `delete_user(id)` with the model's chosen
+  `id` is account-takeover-by-LLM. Every tool call goes through the
+  same authorization layer as a direct user request.
+- **No output validation.** The model can emit any string; if the app
+  parses that string as JSON / SQL / shell, validate the parse.
+  Hallucinated JSON keys are a real prod failure mode, not a
+  hypothetical.
+- **Cost / token budget.** A new LLM call in a request path without a
+  hard token cap is a denial-of-wallet vector — one prompt-injection
+  loop can spend a month's budget in an hour. Flag missing
+  `max_tokens` and missing per-request cost ceiling.
+
+### Supply-chain dependency checks
+
+- **New dependency in the diff.** Verify by exact byte match against
+  the canonical registry (`npm`, `PyPI`, `crates.io`, `RubyGems`,
+  `Packagist`, `pkg.go.dev`). Run `npm view <pkg> time`,
+  `pip index versions <pkg>` to confirm age > 30 days, maintainer is
+  not a one-package account, and the package is not slopsquatted
+  (an LLM-hallucinated name shaped `<canonical>-{helper,utils,wrapper}`).
+  See `SECURITY_AUDIT.md` `### Dependency Risk` for the full
+  slopsquatting checklist.
+- **Lockfile churn.** `package-lock.json` / `pnpm-lock.yaml` /
+  `Cargo.lock` / `go.sum` / `poetry.lock` changes the diff did not
+  request — flag for review (transitive escalation, dependency
+  confusion, or an unrelated drift commit hiding in the PR).
+- **`postinstall` / `preinstall` script.** Any new dependency that
+  runs code at install time is a supply-chain risk surface.
+
+### Retry / timeout / circuit-breaker
+
+- **Outbound HTTP call without an explicit timeout.** Library
+  defaults are usually `None` (block forever); a stuck dependency
+  takes the whole worker. Flag every `fetch` / `requests.get` /
+  `httpx.get` / `axios.get` / `http.Client{}` without a timeout in a
+  request-handling path.
+- **Retry without backoff.** A retry loop with no exponential
+  backoff and no jitter amplifies any downstream incident into a
+  thundering herd.
+- **Retry on non-idempotent verb.** Auto-retry of a POST without an
+  idempotency key results in duplicate writes. Audit retry policies
+  per-verb.
+- **No circuit-breaker on a hot dependency.** When a downstream
+  saturates, retries make it worse. Flag a hot dependency in the diff
+  with no breaker (e.g., `opossum`, Hystrix, gobreaker, `tenacity`
+  `retry_if_*` predicate).
+
+### i18n string extraction
+
+When the project ships a translation system (next-intl, react-intl,
+i18next, gettext, Phrase, Lokalise):
+
+- **Hardcoded user-visible string in the diff.** A raw `"Save"` /
+  `"Welcome back"` / `"Error: something went wrong"` in JSX / template
+  / Python view, when the surrounding code uses `t("save")`.
+- **String concatenation across translatable units.** Expressions
+  shaped like `"You have " <plus> count <plus> " messages"` break
+  pluralization and word-order in RTL / agglutinative languages. Use
+  `t("messages.count", { count })` with the system's plural / ordinal
+  rules.
+- **Locale-unaware date / number formatting.** `new Date().toString()`
+  / Python `str(d)` produces English-locale output regardless of the
+  user's locale. Use `Intl.DateTimeFormat` / `babel.dates` / framework
+  i18n date helper.
+- **RTL-broken layout assumption.** `paddingLeft`, `marginLeft`,
+  fixed-direction icons in a project that supports Arabic / Hebrew /
+  Persian. Use logical properties (`paddingInlineStart`,
+  `marginInlineStart`) and bidi-aware icons.
+
+A finding under any of these is real only when the failure mode is
+observable on a reachable code path in the diff. "This async function
+exists" is not a finding; "this async function is awaited in one
+caller and discarded in another, the discarded caller is the
+checkout-confirmation handler" is.
 
 ---
 

@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/CODE_REVIEW.md` — modern-stack categories
+  with SOT dedupe and determinism anchors (Wave-3 meta-audit,
+  CODE_REVIEW F-005 reconcile closed):**
+  - New `## MODERN-STACK CATEGORIES` H2 (~180 LOC) covering nine
+    failure-mode classes the original `## BUSINESS LOGIC VALIDATION`
+    list does not name: async / await pitfalls (unawaited promises,
+    fire-and-forget on user data, sequential `await` chains, `await`
+    inside `forEach`, cancellation propagation), React Server
+    Components and the client boundary (high-level `'use client'`,
+    server-only data leaks across the flight wire, async Client
+    Components, server-action input validation, `<Suspense>`
+    placement), TypeScript strict regressions (`any` introductions,
+    `as unknown as X` double-casts, `tsconfig` strictness downgrades,
+    non-null assertions in user-data paths), Go context propagation
+    (`context.Background()` cutting the cancellation chain, missing
+    `ctx.Err()`, timeout without `defer cancel()`), Python async
+    cancellation (`except Exception` swallowing `CancelledError`,
+    detached `create_task`, blocking I/O in coroutines), LLM-in-app
+    safety (prompt assembly by concatenation, missing tool
+    authorization, no output validation, missing per-request token
+    cap), supply-chain dependency checks (slopsquatted names,
+    unrequested lockfile churn, new `postinstall` scripts), retry /
+    timeout / circuit-breaker (HTTP without explicit timeout, retry
+    without backoff or jitter, retry on non-idempotent verb, no
+    breaker on hot dependency), and i18n string extraction (hardcoded
+    user-visible strings, concatenation across translatable units,
+    locale-unaware date / number formatting, RTL-broken layout).
+  - `## QUICK CHECK` table gains a `Command` column with concrete
+    invocation examples per row (`node --check`, `npm run lint`,
+    `tsc --noEmit`, `go test ./...`, `git diff --diff-filter=A`
+    grepping for debug helpers). Reviewer logs the actual command
+    executed so a reader can reproduce.
+  - `## PROJECT SPECIFICS` placeholders converted to HTML-comment
+    form (`<!-- fill in: ... -->`) — unfilled slots render empty
+    instead of leaking stub text into reports.
+  - `## BUSINESS LOGIC VALIDATION` bullets now carry one-line
+    concrete examples per category (inverted conditions, missing
+    edge cases, invalid state transitions, race conditions, partial
+    updates, transactional inconsistencies, stale cache flows,
+    async ordering) so the audit-rubric is unambiguous.
+
+### Changed
+
+- **F-005 severity SOT reconcile** — `## SEVERITY AND CONFIDENCE`
+  now cites `components/audit-severity-anchor.md` as the canonical
+  labels + Severity Ceiling Table source. `components/severity-levels.md`
+  is repositioned in its own preamble as the short reference card
+  for output-format Summary tables, with explicit cross-reference
+  back to the anchor.
+- **`## SCOPE, PRIORITIES, AND APPROACH`** drops priority 5
+  (Performance and resource efficiency). Performance ownership
+  belongs to `PERFORMANCE_AUDIT.md` and the per-stack DB-perf
+  prompts; CODE_REVIEW keeps correctness bugs that **happen to**
+  manifest as slowness (off-by-one triggering a table scan, a loop
+  re-entering on every request). A tuning regression that is
+  otherwise correct moves to the perf audit. Priority 5 becomes
+  operational maintainability risks with measurable cost.
+
 ## [6.31.0] - 2026-05-17
 
 ### Added
