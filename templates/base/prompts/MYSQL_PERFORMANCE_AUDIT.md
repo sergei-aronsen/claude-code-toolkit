@@ -55,6 +55,44 @@ FORMAT=JSON` plan, a `SHOW ENGINE INNODB STATUS` snapshot, or a
 slow-query-log entry. See `## 4.1 EXPLAIN ANALYZE Evidence Gate`
 for the binding rule.
 
+### 0.1.1 Per-audit measurable severity rubric
+
+The table above maps single signals to single severity bands. Real
+findings usually have multi-axis preconditions — a 500 ms query is
+HIGH when it is on the synchronous request path at 100 QPS, MEDIUM
+when it is on a background reporting job at 1 QPS, LOW when it is
+fired once a week from a cron. Apply the rubric:
+
+```text
+Severity(finding) = max(
+    SignalBand(observed_signal),                       // table above
+    BlastRadius(affected_request_volume),              // QPS × duration
+    UserVisibility(synchronous_path? cache_path?),     // boolean
+    DataConsequence(consistency_loss? lock_escalation?) // boolean
+)
+```
+
+Concrete rules for cross-axis elevation:
+
+- **Synchronous request path × > 10 QPS** elevates the finding by
+  one band (LOW → MEDIUM, MEDIUM → HIGH). Document the QPS source:
+  `events_statements_summary_by_digest.COUNT_STAR` divided by the
+  observation window from `SHOW GLOBAL STATUS` `Uptime`.
+- **Background job × < 1 QPS** caps the finding at MEDIUM regardless
+  of `avg_ms` — a 5-second nightly query is not CRITICAL.
+- **Lock waits with `Innodb_row_lock_time_avg` HIGH band** elevate
+  to CRITICAL when any victim transaction is the synchronous
+  checkout / payment / authentication path. Pure read-path lock
+  waits cap at HIGH.
+- **Replication lag** never goes below HIGH when `Seconds_Behind_Source
+  > 300` because failover capability degrades regardless of
+  read-after-write impact. Above 1800 s = CRITICAL (RTO breach).
+
+When the rubric and the table disagree, the rubric wins — but the
+finding MUST state which axis drove the elevation in
+`Why it is real`. "MEDIUM avg_ms × HIGH blast radius (8000 QPS sync
+path) → HIGH" is a defensible elevation; "feels HIGH" is not.
+
 ---
 
 ## Statistics Access

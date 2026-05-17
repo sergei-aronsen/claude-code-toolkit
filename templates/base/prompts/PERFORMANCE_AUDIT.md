@@ -75,6 +75,52 @@ findings; the rubric labels themselves are unchanged.
   finding only when cold-start exceeds a project-documented baseline
   (record the baseline in `## PROJECT SPECIFICS` if relevant).
 
+### 0.2.1 Latency × Blast-Radius × QPS multi-axis rubric
+
+The single-axis latency table above is the starting band. Real-world
+severity is a product of latency, how many requests hit it, and what
+the user experiences. A 1.5 s p95 is HIGH on the checkout flow at 500
+QPS, MEDIUM on the user-profile page at 50 QPS, LOW on an admin
+dashboard at 1 QPS. Apply the multi-axis rubric:
+
+```text
+Severity(finding) = max(
+    LatencyBand(p95),                                 // table above
+    BlastRadius(requests_per_second × duration),      // saturation risk
+    UserVisibility(synchronous_path? error_budget?),  // boolean
+    CostConsequence(infra_$/month, alarm fatigue)     // soft cost
+)
+```
+
+Concrete cross-axis rules:
+
+- **Synchronous user-facing path × ≥ 100 QPS** elevates the finding
+  by one band (MEDIUM → HIGH, HIGH → CRITICAL). Document QPS source
+  (`pg_stat_statements.calls / uptime_seconds`,
+  `events_statements_summary_by_digest.COUNT_STAR / Uptime`, CloudWatch
+  `Count` per 1 m, NGINX access log, OpenTelemetry `http.server.duration`
+  histogram count).
+- **Background job × ≤ 1 QPS** caps the finding at MEDIUM regardless
+  of latency band — a 30-second weekly cron is not CRITICAL.
+- **Cache miss path** elevates one band when the miss-rate × QPS
+  product would saturate a single backend node. Cache hit-rate
+  diagnostic in `## 0.1 SEVERITY THRESHOLDS` is the input.
+- **Error-budget burn** elevates to CRITICAL when the SLO error-budget
+  has < 10% of the rolling window remaining. The latency table
+  applies to the *next* burn rate; a finding that would consume the
+  remaining budget in one incident is CRITICAL even if the per-request
+  latency is MEDIUM band.
+- **Cold-start finding × first request after deploy** is HIGH only
+  when the cold-start tail (`p99` over the warm-up window) violates
+  the project-documented baseline. Cold-start variance below baseline
+  is INFO, not LOW.
+
+When the rubric and the table disagree, the rubric wins — but the
+finding MUST state which axis drove the elevation in `Why it is real`.
+"MEDIUM latency × HIGH blast radius (8000 QPS sync checkout) → HIGH"
+is defensible; "feels HIGH" is not. Cite the QPS measurement command
+or dashboard URL in the finding.
+
 ---
 
 ## 1. DATABASE PERFORMANCE

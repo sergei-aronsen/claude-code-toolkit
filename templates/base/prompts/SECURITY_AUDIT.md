@@ -947,6 +947,57 @@ set against a deny-list, and (d) re-validate after redirects.
   `017700000001`), and mixed (`127.1` = `127.0.0.1`,
   `0:0:0:0:0:ffff:7f00:1`). Parse with `inet_pton`-strict or equivalent;
   reject anything ambiguous.
+
+  **Detection — equivalence-class test fixtures.** Every SSRF-blocking
+  function (`is_safe_url`, `validate_outbound_host`, etc.) MUST have a
+  test that runs the following corpus against the validator and
+  asserts each entry is rejected. A validator that accepts even one
+  of these is exploitable in the wild today:
+
+  ```text
+  # All resolve to 127.0.0.1; reject every one.
+  127.0.0.1
+  127.0.0.001                # leading-zero octets (Python ≤ 3.9 octal!)
+  127.1                      # mixed short form
+  127.0.1                    # mixed short form
+  2130706433                 # decimal
+  017700000001               # 32-bit octal
+  0177.0.0.1                 # dotted octal
+  0x7f000001                 # 32-bit hex
+  0x7f.0x0.0x0.0x1           # dotted hex
+  0x7F.0.0.1                 # uppercase hex
+  ::ffff:127.0.0.1           # IPv4-mapped IPv6
+  ::ffff:7f00:1              # IPv4-mapped IPv6 compact
+  [::ffff:127.0.0.1]         # bracketed for URL host
+  0                          # 0.0.0.0 — routes to localhost on Linux/Mac
+  0.0.0.0
+  [::]                       # IPv6 unspecified — routes to localhost
+
+  # AWS / Azure / GCP / DO / OCI metadata; reject every one.
+  169.254.169.254
+  [fd00:ec2::254]            # AWS IPv6 metadata
+  100.100.100.200            # Alibaba metadata
+  192.0.0.192                # OCI metadata
+  metadata.google.internal
+  metadata.azure.com
+
+  # URL-parser confusion; reject every one.
+  http://attacker.com@127.0.0.1/
+  http://127.0.0.1#@attacker.com/
+  http://example.com\@127.0.0.1/
+  http://127.0.0.1%23@attacker.com/   # URL-encoded fragment
+  http://example.com%2F127.0.0.1/     # URL-encoded slash in host
+  http://127.0.0.1%00.attacker.com/   # NUL byte in host
+  http://127.0.0.1%0d%0aattacker:80/  # CRLF injection
+  ```
+
+  Grep the codebase for `is_safe_url`, `is_internal_ip`,
+  `validate_url`, `assertNotPrivate`, `check_ssrf`, plus framework
+  helpers (`Laravel\Url::isValidUrl`, `Django URLValidator`,
+  `rack/protection`, `ssrf-req-filter`). Each one needs the fixture
+  corpus + a regression test that runs `inet_pton(AF_INET, host)` /
+  `ipaddress.ip_address(host)` / Go `netip.ParseAddr` against the
+  resolved address (post-DNS) before allowing the fetch.
 - **URL parser confusion.** The "userinfo @ host" form
   (`http://attacker.com@127.0.0.1/`,
   `http://127.0.0.1#@attacker.com/`,
