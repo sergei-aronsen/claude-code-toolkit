@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/SECURITY_AUDIT.md` — modernization Phase 2
+  (Wave-3 meta-audit, remaining 6 of 12 HIGH coverage gaps closed):**
+  - `### SSRF / Open Redirect / Host Injection` rewritten end-to-end:
+    full IPv4/IPv6 reserved-range deny-list (CGNAT, ULA, link-local,
+    IPv4-mapped IPv6, documentation ranges), AWS / GCP / Azure /
+    Alibaba / Oracle / DigitalOcean metadata FQDNs and IPs (both v4
+    and v6), Kubernetes service-network and Docker-internal hosts,
+    IPv4 encoding bypasses (decimal `2130706433`, hex `0x7f000001`,
+    octal `0177.0.0.1`, mixed `127.1`), WHATWG / RFC 3986 URL-parser
+    confusion (`@`-userinfo split, fragment / CRLF embedding, NUL),
+    DNS-rebinding TOCTOU with connection-pin defense, redirect-chain
+    re-validation, and egress-proxy / VPC-endpoint controls.
+  - `### Unsafe Deserialization & Gadget Chains` (new H3) — promoted
+    from a single Injection-Sinks bullet into a full language matrix:
+    Java (`ObjectInputStream`, Jackson polymorphic, SnakeYAML
+    `Constructor`, Apache Commons Collections gadgets, ysoserial),
+    PHP (`unserialize` + POP chains, Phar metadata-on-filesystem-call),
+    Python (pickle / dill / joblib / numpy `allow_pickle`,
+    `torch.load`, `yaml.load` without `SafeLoader`), Ruby
+    (`Marshal.load`, ERB binding, `secret_key_base` exposure), .NET
+    (`BinaryFormatter`, `ObjectStateFormatter`,
+    `TypeNameHandling != None`, ysoserial.net), Node.js
+    (`node-serialize`, `serialize-javascript` unsafe round-trip), and
+    XXE as the sibling class. Severity-rule cross-product with
+    classpath gadget availability documented.
+  - `### Session Cookie Attributes & Scope` (new H3, before
+    `### Authorization`) — full strict-cookie regime: `Secure`,
+    `HttpOnly`, `SameSite` (Lax / Strict / None with paired-defense
+    requirement), `__Host-` / `__Secure-` prefix semantics,
+    `Domain=` host-only vs subdomain blast radius, minimal `Path=`
+    confinement, `Partitioned` (CHIPS), cookie-bomb / cookie-tossing
+    via takeover-able subdomains, and `Set-Cookie` CRLF injection.
+    Notes that framework session-driver defaults do not cover
+    application-defined cookies.
+  - `### Dependency Risk` — **slopsquatting** bullet (LLM-hallucinated
+    package names): `<canonical>-{helper,utils,wrapper,plus,extras,toolkit}`
+    pattern, age-under-30-days signal, sole-dependency-is-the-real-library
+    signal, AI-assisted-commit signal. Registry verification across
+    npm / PyPI / crates.io / RubyGems / Packagist / pkg.go.dev plus
+    documented-helpers cross-check (existence alone is insufficient).
+  - `### Transport, Headers, TLS` — CSP bullet expanded into a
+    structured CSP3 audit: `'strict-dynamic'` + nonce baseline,
+    nonce-reuse and low-entropy nonces, JSONP / bare-CDN-host /
+    wildcard-subdomain bypass primitives, `'unsafe-hashes'` trap,
+    `script-src-elem` vs `script-src-attr` coverage in Trusted-Types
+    browsers, `object-src 'none'` + `base-uri 'self'` +
+    `frame-ancestors` as CSP3 source of truth, `report-to` /
+    `report-uri` for telemetry.
+  - `## QUICK CHECK` table grew 17 → 20 rows (SSRF encoding / DNS
+    rebinding, auth-cookie attribute audit, slopsquatting on
+    AI-assisted dep commits).
+
+### Changed
+
+- **`components/audit-fp-control-gates.md` Gate 3 — inline rubric
+  drift closed (Wave-3 SECURITY F-012, regression of v6.14.0 F-104):**
+  the two long bullets that restated Confidence / Severity
+  calibration and the weasel-word ban have been replaced with
+  pure cross-references to `components/audit-uncertainty-discipline.md`
+  (the canonical UNCERTAINTY DISCIPLINE SOT) and
+  `components/audit-severity-anchor.md` (Severity Ceiling Table). The
+  rubric body now lives in **one** SOT instead of two near-identical
+  copies. Re-propagated to all 6 base audit prompts
+  (CODE_REVIEW, DESIGN_REVIEW, MYSQL_PERFORMANCE_AUDIT,
+  PERFORMANCE_AUDIT, POSTGRES_PERFORMANCE_AUDIT, SECURITY_AUDIT) via
+  `scripts/propagate-audit-pipeline-v42.sh --force` — no semantic
+  loss; auditors continue to follow the same discipline through one
+  canonical pointer.
+
+### Splice / SOT invariants verified post-edit
+
+- All 6 `<!-- v42-splice: ... -->` sentinels in SECURITY_AUDIT.md
+  intact and byte-exact (`callout`, `fp-control-gates`,
+  `rubric-anchors`, `fp-recheck-section`, `output-format-section`,
+  `council-handoff`).
+- All 3 `_pending — run /council audit-review_` em-dash slots
+  (U+2014, italic single-underscore, no asterisks / backticks / bold)
+  intact and byte-exact for Phase 15 navigation.
+- SELF-CHECK procedure anchors `1. **Read context**` and
+  `6. **Severity sanity check**` byte-exact.
+- `<output_format>` skeleton, schema labels, YAML frontmatter,
+  Extension-to-Language Fence Map table unchanged.
+- `make check` 10/10 green: shellcheck, markdownlint, template
+  propagation, manifest schema, command headings, integrations
+  catalog, skills Desktop-safety, README translation parity.
+- `bash scripts/propagate-audit-pipeline-v42.sh --dry-run` reports
+  6 already-spliced, 0 spliced (idempotent post-fan-out).
+
+### Deferred to v6.29.0+
+
+- Per `.planning/research/meta-audit-wave3-2026-05-16.md` release
+  sequence: v6.29.0 PERFORMANCE_AUDIT FID→INP migration + RSC/Edge
+  sections; v6.30.0 DESIGN_REVIEW slug rename + WCAG 2.2; v6.31.0
+  DEPLOY_CHECKLIST gate enforcement; v6.32.0 CODE_REVIEW modern-stack
+  categories; v6.33.0 POSTGRES PG16+ coverage; v6.34.0 MYSQL 8.0+
+  coverage.
+
 ## [6.28.0] - 2026-05-16
 
 ### Added

@@ -172,6 +172,9 @@ Phase 2 deep analysis.
 | 15 | `new RegExp(userInput)` / `String.matchAll` / `re.search` / `Pattern.matcher` in a request handler | Inspect pattern for nested quantifiers; confirm timeout or non-backtracking engine |
 | 16 | Reverse proxy / gateway / CDN config that re-frames `Content-Length` or `Transfer-Encoding` | Trace request pipeline for CL/TE disagreement; check backend connection-reuse semantics |
 | 17 | RAG retrieval / tool output / fetched-document fed back into a model prompt | Check provenance tag; confirm high-risk tools refuse `public-web` / `attacker-supplied` retrieval |
+| 18 | URL fetcher / redirect handler with no IPv4-encoding / IPv6-mapped / DNS-rebinding guard | Confirm scheme + port + IP-class deny-list applied to **every** resolved IP, redirects re-validated, DNS pinned |
+| 19 | `Set-Cookie` / `res.cookie()` / `cookies()` for an auth-relevant cookie | Confirm `Secure` + `HttpOnly` + `SameSite` + `__Host-` / `__Secure-` prefix + `Domain` host-only + minimal `Path` |
+| 20 | Newly added dependency (`package.json`, `requirements.txt`, `Gemfile`, `go.mod`, `Cargo.toml`, `composer.json`) introduced in an AI-assisted commit | Slopsquatting check: registry exact-match, age > 30 d, established maintainer, named in the canonical library's documented helpers list |
 
 **Absent from this list (intentionally):** specific bcrypt round counts,
 OS-specific chmod values, HSTS max-age arithmetic, deprecated headers
@@ -274,6 +277,64 @@ the algorithm name (instead of pinning it), or accepts arbitrary `kid`
 without an allowlist, those are CRITICAL candidates for any
 authentication path.
 
+### Session Cookie Attributes & Scope
+
+Every cookie carrying authentication state (session ID, refresh token,
+CSRF token, OAuth `state`, MFA-verified marker) must opt into the
+strict-cookie regime. Browser defaults are not strict enough — a
+missing attribute is a real vulnerability, not a style nit, when the
+cookie protects authentication or value transfer.
+
+Audit each authentication-relevant cookie for **all** of:
+
+- **`Secure`** — set on every cookie carrying a credential. Without it,
+  a one-time downgrade (mixed-content link, captive-portal HTTP
+  redirect, ALB misconfig) leaks the cookie in cleartext.
+- **`HttpOnly`** — set on every session cookie. Omission lets XSS read
+  the cookie via `document.cookie` — turns reflected-XSS into ATO.
+- **`SameSite`** — `Strict` for top-level session cookies on auth
+  surfaces; `Lax` is acceptable for cookies that must survive
+  top-level GET navigation (post-login redirects from IdPs). `None`
+  is allowed **only** when the cookie is intentionally cross-site AND
+  `Secure` is set AND the receiving endpoint has CSRF mitigation
+  independent of SameSite. Default-`None` (pre-Chrome 80 behavior) is
+  not safe — explicitly set the value.
+- **`__Host-` prefix** for cookies that must be host-locked: requires
+  `Secure`, `Path=/`, and **no `Domain=`** attribute. Browsers refuse
+  to set the cookie if any of these conditions fails — fail-closed.
+- **`__Secure-` prefix** for cookies that must require HTTPS but may
+  scope wider than `__Host-` allows.
+- **`Domain=` carefully.** Omitting `Domain` produces a host-only
+  cookie (best). Setting `Domain=example.com` makes the cookie
+  reachable from every subdomain — including a takeover-able subdomain
+  (`abandoned.example.com` pointing at unreclaimed cloud resources) or
+  a sandboxed user-content subdomain (`*.user-content.example.com`).
+  Subdomain takeover + a `Domain`-scoped session cookie = ATO without
+  XSS.
+- **`Path=`** confined to the smallest prefix that actually needs the
+  cookie. A session cookie scoped to `Path=/admin` is unreachable from
+  `/uploads/...` even if an XSS lands there.
+- **`Partitioned`** (CHIPS) for embedded / third-party contexts that
+  still need cross-site cookies — partitions the cookie jar by
+  top-level site, blocks cross-site tracking and cross-site cookie
+  reuse.
+- **Cookie-bomb / cookie-tossing.** A reachable subdomain can set
+  cookies that the parent app will read. Defenses: prefix-locked
+  cookies (`__Host-`), CSRF tokens validated independently of cookie
+  identity, length limits on Cookie headers in the upstream proxy.
+- **`Set-Cookie` injection.** Reflecting any user input into a
+  response header (e.g., `Set-Cookie: lang=${request.lang}`) is a
+  classic CRLF injection sink. Validate the value against an allowlist
+  before serialization; never pass user input through `res.cookie()`
+  / `setcookie()` / `addHeader("Set-Cookie", ...)` without
+  control-char filtering.
+
+Cookie attributes interact with framework defaults. Some frameworks
+(Rails, Laravel, Django, ASP.NET Core) set `HttpOnly` and `Secure` for
+their session cookie out of the box but **leave application-defined
+cookies bare**. Audit every `res.cookie()` / `Set-Cookie` / `cookies()`
+call site, not just the session driver config.
+
 ### Authorization (UI / API / job / cache parity)
 
 Authorization MUST be enforced server-side at every layer:
@@ -347,9 +408,82 @@ framework default:
 - **SSTI** (server-side template injection) — never compile templates
   from user input
 - **Deserialization** — only safe formats (JSON, MessagePack); never
-  `pickle`/`unserialize`/`yaml.load` on user data
+  pickle/`unserialize`/`yaml.load` on user data (see
+  `### Unsafe Deserialization & Gadget Chains` below for the
+  language-specific sink matrix)
 - **Dynamic dispatch** — `eval`, dynamic-code constructors, dynamic
   method calls, reflection on user-controlled names
+
+### Unsafe Deserialization & Gadget Chains
+
+Deserializing attacker-controlled bytes into language-native objects is
+RCE-equivalent in most runtimes. The exploit is not the parse — it is
+the *gadget chain*: classes already on the classpath whose
+constructor / `__wakeup__` / `readResolve` / `finalize` side effects,
+when reached, execute attacker-chosen behavior (file write, command
+exec, JNDI lookup, SQL connect). The bug is "we deserialized untrusted
+input"; the impact is "we already ship the gadget".
+
+Language-specific sinks to grep for:
+
+- **Java** — `ObjectInputStream.readObject`, Jackson polymorphic
+  deserialization with `@JsonTypeInfo(use = Id.CLASS)` or
+  `enableDefaultTyping`, SnakeYAML default `Constructor()` (use
+  `SafeConstructor`), XStream without allowlist, Apache Commons
+  Collections (`InvokerTransformer`, `ChainedTransformer`), Spring
+  `RemoteInvocationSerializingExporter`, JMS `ObjectMessage`. Famous
+  gadgets: `ysoserial` payloads — CommonsCollections1-7, Spring1-2,
+  Hibernate1-2, JRE8u20.
+- **PHP** — `unserialize()` on user input. POP-chain gadgets via
+  `__wakeup__`, `__destruct`, `__toString`. **Phar deserialization** —
+  `file_exists($_GET['p'])` or any filesystem function on a
+  `phar://` stream triggers `unserialize` on the Phar metadata. Audit
+  all filesystem calls (`file_get_contents`, `is_dir`, `getimagesize`,
+  `fopen`) on user-controlled paths.
+- **Python** — pickle-`loads`, pickle-`load`, `cPickle`, `shelve`,
+  `dill`, `joblib`. `yaml.load(...)` without `SafeLoader` /
+  `yaml.safe_load`. `marshal.loads`. `numpy.load(..., allow_pickle=True)`
+  on `.npy` / `.npz` from untrusted sources. ML model formats
+  (`torch.load`, `joblib.load`, scikit-learn pickled models) — treat
+  every untrusted model file as code.
+- **Ruby** — `Marshal.load`, `YAML.load` pre-Psych-4 (post-4 defaults
+  to safe), `ERB.new(template).result(binding)` on user template,
+  Rails `MessageEncryptor` / `MessageVerifier` with leaked secret
+  (deserializes Marshal). Famous gadget: `_rails/secret_key_base`
+  exposure → cookie session forgery → arbitrary Ruby object.
+- **.NET** — `BinaryFormatter.Deserialize` (deprecated for cause),
+  `LosFormatter`, `ObjectStateFormatter`, `SoapFormatter`,
+  `NetDataContractSerializer`, `JavaScriptSerializer` /
+  `Newtonsoft.Json` with `TypeNameHandling != None`,
+  `JsonSerializerSettings.TypeNameHandling = All`. `ViewState` MAC
+  failures → ObjectStateFormatter RCE. `ysoserial.net` gadget catalog.
+- **Node.js** — `node-serialize` (IIFE on `_$$ND_FUNC$$_`),
+  `serialize-javascript` if `unsafe: true` or `eval`-round-trip,
+  `funcster`, `cryo`, `eval` / `vm.runInThisContext` on user JSON,
+  ML-libs that load Python pickle files (`onnxruntime-node` parsing
+  pickle metadata).
+- **Generic XML** — XXE is the deserialization sibling: any XML parser
+  that resolves external entities (libxml `LIBXML_NOENT`,
+  `XMLDocument.LoadXml` with `XmlResolver != null`, `DocumentBuilder`
+  without `setFeature("disallow-doctype-decl", true)`,
+  `XMLInputFactory.newInstance` without
+  `IS_SUPPORTING_EXTERNAL_ENTITIES = false`).
+
+A finding is real when (a) untrusted bytes reach a deserializer in any
+of the lists above AND (b) the deserializer is in default-unsafe mode
+OR no explicit allowlist / safe-constructor is configured. Severity
+defaults to **CRITICAL** when the runtime has any known gadget on the
+classpath (Java + Apache Commons present, .NET + any Json.NET pre-13
+type-handling, PHP + any Phar-reachable filesystem call). Severity
+drops to **HIGH** only when reachability requires authenticated admin
+access AND no public gadget chain is shipped — and document the
+assumption in the finding.
+
+Defense to look for: format swap (JSON / MessagePack / Protocol
+Buffers / FlatBuffers / CBOR — all data-only, no code on parse),
+signed-and-encrypted envelopes with a separate key, explicit allowlists
+(`SafeConstructor`, `setAcceptableClassNameSet`, Jackson
+`PolymorphicTypeValidator`), and class-loader / sandboxing.
 
 ### Prototype Pollution & Object Confusion
 
@@ -633,6 +767,25 @@ following is **visible in this codebase**:
 - A newly introduced package with a suspicious name (typosquatting:
   compare letter-by-letter against the canonical name), an unexpected
   maintainer, or a sudden ownership transfer.
+- **Slopsquatting** — a package name that *looks* like the canonical
+  helper for a popular library but does not exist in the public
+  registry: `react-router-dom-helper`, `axios-helper`, `lodash-utils`,
+  `next-router-utils`, `tailwindcss-helpers`. LLM coding assistants
+  hallucinate package names with high confidence; the attacker reads
+  the model's public hallucinations from research papers and Twitter,
+  then publishes the hallucinated name with a one-line dependency on
+  the legitimate package + a malicious `postinstall` / import-time side
+  effect. Audit signals: (a) package age < 30 days at install time,
+  (b) maintainer with no other packages, (c) sole dependency is the
+  "real" library, (d) name fits the
+  `<canonical>-{helper,utils,wrapper,plus,extras,toolkit}` pattern,
+  (e) install introduced in an AI-assisted commit. Verify by name +
+  exact byte match against the registry (`npmjs.com/package/<name>`,
+  `pypi.org/project/<name>`, `crates.io/crates/<name>`,
+  `rubygems.org/gems/<name>`, `packagist.org/packages/<name>`,
+  `pkg.go.dev/<name>`) — and against the **canonical** package's
+  documented helpers list, not just registry existence (a name can
+  exist and still be slopsquatted if it was just-registered).
 - A dependency that runs `postinstall` / `preinstall` / `install`
   scripts, build-time codegen, or any code at install time that
   touches the file system, network, or secrets.
@@ -659,10 +812,36 @@ Report only when the visible vector below is present:
 - **HTTPS not enforced in production** — there is a reachable
   authenticated route accepting unencrypted credentials, session
   cookies, or tokens.
-- **CSP missing or `unsafe-inline` / `unsafe-eval`** — there is a
-  reachable raw-HTML sink, attribute-injection sink, or
-  user-controllable script vector on the same surface. CSP on a
-  pure-API surface with no HTML response is not a finding.
+- **CSP missing or weak** — there is a reachable raw-HTML sink,
+  attribute-injection sink, or user-controllable script vector on the
+  same surface. CSP on a pure-API surface with no HTML response is not
+  a finding. A CSP is *weak* when **any** of the following is true:
+  - `script-src` contains `'unsafe-inline'` or `'unsafe-eval'` with no
+    `'strict-dynamic'` override (modern CSP3 standard is
+    `script-src 'strict-dynamic' 'nonce-<random>' 'unsafe-inline'
+    https:` — `'strict-dynamic'` ignores `'unsafe-inline'` and host
+    allowlists in CSP3-aware browsers, falling back gracefully in
+    CSP2-aware browsers).
+  - Per-response nonce is **reused** across responses (predictable
+    nonce defeats `'nonce-X'`) or generated from a low-entropy source
+    (`Math.random()`, request-id-derived).
+  - `script-src` allows a JSONP endpoint, a CDN's bare host
+    (`*.googleapis.com`), or a wildcard subdomain (`*.example.com`)
+    that exposes any user-uploadable JS path — these are CSP-bypass
+    primitives equivalent to `'unsafe-inline'`.
+  - `'unsafe-hashes'` is set without an explicit hash allowlist (it
+    re-enables inline event handlers).
+  - `script-src` is present but `script-src-elem` / `script-src-attr`
+    are missing in a Trusted-Types-aware browser — `script-src` no
+    longer covers all script execution surfaces in CSP3.
+  - `object-src` is not `'none'` (a `<embed>` / `<object>` can host
+    Flash / SVG payloads), `base-uri` is not `'self'` or `'none'`
+    (base-tag injection redirects every relative URL on the page),
+    and `frame-ancestors` is not set (`X-Frame-Options` is a
+    Frame-only fallback — `frame-ancestors` is the CSP3 source of
+    truth).
+  - `report-uri` / `report-to` is absent, so violations from
+    real-world exploit attempts never surface.
 - **`X-Frame-Options` / `frame-ancestors` missing** — there is a
   reachable privileged state-changing action (settings change,
   payment, role grant) on the same surface that would matter if framed.
@@ -731,14 +910,76 @@ proxy that parses both headers without normalization). Do NOT flag
 
 ### SSRF / Open Redirect / Host Injection
 
-- URL fetchers validate scheme (https only), block private IPs (RFC1918,
-  127.0.0.0/8, 169.254.0.0/16, cloud metadata 169.254.169.254 and
-  fd00:ec2::254), enforce timeouts, and disable redirects to private
-  ranges
-- Redirect targets validated against allowlist or restricted to relative
-  paths
-- Password-reset / signup-confirmation links use a configured base URL,
-  not the request `Host` header (or Host is validated)
+Server-Side Request Forgery is rarely a single-line "block 127.0.0.1"
+problem. Modern SSRF chains compose URL-parser confusion, IPv4/IPv6
+encoding tricks, redirect chains, and DNS-rebinding TOCTOU. The defense
+must therefore (a) parse the URL with the *exact* library the fetcher
+uses, (b) resolve the host to its IP set, (c) check **every IP** in the
+set against a deny-list, and (d) re-validate after redirects.
+
+- **Scheme + port allowlist.** `https://` only (drop `http://`, `file://`,
+  `gopher://`, `dict://`, `ftp://`, `data:`, `jar:`, `netdoc:`, `php://`,
+  `expect://`, `tftp://`); port restricted to 443 (or an explicit
+  allowlist). Library defaults often accept all schemes.
+- **Private + reserved IP block (IPv4).** `0.0.0.0/8`, `10.0.0.0/8`,
+  `100.64.0.0/10` (CGNAT), `127.0.0.0/8`, `169.254.0.0/16`
+  (link-local + AWS/Azure metadata `169.254.169.254`), `172.16.0.0/12`,
+  `192.0.0.0/24`, `192.0.2.0/24`, `192.168.0.0/16`, `198.18.0.0/15`,
+  `198.51.100.0/24`, `203.0.113.0/24`, `224.0.0.0/4` (multicast),
+  `240.0.0.0/4` (reserved). Loopback alone is not enough.
+- **Private + reserved IP block (IPv6).** `::1/128` (loopback),
+  `::ffff:0:0/96` (IPv4-mapped — `::ffff:127.0.0.1` reaches localhost
+  on dual-stack), `::/128` unspecified, `fc00::/7` (ULA), `fe80::/10`
+  (link-local), `fd00:ec2::254` (AWS EC2 v6 metadata), `2001:db8::/32`
+  (documentation). IPv4-mapped IPv6 is the most common bypass.
+- **Cloud-metadata FQDNs + IPs.** Block by both name and resolved IP:
+  AWS `169.254.169.254` plus `fd00:ec2::254`, GCP
+  `metadata.google.internal` plus `169.254.169.254`, Azure
+  `169.254.169.254` (with `Metadata: true` header gate), Alibaba
+  `100.100.100.200`, Oracle
+  `192.0.0.192`, DigitalOcean `169.254.169.254`. Kubernetes service
+  network (`*.svc.cluster.local`, `kubernetes.default.svc`) and Docker
+  internal (`host.docker.internal`, `gateway.docker.internal`) where
+  the fetcher runs in-cluster.
+- **IPv4 encoding variants.** Reject decimal-encoded
+  (`2130706433` = `127.0.0.1`), hex-encoded (`0x7f000001`,
+  `0x7f.0x0.0x0.0x1`), octal-encoded (`0177.0.0.1`,
+  `017700000001`), and mixed (`127.1` = `127.0.0.1`,
+  `0:0:0:0:0:ffff:7f00:1`). Parse with `inet_pton`-strict or equivalent;
+  reject anything ambiguous.
+- **URL parser confusion.** The "userinfo @ host" form
+  (`http://attacker.com@127.0.0.1/`,
+  `http://127.0.0.1#@attacker.com/`,
+  `http://example.com\@127.0.0.1/`, embedded NUL or CR/LF in host) is a
+  known split between WHATWG / RFC 3986 / Python `urllib` / Node `url` /
+  Java `URI` / Go `net/url`. Normalize to a canonical form, then
+  re-parse with the **same library** the fetcher uses.
+- **DNS rebinding (TOCTOU).** Validation that resolves the host once,
+  passes the check, then lets the HTTP client re-resolve on connect is
+  exploitable when the attacker controls a DNS server with TTL=0 and
+  alternates between a public IP (passes validation) and an internal IP
+  (served to the actual fetcher). Pin the connection to the validated
+  IP (e.g., explicit `socket.create_connection` to the validated
+  address, custom `Resolver` that returns the cached IP, or
+  `DNS_AAAA_DISABLED` + `Host:` header preserved).
+- **Redirect chains.** Every redirect step is a fresh SSRF check.
+  Disable auto-follow, OR re-validate the `Location` URL against the
+  full allowlist (scheme, port, host, resolved IPs) on each hop.
+  Limit hop count to ≤ 3.
+- **Egress controls.** A network-layer egress proxy / VPC endpoint
+  restriction that denies access to the metadata service IP and internal
+  ranges is the most robust defense — application-layer filters miss
+  encoding variants and DNS-rebinding. Audit for both.
+- **Redirect targets validated against allowlist** or restricted to
+  relative paths (open-redirect class).
+- **Password-reset / signup-confirmation links** use a configured base
+  URL, not the request `Host` header (or `Host` is validated against an
+  allowlist).
+
+A finding is real only when (a) a user-controlled URL or host reaches a
+fetcher / redirector / `Host`-templated link AND (b) at least one of the
+bypass classes above is unguarded in the codebase. "We allow `https://`"
+without IP-class validation is the prototypical real finding.
 
 ---
 
@@ -1076,24 +1317,27 @@ the source.
 
 ### Gate 3 — Calibration (severity + confidence sanity, anti-padding)
 
-After Gates 1 and 2, apply these rules to the surviving set:
+After Gates 1 and 2, apply these rules to the surviving set. The
+calibration discipline itself is canonicalized in
+`components/audit-uncertainty-discipline.md` — apply that SOT in full
+here; the rules below are pure cross-references that point its outputs
+at the per-audit rubric anchors.
 
-- **Confidence calibration.** If the failure mode cannot be confirmed
-  from the embedded code, lower confidence (HIGH → MEDIUM → LOW) and
-  explicitly state the assumptions required in the finding's
-  description. Prefer omission over speculation.
-- **Severity calibration.** Re-rate severity using the actual realistic
-  scenario, not the rule label. Apply the Severity Ceiling Table from
-  `components/audit-severity-anchor.md`. For SECURITY: cross-multiply
-  with `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference the
-  latency / load thresholds in `## SEVERITY THRESHOLDS`. For
-  CODE_REVIEW: cross-reference `## SEVERITY AND CONFIDENCE`.
+- **Confidence + severity calibration.** Apply UNCERTAINTY DISCIPLINE
+  per `components/audit-uncertainty-discipline.md` (lower confidence,
+  lower severity, then move to Non-Blocking Observations or drop). Then
+  re-rate severity using the Severity Ceiling Table in
+  `components/audit-severity-anchor.md` against the realistic
+  preconditions. For SECURITY: cross-multiply with
+  `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference
+  `## SEVERITY THRESHOLDS`. For CODE_REVIEW: cross-reference
+  `## SEVERITY AND CONFIDENCE`.
 - **No padding.** Five weak speculative MEDIUMs are worse than one
-  verified CRITICAL with a working failure scenario. If you cannot
-  describe a concrete failure path the user would care about, drop or
-  downgrade. Do NOT use weasel words (`could potentially`, `might
-  allow`, `in theory`) to inflate the report — either the finding is
-  grounded or it is not.
+  verified CRITICAL with a working failure scenario. The weasel-word
+  ban (`could potentially`, `might allow`, `in theory`) and the
+  hidden-assumptions ban are defined in
+  `components/audit-uncertainty-discipline.md` `## Anti-Patterns`. Do
+  not restate them inline — apply the SOT.
 
 <!-- v42-splice: rubric-anchors -->
 
