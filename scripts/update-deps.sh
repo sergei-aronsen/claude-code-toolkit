@@ -481,6 +481,55 @@ upgrade_claude_memo() {
     echo "Done. Restart Claude Code to pick up new hook code."
 }
 
+# ───────── skills_pins probe (v6.35.0 scaffold) ─────────
+#
+# Generic probe for an entry in manifest.skills_pins.<name>. Reads the pinned
+# repo URL + commit from manifest, fetches upstream HEAD, prints
+# "<installed>\t<latest>". `installed` = pinned commit short SHA (or "—" when
+# the entry is still _status:needs-initial-pin); `latest` = upstream HEAD
+# short SHA (or "—" on network/jq failure). Drift surfaces in the dashboard
+# the same way vendor_pins drift does.
+probe_skill_pin() {
+    local name="$1"
+    local manifest="$SCRIPT_DIR/../manifest.json"
+    local repo pinned latest=""
+    if [[ ! -f "$manifest" ]] || ! command -v jq &>/dev/null; then
+        printf '%s\t%s\n' "—" "—"
+        return 0
+    fi
+    repo=$(jq -r --arg n "$name" '.skills_pins[$n].repo // ""' "$manifest" 2>/dev/null)
+    pinned=$(jq -r --arg n "$name" '.skills_pins[$n].commit // ""' "$manifest" 2>/dev/null)
+    [[ -z "$repo" ]] && { printf '%s\t%s\n' "—" "—"; return 0; }
+    if [[ -n "$pinned" && "$pinned" != "null" ]]; then
+        pinned="${pinned:0:12}"
+    else
+        pinned="—"
+    fi
+    if command -v git &>/dev/null; then
+        latest=$(git ls-remote --quiet "$repo" HEAD 2>/dev/null \
+            | awk 'NR==1{print substr($1,1,12)}')
+    fi
+    printf '%s\t%s\n' "${pinned}" "${latest:-—}"
+}
+
+probe_skill_huashu_design() { probe_skill_pin "huashu-design"; }
+probe_skill_resend()        { probe_skill_pin "resend"; }
+
+# Upgrade helpers for skill pins are deliberately stubs in v6.35.0: pin
+# refresh is a maintainer-only operation — run `git ls-remote <repo> HEAD`,
+# then update `manifest.json::skills_pins.<name>.commit` + `pinned_at` and
+# re-sync the mirror via `scripts/sync-skills-mirror.sh`. There is no
+# automatic skill-upgrade flow yet because the mirror itself is a hand-
+# vendored snapshot, not a live `git clone`.
+upgrade_skill_huashu_design() {
+    echo "Manual: refresh manifest.skills_pins.huashu-design.{commit,pinned_at} then bash scripts/sync-skills-mirror.sh huashu-design" >&2
+    return 1
+}
+upgrade_skill_resend() {
+    echo "Manual: refresh manifest.skills_pins.resend.{commit,pinned_at} then bash scripts/sync-skills-mirror.sh resend" >&2
+    return 1
+}
+
 # ───────── register all deps ─────────
 # Note: the 4 anthropic-shipped plugins (code-review, commit-commands,
 # security-guidance, frontend-design) intentionally NOT registered here —
@@ -502,6 +551,8 @@ register_dep "serena"           "MCP"       probe_serena           upgrade_seren
 register_dep "claude-context"   "MCP"       probe_claude_context   upgrade_claude_context   "Vector-DB semantic search (npx)"
 register_dep "claude-memo"      "Optional"  probe_claude_memo      upgrade_claude_memo      "Persistent engineering memory (vault + 4 hooks)"
 register_dep "repomix"          "External"  probe_repomix          upgrade_repomix          "Repo-pack for AI context (npx, pinned in manifest)"
+register_dep "huashu-design"    "Skill"     probe_skill_huashu_design upgrade_skill_huashu_design "Mirrored from alchaincyf/huashu-design (MIT). Pin refresh = manual; see manifest.skills_pins"
+register_dep "resend"           "Skill"     probe_skill_resend     upgrade_skill_resend     "Mirrored from resend/resend-skills. Pin refresh = manual; see manifest.skills_pins"
 
 # ───────── --check single-dep ─────────
 
