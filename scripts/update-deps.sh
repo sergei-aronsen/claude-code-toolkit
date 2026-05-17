@@ -531,11 +531,15 @@ probe_skill_pin() {
     printf '%s\t%s\n' "${pinned}" "${latest:-—}"
 }
 
-probe_skill_huashu_design()  { probe_skill_pin "huashu-design"; }
-probe_skill_resend()         { probe_skill_pin "resend"; }
-probe_skill_docx()           { probe_skill_pin "docx"; }
-probe_skill_pdf()            { probe_skill_pin "pdf"; }
-probe_skill_webapp_testing() { probe_skill_pin "webapp-testing"; }
+probe_skill_huashu_design()              { probe_skill_pin "huashu-design"; }
+probe_skill_resend()                     { probe_skill_pin "resend"; }
+probe_skill_docx()                       { probe_skill_pin "docx"; }
+probe_skill_pdf()                        { probe_skill_pin "pdf"; }
+probe_skill_webapp_testing()             { probe_skill_pin "webapp-testing"; }
+probe_skill_find_skills()                { probe_skill_pin "find-skills"; }
+probe_skill_firecrawl()                  { probe_skill_pin "firecrawl"; }
+probe_skill_vercel_composition_patterns(){ probe_skill_pin "vercel-composition-patterns"; }
+probe_skill_vercel_react_best_practices(){ probe_skill_pin "vercel-react-best-practices"; }
 
 # Upgrade helpers for skill pins are deliberately stubs in v6.35.0: pin
 # refresh is a maintainer-only operation — run `git ls-remote <repo> HEAD` (or
@@ -565,6 +569,22 @@ upgrade_skill_webapp_testing() {
     echo "Manual: refresh manifest.skills_pins.webapp-testing.{commit,pinned_at} (path-scoped, see anthropics/skills/skills/webapp-testing) then bash scripts/sync-skills-mirror.sh webapp-testing" >&2
     return 1
 }
+upgrade_skill_find_skills() {
+    echo "Manual: refresh manifest.skills_pins.find-skills.{commit,pinned_at} (path-scoped, see vercel-labs/skills/skills/find-skills) then bash scripts/sync-skills-mirror.sh find-skills" >&2
+    return 1
+}
+upgrade_skill_firecrawl() {
+    echo "Manual: refresh manifest.skills_pins.firecrawl.{commit,pinned_at} (path-scoped, see firecrawl/cli/skills/firecrawl-cli) then bash scripts/sync-skills-mirror.sh firecrawl" >&2
+    return 1
+}
+upgrade_skill_vercel_composition_patterns() {
+    echo "Manual: refresh manifest.skills_pins.vercel-composition-patterns.{commit,pinned_at} (path-scoped, see vercel-labs/agent-skills/skills/composition-patterns) then bash scripts/sync-skills-mirror.sh vercel-composition-patterns" >&2
+    return 1
+}
+upgrade_skill_vercel_react_best_practices() {
+    echo "Manual: refresh manifest.skills_pins.vercel-react-best-practices.{commit,pinned_at} (path-scoped, see vercel-labs/agent-skills/skills/react-best-practices) then bash scripts/sync-skills-mirror.sh vercel-react-best-practices" >&2
+    return 1
+}
 
 # ───────── register all deps ─────────
 # Note: the 4 anthropic-shipped plugins (code-review, commit-commands,
@@ -592,6 +612,10 @@ register_dep "resend"           "Skill"     probe_skill_resend     upgrade_skill
 register_dep "docx"             "Skill"     probe_skill_docx       upgrade_skill_docx       "Mirrored from anthropics/skills/skills/docx (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "pdf"              "Skill"     probe_skill_pdf        upgrade_skill_pdf        "Mirrored from anthropics/skills/skills/pdf (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "webapp-testing"   "Skill"     probe_skill_webapp_testing upgrade_skill_webapp_testing "Mirrored from anthropics/skills/skills/webapp-testing (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "find-skills"      "Skill"     probe_skill_find_skills upgrade_skill_find_skills "Mirrored from vercel-labs/skills/skills/find-skills (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "firecrawl"        "Skill"     probe_skill_firecrawl  upgrade_skill_firecrawl  "Mirrored from firecrawl/cli/skills/firecrawl-cli (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "vercel-composition-patterns" "Skill" probe_skill_vercel_composition_patterns upgrade_skill_vercel_composition_patterns "Mirrored from vercel-labs/agent-skills/skills/composition-patterns. Pin refresh = manual"
+register_dep "vercel-react-best-practices" "Skill" probe_skill_vercel_react_best_practices upgrade_skill_vercel_react_best_practices "Mirrored from vercel-labs/agent-skills/skills/react-best-practices. Pin refresh = manual"
 
 # ───────── --check single-dep ─────────
 

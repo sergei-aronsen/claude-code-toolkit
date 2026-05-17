@@ -135,8 +135,8 @@ analytics-tracking           likely anthropics/skills/analytics-tracking
 chrome-extension-development likely anthropics/skills/chrome-extension-development
 copywriting                  likely anthropics/skills/copywriting
 docx                         likely anthropics/skills/docx
-find-skills                  likely anthropics/skills/find-skills
-firecrawl                    likely anthropics/skills/firecrawl
+find-skills                  CONFIRMED vercel-labs/skills/skills/find-skills (v6.41.0)
+firecrawl                    CONFIRMED firecrawl/cli/skills/firecrawl-cli (v6.41.0)
 i18n-localization            likely anthropics/skills/i18n-localization
 memo-skill                   likely anthropics/skills/memo-skill OR third-party
 next-best-practices          likely anthropics/skills/next-best-practices
@@ -148,8 +148,8 @@ stripe-best-practices        likely anthropics/skills/stripe-best-practices
 tailwind-design-system       likely anthropics/skills/tailwind-design-system
 typescript-advanced-types    likely anthropics/skills/typescript-advanced-types
 ui-ux-pro-max                likely anthropics/skills/ui-ux-pro-max
-vercel-composition-patterns  likely anthropics/skills/vercel-composition-patterns
-vercel-react-best-practices  likely anthropics/skills/vercel-react-best-practices
+vercel-composition-patterns  CONFIRMED vercel-labs/agent-skills/skills/composition-patterns (v6.41.0)
+vercel-react-best-practices  CONFIRMED vercel-labs/agent-skills/skills/react-best-practices (v6.41.0)
 webapp-testing               likely anthropics/skills/webapp-testing
 ```
 

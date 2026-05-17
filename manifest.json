@@ -55,13 +55,29 @@
       "pinned_at": "2026-05-12"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. v6.35.0 scaffold shipped 2 standalone-repo pins (huashu-design, resend). v6.37.0 adds the `path` field for monorepo-path-scoped probes via the GitHub API; 3 catalog skills (docx, pdf, webapp-testing) confirmed sourced from anthropics/skills monorepo via per-skill content-equivalence check and now pinned. 18 catalog skills remain upstream-unknown — see .planning/research/skills-pin-research-2026-05-17.md for the corrected finding (the v6.35.0 hypothesis that all 21 unknowns lived in anthropics/skills was over-fitted; only 3 actually do). Add new entries one at a time as upstream URLs are confirmed; do not invent.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. v6.35.0 scaffold shipped 2 standalone-repo pins (huashu-design, resend). v6.37.0 added `path` field for monorepo-path-scoped probes via the GitHub API plus 3 anthropics/skills monorepo pins (docx, pdf, webapp-testing) after content equivalence verification. v6.41.0 adds 4 more confirmed-upstream pins: vercel-composition-patterns + vercel-react-best-practices (vercel-labs/agent-skills monorepo), find-skills (vercel-labs/skills monorepo), firecrawl (firecrawl/cli monorepo subpath). 14 catalog skills remain upstream-unknown — see .planning/research/skills-pin-research-2026-05-17.md for the truly-unknown list with plausibility hints. Add new entries one at a time as upstream URLs are confirmed; do not invent.",
   "skills_pins": {
     "docx": {
       "repo": "https://github.com/anthropics/skills",
       "path": "skills/docx",
       "tag": null,
       "commit": "3d59511518591fa82e6cfcf0438d68dd5dad3e76",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "find-skills": {
+      "repo": "https://github.com/vercel-labs/skills",
+      "path": "skills/find-skills",
+      "tag": null,
+      "commit": "0b8fb22aaa7f82447d4befe1b6a95d30a5b279b8",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "firecrawl": {
+      "repo": "https://github.com/firecrawl/cli",
+      "path": "skills/firecrawl-cli",
+      "tag": null,
+      "commit": "f873e5bfd2ee090aefc4c5c304570334666f6b2a",
       "pinned_at": "2026-05-17",
       "_status": "active"
     },
@@ -84,6 +100,22 @@
       "repo": "https://github.com/resend/resend-skills",
       "tag": null,
       "commit": "78469829399beec62b8f815f109ebfcfa3b0680b",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "vercel-composition-patterns": {
+      "repo": "https://github.com/vercel-labs/agent-skills",
+      "path": "skills/composition-patterns",
+      "tag": null,
+      "commit": "a5343bd997c4cc4d8bf2ca61021bdc74b4d6c9d5",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "vercel-react-best-practices": {
+      "repo": "https://github.com/vercel-labs/agent-skills",
+      "path": "skills/react-best-practices",
+      "tag": null,
+      "commit": "dc8367e6f91c022d83361f03c3313fa05e848ee5",
       "pinned_at": "2026-05-17",
       "_status": "active"
     },

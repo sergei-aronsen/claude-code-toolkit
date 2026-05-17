@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **skills_pins coverage extended 5 → 9 active pins** (v6.41.0 scope;
+  closes Deferred Backlog Item 2 in part — 4 of 14 remaining unknowns
+  now traced and pinned). Four new entries in
+  `manifest.json:skills_pins`, all using the optional `path` field
+  introduced in v6.37.0:
+  - `find-skills` → `vercel-labs/skills@0b8fb22a` path
+    `skills/find-skills` (skill-discovery helper, the *only* skill in
+    `vercel-labs/skills`; sibling repo to `agent-skills`).
+  - `firecrawl` → `firecrawl/cli@f873e5bf` path `skills/firecrawl-cli`
+    (Firecrawl scrape/crawl skill; lives in the CLI monorepo, not in
+    a standalone `firecrawl-skill` repo — discovered via README
+    breadcrumb in the toolkit's own `firecrawl` SKILL.md).
+  - `vercel-composition-patterns` → `vercel-labs/agent-skills@a5343bd9`
+    path `skills/composition-patterns` (RSC + App Router composition
+    patterns; lives in `agent-skills` monorepo alongside
+    `react-best-practices`).
+  - `vercel-react-best-practices` → `vercel-labs/agent-skills@dc8367e6`
+    path `skills/react-best-practices` (canonical React patterns;
+    same monorepo as `composition-patterns`).
+  Test coverage in `scripts/tests/test-update-deps-skills-pins.sh`
+  expanded 29 → 49 assertions (was 5 pins × ~6 axes, now 9 pins ×
+  ~5 axes — refactored to array-driven loops for the 4 axes that
+  scale linearly with pin count). All 49 assertions pass.
+- **4 new `probe_skill_*` + 4 new `upgrade_skill_*` helpers in
+  `scripts/update-deps.sh`**, all delegating to the path-aware
+  `probe_skill_pin` / `upgrade_skill_pin` core introduced in v6.37.0.
+  `register_dep "Skill"` rows in `update-deps.sh` go from 5 → 9.
+- **Research artifact** `.planning/research/skills-pin-research-2026-05-17.md`
+  updated with confirmed source mappings for the 4 newly-pinned skills
+  (vercel-labs/skills, firecrawl/cli, vercel-labs/agent-skills × 2).
+
+### Changed
+
+- `scripts/tests/test-update-deps-skills-pins.sh` refactored to use
+  associative arrays (`SKILL_PIN_NAMES`, `MONOREPO_PIN_NAMES`,
+  `STANDALONE_PIN_NAMES`, `PROBE_FN_NAMES`, `UPGRADE_FN_NAMES`,
+  `MONOREPO_PATH`). Adding a 10th skill pin now requires editing only
+  the 6 array literals — the assertion loop machinery scales
+  automatically. Note the `firecrawl` special case in `MONOREPO_PATH`:
+  pin name is `firecrawl` but on-disk path inside the monorepo is
+  `skills/firecrawl-cli` (not `skills/firecrawl`).
+
+### Deferred
+
+- 14 remaining truly-unknown skills (ai-models, analytics-tracking,
+  chrome-extension-development, copywriting, i18n-localization,
+  memo-skill, next-best-practices, notebooklm, seo-audit, shadcn,
+  stripe-best-practices, tailwind-design-system,
+  typescript-advanced-types, ui-ux-pro-max). Per-skill source-repo
+  identification remains the bottleneck — none of the 14 carry an
+  upstream URL hint in their own `SKILL.md` headers. Deferred to
+  v6.42.0+ as evidence surfaces.
+
 ## [6.40.0] - 2026-05-17
 
 ### Added
