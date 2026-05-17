@@ -98,7 +98,13 @@ inside the gates, not by adding / removing gates:
 - **DESIGN_REVIEW** — Gate 1 specializes "failure mode" as "user-visible
   UX defect grounded in screenshot or interaction trace"; Gate 3 maps
   the design label (Blocker / High / Medium / Nitpick) to the canonical
-  rubric per `## Issue Triage Matrix`.
+  rubric per `## Issue triage matrix`.
+- **DEPLOY_CHECKLIST** — does not run the three-gate machinery; it is a
+  runbook, not an adversarial audit. No SELF-CHECK, no Council Handoff,
+  no Gate 3 cross-multiplier. Phase gates (e.g., `### 6.0 Artifact
+  attestation`, `### 7.4 Per-signal Green/Warn/Abort table`) are
+  hard-gates on the deployment step itself, distinct from the audit
+  false-positive control flow.
 
 Adding a fourth gate, skipping a gate, or reordering them constitutes
 a structural change and requires a new audit-specific rubric — not a
