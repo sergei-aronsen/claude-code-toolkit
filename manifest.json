@@ -55,21 +55,45 @@
       "pinned_at": "2026-05-12"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill to detect drift between this mirror and the canonical upstream repo. Initial scaffold (v6.35.0) ships with only the 2 catalog skills whose upstream URL was grounded in repo content (huashu-design, resend). The remaining 21 catalog skills lack a grounded upstream URL — see CHANGELOG [6.35.0] research-backlog notes. Add new entries one at a time as upstream URLs are confirmed; do not invent.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. v6.35.0 scaffold shipped 2 standalone-repo pins (huashu-design, resend). v6.37.0 adds the `path` field for monorepo-path-scoped probes via the GitHub API; 3 catalog skills (docx, pdf, webapp-testing) confirmed sourced from anthropics/skills monorepo via per-skill content-equivalence check and now pinned. 18 catalog skills remain upstream-unknown — see .planning/research/skills-pin-research-2026-05-17.md for the corrected finding (the v6.35.0 hypothesis that all 21 unknowns lived in anthropics/skills was over-fitted; only 3 actually do). Add new entries one at a time as upstream URLs are confirmed; do not invent.",
   "skills_pins": {
+    "docx": {
+      "repo": "https://github.com/anthropics/skills",
+      "path": "skills/docx",
+      "tag": null,
+      "commit": "3d59511518591fa82e6cfcf0438d68dd5dad3e76",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
     "huashu-design": {
       "repo": "https://github.com/alchaincyf/huashu-design",
       "tag": null,
-      "commit": null,
-      "pinned_at": null,
-      "_status": "needs-initial-pin"
+      "commit": "8e25b23709747a747b80bf4d3820def8f8054a4e",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "pdf": {
+      "repo": "https://github.com/anthropics/skills",
+      "path": "skills/pdf",
+      "tag": null,
+      "commit": "1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
     },
     "resend": {
       "repo": "https://github.com/resend/resend-skills",
       "tag": null,
-      "commit": null,
-      "pinned_at": null,
-      "_status": "needs-initial-pin"
+      "commit": "78469829399beec62b8f815f109ebfcfa3b0680b",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "webapp-testing": {
+      "repo": "https://github.com/anthropics/skills",
+      "path": "skills/webapp-testing",
+      "tag": null,
+      "commit": "b9e19e6f44773509fbdd7001d77ff41a49a486c1",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
     }
   },
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",

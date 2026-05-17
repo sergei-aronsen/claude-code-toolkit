@@ -481,7 +481,7 @@ upgrade_claude_memo() {
     echo "Done. Restart Claude Code to pick up new hook code."
 }
 
-# ───────── skills_pins probe (v6.35.0 scaffold) ─────────
+# ───────── skills_pins probe (v6.35.0 scaffold, v6.37.0 path extension) ─────────
 #
 # Generic probe for an entry in manifest.skills_pins.<name>. Reads the pinned
 # repo URL + commit from manifest, fetches upstream HEAD, prints
@@ -489,44 +489,80 @@ upgrade_claude_memo() {
 # the entry is still _status:needs-initial-pin); `latest` = upstream HEAD
 # short SHA (or "—" on network/jq failure). Drift surfaces in the dashboard
 # the same way vendor_pins drift does.
+#
+# v6.37.0: optional `path` field enables monorepo-path-scoped drift detection.
+# When `path` is non-empty AND repo is a github.com URL, the probe queries the
+# GitHub API `repos/<owner>/<repo>/commits?path=<path>&per_page=1` to find
+# the last commit that touched the subtree, instead of using whole-repo HEAD.
+# Falls back to `git ls-remote HEAD` for standalone repos (path absent/null).
+# Network/API failures degrade to "—" same as before.
 probe_skill_pin() {
     local name="$1"
     local manifest="$SCRIPT_DIR/../manifest.json"
-    local repo pinned latest=""
+    local repo path pinned latest=""
     if [[ ! -f "$manifest" ]] || ! command -v jq &>/dev/null; then
         printf '%s\t%s\n' "—" "—"
         return 0
     fi
     repo=$(jq -r --arg n "$name" '.skills_pins[$n].repo // ""' "$manifest" 2>/dev/null)
+    path=$(jq -r --arg n "$name" '.skills_pins[$n].path // ""' "$manifest" 2>/dev/null)
     pinned=$(jq -r --arg n "$name" '.skills_pins[$n].commit // ""' "$manifest" 2>/dev/null)
-    [[ -z "$repo" ]] && { printf '%s\t%s\n' "—" "—"; return 0; }
+    [[ -z "$repo" || "$repo" == "null" ]] && { printf '%s\t%s\n' "—" "—"; return 0; }
     if [[ -n "$pinned" && "$pinned" != "null" ]]; then
         pinned="${pinned:0:12}"
     else
         pinned="—"
     fi
-    if command -v git &>/dev/null; then
+    # Path-scoped probe via GitHub API (when path set + repo is github.com).
+    # Whole-repo HEAD via git ls-remote otherwise.
+    if [[ -n "$path" && "$path" != "null" && "$repo" =~ ^https://github\.com/([^/]+)/([^/]+)/?$ ]] && command -v curl &>/dev/null; then
+        local owner="${BASH_REMATCH[1]}" rname="${BASH_REMATCH[2]}"
+        rname="${rname%.git}"
+        local ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+        latest=$(curl -fsSL --max-time 8 \
+            -H "User-Agent: $ua" \
+            "https://api.github.com/repos/${owner}/${rname}/commits?path=${path}&per_page=1" 2>/dev/null \
+            | jq -r '.[0].sha // ""' 2>/dev/null)
+        latest="${latest:0:12}"
+    elif command -v git &>/dev/null; then
         latest=$(git ls-remote --quiet "$repo" HEAD 2>/dev/null \
             | awk 'NR==1{print substr($1,1,12)}')
     fi
     printf '%s\t%s\n' "${pinned}" "${latest:-—}"
 }
 
-probe_skill_huashu_design() { probe_skill_pin "huashu-design"; }
-probe_skill_resend()        { probe_skill_pin "resend"; }
+probe_skill_huashu_design()  { probe_skill_pin "huashu-design"; }
+probe_skill_resend()         { probe_skill_pin "resend"; }
+probe_skill_docx()           { probe_skill_pin "docx"; }
+probe_skill_pdf()            { probe_skill_pin "pdf"; }
+probe_skill_webapp_testing() { probe_skill_pin "webapp-testing"; }
 
 # Upgrade helpers for skill pins are deliberately stubs in v6.35.0: pin
-# refresh is a maintainer-only operation — run `git ls-remote <repo> HEAD`,
-# then update `manifest.json::skills_pins.<name>.commit` + `pinned_at` and
-# re-sync the mirror via `scripts/sync-skills-mirror.sh`. There is no
-# automatic skill-upgrade flow yet because the mirror itself is a hand-
-# vendored snapshot, not a live `git clone`.
+# refresh is a maintainer-only operation — run `git ls-remote <repo> HEAD` (or
+# `curl -s https://api.github.com/repos/<o>/<r>/commits?path=<p>&per_page=1`
+# for monorepo path-scoped pins added in v6.37.0), then update
+# `manifest.json::skills_pins.<name>.{commit,pinned_at}` and re-sync the
+# mirror via `scripts/sync-skills-mirror.sh`. There is no automatic skill-
+# upgrade flow yet because the mirror itself is a hand-vendored snapshot,
+# not a live `git clone`.
 upgrade_skill_huashu_design() {
     echo "Manual: refresh manifest.skills_pins.huashu-design.{commit,pinned_at} then bash scripts/sync-skills-mirror.sh huashu-design" >&2
     return 1
 }
 upgrade_skill_resend() {
     echo "Manual: refresh manifest.skills_pins.resend.{commit,pinned_at} then bash scripts/sync-skills-mirror.sh resend" >&2
+    return 1
+}
+upgrade_skill_docx() {
+    echo "Manual: refresh manifest.skills_pins.docx.{commit,pinned_at} (path-scoped, see anthropics/skills/skills/docx) then bash scripts/sync-skills-mirror.sh docx" >&2
+    return 1
+}
+upgrade_skill_pdf() {
+    echo "Manual: refresh manifest.skills_pins.pdf.{commit,pinned_at} (path-scoped, see anthropics/skills/skills/pdf) then bash scripts/sync-skills-mirror.sh pdf" >&2
+    return 1
+}
+upgrade_skill_webapp_testing() {
+    echo "Manual: refresh manifest.skills_pins.webapp-testing.{commit,pinned_at} (path-scoped, see anthropics/skills/skills/webapp-testing) then bash scripts/sync-skills-mirror.sh webapp-testing" >&2
     return 1
 }
 
@@ -553,6 +589,9 @@ register_dep "claude-memo"      "Optional"  probe_claude_memo      upgrade_claud
 register_dep "repomix"          "External"  probe_repomix          upgrade_repomix          "Repo-pack for AI context (npx, pinned in manifest)"
 register_dep "huashu-design"    "Skill"     probe_skill_huashu_design upgrade_skill_huashu_design "Mirrored from alchaincyf/huashu-design (MIT). Pin refresh = manual; see manifest.skills_pins"
 register_dep "resend"           "Skill"     probe_skill_resend     upgrade_skill_resend     "Mirrored from resend/resend-skills. Pin refresh = manual; see manifest.skills_pins"
+register_dep "docx"             "Skill"     probe_skill_docx       upgrade_skill_docx       "Mirrored from anthropics/skills/skills/docx (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "pdf"              "Skill"     probe_skill_pdf        upgrade_skill_pdf        "Mirrored from anthropics/skills/skills/pdf (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "webapp-testing"   "Skill"     probe_skill_webapp_testing upgrade_skill_webapp_testing "Mirrored from anthropics/skills/skills/webapp-testing (path-scoped pin via GH API). Pin refresh = manual"
 
 # ───────── --check single-dep ─────────
 
