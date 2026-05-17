@@ -104,7 +104,7 @@ Concrete cross-axis rules:
   of latency band — a 30-second weekly cron is not CRITICAL.
 - **Cache miss path** elevates one band when the miss-rate × QPS
   product would saturate a single backend node. Cache hit-rate
-  diagnostic in `## 0.1 SEVERITY THRESHOLDS` is the input.
+  diagnostic in `## 0.2 SEVERITY THRESHOLDS` is the input.
 - **Error-budget burn** elevates to CRITICAL when the SLO error-budget
   has < 10% of the rolling window remaining. The latency table
   applies to the *next* burn rate; a finding that would consume the

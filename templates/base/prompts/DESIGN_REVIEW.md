@@ -282,9 +282,9 @@ Do not present assumptions as facts. Do not use hedged wording to inflate weak f
 
 ## CATEGORY ENUM (Audit-Type Override)
 
-The shared finding schema (see `components/audit-output-format.md`) lists a broad `Category` enum spanning all audit types. For DESIGN_REVIEW, restrict `**Category:**` to the design-review-specific values below. Security / performance / code-review categories from the shared enum MUST NOT appear in this audit's findings.
+The shared finding schema (see `components/audit-output-format.md`) lists a broad `Category` enum spanning all audit types. For DESIGN_REVIEW, restrict `**Category:**` to the ui-design-review-specific values below. Security / performance / code-review categories from the shared enum MUST NOT appear in this audit's findings.
 
-Allowed `Category` values for design-review findings:
+Allowed `Category` values for ui-design-review findings:
 
 - `UX Defect` *(user-visible interaction failure, broken affordance)*
 - `Visual Regression` *(unintended visual change vs prior baseline / Figma)*

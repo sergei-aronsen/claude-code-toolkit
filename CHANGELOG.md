@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **PERFORMANCE_AUDIT.md cross-reference bug** (v6.39.0 scope; closes
+  meta-audit v6.38.0 MEDIUM finding). Line 107 inside the multi-axis
+  rubric (added in v6.36.0) pointed at `## 0.1 SEVERITY THRESHOLDS`,
+  but PERF's `## 0.1` is `PROJECT SPECIFICS` — the severity-thresholds
+  anchor is `## 0.2`. The xref was inherited from the MYSQL +
+  POSTGRES sibling pattern (where SEVERITY = `## 0.1` because no
+  PROJECT SPECIFICS section sits above it). Fixed
+  `## 0.1` → `## 0.2` at line 107. Mechanical one-line change.
+
+### Added
+
+- **POSTGRES_PERFORMANCE_AUDIT.md `### 0.1.1` multi-axis severity
+  sub-rubric** (v6.39.0 scope; closes meta-audit v6.38.0 MEDIUM
+  finding). Backported from MYSQL v6.36.0 + PERF v6.36.0 with
+  PostgreSQL-specific signal substitutions:
+  - `pg_stat_statements.calls` (QPS source) divided by window
+    `now() - pg_stat_statements_info.stats_reset` (PG 14+) — replaces
+    MySQL's `events_statements_summary_by_digest.COUNT_STAR` ÷ Uptime.
+  - Blocking-lock chain via `pg_locks granted = false` combined with
+    `pg_stat_activity.wait_event_type = 'Lock'` — replaces MySQL's
+    `Innodb_row_lock_time_avg` HIGH band.
+  - Replication-lag elevation via `pg_wal_lsn_diff(sent_lsn,
+    replay_lsn)` MB-band + `replay_lag` seconds — replaces MySQL's
+    `Seconds_Behind_Source`.
+  - **NEW PG-specific axis: XID wraparound proximity** (`age(
+    datfrozenxid) > 1B`) auto-elevates to CRITICAL regardless of
+    other axes, because once `autovacuum_freeze_max_age` is crossed,
+    autovacuum-to-prevent-wraparound starts holding exclusive locks
+    — cross-references `## 10.1 XID Wraparound` runbook (added in
+    v6.33.0).
+  Formula: `Severity = max(SignalBand, BlastRadius, UserVisibility,
+  DataConsequence)`. ~49 LOC additive (lines 57-105 inserted between
+  `## 0.1` table and `## Preliminary Setup`). Splice-anchor unchanged.
+- **`components/audit-severity-anchor.md` POSTGRES `### 0.1.1`
+  reference** — updated the existing POSTGRES row to mention the
+  multi-axis sub-rubric (parallel to MYSQL row added in v6.37.1).
+  SOT body not propagated (rubric-anchors splice emits a FILENAME
+  pointer only), so 0 LOC churn in spliced prompts.
+
+### Changed
+
+- **`templates/base/prompts/DESIGN_REVIEW.md` prose slug rename**
+  (v6.39.0 scope; closes meta-audit v6.38.0 LOW finding). Lines 285
+  and 287 used `design-review` (the pre-v6.30.0 slug) as a
+  descriptive English compound noun in prose, not as a slug
+  resolution. Renamed to `ui-design-review` for consistency with the
+  v6.30.0 canonical slug rename (`ui-design-review-specific values`,
+  `Allowed Category values for ui-design-review findings`). Not a
+  parser fix — pure cosmetic alignment.
+
+### Notes
+
+- **CODE_REVIEW + SECURITY_AUDIT single-axis severity is intentional**
+  per the meta-audit v6.38.0 finding ("Gate-3 SOT does not require
+  multi-axis"). Original v6.39.0 scope proposed backporting multi-
+  axis to CODE + SECURITY; the meta-audit confirmed those prompts
+  are correct as-is. Narrowed to POSTGRES only (the natural sibling
+  of MYSQL + PERF since all 3 are perf audits with measurable single
+  signals that benefit from cross-axis elevation).
+- **SSRF "29-entry" claim** in v6.36.0 CHANGELOG conflated the SSRF
+  corpus (actual 27 fixture lines in `SECURITY_AUDIT.md:959-991`,
+  excluding the 3 section-comment headers) with the MCP catalog
+  count (`test-mcp-selector.sh` bumped 28 → 29). The SSRF corpus is
+  correct at 27; no in-file fix needed. v6.40.0+ may add 2 more
+  bypass classes (DNS rebinding stub, userinfo-on-zero-IP) to make
+  the actual count match the documented count if desired.
+
 ## [6.38.0] - 2026-05-17
 
 ### Changed
