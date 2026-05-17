@@ -989,6 +989,10 @@ set against a deny-list, and (d) re-validate after redirects.
   http://example.com%2F127.0.0.1/     # URL-encoded slash in host
   http://127.0.0.1%00.attacker.com/   # NUL byte in host
   http://127.0.0.1%0d%0aattacker:80/  # CRLF injection
+  http://0.0.0.0@evil.com/            # userinfo on zero-IP
+
+  # DNS rebinding (validator must resolve at FETCH time, not parse time).
+  http://rebind.evil.com/             # TTL=0 record flips 1.2.3.4 → 127.0.0.1 between validate and fetch
   ```
 
   Grep the codebase for `is_safe_url`, `is_internal_ip`,

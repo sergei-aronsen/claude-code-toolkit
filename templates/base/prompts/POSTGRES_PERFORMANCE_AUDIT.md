@@ -812,6 +812,33 @@ PG 13+ adds `autovacuum_vacuum_insert_scale_factor` to trigger
 freeze-aware vacuum on append-only workloads — set it to `0.05`-`0.1`
 on partitioned event tables.
 
+**Scale-factor rationale.** Default `autovacuum_vacuum_scale_factor =
+0.2` means autovacuum fires when 20% of the table is dead tuples — fine
+for a 10k-row table (vacuums every 2k dead rows), catastrophic for a
+100M-row table (vacuums every 20M dead rows, a multi-hour I/O
+storm). Override `scale_factor` down on tables > 10M rows: the
+threshold becomes `autovacuum_vacuum_threshold + scale_factor *
+n_live_tup`, so a 0.02 setting on a 100M-row table fires at 2M dead
+tuples, not 20M.
+
+**Stale-statistics detection.** A table with `last_autoanalyze` older
+than the last bulk write often produces bad query plans (planner uses
+stale `pg_class.reltuples` for cardinality estimates). Add to the
+overdue-vacuum query:
+
+```sql
+-- Tables where autoanalyze is overdue relative to write volume
+SELECT
+    schemaname || '.' || relname as table,
+    n_mod_since_analyze,
+    last_autoanalyze,
+    EXTRACT(epoch FROM (now() - last_autoanalyze)) / 3600 as hours_since
+FROM pg_stat_user_tables
+WHERE n_mod_since_analyze > 10000
+  AND (last_autoanalyze IS NULL OR last_autoanalyze < now() - interval '1 day')
+ORDER BY n_mod_since_analyze DESC;
+```
+
 ---
 
 ## 10.6 JIT Compilation Threshold
@@ -839,6 +866,30 @@ WHERE name IN ('jit', 'jit_above_cost', 'jit_inline_above_cost', 'jit_optimize_a
 **Recommended OLTP tuning:** `jit = on`, `jit_above_cost = 500000`,
 or `jit = off` if all queries are short-lived. Validate by toggling
 on a session and re-running the workload.
+
+**Post-upgrade regression detection.** PG major-version upgrades
+sometimes shift `jit_above_cost` defaults (PG 12 → 14 lowered the
+effective threshold for parallel paths). Snapshot `pg_stat_statements`
+before and after the upgrade and diff:
+
+```sql
+-- Top regressed queries since pg_stat_statements_reset()
+SELECT
+    queryid,
+    LEFT(query, 80) as query_excerpt,
+    calls,
+    mean_exec_time,
+    mean_exec_time - lag(mean_exec_time) OVER (PARTITION BY queryid ORDER BY stats_reset) as delta_ms
+FROM pg_stat_statements
+WHERE calls > 1000
+ORDER BY mean_exec_time DESC
+LIMIT 20;
+```
+
+A regression where `EXPLAIN ANALYZE` shows new `JIT: Functions=N`
+lines on the regressed query (vs no JIT on the pre-upgrade plan) is
+the smoking gun — flip `jit = off` on that query's role
+(`ALTER ROLE app SET jit = off`) and re-measure.
 
 ---
 
@@ -870,6 +921,27 @@ WHERE name IN (
   (default 1000) is too low for this workload; raise to `10000`.
 - `Gather` node sits above a small result set (< 1k rows) — parallel
   is overhead, not speedup.
+
+**Diagnosing Workers Launched divergence.** When `Planned > Launched`
+the cause is one of: pool exhaustion
+(`current_setting('max_parallel_workers')::int` already saturated),
+per-gather cap
+(`current_setting('max_parallel_workers_per_gather')::int` set too
+low), or workload contention (other concurrent gathers holding
+workers). Run during the regression window:
+
+```sql
+-- Concurrent parallel-worker demand
+SELECT pid, backend_type, query_start, state,
+       LEFT(query, 60) as query_excerpt
+FROM pg_stat_activity
+WHERE backend_type LIKE '%parallel worker%'
+   OR query ILIKE '%gather%';
+```
+
+If the row count exceeds `max_parallel_workers`, the pool is the
+bottleneck — raise the global cap. If it does not, raise
+`max_parallel_workers_per_gather` for the specific role or query.
 
 ```sql
 -- Override per-query when needed
