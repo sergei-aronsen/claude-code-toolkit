@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **skills_pins coverage extended 9 → 10 active pins** (v6.43.0 scope;
+  closes Deferred Backlog Item 2 by one more skill). One new entry in
+  `manifest.json:skills_pins`, using the optional `path` field:
+  - `shadcn` → `shadcn-ui/ui@ea6086cb` path `skills/shadcn`. The
+    canonical shadcn/ui skill (Apache-2.0 monorepo). The
+    `shadcn-ui/ui` repo carries top-level `skills/`, `.cursor`,
+    `.claude` directories alongside `packages/` and `apps/` — i.e.,
+    the skill lives in the same repo that ships the CLI and the
+    component registry. Content-equivalence verified per the v6.37.0
+    research protocol: GH Contents API listing for
+    `skills/shadcn` matches the local mirror at
+    `templates/skills-marketplace/shadcn/` (`agents`, `assets`,
+    `cli.md`, `customization.md`, `evals`, `mcp.md`, `rules`,
+    `SKILL.md`).
+  Test coverage in `scripts/tests/test-update-deps-skills-pins.sh`
+  expanded 49 → 54 assertions. All pass.
+- **1 new `probe_skill_shadcn` + 1 new `upgrade_skill_shadcn` helper**
+  in `scripts/update-deps.sh`, delegating to the path-aware
+  `probe_skill_pin` / `upgrade_skill_pin` core. `register_dep "Skill"`
+  rows go from 9 → 10.
+
+### Discovery method
+
+Source identified via grep of the toolkit's own `find-skills/SKILL.md`
+("Many skills come from `vercel-labs/agent-skills` or
+`ComposioHQ/awesome-claude-skills`") followed by direct probe of
+`shadcn-ui/ui` (the canonical shadcn repo) for a `skills/` directory.
+The `vercel-labs/agent-skills` probe surfaced 4 additional Vercel
+skills not currently in the catalog — `deploy-to-vercel`,
+`react-native-skills`, `react-view-transitions`, `vercel-cli-with-tokens`,
+`web-design-guidelines` — left for opportunistic future addition once
+catalog demand is established.
+
+### Deferred (still upstream-unknown)
+
+13 skills remain truly unknown post-v6.43.0: `ai-models`,
+`analytics-tracking`, `chrome-extension-development`, `copywriting`,
+`i18n-localization`, `memo-skill`, `next-best-practices`, `notebooklm`,
+`seo-audit`, `stripe-best-practices`, `tailwind-design-system`,
+`typescript-advanced-types`, `ui-ux-pro-max`. None carry an upstream
+URL hint in their own `SKILL.md` headers. The skills.sh registry
+returned 404 for all 13 individual skill pages during the v6.43.0
+research pass — provenance unverified. Deferred to v6.44.0+ as
+evidence surfaces (preferred path: direct upstream maintainer
+acknowledgment, not heuristic GitHub search).
+
 ## [6.42.0] - 2026-05-17
 
 ### Added

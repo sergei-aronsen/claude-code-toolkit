@@ -103,6 +103,14 @@
       "pinned_at": "2026-05-17",
       "_status": "active"
     },
+    "shadcn": {
+      "repo": "https://github.com/shadcn-ui/ui",
+      "path": "skills/shadcn",
+      "tag": null,
+      "commit": "ea6086cbcc33b359bb876651374e26f643ea85b1",
+      "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
     "vercel-composition-patterns": {
       "repo": "https://github.com/vercel-labs/agent-skills",
       "path": "skills/composition-patterns",

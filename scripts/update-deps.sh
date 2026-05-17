@@ -538,6 +538,7 @@ probe_skill_pdf()                        { probe_skill_pin "pdf"; }
 probe_skill_webapp_testing()             { probe_skill_pin "webapp-testing"; }
 probe_skill_find_skills()                { probe_skill_pin "find-skills"; }
 probe_skill_firecrawl()                  { probe_skill_pin "firecrawl"; }
+probe_skill_shadcn()                     { probe_skill_pin "shadcn"; }
 probe_skill_vercel_composition_patterns(){ probe_skill_pin "vercel-composition-patterns"; }
 probe_skill_vercel_react_best_practices(){ probe_skill_pin "vercel-react-best-practices"; }
 
@@ -577,6 +578,10 @@ upgrade_skill_firecrawl() {
     echo "Manual: refresh manifest.skills_pins.firecrawl.{commit,pinned_at} (path-scoped, see firecrawl/cli/skills/firecrawl-cli) then bash scripts/sync-skills-mirror.sh firecrawl" >&2
     return 1
 }
+upgrade_skill_shadcn() {
+    echo "Manual: refresh manifest.skills_pins.shadcn.{commit,pinned_at} (path-scoped, see shadcn-ui/ui/skills/shadcn) then bash scripts/sync-skills-mirror.sh shadcn" >&2
+    return 1
+}
 upgrade_skill_vercel_composition_patterns() {
     echo "Manual: refresh manifest.skills_pins.vercel-composition-patterns.{commit,pinned_at} (path-scoped, see vercel-labs/agent-skills/skills/composition-patterns) then bash scripts/sync-skills-mirror.sh vercel-composition-patterns" >&2
     return 1
@@ -614,6 +619,7 @@ register_dep "pdf"              "Skill"     probe_skill_pdf        upgrade_skill
 register_dep "webapp-testing"   "Skill"     probe_skill_webapp_testing upgrade_skill_webapp_testing "Mirrored from anthropics/skills/skills/webapp-testing (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "find-skills"      "Skill"     probe_skill_find_skills upgrade_skill_find_skills "Mirrored from vercel-labs/skills/skills/find-skills (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "firecrawl"        "Skill"     probe_skill_firecrawl  upgrade_skill_firecrawl  "Mirrored from firecrawl/cli/skills/firecrawl-cli (path-scoped pin via GH API). Pin refresh = manual"
+register_dep "shadcn"           "Skill"     probe_skill_shadcn     upgrade_skill_shadcn     "Mirrored from shadcn-ui/ui/skills/shadcn (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "vercel-composition-patterns" "Skill" probe_skill_vercel_composition_patterns upgrade_skill_vercel_composition_patterns "Mirrored from vercel-labs/agent-skills/skills/composition-patterns. Pin refresh = manual"
 register_dep "vercel-react-best-practices" "Skill" probe_skill_vercel_react_best_practices upgrade_skill_vercel_react_best_practices "Mirrored from vercel-labs/agent-skills/skills/react-best-practices. Pin refresh = manual"
 
