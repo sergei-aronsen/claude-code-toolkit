@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.30.0] - 2026-05-17
+
 ### Added
 
 - **`templates/base/prompts/DESIGN_REVIEW.md` — WCAG 2.2 refresh and
