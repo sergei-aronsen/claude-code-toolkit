@@ -273,24 +273,27 @@ the source.
 
 ### Gate 3 — Calibration (severity + confidence sanity, anti-padding)
 
-After Gates 1 and 2, apply these rules to the surviving set:
+After Gates 1 and 2, apply these rules to the surviving set. The
+calibration discipline itself is canonicalized in
+`components/audit-uncertainty-discipline.md` — apply that SOT in full
+here; the rules below are pure cross-references that point its outputs
+at the per-audit rubric anchors.
 
-- **Confidence calibration.** If the failure mode cannot be confirmed
-  from the embedded code, lower confidence (HIGH → MEDIUM → LOW) and
-  explicitly state the assumptions required in the finding's
-  description. Prefer omission over speculation.
-- **Severity calibration.** Re-rate severity using the actual realistic
-  scenario, not the rule label. Apply the Severity Ceiling Table from
-  `components/audit-severity-anchor.md`. For SECURITY: cross-multiply
-  with `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference the
-  latency / load thresholds in `## SEVERITY THRESHOLDS`. For
-  CODE_REVIEW: cross-reference `## SEVERITY AND CONFIDENCE`.
+- **Confidence + severity calibration.** Apply UNCERTAINTY DISCIPLINE
+  per `components/audit-uncertainty-discipline.md` (lower confidence,
+  lower severity, then move to Non-Blocking Observations or drop). Then
+  re-rate severity using the Severity Ceiling Table in
+  `components/audit-severity-anchor.md` against the realistic
+  preconditions. For SECURITY: cross-multiply with
+  `## DATA CLASSIFICATION`. For PERFORMANCE: cross-reference
+  `## SEVERITY THRESHOLDS`. For CODE_REVIEW: cross-reference
+  `## SEVERITY AND CONFIDENCE`.
 - **No padding.** Five weak speculative MEDIUMs are worse than one
-  verified CRITICAL with a working failure scenario. If you cannot
-  describe a concrete failure path the user would care about, drop or
-  downgrade. Do NOT use weasel words (`could potentially`, `might
-  allow`, `in theory`) to inflate the report — either the finding is
-  grounded or it is not.
+  verified CRITICAL with a working failure scenario. The weasel-word
+  ban (`could potentially`, `might allow`, `in theory`) and the
+  hidden-assumptions ban are defined in
+  `components/audit-uncertainty-discipline.md` `## Anti-Patterns`. Do
+  not restate them inline — apply the SOT.
 
 <!-- v42-splice: rubric-anchors -->
 
