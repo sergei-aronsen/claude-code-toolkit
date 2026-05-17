@@ -54,6 +54,55 @@ plan, a `pg_locks`/`pg_stat_activity` snapshot, or a `pg_stat_io`
 read showing the predicted I/O pattern. See `## 4.1 EXPLAIN Evidence
 Gate` for the binding rule.
 
+### 0.1.1 Per-audit measurable severity rubric
+
+The table above maps single signals to single severity bands. Real
+findings usually have multi-axis preconditions — a 600 ms
+`mean_exec_time` query is HIGH when it is on the synchronous request
+path at 100 QPS, MEDIUM when it is a background reporting job at
+1 QPS, LOW when it is fired once a week from a cron. Apply the rubric:
+
+```text
+Severity(finding) = max(
+    SignalBand(observed_signal),                          // table above
+    BlastRadius(affected_request_volume),                 // QPS × duration
+    UserVisibility(synchronous_path? cache_path?),        // boolean
+    DataConsequence(consistency_loss? lock_escalation?    // boolean
+                    txn_id_wraparound_risk?)
+)
+```
+
+Concrete rules for cross-axis elevation:
+
+- **Synchronous request path × > 10 QPS** elevates the finding by one
+  band (LOW → MEDIUM, MEDIUM → HIGH). Document the QPS source:
+  `pg_stat_statements.calls` divided by the observation window
+  (window = current `now()` minus `pg_stat_statements_info.stats_reset`,
+  PG 14+).
+- **Background job × < 1 QPS** caps the finding at MEDIUM regardless
+  of `mean_exec_time` — a 5-second nightly report query is not
+  CRITICAL.
+- **Blocking lock chain** (`pg_locks` rows where `granted = false`,
+  combined with a non-empty
+  `pg_stat_activity.wait_event_type = 'Lock'`) elevates to CRITICAL
+  when any waiter is the synchronous checkout / payment /
+  authentication path. Pure read-path blocked queries cap at HIGH.
+- **Replication lag** never goes below HIGH when
+  `pg_wal_lsn_diff(sent_lsn, replay_lsn) > 100 MB` because failover
+  capability degrades regardless of read-after-write impact. Above
+  1 GB or 300 s `replay_lag` = CRITICAL (RTO breach).
+- **XID wraparound proximity** (`age(datfrozenxid) > 1B`) elevates to
+  CRITICAL regardless of other axes — autovacuum-to-prevent-wraparound
+  starts holding exclusive locks once `autovacuum_freeze_max_age` is
+  crossed, so this is not "potential" but "actively degrading
+  production". See `## 10.1 XID Wraparound` for the runbook.
+
+When the rubric and the table disagree, the rubric wins — but the
+finding MUST state which axis drove the elevation in
+`Why it is real`. "MEDIUM mean_exec_time × HIGH blast radius (8000
+QPS sync path) → HIGH" is a defensible elevation; "feels HIGH" is
+not.
+
 ---
 
 ## Preliminary Setup
