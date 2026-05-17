@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`manifest.skills_pins` `path` field for monorepo path-scoped
+  drift detection** (v6.37.0 scope — closes Deferred Backlog Item 2
+  from v6.35.0). The skill-pin schema gains an optional `path` field;
+  when present, `probe_skill_pin` (`scripts/update-deps.sh`) queries
+  the GitHub Commits API
+  (`GET /repos/<owner>/<repo>/commits?path=<path>&per_page=1`) for the
+  last commit that touched the subtree instead of using whole-repo
+  `git ls-remote HEAD`. Standalone-repo pins (`path` absent/null)
+  retain the original ls-remote probe — fully backward-compatible.
+- **3 monorepo skill pins added** (`docx`, `pdf`, `webapp-testing`)
+  after per-skill content-equivalence verification against
+  `anthropics/skills` upstream. Each entry carries `repo`,
+  `path: "skills/<name>"`, full 40-char `commit` SHA, `pinned_at`,
+  and `_status: "active"`. The 2 v6.35.0 scaffold pins
+  (`huashu-design`, `resend`) are promoted to `_status: "active"`
+  with concrete upstream HEAD SHAs. `skills_pins` now ships 5 active
+  entries (was 2 scaffold-only).
+- **Research artifact corrected**
+  (`.planning/research/skills-pin-research-2026-05-17.md`). The
+  v6.35.0 hypothesis ("all 21 unknown catalog skills likely live in
+  `anthropics/skills` monorepo") was over-fitted: per-subpath
+  verification via the GitHub Contents API shows only 3 of 21 are
+  actually in the monorepo (`docx`, `pdf`, `webapp-testing`); the
+  other 18 remain truly upstream-unknown. The corrected list of 18
+  with plausibility hints (NOT verified — do not pin without ground
+  truth) is documented for future opportunistic verification.
+- **Spliced output-format example fixed** — the SOT skeleton at
+  `components/audit-output-format.md` referenced
+  `Reliability for design-review`, which became stale after the
+  v6.30.0 canonical-slug rename to `ui-design-review` AND used a
+  Category (`Reliability`) explicitly forbidden by DESIGN_REVIEW's
+  per-prompt enum (allowed: `UX Defect / Visual Regression /
+  Layout/Responsive / Accessibility / Interaction Contract / ...`).
+  Updated to `UX Defect for ui-design-review` with a follow-up note
+  that per-prompt Category enums take precedence over the generic
+  example. Re-propagated to all 6 base audit prompts
+  (CODE_REVIEW.md:831, PERFORMANCE_AUDIT.md:883,
+  POSTGRES_PERFORMANCE_AUDIT.md:1328, MYSQL_PERFORMANCE_AUDIT.md:1294,
+  SECURITY_AUDIT.md:1654, DESIGN_REVIEW.md:636). Closes 5 HIGH
+  findings from the 2026-05-17 meta-audit of post-Wave-3 prompt
+  state.
+- **`scripts/tests/test-update-deps-skills-pins.sh`** — new test
+  with 10 scenarios (29 assertions) covering: 5-key skills_pins
+  count, `path` field on 3 monorepo pins, no `path` on 2 standalone
+  pins, 40-char hex commits, `_status: "active"` everywhere, 5
+  `register_dep "Skill"` lines, 5 probe + 5 upgrade function
+  definitions, 2-field tab-separated probe output shape, 12-char hex
+  pinned column.
+
+### Changed
+
+- `probe_skill_pin` (`scripts/update-deps.sh:492`) refactored to read
+  `path` from manifest, parse owner+repo out of `https://github.com/`
+  URLs, and dispatch to GitHub API path-scoped lookup vs whole-repo
+  `git ls-remote HEAD` accordingly. 8 s `curl` timeout; degrades to
+  `—` on network/jq/curl failure (same behavior as v6.35.0 scaffold).
+- `register_dep "Skill"` lines in `scripts/update-deps.sh` grew from
+  2 to 5 (new entries for `docx`, `pdf`, `webapp-testing`).
+- `manifest.skills_pins_note` rewritten to reflect the corrected
+  scope (3 monorepo + 2 standalone = 5 active; 18 still unknown) and
+  to point at the corrected research artifact.
+
 ## [6.36.0] - 2026-05-17
 
 ### Added

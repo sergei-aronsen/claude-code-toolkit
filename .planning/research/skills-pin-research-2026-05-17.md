@@ -23,6 +23,60 @@ A `caveman:cavecrew-investigator` agent ran exhaustive canonical-pattern verific
 
 The agent did NOT verify the per-skill subpath inside the monorepo, only that the monorepo URL itself resolves. Each catalog skill maps to a subdirectory like `skills/<name>/SKILL.md` (or similar) — verification per skill is the remaining gap.
 
+## v6.37.0 correction — per-skill subpath verification (2026-05-17)
+
+The "all 21 likely from anthropics/skills" hypothesis was **over-fitted** at the
+monorepo URL level. Per-subpath verification via the GitHub Contents API
+(`GET /repos/anthropics/skills/contents/skills`) returned 17 directories total:
+
+```text
+algorithmic-art, brand-guidelines, canvas-design, claude-api,
+doc-coauthoring, docx, frontend-design, internal-comms, mcp-builder,
+pdf, pptx, skill-creator, slack-gif-creator, theme-factory,
+web-artifacts-builder, webapp-testing, xlsx
+```
+
+Intersection with toolkit catalog: **3 skills only** — `docx`, `pdf`,
+`webapp-testing`. The remaining 18 skills under `templates/skills-marketplace/`
+are NOT in `anthropics/skills` and remain truly upstream-unknown.
+
+Per-skill content equivalence check confirmed the 3 matched skills are
+byte-equivalent modulo trivial whitespace (extra blank lines in the mirror):
+
+| Skill | Upstream bytes | Mirror bytes | Diff lines | Last-touched SHA (path-scoped) |
+|------|----------------|--------------|------------|----------------|
+| docx | 20084 | 20109 | 56 (whitespace) | `3d5951151859` |
+| pdf | 8072 | 8089 | 34 (whitespace) | `1ed29a03dc85` |
+| webapp-testing | 3913 | 3918 | 19 (whitespace) | `b9e19e6f4477` |
+
+These 3 plus the 2 standalone pins (huashu-design, resend) ship as
+`_status: active` in v6.37.0. The remaining 18 stay out of `skills_pins`
+until per-skill upstream verification grounds a URL.
+
+The 18 truly-unknown skills (post-correction):
+
+```text
+ai-models, analytics-tracking, chrome-extension-development, copywriting,
+find-skills, firecrawl, i18n-localization, memo-skill, next-best-practices,
+notebooklm, seo-audit, shadcn, stripe-best-practices, tailwind-design-system,
+typescript-advanced-types, ui-ux-pro-max, vercel-composition-patterns,
+vercel-react-best-practices
+```
+
+Plausibility hints (NOT verified — do not pin without ground truth):
+
+- `firecrawl` may live at `mendableai/firecrawl-skill` or similar
+- `notebooklm` may be self-authored (no canonical upstream)
+- `shadcn` plausibly at `shadcn-ui/skills` if one exists
+- `stripe-best-practices` could be `stripe/agents-skills`
+- `vercel-*` plausibly at `vercel/skills` if one exists
+- `memo-skill` likely the in-tree `i-memo-skill` from the user's own setup
+- `copywriting`, `seo-audit`, `analytics-tracking` likely third-party
+
+The v6.35.0 lesson stands strengthened: **do not invent pins**. Verify per
+skill via `git ls-remote` + content equivalence before adding to
+`skills_pins`. False pins surface as permanent dashboard noise.
+
 ## Schema implication for v6.36.0+
 
 The current `skills_pins` shape `{repo, tag, commit, pinned_at, _status}` is per-skill, per-repo. A monorepo source needs an additional `path` field so `probe_skill_pin` can fetch the subpath HEAD instead of the whole-repo HEAD.
