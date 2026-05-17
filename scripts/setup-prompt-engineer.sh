@@ -18,7 +18,7 @@ NC='\033[0m'
 
 # TK_TOOLKIT_REF pins to a tag/SHA (default `main`). Mirrors setup-council.sh
 # to keep allowlist + curl conventions identical.
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.39.0}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.40.0}"
 if ! [[ "$TK_TOOLKIT_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$TK_TOOLKIT_REF" == *..* ]]; then
     echo "Error: TK_TOOLKIT_REF must match [A-Za-z0-9._/-]+ and must not contain '..' (got: $TK_TOOLKIT_REF)" >&2
     exit 1
