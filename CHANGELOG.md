@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **SSRF corpus expanded 27 → 29 entries** (v6.40.0 scope; closes
+  SECURITY-F-016 framing gap noted in v6.36.0 CHANGELOG and confirmed
+  by meta-audit v6.38.0). Two new bypass-class fixtures added to the
+  equivalence-class test corpus in `SECURITY_AUDIT.md:984-996`:
+  - `http://0.0.0.0@evil.com/` — userinfo-on-zero-IP (validator
+    that parses host without resolving treats `evil.com` as the
+    target; some HTTP libraries connect to `0.0.0.0` = localhost).
+  - `http://rebind.evil.com/` — DNS rebinding (TTL=0 record flips
+    `1.2.3.4` → `127.0.0.1` between validate-time and fetch-time;
+    validator MUST resolve at fetch-time, not parse-time, and reject
+    if the resolved address falls in a private range).
+  In-file count now matches the documented count.
+- **POSTGRES_PERFORMANCE_AUDIT.md `## 10.5` autovacuum tuning
+  examples expanded** (v6.40.0 scope; closes POSTGRES-F-204). Added
+  scale-factor rationale block explaining why default
+  `autovacuum_vacuum_scale_factor = 0.2` is catastrophic on tables
+  > 10M rows (vacuums every 20M dead rows = multi-hour I/O storm)
+  and how to compute the override threshold (`threshold +
+  scale_factor * n_live_tup`). Added a stale-statistics detection
+  SQL block that grabs tables with `n_mod_since_analyze > 10000` and
+  `last_autoanalyze` older than 1 day — stale `reltuples` produces
+  bad query plans regardless of dead-tuple count.
+- **POSTGRES_PERFORMANCE_AUDIT.md `## 10.6` JIT post-upgrade
+  regression detection** (v6.40.0 scope; closes POSTGRES-F-205).
+  Added a post-PG-major-upgrade regression-detection SQL block that
+  diffs `pg_stat_statements.mean_exec_time` across `stats_reset`
+  windows and identifies queries where new `JIT: Functions=N` lines
+  appear in `EXPLAIN ANALYZE` (the smoking gun for JIT regression
+  after PG 12 → 14 default threshold shifts). Includes the
+  `ALTER ROLE app SET jit = off` workaround.
+- **POSTGRES_PERFORMANCE_AUDIT.md `## 10.7` parallel-worker
+  divergence diagnosis** (v6.40.0 scope; closes POSTGRES-F-206).
+  Added a "Diagnosing Workers Launched divergence" block with a
+  `pg_stat_activity` query that counts concurrent parallel-worker
+  backends, plus the rule for distinguishing global-pool exhaustion
+  (raise `max_parallel_workers`) from per-gather throttling (raise
+  `max_parallel_workers_per_gather`).
+
+### Notes
+
+- **SECURITY-F-017 (cookie-tossing via subdomain takeover) NOT
+  changed** — re-read of the prompt confirmed the threat is already
+  named at `SECURITY_AUDIT.md:307-313` (`Domain=` attribute
+  discussion mentions takeover-able subdomain + unreclaimed cloud
+  resources) and explicitly listed at lines 321-324 ("Cookie-bomb /
+  cookie-tossing. A reachable subdomain can set cookies that the
+  parent app will read..."). Triage flag was stale.
+- **SECURITY-F-018 (CSP3 `script-src-elem` vs `script-src-attr`)
+  NOT changed** — distinction is already documented at
+  `SECURITY_AUDIT.md:834-836` ("script-src is present but
+  script-src-elem / script-src-attr are missing in a Trusted-Types-
+  aware browser — script-src no longer covers all script execution
+  surfaces in CSP3"). Triage flag was stale.
+
 ## [6.39.0] - 2026-05-17
 
 ### Fixed
