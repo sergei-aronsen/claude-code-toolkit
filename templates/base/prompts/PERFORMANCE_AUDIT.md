@@ -15,11 +15,16 @@ Comprehensive performance audit of a web application. Act as a Senior Performanc
 
 | # | Check | Target |
 | --- | ------- | -------- |
-| 1 | Homepage TTFB | < 500ms |
+| 1 | Homepage TTFB | < 800ms (CWV) |
 | 2 | Bundle size (gzipped) | < 500KB |
 | 3 | No N+1 queries | 0 |
 | 4 | Database indexes | All FKs indexed |
 | 5 | Caching enabled | Yes |
+| 6 | INP at p75 | < 200ms |
+| 7 | LCP at p75 | < 2.5s |
+| 8 | CLS at p75 | < 0.1 |
+| 9 | RSC client-boundary leak (App Router projects) | No `'use client'` at layout level |
+| 10 | Edge route streaming (Edge / Workers projects) | `ReadableStream` response, not buffered |
 
 ---
 
@@ -163,9 +168,33 @@ Chaining multiple subquery conditions (e.g. `EXISTS (SELECT ...)`) can cause exp
 
 ### 3.4 Core Web Vitals
 
-- [ ] LCP < 2.5s
-- [ ] FID < 100ms
-- [ ] CLS < 0.1
+Google deprecated **FID (First Input Delay)** in favor of **INP
+(Interaction to Next Paint)** in March 2024. INP is the canonical
+responsiveness CWV since then; FID still appears in legacy dashboards
+and pre-2024 budgets but should no longer be the threshold the audit
+gates on.
+
+- [ ] **LCP** (Largest Contentful Paint) < 2.5s at the 75th percentile
+- [ ] **INP** (Interaction to Next Paint) < 200ms at the 75th
+      percentile — measures responsiveness across the **entire
+      session**, not just the first interaction. Common regressions:
+      long-running click handlers, synchronous state updates that
+      block paint, third-party scripts running in the main interaction
+      task. The "good" / "needs improvement" / "poor" thresholds are
+      200ms / 500ms.
+- [ ] **CLS** (Cumulative Layout Shift) < 0.1 at the 75th percentile
+- [ ] **TTFB** (Time to First Byte) < 800ms — included because INP
+      regressions often have a TTFB root cause on streaming SSR.
+- [ ] **FID** legacy: report only when consumer dashboard / CI gate
+      still requires it; otherwise INP supersedes (do NOT report
+      both as separate findings — they measure the same axis).
+
+Measurement provenance: a finding citing CWV must say **how** the
+number was obtained (RUM via web-vitals.js / Chrome UX Report (CrUX) /
+PageSpeed Insights field data / synthetic Lighthouse run). Synthetic
+Lighthouse and field RUM are not interchangeable — synthetic INP is
+particularly unreliable because it has no user interactions to
+measure.
 
 ### 3.5 Polling and Repeated Requests
 
@@ -185,6 +214,102 @@ devices. Restrict animations to GPU-accelerated properties.
 - [ ] No animations on `width`, `height`, `top`, `left`, `margin`, `padding` (trigger layout) unless wrapped in `will-change` with measured benefit
 - [ ] No animations on `box-shadow`, `filter`, `backdrop-filter` on long lists (paint cost scales with element count)
 - [ ] `prefers-reduced-motion` media query honored for accessibility
+
+### 3.7 React Server Components & App Router (Next.js 13+, Remix v2+)
+
+RSC and the App Router introduced new perf primitives — and new
+failure modes the auditor must learn to read. Findings here are real
+only when the project is on Next.js App Router (the file convention
+`app/page.tsx`, not `pages/`) or an equivalent RSC-aware framework.
+
+- [ ] **Client-component boundary leak.** A `'use client'` directive
+      at the top of a high-level layout component pulls every nested
+      component into the client bundle. Audit the highest-level
+      `'use client'` files: each one defines the boundary. A
+      `'use client'` in `app/layout.tsx` defeats RSC entirely.
+- [ ] **Server-action waterfall.** Sequential `await` chains in a
+      Server Component (`const a = await fetchA(); const b = await
+      fetchB();`) serialize work that could parallelize with
+      `Promise.all` or with `<Suspense>` boundaries that stream
+      independently.
+- [ ] **`<Suspense>` placement.** A single top-level `<Suspense>`
+      around the whole page defeats streaming — the user sees nothing
+      until the slowest fetch completes. Each independent data
+      dependency should have its own `<Suspense>` boundary so each
+      streams in independently.
+- [ ] **Streaming SSR + dynamic = 'force-dynamic'.** Setting
+      `export const dynamic = 'force-dynamic'` disables every layer of
+      caching (PPR, ISR, Data Cache, Full Route Cache) for the entire
+      route. Audit for blanket `dynamic = 'force-dynamic'` on routes
+      that don't actually need request-time evaluation.
+- [ ] **Data Cache (`fetch` revalidation).** Next.js extends `fetch`
+      with `next: { revalidate: <s>, tags: [...] }`. A bare `fetch()`
+      in a Server Component caches **forever by default** (until
+      Next 15's opt-in change); audit for stale-data risks. A
+      `cache: 'no-store'` on every fetch defeats the Data Cache —
+      audit for whether it's intentional or a copy-paste from a
+      tutorial.
+- [ ] **Partial Pre-Rendering (PPR).** When enabled
+      (`experimental.ppr` in `next.config.js`), routes are split into
+      a static shell + dynamic holes. A finding citing PPR must
+      identify which holes are dynamic and confirm each dynamic
+      boundary has its own `<Suspense>` fallback — otherwise the
+      shell waits on the dynamic data.
+- [ ] **`<Image>` / `<Script>` / `<Font>` discipline.**
+      `next/image` without `priority` on above-the-fold LCP image
+      delays LCP by one render cycle. `next/script` with default
+      `strategy="afterInteractive"` blocks INP if the script is large.
+      `next/font` loads as a system fallback unless the route
+      pre-renders the font file — audit for FOIT/FOUT on dynamic
+      routes.
+- [ ] **Server-component bundle.** Server Components ship zero JS to
+      the client — but the **client component's** import graph still
+      ships. A Server Component that imports a Client Component
+      transitively pulls every dependency of that Client Component
+      into the bundle. Audit the import graph at the boundary
+      (`'use client'` files), not at the entry.
+
+### 3.8 Edge Runtime & Cold-Start Methodology
+
+Edge functions (Cloudflare Workers, Vercel Edge, Deno Deploy, AWS
+Lambda@Edge, Fastly Compute) trade peak performance for global
+distribution. The cold-start profile is **different** from Node /
+container deploys — distinct from the "Cold-start latency excluded"
+footnote in `## 0.2 SEVERITY THRESHOLDS`.
+
+- [ ] **V8 isolate cold start.** Cloudflare Workers and Vercel Edge
+      run on V8 isolates: cold start is typically < 5ms (no container
+      boot, no language runtime warmup). A finding citing > 50ms
+      cold start on V8 isolates indicates a **code-level** problem
+      (heavy top-level imports, sync IO at module load, dynamic
+      `import()` resolution).
+- [ ] **Lambda@Edge / Node-on-Edge cold start.** AWS Lambda@Edge runs
+      Node containers — cold-start budget 200ms-1s depending on
+      bundle size. Audit bundle size at the Edge function boundary;
+      every `node_modules` dependency adds boot time.
+- [ ] **Geographic distribution profile.** Edge functions execute at
+      the PoP nearest the user. A finding citing edge latency must
+      cite which PoP (e.g., `cf-ray` header for Cloudflare, `x-vercel-id`
+      for Vercel) and which region originated the request. Edge
+      latency varies 5x across regions.
+- [ ] **KV / D1 / R2 / Durable Object hot-path access.** Cloudflare
+      KV reads are eventually-consistent and may take 50-100ms on
+      first access in a region. D1 is regional — a request in a
+      far-from-primary region pays the round-trip. Audit for
+      cross-region hot-path access to KV/D1.
+- [ ] **Streaming response.** Edge functions support streaming via
+      `Response` with a `ReadableStream` body. A non-streaming Edge
+      response forces the function to buffer the full payload in
+      memory before sending — defeats the latency advantage.
+- [ ] **Workers AI / Vercel AI SDK latency.** When a route invokes an
+      LLM on Edge, the LLM call dominates total latency. Audit for
+      whether the route streams tokens back to the client (preserves
+      TTFB) vs. waits for completion (TTFB = full LLM latency).
+- [ ] **Compatibility flags / runtime quirks.** Cloudflare Workers
+      lacks some Node APIs (`fs`, `net`, parts of `crypto`); Vercel
+      Edge runs a subset of Web APIs. A finding alleging "this won't
+      work on Edge" must cite the specific missing API + a
+      reproducible failure path, not just a Node-API name.
 
 ---
 
@@ -307,6 +432,26 @@ redis-cli CONFIG GET maxmemory-policy
 | Hit ratio | > 90% | 70-90% | < 70% |
 | Evicted keys | 0 | Growing slowly | Growing fast |
 | Memory usage | < 80% maxmemory | 80-90% | > 90% |
+
+**Severity mapping.** The OK / Warning / Critical labels above are
+**cache-health diagnostic bands**, not the canonical CRITICAL / HIGH /
+MEDIUM / LOW severity rubric in `## 0.2 SEVERITY THRESHOLDS`. A Redis
+finding cites the band as evidence (e.g., `Hit ratio 65%, Critical
+band`), then maps it to canonical severity via the latency impact it
+causes downstream:
+
+- Critical band (e.g., < 70% hit ratio) that produces > 5s end-to-end
+  on a reachable user path → **CRITICAL** in canonical severity.
+- Critical band that produces > 2s p95 on a reachable user path →
+  **HIGH**.
+- Critical band with no measurable user-path latency impact (e.g.,
+  background-only cache warming on a non-blocking job) → **LOW** or
+  drop entirely (cache misconfiguration is real but not blocking
+  without a downstream symptom).
+
+Cross-reference the Severity Ceiling Table in
+`components/audit-severity-anchor.md` when escalating a cache-band
+finding past its default canonical mapping.
 
 - [ ] Redis hit ratio > 90%
 - [ ] `maxmemory-policy` is set (recommended: `allkeys-lru` for cache, `noeviction` for queues)
