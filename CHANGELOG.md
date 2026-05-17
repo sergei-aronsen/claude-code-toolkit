@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.41.0] - 2026-05-17
+
 ### Added
 
 - **skills_pins coverage extended 5 → 9 active pins** (v6.41.0 scope;
