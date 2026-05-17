@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/PERFORMANCE_AUDIT.md` — modernization
+  (Wave-3 meta-audit, PERFORMANCE_AUDIT modernization gap):**
+  - `### 3.4 Core Web Vitals` — **FID → INP** migration (Google
+    deprecated FID March 2024). INP < 200ms at p75 is the canonical
+    responsiveness CWV; FID becomes legacy-only. Added measurement
+    provenance rules (RUM via `web-vitals.js` / CrUX / PSI field /
+    synthetic Lighthouse) — synthetic and field RUM are not
+    interchangeable, especially for INP. TTFB < 800ms added because
+    INP regressions often have TTFB root causes on streaming SSR.
+  - `### 3.7 React Server Components & App Router` (new H3,
+    Next.js 13+ / Remix v2+): client-component boundary leak,
+    server-action waterfall, `<Suspense>` placement for streaming,
+    `dynamic = 'force-dynamic'` cache-defeat, Data Cache `fetch`
+    revalidation + tags, Partial Pre-Rendering hole audits,
+    `next/image` / `next/script` / `next/font` discipline,
+    client-component-import-graph bundle accounting.
+  - `### 3.8 Edge Runtime & Cold-Start Methodology` (new H3,
+    Cloudflare Workers / Vercel Edge / Deno Deploy / Lambda@Edge /
+    Fastly Compute): V8-isolate vs Lambda@Edge cold-start budgets,
+    geographic distribution profile (`cf-ray` / `x-vercel-id`),
+    KV / D1 / R2 / Durable Object hot-path access patterns,
+    `ReadableStream` response vs buffered response, Workers AI /
+    Vercel AI SDK token-streaming, compatibility flags vs missing
+    Node APIs.
+  - `## QUICK CHECK` table grew 5 → 10 rows (INP/LCP/CLS at p75,
+    RSC client-boundary leak, Edge route streaming).
+  - TTFB threshold updated 500ms → 800ms in QUICK CHECK to align
+    with Core Web Vitals "good" band.
+
+### Changed
+
+- **`templates/base/prompts/PERFORMANCE_AUDIT.md` — Redis hit-ratio
+  rubric reconcile (Wave-3 PERFORMANCE F-001 calibration):** the
+  `### 6.4 Redis Health` `Hit ratio / Evicted keys / Memory usage`
+  table previously asserted independent OK / Warning / Critical
+  bands that conflicted with the canonical CRITICAL / HIGH / MEDIUM /
+  LOW rubric in `## 0.2 SEVERITY THRESHOLDS`. The table is now
+  explicitly labelled as **cache-health diagnostic bands**, with a
+  mapping rule that translates them to canonical severity via the
+  downstream latency impact: a Critical-band cache health that
+  produces > 5s end-to-end on a reachable user path is CRITICAL,
+  > 2s p95 is HIGH, no measurable user-path impact is LOW or drop.
+  Cross-references the Severity Ceiling Table in
+  `components/audit-severity-anchor.md`.
+
+### Splice / SOT invariants verified post-edit
+
+- All 6 `<!-- v42-splice: ... -->` sentinels in PERFORMANCE_AUDIT.md
+  intact and byte-exact.
+- All 3 `_pending — run /council audit-review_` em-dash slots
+  (U+2014) intact and byte-exact.
+- SELF-CHECK anchors `1. **Read context**` and
+  `6. **Severity sanity check**` byte-exact.
+- `make check` 10/10 green.
+- propagator dry-run reports 6 already-spliced (idempotent — no
+  SOT touch this release).
+
 ## [6.28.1] - 2026-05-17
 
 ### Added
