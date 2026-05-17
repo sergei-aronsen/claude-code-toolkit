@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Vendor pin refresh batch — 4 vendors bumped** (v6.38.0 scope; per
+  the 2026-05-17 vendor-changelog sweep that found 0 BREAKING, 8 ADOPT,
+  7 IGNORE items across 8 pinned vendors). `manifest.vendor_pins`
+  rewritten for `rtk`, `get-shit-done`, `serena`, `better-model`:
+  - **`rtk`** `latest` (commit `2fbc7514`) → **`v0.40.0`** (commit
+    `1e0d01b6`). Pure documentation fix — `latest` was a non-semver
+    label that lost the version target; the commit was already from
+    that release. Brings the new `transparent_prefixes` config field
+    in `[hooks]` (`docker exec`, `direnv exec`, `poetry run`,
+    `bundle exec`) for containerized dev workflows; `--dry-run` flag
+    on `rtk init`; Hermes runtime integration.
+  - **`get-shit-done`** `v1.41.0-rc3` (`3579a48d`) → **`v1.42.2`**
+    (`a7f0af2c`) + `TK_GSD_NPM_VERSION` default `1.41.2` → `1.42.2`
+    in `scripts/lib/dispatch.sh:56` + `:69` and
+    `scripts/lib/bootstrap.sh:71` + `:172`. Brings 6 namespace meta-
+    skills (`gsd:workflow`, `gsd:project`, …) replacing the flat
+    86-skill listing — cuts cold-start system-prompt overhead from
+    ~2150 → ~120 tokens. Also `--minimal` install flag from v1.41.0
+    (writes only main-loop core skills + zero subagents). 456
+    upstream commits, all consumed via the npm semver pin — no
+    BREAKING because toolkit pins to `get-shit-done-cc@<semver>`, not
+    git SHA.
+  - **`serena`** `v1.2.0` (`6882f2e1`) → **`v1.3.0`** (`ad7cf51e`).
+    Adds Svelte / Ada/SPARK / GDScript (Godot, TCP-based no-install) /
+    1C/OneScript (BSL) language servers. Tool descriptions reworded
+    for Claude Code's new tool-search UX. Behavioral note for
+    end-user upgrades: projects can no longer override `base_modes`
+    (must use new `added_modes` field); default config switched from
+    `default_modes` → `base_modes` for interactive/editing. Toolkit
+    ships no `project.yml`, so this only affects users with their
+    own Serena config. Documented in `components/mcp-servers-guide.md`.
+  - **`better-model`** `v0.6.2` (`5822bd70`) → **`v0.8.1`**
+    (`3b324697`). Adds the read-only `better-model stats` CLI
+    subcommand (v0.8.0) for cost / routing observability — per-tier
+    token spend, route hit rates, Sonnet/Haiku → Opus escalations.
+    Plus the v0.7.0 Haiku-effort correctness fix: Haiku 4.5 does not
+    accept the `effort` field; better-model now warns on
+    `haiku+effort` combos. Documented in
+    `templates/base/skills/cost-routing-discipline/SKILL.md` —
+    `effort` removed from the Haiku row in the subagent routing
+    table, plus a new `## Observability — better-model stats` section.
+- **2 vendors deferred** — `cc-safety-net` (currently `v0.9.0`
+  pinned, upstream has 17 unreleased post-v0.9.0 commits but no
+  tagged release yet — bump when v0.9.1+ lands) and `repomix`
+  (currently `v1.14.0` pinned, latest upstream tag is also `v1.14.0`
+  — bump when v1.15.x lands; 167 commits on `main` are mostly
+  Renovate dep bumps + translation passes, ADOPT items are minor).
+- **2 vendors in-sync** — `superpowers` (`v5.1.0`, no upstream
+  movement since 2026-05-07 pin) and `claude-context` (`v0.1.11`,
+  same).
+
 ## [6.37.1] - 2026-05-17
 
 ### Changed

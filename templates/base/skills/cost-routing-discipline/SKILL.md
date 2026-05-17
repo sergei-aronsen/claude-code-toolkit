@@ -43,7 +43,7 @@ When dispatching subagents (via better-model installed):
 ```text
 Task type                              Model              Effort
 ──────────────────────────────────────────────────────────────────
-Search / grep / pattern match        →  Haiku 4.5         low
+Search / grep / pattern match        →  Haiku 4.5         (no effort)
 Implementation / coding (1-2 files)  →  Sonnet 4.6        medium
 Test writing                         →  Sonnet 4.6        medium
 Single-file debug                    →  Sonnet 4.6        medium
@@ -54,6 +54,26 @@ Security audit                       →  Opus 4.7          max
 Code review                          →  Opus 4.7          xhigh (max overthinks)
 Novel algorithm                      →  Opus 4.7          max
 ```
+
+> **Haiku does not accept the `effort` field** (better-model v0.7.0+
+> warns on `haiku+effort` combos and treats `haiku-no-effort` as
+> correct). Do not pass `effort` to Haiku — it is rejected upstream.
+
+## Observability — `better-model stats`
+
+better-model v0.8.0+ ships a read-only `better-model stats` CLI
+subcommand for cost / routing analysis. Run after a heavy session to
+see per-tier token spend, route hit rates, and which Sonnet/Haiku
+calls escalated to Opus. Use to validate that your routing rules
+above are actually saving the predicted 5-10× cost.
+
+```bash
+better-model stats             # summary for the last 24h
+better-model stats --since 7d  # weekly cost rollup
+```
+
+Toolkit-pinned better-model version is now `v0.8.1`
+(`manifest.vendor_pins.better-model`).
 
 ## Edit operations
 

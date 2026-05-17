@@ -53,3 +53,26 @@ RTK and the `cc-safety-net` hook both register against the Claude Code PreToolUs
 The Claude Code Toolkit's `setup-security.sh` installs a combined hook that sequences both
 in the correct order. If you see duplicate rewrites or missed safety blocks, verify your
 `~/.claude/settings.json` has the combined hook entry rather than two separate entries.
+
+## Transparent Prefixes — Containerized Dev (rtk v0.40.0+)
+
+If you run dev commands through a wrapper like `docker exec mycontainer`,
+`direnv exec .`, `poetry run`, or `bundle exec`, rtk v0.40.0+ can strip
+the wrapper prefix before routing to its filter and re-prepend it on
+rewrite. Add to your config file:
+
+```toml
+[hooks]
+transparent_prefixes = [
+    "docker exec mycontainer",
+    "direnv exec .",
+    "poetry run",
+    "bundle exec",
+]
+```
+
+Without this, `docker exec mycontainer cargo test` would skip rtk's
+filter (the rewriter only matches bare `cargo test`). With it, the
+filter sees `cargo test`, rewrites the verbose output, and the command
+still runs under `docker exec`. Toolkit-pinned rtk version is now
+`v0.40.0` (`manifest.vendor_pins.rtk`).

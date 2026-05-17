@@ -53,7 +53,7 @@
 #    function runs — overrides are documented to go through the
 #    TK_DISPATCH_OVERRIDE_SUPERPOWERS / _GSD path-to-script seam instead.
 [[ -z "${TK_SP_INSTALL_CMD:-}"  ]] && TK_SP_INSTALL_CMD='claude plugin install superpowers@claude-plugins-official'
-[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD="npx --yes get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.41.2}"
+[[ -z "${TK_GSD_INSTALL_CMD:-}" ]] && TK_GSD_INSTALL_CMD="npx --yes get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.42.2}"
 
 # Hardcoded default execution paths — strings live in code, never in env.
 _dispatch_run_sp_default() {
@@ -66,7 +66,7 @@ _dispatch_run_gsd_default() {
     # raw.githubusercontent.com/gsd-build/... URL now 404s — this dispatcher
     # was silently broken before. The npm path is also safer (registry
     # integrity hash, pinned version tag).
-    local pkg_version="${TK_GSD_NPM_VERSION:-1.41.2}"
+    local pkg_version="${TK_GSD_NPM_VERSION:-1.42.2}"
     if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
         _dispatch_log_warning "TK_GSD_NPM_VERSION '${pkg_version}' is not a semver/tag — refusing to install."
         return 1

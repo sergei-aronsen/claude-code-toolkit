@@ -68,7 +68,7 @@ _bootstrap_run_gsd_default() {
     # Pin to TK_GSD_NPM_VERSION (env override) or to the manifest's pinned
     # vendor tag. Set TK_GSD_NPM_VERSION=latest to opt in to whatever npm
     # has today (NOT recommended for unattended installs).
-    local pkg_version="${TK_GSD_NPM_VERSION:-1.41.2}"
+    local pkg_version="${TK_GSD_NPM_VERSION:-1.42.2}"
     if [[ ! "$pkg_version" =~ ^(latest|[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?)$ ]]; then
         _bootstrap_log_warning "TK_GSD_NPM_VERSION '${pkg_version}' is not a semver/tag — refusing to install."
         return 1
@@ -169,7 +169,7 @@ bootstrap_base_plugins() {
     else
         TK_BOOTSTRAP_OVERRIDE_CMD="${TK_BOOTSTRAP_GSD_CMD:-${TK_GSD_INSTALL_CMD:-}}" \
             _bootstrap_prompt_and_run "get-shit-done" \
-                "Install get-shit-done? Runs npx get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.41.2} (npm registry, integrity-verified). [y/N] " \
+                "Install get-shit-done? Runs npx get-shit-done-cc@${TK_GSD_NPM_VERSION:-1.42.2} (npm registry, integrity-verified). [y/N] " \
                 _bootstrap_run_gsd_default
     fi
 

@@ -14,21 +14,21 @@
     },
     "get-shit-done": {
       "repo": "https://github.com/gsd-build/get-shit-done",
-      "tag": "v1.41.0-rc3",
-      "commit": "3579a48d7614c0ce470bf388885e030aaabcc38a",
-      "pinned_at": "2026-05-07"
+      "tag": "v1.42.2",
+      "commit": "a7f0af2ce90bd54519007eea91ba6122c3b81352",
+      "pinned_at": "2026-05-17"
     },
     "serena": {
       "repo": "https://github.com/oraios/serena",
-      "tag": "v1.2.0",
-      "commit": "6882f2e1f00181dccb626d8c47dd193641be9334",
-      "pinned_at": "2026-05-07"
+      "tag": "v1.3.0",
+      "commit": "ad7cf51ec3cd69f4e1cc6d2eab679f8876897b7a",
+      "pinned_at": "2026-05-17"
     },
     "better-model": {
       "repo": "https://github.com/talkstream/better-model",
-      "tag": "v0.6.2",
-      "commit": "5822bd707df74b4d283e36f3023b57a59efa7a8c",
-      "pinned_at": "2026-05-07"
+      "tag": "v0.8.1",
+      "commit": "3b3246976ae8d052634fb0316a8da977c96085fb",
+      "pinned_at": "2026-05-17"
     },
     "claude-context": {
       "repo": "https://github.com/zilliztech/claude-context",
@@ -44,9 +44,9 @@
     },
     "rtk": {
       "repo": "https://github.com/rtk-ai/rtk",
-      "tag": "latest",
-      "commit": "2fbc7514f6964acabcfac65501b8bb6b525e3aa8",
-      "pinned_at": "2026-05-07"
+      "tag": "v0.40.0",
+      "commit": "1e0d01b68e18fd89b4d968f4b9b23f0ef20dd779",
+      "pinned_at": "2026-05-17"
     },
     "repomix": {
       "repo": "https://github.com/yamadashy/repomix",
