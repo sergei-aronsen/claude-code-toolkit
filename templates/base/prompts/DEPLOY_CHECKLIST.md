@@ -14,6 +14,17 @@ For each section, mark every checkbox `[x]` with evidence (command run,
 log link, screenshot reference, or a one-line note) before proceeding.
 A `[ ]` left unchecked at the end of any phase blocks the deploy.
 
+## Global n/a-justification rule (Wave-3 F-011)
+
+A checkbox marked `n/a` MUST carry a one-line justification on the
+same line or in the line below. The justification names **why** the
+gate does not apply to this deploy (e.g., `n/a — frontend-only deploy,
+no DB migration` for Phase 3, or `n/a — no auth/crypto code touched,
+verified via grep in Phase 5.4 trigger block`). An unjustified `n/a`
+is treated as `[ ]` (unchecked) and blocks the deploy at the next
+phase-entry gate. Sections that allow `n/a` explicitly call out the
+expected justification format; the global rule is the floor.
+
 ---
 
 ## 0.1 PROJECT SPECIFICS — [Project Name]
@@ -139,9 +150,17 @@ not a measurable claim.
   first deploy adds the column nullable, backfills, then the second
   deploy enforces NOT NULL and removes the old code path.
 - [ ] No queries reference dropped columns / renamed columns / removed
-  indexes during the deploy window. If a column is being dropped,
-  remove all `SELECT col` and `WHERE col` references in code at least
-  one deploy ahead of the schema change.
+  indexes during the deploy window.
+- [ ] **Column-drop / rename ordering (mandatory if this deploy drops
+  or renames a column):** code references to the affected column must
+  have been removed in a **previous** deploy that shipped to production
+  at least one full deploy cycle ago. Verify by grep against the
+  deployed-image source tree (not local working tree): run
+  `git log --oneline origin/main -n 20 -- <files-touching-the-column>`
+  and confirm the `SELECT col` / `WHERE col` removal commit was
+  released in a deploy strictly **before** this one. If the removal
+  and the drop ship together, this is a **two-deploy migration** —
+  abort and split.
 
 ### 3.3 Backup
 
@@ -220,7 +239,31 @@ not a measurable claim.
 
 If this deploy touches authentication, session handling, token issuance,
 or cryptographic primitives, the next four boxes are mandatory. (For
-non-auth deploys, mark "n/a" with a one-line justification.)
+non-auth deploys, mark "n/a" with a one-line justification per the
+global n/a rule above.)
+
+**Trigger grep (mandatory — run this to mechanically determine
+whether 5.4 applies; do not eyeball the diff):**
+
+```bash
+git diff origin/main..HEAD -- \
+  ':(glob)**/auth/**' \
+  ':(glob)**/session/**' \
+  ':(glob)**/middleware/**auth**' \
+  ':(glob)**/security/**' \
+  ':(glob)**/crypto/**' \
+  ':(glob)**/jwt/**' \
+  ':(glob)**/passport/**' \
+| grep -E \
+  '\b(login|logout|signup|signin|signout|register|password|reset_password|verify_email|mfa|2fa|otp|totp|webauthn|passkey|oauth|saml|sso|jwt|jwks|access_token|refresh_token|session|cookie|csrf|hmac|signature|encrypt|decrypt|hash_password|bcrypt|argon2|scrypt|pbkdf2|verify_signature)\b' \
+  || echo 'NO AUTH/CRYPTO/SESSION CODE CHANGES DETECTED'
+```
+
+If the grep produces output → 5.4 is **mandatory** and `n/a` is
+forbidden. If the grep prints `NO AUTH/CRYPTO/SESSION CODE CHANGES
+DETECTED` → mark each 5.4 checkbox `n/a — grep clean per 5.4 trigger
+block`. Treat unfamiliar matches as "yes" (false positives are cheaper
+than false negatives in this gate).
 
 - [ ] **Threat model updated** — link or paste the section from
   `.claude/rules/project-context.md` describing the new auth/crypto
@@ -254,6 +297,35 @@ non-auth deploys, mark "n/a" with a one-line justification.)
 > fails, **maintenance mode stays on** until Phase 8 (rollback) decides
 > the recovery path. Do not auto-disable maintenance mode on partial
 > success.
+
+### 6.0 Phase 6 entry gate (mandatory)
+
+Before any step in 6.1 runs, **every** prior phase must be in a clean
+state. Treat this as a hard gate, not a vibe check:
+
+- [ ] **Phase 0a baseline captured** — error rate, latency p95 (top 5
+  endpoints), GC pause p99, DB pool utilization, queue depth recorded
+  with timestamps in the deploy ticket. Empty cells = blocker.
+- [ ] **Phases 1-5 fully checked** — every checkbox in `## 1. CODE
+  CLEANUP`, `## 2. CODE QUALITY`, `## 3. DATABASE`, `## 4. ENVIRONMENT`,
+  `## 5. SECURITY` is either `[x]` with evidence or `n/a` with a
+  one-line justification per the global n/a rule. Run a literal grep
+  against the deploy ticket: `grep -c '^- \[ \]'` must return 0
+  outside of `## 6.`, `## 7.`, and `## 8.`.
+- [ ] **Phase 5.4 trigger grep run** — output recorded in the deploy
+  ticket. If grep produced auth/crypto matches, all four 5.4
+  checkboxes are `[x]` with evidence (not `n/a`).
+- [ ] **Deploy type honored** — the `## 0.2 DEPLOY TYPES` row for this
+  deploy lists every phase that must be complete; confirm visually
+  that the matching phases are all `[x]`. (Skipping phases the table
+  marks `Phases 0-8 (full)` is grounds for abort.)
+- [ ] **On-call decider named** — the human who will call rollback if
+  Phase 7.4 / 8.2 triggers fire is named in the deploy ticket and
+  paged-in **before** maintenance mode goes on. No anonymous deploys.
+
+An unchecked entry-gate box blocks Phase 6.1. The gate is verified
+once, immediately before 6.1 starts; it does not re-run between 6.1
+/ 6.2 / 6.3 (atomicity guarantee from the callout above).
 
 ### 6.1 Pre-Deploy
 
@@ -325,15 +397,31 @@ N+1 fix that releases pent-up DB load):
 
 ### 7.4 Post-Deploy Comparison vs Phase 0a Baseline
 
-- [ ] Error rate ≤ baseline + 0.5%
-- [ ] Latency p95 ≤ baseline × 1.2 (top 5 endpoints)
-- [ ] GC pause p99 ≤ baseline × 1.5
-- [ ] DB pool utilization ≤ baseline + 10pp
-- [ ] Queue depth draining (not growing) within 5 minutes
-- [ ] Auth-failure rate ≤ baseline + 10% (if Phase 5.4 triggered)
+7.4 gates the deploy as **green / warn / abort**. The bands here
+must align with Phase 8.2 rollback triggers (gap closed in Wave-3
+F-007 — the prior version's `+ 0.5%` (7.4) vs `+ 1pp` (8.2) left an
+undefined window between them). Bands:
 
-If any line fails: route to Phase 8. Do **not** wait for users to
-report regressions.
+| Signal | Green (pass) | Warn (stay deployed, monitor) | Abort (Phase 8) |
+| ------ | ------------ | ----------------------------- | --------------- |
+| Error rate | ≤ baseline + 0.5pp | baseline + 0.5pp .. baseline + 1.0pp | > baseline + 1.0pp |
+| Latency p95 (top 5 endpoints) | ≤ baseline × 1.2 | baseline × 1.2 .. baseline × 1.5 | > baseline × 1.5 |
+| GC pause p99 | ≤ baseline × 1.5 | baseline × 1.5 .. baseline × 2.0 | > baseline × 2.0 |
+| DB pool utilization | ≤ baseline + 10pp | baseline + 10pp .. baseline + 20pp | > baseline + 20pp |
+| Queue depth | draining within 5 min | growing slowly, draining within 15 min | growing fast, not draining in 15 min |
+| Auth-failure rate (if 5.4 triggered) | ≤ baseline + 10% | baseline + 10% .. + 25% | > baseline + 25% |
+
+- [ ] All signals in **green** band for at least one rolling 5-minute
+  window post-deploy. A signal in the **warn** band: stay deployed
+  but oncall watches it until it recovers to green (mark deploy
+  ticket "monitoring"). A signal in the **abort** band: route to
+  Phase 8 immediately.
+- [ ] No 5xx class new since Phase 0a baseline at > 10/min sustained
+  for 5 minutes (this is the Phase 8.2 "new 5xx class" trigger
+  surfaced here so 7.4 catches it before 8.2 does).
+
+If any signal hits the **abort** band: route to Phase 8. Do **not**
+wait for users to report regressions.
 
 ### 7.5 Feature Flag State
 

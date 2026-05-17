@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`templates/base/prompts/DEPLOY_CHECKLIST.md` — gate enforcement
+  (Wave-3 meta-audit, DEPLOY F-002/003/005/007/011 closed):**
+  - **Global n/a-justification rule (F-011)** added at the top of
+    the document: a checkbox marked `n/a` MUST carry a one-line
+    justification naming why the gate does not apply. An unjustified
+    `n/a` is treated as `[ ]` (unchecked) and blocks the deploy at
+    the next phase-entry gate.
+  - **Section 3.2 column-drop checkbox (F-003)** — the prose-only
+    rule "remove all `SELECT col` / `WHERE col` references in code
+    at least one deploy ahead of the schema change" is now an
+    explicit checkbox with mechanical verification: `git log
+    --oneline origin/main -n 20 -- <files-touching-the-column>` must
+    show the removal commit released in a strictly prior deploy.
+    Combined removal+drop in a single deploy is now an explicit
+    abort + split into a two-deploy migration.
+  - **Section 5.4 trigger grep block (F-005)** — added a mandatory
+    `git diff origin/main..HEAD` grep that mechanically determines
+    whether 5.4 applies. Greps the changed auth/session/middleware/
+    security/crypto/jwt/passport paths for canonical auth tokens
+    (login, signup, password, mfa, otp, webauthn, passkey, oauth,
+    saml, sso, jwt, jwks, access_token, refresh_token, session,
+    cookie, csrf, hmac, signature, encrypt, decrypt, hash_password,
+    bcrypt, argon2, scrypt, pbkdf2, verify_signature). Output drives
+    a hard rule: grep matches → 5.4 boxes mandatory and `n/a`
+    forbidden; clean → mark `n/a — grep clean per 5.4 trigger
+    block`. Unfamiliar matches treated as "yes" (false positives
+    cheaper than false negatives in this gate).
+  - **Section 6.0 Phase 6 entry gate (F-002)** — new mandatory
+    checkbox block immediately before 6.1: Phase 0a baseline
+    captured (numbers + timestamps), Phases 1-5 fully checked
+    (literal `grep -c '^- \[ \]'` outside Phases 6/7/8 returns 0),
+    Phase 5.4 trigger grep run with output recorded, deploy-type
+    row from `## 0.2` honored, on-call decider named and paged-in
+    before maintenance mode. Closes the gap where Phase 6 atomicity
+    callout was prose-only and a half-checked checklist could enter
+    deployment.
+  - **Section 7.4 / 8.2 threshold reconcile (F-007)** — 7.4 bands
+    now use the same scale as 8.2 rollback triggers. New per-signal
+    Green / Warn / Abort table: Error rate (≤ +0.5pp / +0.5..+1.0pp /
+    > +1.0pp), Latency p95 (≤ ×1.2 / ×1.2..×1.5 / > ×1.5), GC pause
+    p99 (≤ ×1.5 / ×1.5..×2.0 / > ×2.0), DB pool util (≤ +10pp /
+    +10..+20pp / > +20pp), Queue depth (drain in 5min / slow drain
+    by 15min / not draining), Auth-failure rate (≤ +10% / +10..+25%
+    / > +25%). Closes the prior gap where 7.4 said `+0.5%` and 8.2
+    said `+1pp` with no defined behaviour in between. Warn-band
+    deploys stay deployed under oncall watch; Abort-band routes to
+    Phase 8 immediately. Also surfaces the Phase 8.2 "new 5xx class"
+    trigger inside 7.4 so it is caught upstream of rollback.
+
 ## [6.30.0] - 2026-05-17
 
 ### Added
