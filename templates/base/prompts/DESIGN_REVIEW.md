@@ -102,7 +102,9 @@ Treat aesthetic preference as LOW severity unless it harms comprehension, trust,
 
 ### Phase 5: Accessibility
 
-Evaluate WCAG 2.1 AA-relevant behavior from the rendered UI.
+Evaluate WCAG 2.2 AA-relevant behavior from the rendered UI. WCAG 2.2
+(ratified October 2023) supersedes WCAG 2.1 AA. Treat 2.1 AA as the
+baseline and add the four new 2.2 AA success criteria below.
 
 Check keyboard access:
 
@@ -127,7 +129,82 @@ Check visual accessibility:
 - Information is not conveyed by color alone
 - Content remains usable at 200% zoom where testable
 
+Check **WCAG 2.2 new success criteria** (AA-conformant projects must
+add these — 2.1 AA alone is insufficient as of October 2023):
+
+- **2.4.11 Focus Not Obscured (Minimum) — AA.** When a control
+  receives keyboard focus, it must not be entirely hidden by
+  author-created sticky headers, footers, toasts, or modal scrims.
+  Audit: keyboard-tab through the page with a sticky header / footer
+  present and verify the focused control is at least partially
+  visible. A common regression is focus landing behind a fixed
+  cookie-consent banner or chat widget.
+- **2.5.7 Dragging Movements — AA.** Any operation that uses a
+  dragging movement (drag-and-drop reorder, slider thumb, map pan,
+  signature pad) must provide a non-dragging alternative — keyboard
+  arrows, up/down buttons, or a numeric input. Audit: identify every
+  drag interaction; confirm a click / tap / keyboard alternative
+  exists and reaches the same end state.
+- **2.5.8 Target Size (Minimum) — AA.** Pointer targets must be at
+  least 24×24 CSS pixels OR have ≥ 24px clear spacing around them.
+  Exceptions: inline text links, browser-default UA controls,
+  targets controlled by the user agent, and "essential" targets
+  where 24px would change the meaning. Audit: measure dense control
+  clusters (toolbars, icon strips, pagination, table-row actions);
+  the most common violation is 16px icon buttons packed shoulder-to-
+  shoulder.
+- **3.3.8 Accessible Authentication (Minimum) — AA.** Authentication
+  flows must not rely on a cognitive function test (memorizing a
+  password, solving a puzzle, transcribing a code) as the sole step,
+  UNLESS an alternative is offered: passkey / WebAuthn, OAuth
+  delegation, password manager autofill (so the field accepts paste
+  and is not blocked from autofill), email-magic-link, or a recovery
+  code printable in advance. Audit: confirm `autocomplete="current-password"`
+  / `autocomplete="one-time-code"` is set on auth fields, paste is
+  not blocked, and at least one cognitive-function-free path exists
+  to authenticate.
+
+Check **system-preference & locale variants** (orthogonal to WCAG
+SCs but required for accessible delivery):
+
+- **`prefers-reduced-motion: reduce`.** Animations longer than 0.5s,
+  parallax, auto-scrolling carousels, and decorative motion must
+  honor this media query — either disable the animation or reduce
+  duration to ≤ 0.5s with no parallax. Audit: enable "Reduce
+  Motion" in the OS, reload, confirm motion is dampened.
+- **`prefers-color-scheme: dark`.** When the design ships a dark
+  mode, audit it as a first-class UI: contrast still ≥ 4.5:1 / 3:1,
+  no white logos on light cards (mode-swap miss), no images that
+  invert wrong (logos with hardcoded `#000` strokes), focus rings
+  still visible against the dark background.
+- **`forced-colors: active` (Windows High Contrast Mode).** Borders,
+  focus rings, and decorative backgrounds may be stripped to system
+  colors. Audit: enable Windows High Contrast, confirm interactive
+  controls are still distinguishable (use `forced-color-adjust` with
+  `Highlight` / `LinkText` / `ButtonText` system colors, don't rely
+  on background-color alone).
+- **RTL (right-to-left) locales.** For projects supporting Arabic /
+  Hebrew / Persian / Urdu: layout direction (`dir="rtl"`), text
+  alignment, icon mirroring (chevrons, back-arrows, progress
+  indicators), and bidi text (mixed LTR digits inside RTL text)
+  must all flip correctly. Audit: toggle `<html dir="rtl">` and
+  confirm no visual regressions; check that ICU-formatted dates
+  and numbers respect the locale.
+- **Screen-reader announcement gates.** Dynamic content updates
+  (toast notifications, validation results, async-loaded sections,
+  step-change in a wizard) must reach assistive technology via
+  `aria-live` regions, `role="status"` / `role="alert"`, or
+  imperative `aria-live` announcements. Audit: trigger each dynamic
+  change in VoiceOver / NVDA / TalkBack; confirm an announcement
+  fires for each user-visible change. A silent toast = a missed
+  user notification for screen-reader users.
+
 Use the accessibility tree as primary evidence for semantic findings.
+Measurement-based findings (contrast ratios, target size in px, WCAG
+SC numbers) cite the computed value in the finding's `Why it is real`
+field — for measurement evidence the schema accepts the computed
+number (e.g., `Contrast: 3.8:1 at #6c7280 on #ffffff`) in lieu of
+"concrete tokens visible in the Code block".
 
 ### Phase 6: Robustness
 
@@ -376,9 +453,9 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 | `deploy-checklist` | `deploy-checklist` | `templates/<framework>/prompts/DEPLOY_CHECKLIST.md` |
 | `mysql-performance` | `mysql-performance` | `templates/<framework>/prompts/MYSQL_PERFORMANCE_AUDIT.md` |
 | `postgres-performance` | `postgres-performance` | `templates/<framework>/prompts/POSTGRES_PERFORMANCE_AUDIT.md` |
-| `design-review` | `design-review` | `templates/<framework>/prompts/DESIGN_REVIEW.md` |
+| `ui-design-review` | `ui-design-review` | `templates/<framework>/prompts/DESIGN_REVIEW.md` |
 
-Backward-compat aliases: `code` resolves to `code-review` and `deploy` resolves to `deploy-checklist` at dispatch time. The report filename ALWAYS uses the canonical slug, never the alias.
+Backward-compat aliases: `code` resolves to `code-review`, `deploy` resolves to `deploy-checklist`, and `design-review` resolves to `ui-design-review` at dispatch time (slug renamed in v6.30.0 to clarify the file's UI-only scope — the prompt file keeps its historical name `DESIGN_REVIEW.md` for splice stability). The report filename ALWAYS uses the canonical slug, never the alias.
 
 ---
 
