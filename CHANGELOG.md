@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`components/audit-fp-control-gates.md` — DEPLOY_CHECKLIST entry +
+  `Issue triage matrix` case fix** (v6.37.1 scope — closes 2 MEDIUM
+  findings from 2026-05-17 meta-audit). Added a `DEPLOY_CHECKLIST`
+  row to the audit-specific-customization list explaining that
+  DEPLOY is a runbook and does NOT run the three-gate machinery
+  (no SELF-CHECK, no Council Handoff, no Gate 3 cross-multiplier);
+  Phase gates (`### 6.0 Artifact attestation`, `### 7.4 Per-signal
+  Green/Warn/Abort table`) are hard-gates on the deployment step
+  itself, distinct from audit FP control. Fixed the DESIGN_REVIEW
+  cross-reference from `## Issue Triage Matrix` (Title Case) to
+  `## Issue triage matrix` (sentence case) so it matches the actual
+  DESIGN heading byte-for-byte (markdown anchor resolution +
+  grep navigation now work).
+- **`components/audit-severity-anchor.md` — POSTGRES + MYSQL `## 0.1`
+  rows added** (v6.37.1 scope — closes 1 MEDIUM finding). The
+  Severity-Anchor SOT advertised PERFORMANCE_AUDIT `## 0.2 SEVERITY
+  THRESHOLDS` but said nothing about the POSTGRES `## 0.1` (added in
+  v6.33.0) and MYSQL `## 0.1` (added in v6.34.0) DB-specific
+  calibrations, nor the MYSQL `### 0.1.1` multi-axis rubric (v6.36.0).
+  Readers consulting the anchor SOT to find DB threshold maps now
+  see both, with the calibration signals listed
+  (`pg_stat_statements.mean_exec_time`,
+  `events_statements_summary_by_digest.avg_ms`, buffer-pool hit
+  ratio, replication lag, transaction-id age) and the multi-axis
+  formula `Severity = max(SignalBand, BlastRadius, UserVisibility,
+  ...)`.
+- **No splice fan-out required** — both edits land in SOT regions that
+  are NOT propagated into base prompts. `audit-fp-control-gates.md`
+  splices only lines BETWEEN `## FALSE-POSITIVE CONTROL` and the next
+  H2 (`## Audit-Specific Customization`); the new DEPLOY row + case
+  fix live in the H2 below the splice scope. `audit-severity-anchor.md`
+  is referenced by FILENAME in the rubric-anchors splice (the
+  prompts emit a pointer to consult the SOT); the body itself stays
+  in the SOT as authoring guidance, never inlined. Result: 0 LOC
+  changed in `templates/base/prompts/*.md`, 17 LOC added in the 2
+  SOT files. Propagator (`scripts/propagate-audit-pipeline-v42.sh
+  --force`) verified 6/6 spliced with no churn in propagated bodies.
+
 ## [6.37.0] - 2026-05-17
 
 ### Added

@@ -68,6 +68,19 @@ Examples already in production:
 - **PERFORMANCE_AUDIT** — `## 0.2 SEVERITY THRESHOLDS` maps p95 latency
   bands to the four levels (CRITICAL > 5s end-to-end, HIGH > 2s p95,
   MEDIUM > 1s p95, LOW < 1s).
+- **POSTGRES_PERFORMANCE_AUDIT** — `## 0.1 SEVERITY THRESHOLDS`
+  calibrates to PostgreSQL engine signals (e.g.
+  `pg_stat_statements.mean_exec_time`, buffer-pool hit ratio,
+  transaction-id age vs autovacuum_freeze_max_age). Local to the
+  sub-prompt because the umbrella `## 0.2` does not bind PostgreSQL
+  specifics (added in v6.33.0).
+- **MYSQL_PERFORMANCE_AUDIT** — `## 0.1 SEVERITY THRESHOLDS` calibrates
+  to MySQL engine signals (e.g.
+  `events_statements_summary_by_digest.avg_ms`, InnoDB buffer-pool hit
+  ratio, replication lag) and includes a `### 0.1.1` multi-axis rubric
+  (`Severity = max(SignalBand, BlastRadius, UserVisibility, ...)`).
+  Local to the sub-prompt for the same reason as POSTGRES (added in
+  v6.34.0, multi-axis in v6.36.0).
 - **CODE_REVIEW** — `## SEVERITY AND CONFIDENCE` adds confidence axes
   (HIGH / MEDIUM / LOW) that combine multiplicatively with severity
   to gate which findings appear in the structured report.
