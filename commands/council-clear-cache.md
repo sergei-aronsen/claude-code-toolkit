@@ -49,4 +49,3 @@ brain --no-cache "<plan>"
 - The cache directory is left in place; only the JSON files are removed.
 - Cache TTL is configurable via `config.cache.ttl_days` in
   `~/.claude/council/config.json` (default 7 days).
-- Phase 24 Sub-Phase 6.

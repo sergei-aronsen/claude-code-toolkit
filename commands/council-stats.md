@@ -50,4 +50,3 @@ are estimated (`chars / 4`) and marked with `estimated: true` per record.
 - Update `~/.claude/council/pricing.json` when provider rates change. Local
   edits are preserved on toolkit update via the `.upstream-new.json` sidecar
   pattern.
-- Phase 24 Sub-Phase 4.
