@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.7] - 2026-05-18
+
+README version-badge drift fix.
+
+### Changed
+
+- **`README.md` + 8 `docs/readme/<lang>.md` translations** — replaced
+  hardcoded `https://img.shields.io/badge/version-6.4.0-blue.svg`
+  with the dynamic
+  `https://img.shields.io/github/v/release/sergei-aronsen/claude-code-toolkit?label=version&color=blue`
+  endpoint. The badge will now track the latest GitHub release tag
+  automatically; no manual edits required on future releases.
+
+- **`README.md`** — "Toolkit v6.2 is a thin overlay" → "The toolkit
+  is a thin overlay" (drop misleading present-tense version anchor).
+  Architecture description is current; the "v6.2" anchor was stale by
+  45 minor releases.
+
+### Why
+
+The version badge across 9 README files was pinned at 6.4.0 — 43
+minor releases behind current 6.47.6. Hand-maintained version badges
+inevitably drift; switching to the shields.io GitHub-release endpoint
+removes the maintenance burden entirely.
+
+The "Toolkit v6.2 is" present-tense phrasing was a separate stale
+anchor on the same drift surface. Architecture itself is unchanged.
+
 ## [6.47.6] - 2026-05-18
 
 `docs/SCRIPTS_TAXONOMY.md` accuracy fix — taxonomy doc created in
