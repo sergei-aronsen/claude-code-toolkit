@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.8] - 2026-05-18
+
+`docs/INSTALL.md` + `docs/BRIDGES.md` historical-anchor refresh.
+
+### Changed
+
+- **`docs/INSTALL.md`** — present-tense "v4.0" anchors replaced with
+  workflow-neutral phrasing. Specifically:
+  - "13 cells of the v4.0 install matrix" → "13 cells of the install matrix"
+  - "v4.0 ships four install modes" → "The installer ships four install modes"
+  - "## install.sh (unified entry, v4.5+)" heading dropped "v4.5+" anchor;
+    body now mentions v4.5 as the introduction release.
+  - "All v4.4 flags on init-claude.sh ... regression test stays green
+    throughout v4.5" → "All init-claude.sh flags ... regression test
+    gates this contract."
+  - "v4.3 UN-01..UN-08 invariants stand" → "The UN-01..UN-08
+    invariants hold."
+  - "### Secret cleanup (v5.0+)" heading dropped "v5.0+" anchor; body
+    parenthesises "(introduced in v5.0)" instead.
+
+- **`docs/BRIDGES.md`** — stale forward-looking refs dropped:
+  - "v4.8 will explore lightweight branding substitution" → "branding
+    substitution requires … deferred as an open design point"
+  - "BRIDGE-FUT-01 (branding substitution, deferred to v4.8)" →
+    "(branding substitution, deferred)"
+  - "BRIDGE-FUT-03 / BRIDGE-FUT-04 (Cursor and Aider, out of v4.7
+    scope)" → "(Cursor and Aider, deferred)" + rephrased explanatory
+    paragraph.
+
+### Kept
+
+Feature-introduction markers `(v4.5+)`, `(v4.7+)`, `(v5.0+)` in body
+prose remain — these document WHEN a feature shipped, which is
+legitimate historical context for users wondering whether their
+installed version supports a flag. Only the PRESENT-TENSE anchors
+that implied "v4.0/v4.5 is current" or stale FORWARD-LOOKING
+promises ("v4.8 will explore …") were rewritten.
+
+### Why
+
+Toolkit is now v6.47.8 — 50+ minor versions past v4.0/v4.5/v4.7/v4.8.
+Present-tense anchors and unfulfilled future-tense roadmap promises
+in user-facing install/bridges docs were confusing on first read.
+
 ## [6.47.7] - 2026-05-18
 
 README version-badge drift fix.

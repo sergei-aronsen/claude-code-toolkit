@@ -1,6 +1,6 @@
 # Install Matrix
 
-This document lists the 13 cells of the v4.0 install matrix (12 mode×scenario cells + 1 translation-sync cell). Rows = 4 install modes;
+This document lists the 13 cells of the install matrix (12 mode×scenario cells + 1 translation-sync cell). Rows = 4 install modes;
 columns = 3 scenarios (fresh install, upgrade from v3.x, re-run / idempotent behavior).
 See the [README install section](../README.md#install-modes) for the entry-point overview.
 
@@ -16,7 +16,7 @@ See the [README install section](../README.md#install-modes) for the entry-point
 
 ## Modes Overview
 
-v4.0 ships four install modes. The installer auto-detects which base plugins are present
+The installer ships four install modes. It auto-detects which base plugins are present
 and selects the appropriate mode; pass `--mode <name>` to override.
 
 - **`standalone`** — no base plugins detected (or user override). All 54 TK files installed.
@@ -145,12 +145,12 @@ symlink-vs-copy rationale.
 
 ---
 
-## install.sh (unified entry, v4.5+)
+## install.sh (unified entry)
 
-`scripts/install.sh` is the single entry point for the unified TUI installer flow
-introduced in v4.5. It complements the per-component `init-claude.sh` /
-`setup-security.sh` / `install-statusline.sh` URLs (which all continue to work
-unchanged — BACKCOMPAT-01).
+`scripts/install.sh` is the unified TUI installer flow (introduced in
+v4.5). It complements the per-component `init-claude.sh` /
+`setup-security.sh` / `install-statusline.sh` URLs (which all continue
+to work unchanged — BACKCOMPAT-01).
 
 ### Quick start
 
@@ -291,15 +291,15 @@ flag (`--mcps`, `--skills`, `--components`, `--yes`) to opt out of auto-routing.
 
 ### Backwards compatibility
 
-All v4.4 flags on `init-claude.sh` (`--no-bootstrap`, `--no-banner`,
+All `init-claude.sh` flags (`--no-bootstrap`, `--no-banner`,
 `TK_NO_BOOTSTRAP`, `NO_BANNER`) are preserved unchanged. The 26-assertion
-`test-bootstrap.sh` regression test stays green throughout v4.5. Both entry
+`test-bootstrap.sh` regression test gates this contract. Both entry
 points coexist indefinitely; there is no deprecation schedule for
 `init-claude.sh`.
 
 When `/dev/tty` is unavailable (CI, piped install) and `--yes` is not passed,
 `install.sh` exits 0 with a "no-TTY, run with `--yes` for non-interactive
-install" message. This is the same fail-closed behaviour as v4.4 `bootstrap.sh`.
+install" message. Fail-closed behaviour matches `bootstrap.sh`.
 
 ---
 
@@ -358,10 +358,10 @@ is safe — already-removed files are detected as absent and skipped.
 ## Uninstall
 
 `scripts/uninstall.sh` removes the toolkit from `~/.claude/` with a `[y/N/d]`
-per-file prompt for any user-modified files. v4.3 UN-01..UN-08 invariants stand:
-full `cp -R` backup to `~/.claude-backup-pre-uninstall-<unix-ts>/` before any
-delete, sentinel block stripped from `~/.claude/CLAUDE.md`, base-plugin `diff -q`
-invariant fires last.
+per-file prompt for any user-modified files. The UN-01..UN-08 invariants
+hold: full `cp -R` backup to `~/.claude-backup-pre-uninstall-<unix-ts>/`
+before any delete, sentinel block stripped from `~/.claude/CLAUDE.md`,
+base-plugin `diff -q` invariant fires last.
 
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/sergei-aronsen/claude-code-toolkit/main/scripts/uninstall.sh)
@@ -373,12 +373,13 @@ Or from a local clone:
 bash /path/to/claude-code-toolkit/scripts/uninstall.sh
 ```
 
-### Secret cleanup (v5.0+)
+### Secret cleanup
 
-v5.0 closes the secrets-leak gap on uninstall with two paired `[y/N]` prompts.
-Both default to **N** and are fail-closed N on no-TTY (mirrors the v4.3 UN-03
-contract). Project `.env` files outside `~/.claude/` are **never** opened or
-modified — explicit contract.
+The uninstaller closes the secrets-leak gap with two paired `[y/N]`
+prompts (introduced in v5.0). Both default to **N** and are fail-closed
+N on no-TTY (matches the UN-03 prompt contract). Project `.env` files
+outside `~/.claude/` are **never** opened or modified — explicit
+contract.
 
 #### Per-MCP cleanup prompt
 
