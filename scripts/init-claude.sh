@@ -35,7 +35,7 @@ NC='\033[0m'
 # `raw.githubusercontent.com/.../v6.24.5/.../init-claude.sh`), leave
 # TK_TOOLKIT_REF unset and it inherits the bundled default below —
 # guaranteeing every file in the install comes from the same tag.
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.0}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.1}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
