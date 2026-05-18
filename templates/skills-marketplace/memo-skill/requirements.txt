@@ -1,5 +1,5 @@
 # Core dependencies
-sentence-transformers>=5.4.1    # multilingual-e5-large embeddings
+sentence-transformers>=5.5.0    # multilingual-e5-large embeddings
 numpy>=2.4.4                   # embedding storage and similarity search
 PyYAML>=6.0.3                     # frontmatter parsing (safe fallback without it)
 
