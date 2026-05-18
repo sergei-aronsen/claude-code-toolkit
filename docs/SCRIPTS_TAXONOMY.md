@@ -1,6 +1,13 @@
 # Scripts Taxonomy
 
-`scripts/` contains 18+ shell scripts with three prefixes (`init-`, `install-`, `setup-`). Logic audit 2026-05-18 surfaced that the mnemonic was ad-hoc. This document fixes the taxonomy in place — no renames — so contributors can pick the right prefix and consumers can predict invocation rules.
+`scripts/` contains ~30 shell + Python files with three top-level
+prefixes (`init-`, `install-`, `setup-`) plus action verbs
+(`update-`, `verify-`, `validate-`, `migrate-`, `sync-`,
+`propagate-`, `detect-`, `cell-`) and three subdirectories
+(`council/`, `prompt-engineer/`, `vendor/`). Logic audit 2026-05-18
+surfaced that the mnemonic was ad-hoc. This document fixes the
+taxonomy in place — no renames — so contributors can pick the right
+prefix and consumers can predict invocation rules.
 
 > **Rule of thumb.** Add a new script under `scripts/` only when it provides a user-invocable installer, setup, or maintenance action. Internal-only helpers live under `scripts/lib/`. Bridge integrations not tied to `.claude/` live under their own subdirectory (e.g., `scripts/council/`).
 
@@ -64,6 +71,7 @@ Bridge installers that delegate to upstream skill repositories. Invoked via `lib
 | Script | Action |
 |--------|--------|
 | `sync-skills-mirror.sh` | Resync `templates/skills-marketplace/` from upstream (closed-loop in v6.46.0+) |
+| `generate-skills-catalog.sh` | Regenerate `templates/skills-catalog.json` from `manifest.json:skills_pins` (v6.46.0+) |
 | `validate-manifest.py` | Manifest schema + drift + note↔data validator |
 | `validate-commands.py` | Slash-command header validator |
 | `validate-integrations-catalog.py` | Integrations catalog schema |
@@ -73,21 +81,46 @@ Bridge installers that delegate to upstream skill repositories. Invoked via `lib
 | `propagate-audit-pipeline-v42.sh` | SOT fan-out into 6 base audit prompts |
 | `detect.sh` | Plugin presence detector (sourced by other installers) |
 | `cell-parity.sh` | Cross-cell parity diff (CI helper) |
-| `pin-vendors.sh`, `clone-pinned.sh`, `diff-summary.sh` | Vendor pin lifecycle |
+| `vendor/pin-vendors.sh`, `vendor/clone-pinned.sh`, `vendor/diff-summary.sh` | Vendor pin lifecycle (under `scripts/vendor/`) |
 
 ### 7. Internal libraries
 
-Not user-invocable. Sourced by category 1-6 scripts. Listed only for completeness — never `curl | bash` these.
+Not user-invocable. Sourced by category 1-6 scripts. Listed only for
+completeness — never `curl | bash` these. Live under `scripts/lib/`:
 
-```text
-scripts/lib/
-├── backup.sh           lib/dispatch.sh   lib/install.sh
-├── bootstrap.sh        lib/dro.sh        lib/optional-plugins.sh
-├── bridges.sh          lib/integrations  lib/skills.sh
-├── catalog/            lib/manifest.sh   lib/state.sh
-├── detect2.sh          lib/mcp.sh        lib/tui.sh
-└── ...
-```
+| File | Purpose |
+|------|---------|
+| `backup.sh` | Pre-update `.claude-backup-<timestamp>/` snapshot helper |
+| `bootstrap.sh` | SP / GSD pre-install bootstrap contract |
+| `bridges.sh` | Multi-CLI bridges (Gemini, Codex, …) sync + uninstall |
+| `cli-installer.sh` | Companion CLI binary installer helpers |
+| `cli-recommendations.sh` | Recommended-CLIs catalog + prompt helpers |
+| `council-prompts.sh` | Council prompt-template loader |
+| `detect2.sh` | Layered plugin/feature detection (v6 redesign) |
+| `dispatch.sh` | Per-component installer dispatch table |
+| `dry-run-output.sh` | `--dry-run` accumulator + formatter |
+| `install.sh` | Shared install helpers (PreToolUse partition, file copy) |
+| `integrations-catalog.json` | MCP + integration catalog (data, not code) |
+| `mcp.sh` | `claude mcp add/remove` wrappers |
+| `optional-plugins.sh` | Optional-plugin install helpers (caveman, …) |
+| `post-install-guide.sh` | Closing banner + next-step recommendations |
+| `project-secrets.sh` | Secret-bearing file detection (uninstall safety) |
+| `skill-checksum.sh` | Reproducible directory-content hash (closed-loop sync, v6.46.0+) |
+| `skills.sh` | Skills-mirror install + dispatch helpers |
+| `state.sh` | `toolkit-install.json` state read/write |
+| `tui.sh` | Shared TUI prompt + colour primitives |
+
+### 8. Sub-tool subdirectories
+
+Not first-class scripts. Live under their own subdirectory, ship
+together as a unit, and are documented by their own README.
+
+| Path | Purpose |
+|------|---------|
+| `scripts/council/` | Supreme Council (`brain.py`, `mcp-server.py`, `pack.py`, `prompts/`, `config.json.template`) |
+| `scripts/prompt-engineer/` | `pe` prompt-optimizer CLI (`optimize_prompt.py`) |
+| `scripts/vendor/` | Vendor-pin lifecycle scripts (listed under Category 6 above) |
+| `scripts/tests/` | Maintainer test suite (`test-*.sh`) — invoked from `Makefile:test` |
 
 ## Prefix decision rule
 
