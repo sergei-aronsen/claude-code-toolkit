@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.46.0] - 2026-05-18
+
+Deferred-backlog batch from logic audit 2026-05-18. Addresses the four
+items intentionally held back from v6.45.0 because they required
+architectural choices, not point fixes (P3 / P5 / P7 / P10).
+
+### Added
+
+- **`scripts/lib/skill-checksum.sh`** — reproducible directory-content
+  hash for skill mirrors. Aggregates `<rel_path>\t<sha256>` over every
+  non-dotfile, sorts lexicographically, then hashes. Deterministic
+  across macOS BSD and GNU Linux given identical content.
+
+- **`sha256` field added to every active `skills_pins` entry**
+  (22 active + 1 no-upstream-found = 23 entries now carry a checksum).
+  Field is optional for pre-v6.46.0 entries; required by validator
+  Check 9 whenever declared.
+
+- **`scripts/sync-skills-mirror.sh` closed-loop rewrite (P5).** New
+  default mode `--check` walks `skills_pins`, fetches every upstream
+  at its pinned commit (path-scoped for monorepo entries), recomputes
+  `sha256` via `skill-checksum.sh`, and surfaces mirror↔upstream drift.
+  `--apply` overwrites the mirror with raw upstream content and
+  rewrites the manifest `sha256`. `--from-local` preserves the legacy
+  maintainer-laptop path for skills authored locally before having a
+  canonical upstream. `--strict` makes drift a CI-fail (exit 3).
+
+- **`scripts/generate-skills-catalog.sh` + `templates/skills-catalog.json`
+  (P10).** Auto-generated compact declarative view of `skills_pins`
+  with `{name, upstream, commit, path?, sha256?, install_cmd}` per
+  active pin (22 entries; no-upstream-found omitted). Parallel artifact
+  for catalog-mode consumers — the toolkit's primary distribution
+  remains the mirror under `templates/skills-marketplace/`.
+
+- **`scripts/validate-manifest.py` Check 9 (sha256 integrity) + Check
+  10 (catalog drift).** Mirror content sha256 must match the manifest
+  declaration; catalog file must match the manifest active-pin set
+  field-by-field. Both fail CI on drift.
+
+- **`scripts/update-deps.sh probe_skill_pin` 3rd column (P5).**
+  Probe now emits `pinned\tlatest\tmirror_state` where mirror_state ∈
+  {ok, drift, ?, —}. Dashboard surfaces drift inline in the notes
+  column so a maintainer can spot mirror corruption without running
+  validate-manifest separately.
+
+- **`docs/SCRIPTS_TAXONOMY.md` (P3).** Documents the prefix decision
+  rule for `install-*` / `setup-*` / `init-*` and lists every existing
+  script in its category. No renames — taxonomy is fixed in place to
+  preserve `curl | bash` URL stability. `CONTRIBUTING.md` now points
+  at this doc.
+
+- **Test 58: `scripts/tests/test-skills-mirror-checksum.sh`.** Nine
+  assertions covering checksum determinism + idempotency + dotfile
+  exclusion + sync `--help` + sync `--check` no-upstream branch +
+  catalog regen + manifest sha256 drift + catalog drift.
+
+### Changed
+
+- **`CLAUDE.md` § Prompt Optimization Pipeline (P7).** Restructured
+  into a three-class triage (Mandatory `pe` / Optional `pe` /
+  Forbidden `pe`) with a decision tree. Class B (splice-adjacent
+  files) now requires `pe` only if ≥50% of the file is non-splice
+  prose — earlier blanket-mandatory rule pushed Stage-2 restoration
+  work onto every prompt-file PR even when the lift was zero. SOT
+  components and code are explicit Class C (never `pe`).
+
+- **`manifest.json:skills_pins_note`** updated to mention `sha256`
+  field + closed-loop sync + mirror↔manifest drift detection.
+
+### Context
+
+Logic audit 2026-05-18 surfaced P3/P5/P7/P10 as deferred for product
+discussion. This release ships all four with documented trade-offs.
+The mirror-vs-catalog architectural fork (P10) is resolved as
+**hybrid**: mirror remains primary (offline install + version-lock),
+catalog is the secondary declarative artifact. `sync-skills-mirror.sh`
+is no longer a one-way maintainer-laptop dump — it is a closed-loop
+that pulls from upstream by pinned commit.
+
 ## [6.45.0] - 2026-05-18
 
 ### Fixed

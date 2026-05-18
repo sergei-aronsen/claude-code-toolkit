@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.45.0",
+  "version": "6.46.0",
   "updated": "2026-05-18",
   "build_date": "2026-05-18",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -55,7 +55,7 @@
       "pinned_at": "2026-05-12"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.44.0, 2026-05-18): 22 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.46.0, 2026-05-18): 22 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
   "skills_pins": {
     "ai-models": {
       "repo": "https://github.com/artofrawr/claude-control",
@@ -63,7 +63,8 @@
       "tag": null,
       "commit": "5e8f37f650efa223150c2643991b409d3af324ea",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "ce4b7854d7d552b2ef5d8928532d321197277e6f15b2c224fc31f463225f442e"
     },
     "analytics-tracking": {
       "repo": "https://github.com/mysticaltech/marketingskills",
@@ -71,7 +72,8 @@
       "tag": null,
       "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "1b401662f84f2ee72ea41dafa3f38a0de1be502c6043f815ac804551200592e6"
     },
     "chrome-extension-development": {
       "repo": "https://github.com/Mindrally/skills",
@@ -79,7 +81,8 @@
       "tag": null,
       "commit": "47f47c12e62f62b5e171bd5af61d0fc24b329701",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "488dd06fc70ccdb3559a0ec6b42f0741a6f51ebfb02184152caa97f21ee385d3"
     },
     "copywriting": {
       "repo": "https://github.com/mysticaltech/marketingskills",
@@ -87,7 +90,8 @@
       "tag": null,
       "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "71f3560cdeb63fc3459e8f5f753ad83495d12edea4a9127ff45bedab407d102c"
     },
     "docx": {
       "repo": "https://github.com/anthropics/skills",
@@ -95,7 +99,8 @@
       "tag": null,
       "commit": "3d59511518591fa82e6cfcf0438d68dd5dad3e76",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "950befc5c3ed716f839a362429debea9edbda31c15563281498d36dafbcbd4c5"
     },
     "find-skills": {
       "repo": "https://github.com/vercel-labs/skills",
@@ -103,7 +108,8 @@
       "tag": null,
       "commit": "0b8fb22aaa7f82447d4befe1b6a95d30a5b279b8",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "6051449c88f79d9ca97e8d1c93c4d2fd22cc26082cc57e945e1629996a520266"
     },
     "firecrawl": {
       "repo": "https://github.com/firecrawl/cli",
@@ -111,14 +117,16 @@
       "tag": null,
       "commit": "f873e5bfd2ee090aefc4c5c304570334666f6b2a",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "22ba67a196d80ea7995ddd61813f5731541ff5c1284c2d45f50696c24ef2c145"
     },
     "huashu-design": {
       "repo": "https://github.com/alchaincyf/huashu-design",
       "tag": null,
       "commit": "8e25b23709747a747b80bf4d3820def8f8054a4e",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "6167ed595dde2a2aaef9736b49abcadfa4fc4e83fcb81bd28c45775697aee9f0"
     },
     "i18n-localization": {
       "repo": "https://github.com/sickn33/antigravity-awesome-skills",
@@ -126,7 +134,8 @@
       "tag": null,
       "commit": "2138ff8fd03e70a03e116098923de0bdab3d2748",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "94f314e313012c4890691dba715d5329ec43c924ea2a181bde41c4b572fdf555"
     },
     "memo-skill": {
       "repo": null,
@@ -135,7 +144,8 @@
       "commit": null,
       "pinned_at": null,
       "_status": "no-upstream-found",
-      "_note": "Exhaustive gh code search 2026-05-18 found no canonical upstream. Possibly toolkit-original or upstream deleted. README placeholder says 'your-user/memo.git'."
+      "_note": "Exhaustive gh code search 2026-05-18 found no canonical upstream. Possibly toolkit-original or upstream deleted. README placeholder says 'your-user/memo.git'.",
+      "sha256": "c397fc27acb241a0a41943e13b864ca990d77cc970d15dfff8c4d7abdea581fc"
     },
     "next-best-practices": {
       "repo": "https://github.com/Jackiexiao/jackie-skills-cn-top50",
@@ -143,7 +153,8 @@
       "tag": null,
       "commit": "9b494627f8b1a77bfe2540a971396ca48183de80",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "4fcbafa4055241551917ad92f45b758ee3feccb47bc8677ca11d5370f8efddc0"
     },
     "notebooklm": {
       "repo": "https://github.com/PleasePrompto/notebooklm-skill",
@@ -151,7 +162,8 @@
       "tag": null,
       "commit": "eea5cb28ba79ab8b078a1eaa44ce9ec44f75dbf8",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "7f8c056fe1af124cb881d92b246496f521e1c7901d8b4a6bb804185727bd9c19"
     },
     "pdf": {
       "repo": "https://github.com/anthropics/skills",
@@ -159,14 +171,16 @@
       "tag": null,
       "commit": "1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "840f21cf5c10cf8d854517028640840d267f0731fd38d901a3bd66ebef64024e"
     },
     "resend": {
       "repo": "https://github.com/resend/resend-skills",
       "tag": null,
       "commit": "78469829399beec62b8f815f109ebfcfa3b0680b",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "213e2e0f6544fd395b18c2f7f3b17f99c324745b1dd4a5435455e0b006180b41"
     },
     "seo-audit": {
       "repo": "https://github.com/mysticaltech/marketingskills",
@@ -174,7 +188,8 @@
       "tag": null,
       "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "9358974cf6c35647c5dc732fcf3c70f37d701d6bf7f1a5ae5affef17915a956c"
     },
     "shadcn": {
       "repo": "https://github.com/shadcn-ui/ui",
@@ -182,7 +197,8 @@
       "tag": null,
       "commit": "ea6086cbcc33b359bb876651374e26f643ea85b1",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "4b80e50c1c367cd968eff79cacd5d17a57d8893ef9a7b25e2c7f69be64dc640a"
     },
     "stripe-best-practices": {
       "repo": "https://github.com/stripe/ai",
@@ -190,7 +206,8 @@
       "tag": null,
       "commit": "ec93d4c4b9ffdbc994ac45ce692d4ec1cdb755f0",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "41aa0c89cf083c60e6471efff20c41343e8a4ef2b457e235aec2535901292fe1"
     },
     "tailwind-design-system": {
       "repo": "https://github.com/wshobson/agents",
@@ -198,7 +215,8 @@
       "tag": null,
       "commit": "db33dbc434c68a0c0abf81bfeb7c737c5f930542",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "bd3cafd0504f8057b3a668000761eede672f681f625c1366a2d1f4a4141ff232"
     },
     "typescript-advanced-types": {
       "repo": "https://github.com/wshobson/agents",
@@ -206,7 +224,8 @@
       "tag": null,
       "commit": "47a5dbc3f9c2661c6afb13638f80d4a4d4449040",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "36ae6ef7eaaa34c216ded92b5b8141a1369d59ad99dc12e49e7498e1c02493dc"
     },
     "ui-ux-pro-max": {
       "repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
@@ -214,7 +233,8 @@
       "tag": null,
       "commit": "87c6c3e0e1a8891d79795d3e3061f10b650de51b",
       "pinned_at": "2026-05-18",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "f92aa5fe091397074ad2d77563eab148a641bbab9afd3bd0e0da88684ce0e4c1"
     },
     "vercel-composition-patterns": {
       "repo": "https://github.com/vercel-labs/agent-skills",
@@ -222,7 +242,8 @@
       "tag": null,
       "commit": "a5343bd997c4cc4d8bf2ca61021bdc74b4d6c9d5",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "55f43d6f81f9f0ffa69852751106a9a4757b5fc0a7fef392d2ba1e010100b4a9"
     },
     "vercel-react-best-practices": {
       "repo": "https://github.com/vercel-labs/agent-skills",
@@ -230,7 +251,8 @@
       "tag": null,
       "commit": "dc8367e6f91c022d83361f03c3313fa05e848ee5",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "58e1f8a6a3f11113d2e55e485e4ad7892a0c9c69fd80b21386de311c131a8211"
     },
     "webapp-testing": {
       "repo": "https://github.com/anthropics/skills",
@@ -238,7 +260,8 @@
       "tag": null,
       "commit": "b9e19e6f44773509fbdd7001d77ff41a49a486c1",
       "pinned_at": "2026-05-17",
-      "_status": "active"
+      "_status": "active",
+      "sha256": "04413be02de7478156f6728b5cd70b0edc95d57358ffb06a833416bca507bf9c"
     }
   },
   "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers \u2014 see .planning/v6.0-REQUIREMENTS.md.",
@@ -498,6 +521,9 @@
       },
       {
         "path": "scripts/lib/project-secrets.sh"
+      },
+      {
+        "path": "scripts/lib/skill-checksum.sh"
       },
       {
         "path": "scripts/lib/skills.sh"

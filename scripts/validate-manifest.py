@@ -284,6 +284,108 @@ def main():
                     )
                     errors += 1
 
+    # Check 9: skills_pins sha256 mirror integrity (v6.46.0+).
+    # Every pin with a declared sha256 must match the actual mirror content
+    # computed via scripts/lib/skill-checksum.sh. This closes the loop that
+    # previously existed only at probe-time (upstream HEAD vs pinned commit)
+    # without ever verifying that the local mirror matched its pin.
+    skills_pins = manifest.get("skills_pins", {})
+    if skills_pins:
+        import subprocess
+        mirror_root = os.path.join(REPO_ROOT, "templates", "skills-marketplace")
+        checksum_script = os.path.join(REPO_ROOT, "scripts", "lib", "skill-checksum.sh")
+        for name, entry in skills_pins.items():
+            declared = entry.get("sha256")
+            if not declared:
+                continue  # sha256 is optional — pre-v6.46.0 entries grandfathered
+            mdir = os.path.join(mirror_root, name)
+            if not os.path.isdir(mdir):
+                fail(
+                    "skills_pins[" + name + "].sha256 declared but mirror dir missing: "
+                    + os.path.relpath(mdir, REPO_ROOT)
+                )
+                errors += 1
+                continue
+            try:
+                actual = subprocess.check_output(
+                    ["bash", checksum_script, mdir],
+                    text=True,
+                    stderr=subprocess.DEVNULL,
+                ).strip()
+            except subprocess.CalledProcessError:
+                fail("skills_pins[" + name + "].sha256: checksum script failed for " + mdir)
+                errors += 1
+                continue
+            if actual != declared:
+                fail(
+                    "skills_pins[" + name + "].sha256 drift: manifest="
+                    + declared[:16] + "… mirror=" + actual[:16] + "… — "
+                    + "regenerate via scripts/lib/skill-checksum.sh or sync mirror"
+                )
+                errors += 1
+
+    # Check 10: templates/skills-catalog.json is in sync with manifest.
+    # The catalog is derived from manifest.json:skills_pins via
+    # scripts/generate-skills-catalog.sh. Drift between catalog and manifest
+    # means the catalog was hand-edited or the manifest changed without
+    # regenerating — either way, fail CI.
+    catalog_path = os.path.join(REPO_ROOT, "templates", "skills-catalog.json")
+    if os.path.isfile(catalog_path):
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as fh:
+                catalog = json.load(fh)
+        except json.JSONDecodeError as exc:
+            fail("templates/skills-catalog.json is not valid JSON: " + str(exc))
+            errors += 1
+            catalog = None
+        if catalog is not None:
+            cat_count = catalog.get("skills_count", -1)
+            cat_skills = {s["name"]: s for s in catalog.get("skills", []) if "name" in s}
+            sp = manifest.get("skills_pins", {})
+            expected_active = {
+                name: p for name, p in sp.items()
+                if p.get("_status") == "active" and p.get("repo") and p.get("commit")
+            }
+            if cat_count != len(cat_skills):
+                fail(
+                    "skills-catalog.json: skills_count="
+                    + str(cat_count) + " ≠ len(skills)=" + str(len(cat_skills))
+                )
+                errors += 1
+            extra_in_catalog = set(cat_skills) - set(expected_active)
+            missing_from_catalog = set(expected_active) - set(cat_skills)
+            if extra_in_catalog:
+                fail(
+                    "skills-catalog.json contains entries not in manifest.skills_pins (active): "
+                    + ", ".join(sorted(extra_in_catalog))
+                )
+                errors += 1
+            if missing_from_catalog:
+                fail(
+                    "skills-catalog.json missing entries from manifest.skills_pins (active): "
+                    + ", ".join(sorted(missing_from_catalog))
+                    + " — run scripts/generate-skills-catalog.sh"
+                )
+                errors += 1
+            # Field-by-field: commit + path + sha256 must match.
+            for name in set(cat_skills) & set(expected_active):
+                c = cat_skills[name]
+                p = expected_active[name]
+                for field in ("commit", "path", "sha256"):
+                    pv = p.get(field)
+                    cv = c.get(field)
+                    # Manifest may have null/missing for optional fields;
+                    # catalog omits them — treat both as absent.
+                    if not pv and not cv:
+                        continue
+                    if pv != cv:
+                        fail(
+                            "skills-catalog.json[" + name + "]." + field + " drift: "
+                            "manifest=" + repr(pv) + " catalog=" + repr(cv)
+                            + " — run scripts/generate-skills-catalog.sh"
+                        )
+                        errors += 1
+
     # Check 8: skills_pins note↔data consistency.
     # The skills_pins_note string embeds counts like "22 active pins + 1
     # no-upstream-found". Stale notes were a recurring issue (v6.41.0 → v6.44.0

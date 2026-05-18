@@ -133,10 +133,36 @@ claude-guides/
 
 ## Prompt Optimization Pipeline (MANDATORY)
 
-When optimizing or rewriting any prompt file in this project (base
-audit prompts, agent prompts, persona overlays, slash-command prompt
-bodies — any `.md` file whose primary purpose is to instruct an LLM),
-follow this two-stage pipeline. **Never skip stage 1.**
+When optimizing or rewriting any prompt file in this project, follow
+the rules below. **Pick the right class first — do not blanket-apply
+the two-stage pipeline to every prompt file.** Logic audit 2026-05-18
+established that Stage-2 manual restoration cancels Stage-1 lift on
+splice-adjacent files, while SOT components must never go through
+`pe` at all.
+
+### File classification (decide BEFORE editing)
+
+| Class | Examples | Run `pe`? | Why |
+|-------|----------|-----------|-----|
+| **A — Mandatory `pe`** | Free-form prose prompts with no splice sentinels: `commands/*.md` bodies (non-audit), `templates/<stack>/agents/*.md` (non-audit role-defs), `templates/council-prompts/*.md` validator prompts, `components/*.md` *guides* (not SOTs). | Yes, full two-stage. | Lift from `pe` (cross-section redundancy, phrasing tightening) outweighs Stage-2 restoration cost. |
+| **B — Optional `pe`** | Splice-adjacent files: `templates/base/prompts/{CODE_REVIEW,SECURITY_AUDIT,PERFORMANCE_AUDIT,POSTGRES_PERFORMANCE_AUDIT,MYSQL_PERFORMANCE_AUDIT,DESIGN_REVIEW}.md` — files that host `<!-- v42-splice: ... -->` regions. | Only if non-splice prose constitutes ≥50% of the file. Otherwise hand-edit. | Stage-2 restoration (6 sentinels + 2 em-dash slots + parser tokens + frontmatter) cancels ~30-50% of Stage-1 lift. |
+| **C — Forbidden `pe`** | **SOT components**: `components/audit-{fp-control-gates,fp-recheck,output-format,severity-anchor,uncertainty-discipline}.md`. **Code, scripts, configs, READMEs, CHANGELOGs.** | Never. | SOTs propagate via `scripts/propagate-audit-pipeline-v42.sh`; running `pe` on an SOT silently rewrites every spliced copy on next propagation. Code/docs are outside the prompt optimizer's domain. |
+
+**Decision tree:**
+
+```text
+Is the file under templates/base/prompts/ and named CODE_REVIEW.md,
+SECURITY_AUDIT.md, *_PERFORMANCE_AUDIT.md, or DESIGN_REVIEW.md?
+├── Yes → Class B. Run `pe` only if ≥50% of the file is non-splice prose.
+└── No
+    ├── Is it components/audit-{fp-*,output-format,severity-anchor,uncertainty-discipline}.md?
+    │   └── Yes → Class C. Edit by hand. Run propagate-audit-pipeline-v42.sh afterwards.
+    └── No
+        ├── Is it a *prompt* (instructs an LLM) under commands/, components/,
+        │   templates/<stack>/agents/, or templates/council-prompts/?
+        │   └── Yes → Class A. Full two-stage pipeline.
+        └── No → Class C. `pe` is for prompts, not code/docs/scripts.
+```
 
 ### Stage 1 — Run the Prompt Generator (`pe`)
 
@@ -204,25 +230,22 @@ bash scripts/tests/test-template-propagation.sh  # if audit prompt
 make check
 ```
 
-### What NEVER goes through `pe`
+### What NEVER goes through `pe` (Class C)
 
-- **Spliced section bodies** — content between `<!-- v42-splice: ... -->`
-  sentinels is regenerated from `components/audit-*.md` SOTs. Edit
-  the SOT itself, then re-run `scripts/propagate-audit-pipeline-v42.sh`
-  to fan out. Never edit a spliced body in place — the next splice
-  run will overwrite the edit.
-- **Files outside `templates/`, `commands/`, `components/`,
-  `templates/council-prompts/`** — `pe` is for prompts, not for code,
-  scripts, or documentation.
+- **SOT components** — `components/audit-{fp-control-gates,fp-recheck,output-format,severity-anchor,uncertainty-discipline}.md`. Edit the SOT directly, then run `scripts/propagate-audit-pipeline-v42.sh` to fan out. Running `pe` on an SOT rewrites every spliced copy on next propagation.
+- **Spliced section bodies** — content between `<!-- v42-splice: ... -->` sentinels in `templates/base/prompts/*.md`. Same reason as SOTs — splice owns this region.
+- **Code, scripts, configs, READMEs, CHANGELOGs** — outside the prompt optimizer's domain.
 
 ### Why this rule exists
 
 `pe` surfaces phrasing tightenings and redundancy across sections
-that aren't easy to see reading the file linearly. Skipping `pe` and
-hand-editing loses that lift. Skipping the manual merge ships a draft
-that violates project invariants (broken sentinels, hyphens replacing
-em-dashes, paraphrased parser tokens) and the splice script /
-Council parser will silently fail.
+that aren't easy to see reading the file linearly. For Class A this
+lift is real and worth the Stage-2 overhead. For Class B the lift
+shrinks toward zero as the splice-region share grows — gate `pe` on
+the ≥50% non-splice prose threshold. For Class C the splice script
+or downstream propagation is the authoritative editor; `pe` either
+silently rewrites SOT bytes that propagate to every fan-out target,
+or operates on artifacts outside its scope.
 
 ---
 

@@ -499,15 +499,39 @@ upgrade_claude_memo() {
 probe_skill_pin() {
     local name="$1"
     local manifest="$SCRIPT_DIR/../manifest.json"
-    local repo path pinned latest=""
+    local repo path pinned latest="" mirror_state="—"
     if [[ ! -f "$manifest" ]] || ! command -v jq &>/dev/null; then
-        printf '%s\t%s\n' "—" "—"
+        printf '%s\t%s\t%s\n' "—" "—" "—"
         return 0
     fi
     repo=$(jq -r --arg n "$name" '.skills_pins[$n].repo // ""' "$manifest" 2>/dev/null)
     path=$(jq -r --arg n "$name" '.skills_pins[$n].path // ""' "$manifest" 2>/dev/null)
     pinned=$(jq -r --arg n "$name" '.skills_pins[$n].commit // ""' "$manifest" 2>/dev/null)
-    [[ -z "$repo" || "$repo" == "null" ]] && { printf '%s\t%s\n' "—" "—"; return 0; }
+    # AUDIT-P5 (logic audit 2026-05-18): mirror-vs-manifest sha256 column.
+    # `_status: active` with declared sha256 → run the local checksum tool
+    # and compare. Drift here is a local-integrity bug (mirror modified
+    # without pin refresh); drift between latest-upstream-HEAD and pinned
+    # commit is a separate axis surfaced in the `pinned`/`latest` columns.
+    local declared_sha actual_sha mdir checksum_sh
+    declared_sha=$(jq -r --arg n "$name" '.skills_pins[$n].sha256 // ""' "$manifest" 2>/dev/null)
+    mdir="$SCRIPT_DIR/../templates/skills-marketplace/$name"
+    checksum_sh="$SCRIPT_DIR/lib/skill-checksum.sh"
+    if [[ -n "$declared_sha" && "$declared_sha" != "null" && -d "$mdir" && -x "$checksum_sh" ]]; then
+        actual_sha=$(bash "$checksum_sh" "$mdir" 2>/dev/null || echo "")
+        if [[ -z "$actual_sha" ]]; then
+            mirror_state="?"
+        elif [[ "$actual_sha" == "$declared_sha" ]]; then
+            mirror_state="ok"
+        else
+            mirror_state="drift"
+        fi
+    elif [[ -z "$declared_sha" || "$declared_sha" == "null" ]]; then
+        mirror_state="—"
+    fi
+    if [[ -z "$repo" || "$repo" == "null" ]]; then
+        printf '%s\t%s\t%s\n' "—" "—" "$mirror_state"
+        return 0
+    fi
     if [[ -n "$pinned" && "$pinned" != "null" ]]; then
         pinned="${pinned:0:12}"
     else
@@ -528,7 +552,7 @@ probe_skill_pin() {
         latest=$(git ls-remote --quiet "$repo" HEAD 2>/dev/null \
             | awk 'NR==1{print substr($1,1,12)}')
     fi
-    printf '%s\t%s\n' "${pinned}" "${latest:-—}"
+    printf '%s\t%s\t%s\n' "${pinned}" "${latest:-—}" "$mirror_state"
 }
 
 probe_skill_huashu_design()              { probe_skill_pin "huashu-design"; }
@@ -736,6 +760,9 @@ for ((i=0; i<${#DEP_NAME[@]}; i++)); do
     out=$("${DEP_PROBE[$i]}" 2>/dev/null || printf '?\t?\n')
     inst=$(printf '%s' "$out" | cut -f1)
     lat=$(printf '%s'  "$out" | cut -f2)
+    # AUDIT-P5: optional 3rd column from probe_skill_pin = mirror_state
+    # ∈ {ok, drift, ?, —}. Skill probes set it; other probes leave it blank.
+    mirror_state=$(printf '%s' "$out" | cut -f3)
 
     # Hide rows the user has not installed locally OR rolling-update plugins
     # with no version metadata (— or unknown).
@@ -768,12 +795,20 @@ for ((i=0; i<${#DEP_NAME[@]}; i++)); do
         fi
     fi
 
+    # AUDIT-P5: append mirror-drift annotation to DEP_NOTES when applicable.
+    note="${DEP_NOTES[$i]}"
+    if [[ "$mirror_state" == "drift" ]]; then
+        note="${note:+$note · }${YELLOW}mirror drift${NC}"
+    elif [[ "$mirror_state" == "?" ]]; then
+        note="${note:+$note · }mirror sha unverifiable"
+    fi
+
     ROW_NAME+=("${DEP_NAME[$i]}")
     ROW_LAYER+=("${DEP_LAYER[$i]}")
     ROW_INSTALLED+=("$inst")
     ROW_LATEST+=("$lat")
     ROW_STATUS+=("$status")
-    ROW_NOTE+=("${DEP_NOTES[$i]}")
+    ROW_NOTE+=("$note")
     ROW_UPGRADE_FN+=("${DEP_UPGRADE[$i]}")
 done
 
