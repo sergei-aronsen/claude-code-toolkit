@@ -32,10 +32,11 @@ command -v jq >/dev/null 2>&1 || { echo "jq required" >&2; exit 1; }
 # Derive a flat catalog. Skip no-upstream-found entries — they have no
 # upstream to install from, so a catalog consumer cannot use them.
 python3 - "$MANIFEST" "$CATALOG" <<'PY'
-import json, sys, datetime
+import json, os, sys, datetime, tempfile
 
 manifest_path, catalog_path = sys.argv[1], sys.argv[2]
-m = json.load(open(manifest_path))
+with open(manifest_path, "r") as fh:
+    m = json.load(fh)
 pins = m.get("skills_pins", {})
 
 entries = []
@@ -88,9 +89,20 @@ catalog = {
     ),
 }
 
-with open(catalog_path, "w") as f:
-    json.dump(catalog, f, indent=2)
-    f.write("\n")
+# Atomic write — tmp file on same filesystem then os.replace().
+out_dir = os.path.dirname(os.path.abspath(catalog_path)) or "."
+fd, tmp = tempfile.mkstemp(dir=out_dir, prefix="skills-catalog.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w") as f:
+        json.dump(catalog, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, catalog_path)
+except Exception:
+    try:
+        os.unlink(tmp)
+    except OSError:
+        pass
+    raise
 
 print(f"wrote {catalog_path} ({len(entries)} skills)")
 PY

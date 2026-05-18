@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.0] - 2026-05-18
+
+Hardening release for the v6.46.0 closed-loop sync surface. Logic audit
+on v6.46.0 produced 11 findings; this release applies the 9 actionable
+ones (1 skipped for BSD-compat, 1 was a false positive). Net effect:
+sync becomes safe on hostile filenames, atomic on writes, and
+distinguishes whitespace-only drift from real upstream change.
+
+### Added
+
+- **`scripts/lib/skill-checksum.sh --normalize`.** Optional flag
+  applies markdownlint-equivalent normalization (CRLF→LF, strip
+  trailing whitespace per line, collapse consecutive blank lines,
+  strip leading/trailing blank lines) before hashing. Only `*.md`
+  files are normalized; binaries stay byte-exact. Used by
+  `sync-skills-mirror.sh` to detect "SOFT" drift where the mirror
+  differs from upstream only by ingestion-time markdownlint --fix.
+
+- **3-way classification in `sync-skills-mirror.sh --check`.** Output
+  now distinguishes:
+  - `CLEAN` — mirror sha256 ≡ upstream sha256 (byte-equal).
+  - `SOFT` — raw bytes differ but normalized hashes match
+    (whitespace-only diff, semantically equivalent).
+  - `DRIFT` — semantic difference between mirror and upstream.
+
+  Summary line reports all three counts. `--strict` exits 3 only on
+  `DRIFT`; `SOFT` does not fail CI.
+
+- **Test 58 expanded to 11 assertions.** Two new assertions cover
+  `--normalize` behaviour: cosmetic whitespace differences collapse,
+  real content differences are preserved.
+
+### Changed
+
+- **`scripts/lib/skill-checksum.sh` tab/newline-safe walk.** Find
+  uses `-print0`, sort uses `-z`, read uses `-d ''`. Filenames
+  containing TAB or LF no longer corrupt the aggregation row;
+  defensive in-path encoding (`\t`→`%09`, `\n`→`%0a`) keeps each
+  row a single logical line even on hostile names.
+
+- **`scripts/sync-skills-mirror.sh` hardening.**
+  - Path guard tightened from substring (`$DEST/skills-marketplace`)
+    to regex (`/skills-marketplace(/|$)`) so a destination named
+    `skills-marketplace-archive` no longer satisfies the guard
+    accidentally.
+  - Post-checkout `git rev-parse HEAD` verifies the working tree
+    actually matches the pinned commit. Catches the rare case where
+    `git checkout` succeeds but resolves to a different SHA
+    (e.g., commit was force-replaced upstream and shallow fetch
+    landed an updated ref).
+  - Empty `skills_pins` in `--check`/`--apply` now exits 1 (was 0).
+    Zero pins almost always indicates a corrupted manifest, not a
+    valid empty state.
+  - Mirror swap is atomic: new content writes to `.tmp.$$` staging
+    dir alongside the live mirror, then `mv` replaces in one
+    operation. A partial sync no longer leaves the mirror in a
+    half-overwritten state.
+  - Manifest write is atomic: `tempfile.mkstemp` on same filesystem
+    then `os.replace`. Interrupting `--apply` mid-write no longer
+    corrupts `manifest.json`.
+
+- **`scripts/generate-skills-catalog.sh` atomic write.**
+  `tempfile.mkstemp` then `os.replace` instead of direct write.
+
+- **`scripts/validate-manifest.py` error visibility.** Check 9
+  captures stderr from `skill-checksum.sh` (was `DEVNULL`) so
+  failures during validation surface the underlying error. Check 10
+  now emits an explicit `catalog entry missing name field` error
+  instead of dropping silently when a name key is absent.
+
+### Context
+
+`v6.46.0` shipped the closed-loop sync surface but the audit pass
+afterward surfaced corner cases:
+
+- Hostile filenames (TAB / LF in path) could corrupt the checksum.
+- A partial sync could leave the mirror half-overwritten.
+- `--strict` would trip on benign markdownlint-style cosmetic diff
+  that's a known artifact of mirror ingestion.
+
+`v6.47.0` closes those gaps. The closed-loop architecture itself is
+unchanged: mirror remains primary, manifest carries sha256 integrity,
+catalog stays a secondary declarative view.
+
+### Files
+
+```text
+M scripts/lib/skill-checksum.sh           # --normalize flag, -print0 walk
+M scripts/sync-skills-mirror.sh           # 3-way classification, atomic swap
+M scripts/generate-skills-catalog.sh      # atomic write
+M scripts/validate-manifest.py            # better error visibility
+M scripts/tests/test-skills-mirror-checksum.sh  # +2 normalize assertions
+M manifest.json                            # version 6.47.0, note appendix
+M 9 installer scripts (TK_TOOLKIT_REF bump 6.46.0 → 6.47.0)
+M CHANGELOG.md
+```
+
 ## [6.46.0] - 2026-05-18
 
 Deferred-backlog batch from logic audit 2026-05-18. Addresses the four
