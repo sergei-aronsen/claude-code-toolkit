@@ -1,6 +1,6 @@
 # Core dependencies
 sentence-transformers>=5.4.1    # multilingual-e5-large embeddings
-numpy>=2.4.4                   # embedding storage and similarity search
+numpy>=2.4.5                   # embedding storage and similarity search
 PyYAML>=6.0.3                     # frontmatter parsing (safe fallback without it)
 
 # MCP Server (optional — only needed if using memo_mcp_server.py)
