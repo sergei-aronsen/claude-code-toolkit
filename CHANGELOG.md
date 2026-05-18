@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.4] - 2026-05-18
+
+Doc-hygiene round 3 — closes the final user-visible Phase-NN refs
+outside `commands/` + `components/` + `templates/`.
+
+### Changed
+
+- **`scripts/install.sh`** (--help text) — `--skills      Install
+  curated skills via TUI catalog (Phase 26)` → drops the parenthetical
+  milestone tag. Visible to every user who runs
+  `bash scripts/install.sh --help`.
+
+- **`docs/INSTALL.md`** — "since v4.1 — Phase 23 closes the asymmetry
+  gap" → "since v4.1." User-facing install doc.
+
+- **`docs/COUNCIL.md`** — Phase 24 Sub-Phase 11 preamble rewritten in
+  workflow-neutral language; dropped speculative "SP11 changelog
+  entry once available" + "after the v4.8 release" (long-shipped).
+
+### Why
+
+After v6.47.3 closed the loop on commands/components/templates,
+a wider grep surfaced three more user-visible Phase-NN sites:
+one in the --help output, two in user-facing docs. Code-comment
+phase markers in install.sh / uninstall.sh / update-claude.sh /
+init-local.sh / brain.py remain — those are internal commit-history
+breadcrumbs, not user contracts.
+
+The propagation-audit pattern continues to apply: each "final
+sweep" reveals one more layer. v6.47.4 is (probably) the actual
+final layer.
+
 ## [6.47.3] - 2026-05-18
 
 Doc-hygiene round 2 — finishes the Phase-13/14/15/24 scrub started in

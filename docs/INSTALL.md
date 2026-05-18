@@ -107,7 +107,7 @@ Pass `--no-banner` (or set `NO_BANNER=1`) to suppress the closing
 `To remove: bash <(curl …)` line that both installers print on success. Default behaviour
 (flag absent, env unset) is byte-identical to v4.3. Use in CI pipelines or scripted
 installs where the banner is redundant noise. Symmetric with `update-claude.sh`, which
-has honoured this flag since v4.1 — Phase 23 closes the asymmetry gap.
+has honoured this flag since v4.1.
 
 ### `--keep-state` for `uninstall.sh` (v4.4+)
 

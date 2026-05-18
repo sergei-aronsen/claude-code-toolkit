@@ -40,7 +40,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Config
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
 # remains the highest-priority override (full URL with ref baked in).
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.3}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.4}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -144,7 +144,7 @@ Flags:
   --mcp-only    Install only MCP servers; skip companion CLI binaries
   --cli-only    Install only companion CLI binaries; skip MCP server registration
                   (--mcp-only and --cli-only are mutually exclusive)
-  --skills      Install curated skills via TUI catalog (Phase 26)
+  --skills      Install curated skills via TUI catalog
   --skills-only Install skills to Desktop tree (~/.claude/plugins/tk-skills/);
                 auto-activates when 'claude' CLI is absent on PATH (DESK-03)
   --mcp-scope=SCOPE  Scope for 'claude mcp add' (user|local|project; default: user).

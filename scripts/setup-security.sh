@@ -46,7 +46,7 @@ done
 : "${YES}"  # silence shellcheck SC2034 — YES consumed by future read blocks
 
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`).
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.3}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.47.4}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
