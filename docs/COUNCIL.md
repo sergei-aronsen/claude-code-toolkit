@@ -265,11 +265,9 @@ scenarios where `usage.jsonl` is sensitive).
 
 ## MCP integration
 
-Phase 24 Sub-Phase 11 ships `scripts/council/mcp-server.py` — a
-stdio JSON-RPC MCP server that exposes Council to Claude Desktop.
-See the SP11 changelog entry once available, or run
-`scripts/setup-council.sh` after the v4.8 release for the auto-config
-into `claude_desktop_config.json`.
+`scripts/council/mcp-server.py` is a stdio JSON-RPC MCP server that
+exposes Council to Claude Desktop. Run `scripts/setup-council.sh` to
+auto-configure `claude_desktop_config.json`.
 
 ---
 
