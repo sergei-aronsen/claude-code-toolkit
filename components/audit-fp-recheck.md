@@ -1,6 +1,6 @@
 # Audit FP Recheck — 6-Step Procedure
 
-Single source of truth for the false-positive recheck every audit prompt MUST run before reporting a finding. Splice this body verbatim into the SELF-CHECK section of each `templates/*/prompts/*.md` file (Phase 16 fan-out).
+Single source of truth for the false-positive recheck every audit prompt MUST run before reporting a finding. Splice this body verbatim into the SELF-CHECK section of each `templates/*/prompts/*.md` file via `scripts/propagate-audit-pipeline-v42.sh`.
 
 ---
 
@@ -34,7 +34,7 @@ Findings dropped at any step are listed in the report's `## Skipped (FP recheck)
 
 ## When a Finding Survives All Six Steps
 
-Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from in Phase 15.
+Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from during `/council audit-review`.
 
 ---
 

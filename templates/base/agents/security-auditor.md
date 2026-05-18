@@ -22,7 +22,7 @@ security, economic abuse, webhook/async, supply chain), framework-
 specific issues, and evidence-backed findings.
 
 This agent is the **fast, Task-invokable triage** surface. For full
-pipeline audits with Council Phase 15 peer review, invoke
+pipeline audits with mandatory Council peer review, invoke
 `/audit security` — that loads `templates/<framework>/prompts/SECURITY_AUDIT.md`
 which is the canonical SOT for the modern security model (Attacker
 Model, Severity Ceiling Table, Data Classification multiplier, FP-control

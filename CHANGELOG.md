@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.3] - 2026-05-18
+
+Doc-hygiene round 2 — finishes the Phase-13/14/15/24 scrub started in
+v6.47.2. v6.47.2 cleaned `commands/`; v6.47.3 closes the loop on SOT
+components + spliced audit prompts + the propagate script + base
+agent.
+
+### Changed
+
+- **`components/audit-output-format.md`** (SOT) — 8 Phase 14/15/16
+  references replaced with workflow-neutral phrasing
+  (`/council audit-review`, "the Council pass", "Council parser").
+  Includes the canonical heading rename "Council Verdict Slot
+  (handoff to Phase 15)" → "Council Verdict Slot (Council Handoff)".
+
+- **`components/audit-fp-recheck.md`** (SOT) — 2 Phase 15/16 refs
+  replaced. Preamble now cites `scripts/propagate-audit-pipeline-v42.sh`
+  directly instead of "Phase 16 fan-out".
+
+- **`scripts/propagate-audit-pipeline-v42.sh`** — emitted OUTPUT
+  FORMAT heading dropped "(Structured Report Schema — Phase 14)"
+  → "(Structured Report Schema)". One internal Phase 15 code
+  comment rephrased to "the Council pass in /audit".
+
+- **`templates/base/prompts/*.md`** — re-spliced via
+  `propagate-audit-pipeline-v42.sh --force`. All 6 audit prompts
+  (CODE_REVIEW, SECURITY_AUDIT, DESIGN_REVIEW, PERFORMANCE_AUDIT,
+  MYSQL_PERFORMANCE_AUDIT, POSTGRES_PERFORMANCE_AUDIT) updated.
+
+- **`templates/base/prompts/CODE_REVIEW.md`** — outside-splice Phase
+  15 ref ("Phase 15's parser anchors on `## Summary`") replaced
+  with "The Council parser anchors on …".
+
+- **`templates/base/agents/security-auditor.md`** — "Council Phase
+  15 peer review" → "mandatory Council peer review".
+
+### Why
+
+`commands/` audit in v6.47.2 found 14 vestigial phase-numbering refs.
+Cross-repo sweep afterwards revealed the same pattern propagated to
+SOT components (8 + 2 hits) which then fanned out to all 6 spliced
+audit prompts. The propagate script itself also emitted "Phase 14"
+in the OUTPUT FORMAT heading. v6.47.3 finishes the propagation audit:
+zero `Phase 1[3-9]` or `Phase 2[0-9]` refs remain in user-facing
+docs (commands/, components/, templates/, docs/).
+
+Code comments in `scripts/council/brain.py` still carry historical
+Phase 24 / Phase 15 markers as commit-history breadcrumbs — those
+are internal annotations, not user-facing contracts, and are left
+alone.
+
+### Lesson re-applied
+
+After fixing a pattern at one site, grep for siblings before
+declaring the issue closed. v6.47.2 fixed `commands/`; sibling sweep
+revealed propagation into `components/` + `templates/` + the
+splice script. Same lesson as 2026-04-30 propagation audit.
+
 ## [6.47.2] - 2026-05-18
 
 Documentation hygiene. Removes vestigial development-phase numbering
