@@ -172,6 +172,7 @@ If your CLAUDE.md files are already large:
 
 ## See Also
 
-- [Structured Workflow](./structured-workflow.md) — 3-phase approach
-- [Skills System](./skills-system.md) — skill accumulation and activation
-- [Git Worktrees Guide](./git-worktrees-guide.md) — parallel sessions
+- [memory-persistence.md](./memory-persistence.md) — `.claude/rules/` (auto-loaded) + `.claude/docs/` (on-demand)
+- [security-hardening.md](./security-hardening.md) — Forbidden Patterns + Doubt Protocol for project CLAUDE.md
+- [surgical-changes.md](./surgical-changes.md) — workflow discipline that templates carry forward
+- Superpowers plugin — provides `using-git-worktrees` and `test-driven-development` skills (replaces the older toolkit-local equivalents)

@@ -18,7 +18,11 @@ output formatting.
 | HIGH | [orange] | Serious issue, requires auth or complex exploitation | Fix before merge/deploy |
 | MEDIUM | [yellow] | Potential issue, low risk | Fix in next sprint |
 | LOW | [blue] | Best practice, defense in depth | Backlog |
-| INFO | [white] | Information, no action required | — |
+
+INFO is NOT a reportable finding severity. Informational
+observations belong in the audit report's `## Summary` prose or in
+follow-up audits — never in `## Findings`. See
+`components/audit-output-format.md` for the canonical rule.
 
 ## When to Use
 
@@ -53,9 +57,3 @@ output formatting.
 - Outdated dependencies (no CVE)
 - Code style issues
 - Documentation gaps
-
-### INFO
-
-- Informational findings
-- Design decisions
-- Recommendations for future

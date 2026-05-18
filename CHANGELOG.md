@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.5] - 2026-05-18
+
+`components/` audit fixes — 2 real findings from caveman-investigator
+pass on 44 component files.
+
+### Changed
+
+- **`components/README.md`** — rewritten to match the on-disk reality.
+  The old index referenced 8 files that don't exist
+  (`structured-workflow.md`, `plan-mode-instructions.md`,
+  `bootstrap-workflow.md`, `spec-driven-development.md`,
+  `skills-system.md`, `hooks-auto-activation.md`,
+  `git-worktrees-guide.md`, `skills/debugging/SKILL.md`) and omitted
+  ~20 files that DO exist (the audit SOTs, deployment-strategies,
+  cost-discipline, comet-research, factcheck-planning-hooks,
+  context-management, large-codebase-search, production-observability,
+  production-safety, security-hardening, supreme-council,
+  vendor-pinning, vendor-risk, external-tools-recommended,
+  open-design, product-thinking-flow, github-actions-guide,
+  feature-flag-lifecycle, pre-commit-hooks, rate-limit-statusline,
+  skill-frontmatter-discipline, domain-expert-simulation). New index
+  organized by purpose: Workflow / Knowledge / Testing / Audit SOTs
+  / DevOps / Configuration / Prompt Engineering / Council / Frontend
+  / Vendor. All 38 xrefs verified to resolve on disk.
+
+- **`components/severity-levels.md`** — INFO row removed from the
+  Level Table and INFO subsection removed from "When to Use".
+  Reconciles internal contradiction: the file header already said
+  "this card just lists the four reportable levels for output
+  formatting" (CRITICAL/HIGH/MEDIUM/LOW); the body listed five.
+  `audit-output-format.md` is authoritative on the four-level rule;
+  this fix aligns the reference card. INFO is now mentioned only as
+  "NOT a reportable severity, see audit-output-format.md".
+
+- **`components/claude-md-guide.md`** — "See Also" section relinked.
+  Three xrefs to nonexistent files (`structured-workflow.md`,
+  `skills-system.md`, `git-worktrees-guide.md`) replaced with live
+  xrefs (`memory-persistence.md`, `security-hardening.md`,
+  `surgical-changes.md`) plus a Superpowers plugin pointer for the
+  worktrees / TDD skills (replaces the older toolkit-local stubs).
+
+### Why
+
+Audit pass returned 12 findings; manual verify via
+`ls components/<name>` confirmed 11 (8 README + 3 claude-md-guide
+xrefs) plus 1 contradiction. README rewrite + severity-levels
+reconcile + claude-md-guide relink closes all 12.
+
+Components themselves (36 non-README files) are self-consistent.
+
 ## [6.47.4] - 2026-05-18
 
 Doc-hygiene round 3 — closes the final user-visible Phase-NN refs
