@@ -216,6 +216,22 @@ Field rules:
 
 ---
 
+## Handoff to `/prompt-engineer`
+
+For grades below 5.0 (Hobby-grade / Rewrite bands), `--fix` patches alone
+rarely close the gap. Run the project prompt optimizer to rewrite the file
+end-to-end:
+
+```bash
+pe <path> --context <context.md>
+# direct: python3 scripts/prompt-engineer/optimize_prompt.py <path> --context <context.md>
+```
+
+The two-stage pipeline is mandatory — see `CLAUDE.md` § Prompt Optimization
+Pipeline. Files near v42 splice sentinels need extra Stage-2 restoration.
+
+---
+
 ## When to Use
 
 - Onboarding a new agent: audit the prompt before deploying.

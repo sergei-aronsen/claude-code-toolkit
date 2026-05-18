@@ -284,6 +284,39 @@ def main():
                     )
                     errors += 1
 
+    # Check 8: skills_pins note↔data consistency.
+    # The skills_pins_note string embeds counts like "22 active pins + 1
+    # no-upstream-found". Stale notes were a recurring issue (v6.41.0 → v6.44.0
+    # left "14 catalog skills remain upstream-unknown" in place while data
+    # already had 22 active / 1 unknown). Enforce that any "N active" or
+    # "N no-upstream-found" claim in the note matches the live map.
+    skills_pins = manifest.get("skills_pins", {})
+    skills_note = manifest.get("skills_pins_note", "")
+    if skills_pins and skills_note:
+        import re
+        active_count = sum(1 for v in skills_pins.values() if v.get("_status") == "active")
+        unknown_count = sum(1 for v in skills_pins.values() if v.get("_status") == "no-upstream-found")
+        m_active = re.search(r"(\d+)\s+active", skills_note)
+        m_unknown = re.search(r"(\d+)\s+no-upstream-found", skills_note)
+        if m_active and int(m_active.group(1)) != active_count:
+            fail(
+                "skills_pins_note claims "
+                + m_active.group(1)
+                + " active pins but live map has "
+                + str(active_count)
+                + " — update the note in manifest.json"
+            )
+            errors += 1
+        if m_unknown and int(m_unknown.group(1)) != unknown_count:
+            fail(
+                "skills_pins_note claims "
+                + m_unknown.group(1)
+                + " no-upstream-found pins but live map has "
+                + str(unknown_count)
+                + " — update the note in manifest.json"
+            )
+            errors += 1
+
     if errors > 0:
         print(
             "manifest.json validation FAILED (" + str(errors) + " error(s))",

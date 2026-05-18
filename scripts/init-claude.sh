@@ -35,7 +35,7 @@ NC='\033[0m'
 # `raw.githubusercontent.com/.../v6.24.5/.../init-claude.sh`), leave
 # TK_TOOLKIT_REF unset and it inherits the bundled default below —
 # guaranteeing every file in the install comes from the same tag.
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.44.0}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.45.0}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -55,6 +55,31 @@ CLAUDE_DIR=".claude"
 DRY_RUN=false
 NO_BANNER=${NO_BANNER:-0}
 FRAMEWORK=""
+
+# AUDIT-P1/P4 (logic audit 2026-05-18): when invoked directly (not via
+# install.sh dispatch) and an existing .claude/.toolkit-version is detected,
+# this is almost certainly a user trying to update — redirect them to
+# update-claude.sh which preserves user-customized CLAUDE.md sections via
+# smart-merge. Re-running init-claude.sh on an existing install overwrites
+# managed sections but does NOT carry the merge logic. Skip the warning
+# under TK_DISPATCHED (install.sh sub-call) or when explicitly forced via
+# TK_FORCE_REINSTALL=1.
+if [[ -z "${TK_DISPATCHED:-}" ]] && [[ -z "${TK_FORCE_REINSTALL:-}" ]] && [[ -f ".claude/.toolkit-version" ]]; then
+    _existing_ver=$(cat .claude/.toolkit-version 2>/dev/null | head -n 1 | tr -d '[:space:]')
+    echo -e "${YELLOW}⚠ Existing toolkit installation detected: v${_existing_ver:-unknown}${NC}"
+    echo ""
+    echo "Re-running init-claude.sh will overwrite toolkit-managed files but"
+    echo "WILL NOT preserve user-customized sections of CLAUDE.md."
+    echo ""
+    echo -e "${GREEN}To update toolkit safely:${NC}"
+    echo "  bash <(curl -sSL ${REPO_URL}/scripts/update-claude.sh)"
+    echo "  # or: /update-toolkit  (inside Claude Code)"
+    echo ""
+    echo "To force a clean re-install (drops user customizations):"
+    echo "  TK_FORCE_REINSTALL=1 bash <(curl -sSL ${REPO_URL}/scripts/init-claude.sh)"
+    echo ""
+    exit 2
+fi
 
 # B5: globals so download_files() can populate them and main() can render a
 # failure-aware closing banner. Initialised here so the banner branch never

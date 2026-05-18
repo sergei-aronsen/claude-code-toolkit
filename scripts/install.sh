@@ -40,7 +40,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Config
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
 # remains the highest-priority override (full URL with ref baked in).
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.44.0}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.45.0}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -182,6 +182,29 @@ fi
 # Re-check mutex after env-var coalesce (TK_NO_BRIDGES=1 + --bridges X also exit 2).
 if [[ "$NO_BRIDGES" == "true" && -n "$BRIDGES_FORCE" ]]; then
     echo -e "${RED}Error:${NC} --no-bridges (or TK_NO_BRIDGES=1) and --bridges are mutually exclusive" >&2
+    exit 2
+fi
+
+# AUDIT-P4 (logic audit 2026-05-18): redirect to update-claude.sh when an
+# existing project install is detected. install.sh is idempotent at the file
+# level but does NOT carry the smart-merge logic that update-claude.sh uses
+# to preserve user-customized sections of CLAUDE.md. Re-running install.sh
+# expecting "update" semantics silently overwrites those sections.
+# Skip when --force, --dry-run, or TK_FORCE_REINSTALL=1.
+if [[ $FORCE -eq 0 ]] && [[ $DRY_RUN -eq 0 ]] && [[ -z "${TK_FORCE_REINSTALL:-}" ]] && [[ -f ".claude/.toolkit-version" ]]; then
+    _existing_ver=$(cat .claude/.toolkit-version 2>/dev/null | head -n 1 | tr -d '[:space:]')
+    echo -e "${YELLOW}⚠ Existing toolkit installation detected: v${_existing_ver:-unknown}${NC}"
+    echo ""
+    echo "install.sh is for FIRST-TIME installs. To update an existing"
+    echo "install while preserving your CLAUDE.md customizations, use:"
+    echo ""
+    echo -e "  ${GREEN}bash <(curl -sSL ${TK_REPO_URL}/scripts/update-claude.sh)${NC}"
+    echo "  # or: /update-toolkit  (inside Claude Code)"
+    echo ""
+    echo "To force a clean re-install (overwrites managed files):"
+    echo "  bash scripts/install.sh --force"
+    echo "  # or set TK_FORCE_REINSTALL=1"
+    echo ""
     exit 2
 fi
 
