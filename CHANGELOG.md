@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.48.0] - 2026-05-18
+
+`scripts/lib/bridges.sh` null-defense hardening for `toolkit-install.json :: bridges[]`.
+
+### Fixed
+
+- 3 inline `python3 <<PYEOF` heredocs in `_bridge_write_state_entry`,
+  `_bridge_set_user_owned`, and `_bridge_remove_state_entry` previously
+  read the bridges array via `state.get("bridges", [])`. Python's `dict.get`
+  returns the actual value when the key is present, even if that value is
+  `None` — so a corrupted state file with `"bridges": null` would crash the
+  subsequent `enumerate(bridges)` / `for e in bridges` with
+  `TypeError: 'NoneType' object is not iterable`. Switched all 3 sites to
+  `state.get("bridges") or []` so the null case collapses to an empty list.
+
+### Context
+
+Defense-in-depth, not a real-world bug under the current code paths
+(jq guards everywhere with `// []` so `null` is never written today).
+Hardens against future writers, manual edits to the state file, and
+partial-failure scenarios. Found by the `scripts/lib/` audit pass
+documented in `project_scripts_lib_audit_2026_05_18.md` (memory).
+
 ## [6.47.9] - 2026-05-18
 
 `docs/RELEASE-CHECKLIST.md` version-anchor refresh.
