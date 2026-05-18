@@ -131,9 +131,9 @@ Plain copy was chosen over a symlink for three reasons:
 - **Per-CLI customization** — a symlink would lock all CLIs to byte-identical
   content. A plain copy lets users tweak the bridge (e.g., remove
   Claude-specific notes) without breaking the original `CLAUDE.md`.
-- **Future tone overlays** — v4.8 will explore lightweight branding
-  substitution per CLI (BRIDGE-FUT-01). That layer requires a real file to
-  modify; a symlink is incompatible.
+- **Future tone overlays** — branding substitution per CLI
+  (BRIDGE-FUT-01) requires a real file to modify; a symlink is
+  incompatible. Deferred as an open design point.
 - **Transparent SHA256 drift detection** — the toolkit computes checksums of
   both the source and the bridge independently. A symlink would always report
   zero drift, hiding user edits and making the `[y/N/d]` prompt impossible.
@@ -153,15 +153,16 @@ when set, enabling safe re-run of a partial-uninstall session.
 
 ## Future Scope
 
-**BRIDGE-FUT-01 (branding substitution, deferred to v4.8):** a minimal opt-in
+**BRIDGE-FUT-01 (branding substitution, deferred):** a minimal opt-in
 whitelist replacement applied during copy — for example, `Claude Code` →
 `Gemini CLI`, `~/.claude/` → `~/.gemini/`. Disabled by default because false
 replacements are a real risk (e.g., the `claude` CLI command name should NOT
 be substituted). Revisit if users report that Gemini or Codex is confused by
 `Claude` references in the bridge file.
 
-**BRIDGE-FUT-03 / BRIDGE-FUT-04 (Cursor and Aider, out of v4.7 scope):**
+**BRIDGE-FUT-03 / BRIDGE-FUT-04 (Cursor and Aider, deferred):**
 Cursor reads `.cursorrules` (single-line rules, not Markdown context) and
 Aider reads `CONVENTIONS.md` — both use different file formats and conventions
-from the Gemini/Codex bridge pattern. They are explicitly deferred and will
-not be included in v4.7.
+from the Gemini/Codex bridge pattern. Out of current scope; the existing
+Gemini/Codex bridge pattern does not generalise to these CLIs without a
+separate per-target adapter.
