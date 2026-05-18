@@ -302,7 +302,10 @@ if os.path.exists(state_path):
 else:
     state = {}
 
-bridges = state.get("bridges", [])
+# Defense: `.get(k, default)` returns the actual value if k is present,
+# even when that value is None. A corrupted `"bridges": null` would
+# crash the enumerate() below. `... or []` collapses None to [].
+bridges = state.get("bridges") or []
 
 entry = {
     "target": target,
@@ -460,7 +463,8 @@ new_user_owned = (value == "true")
 with open(state_path) as f:
     state = json.load(f)
 
-bridges = state.get("bridges", [])
+# Same null-defense as _bridge_write_state_entry above.
+bridges = state.get("bridges") or []
 for e in bridges:
     if e.get("target") == target:
         e["user_owned"] = new_user_owned
@@ -527,7 +531,8 @@ target, scope, path, state_path = sys.argv[1:5]
 with open(state_path) as f:
     state = json.load(f)
 
-bridges = state.get("bridges", [])
+# Same null-defense as _bridge_write_state_entry above.
+bridges = state.get("bridges") or []
 filtered = [
     e for e in bridges
     if not (
