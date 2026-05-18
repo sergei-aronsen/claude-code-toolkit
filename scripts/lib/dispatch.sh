@@ -7,10 +7,10 @@
 #   dispatch_superpowers  — invokes claude plugin install (TK_SP_INSTALL_CMD)
 #   dispatch_gsd          — invokes upstream curl install (TK_GSD_INSTALL_CMD)
 #   dispatch_toolkit      — invokes init-claude.sh (or local init-local.sh)
-#   dispatch_security     — invokes setup-security.sh [--yes] [--force]
+#   dispatch_security     — invokes setup-security.sh [--yes]
 #   dispatch_rtk          — invokes brew install rtk && rtk init -g </dev/null
 #   dispatch_statusline   — invokes install-statusline.sh [--yes]
-#   dispatch_council      — invokes setup-council.sh [--yes] [--force]
+#   dispatch_council      — invokes setup-council.sh (no flags wired today)
 # Globals (read): BASH_SOURCE, 0, TK_REPO_URL, TK_SP_INSTALL_CMD,
 #                 TK_GSD_INSTALL_CMD, TK_DISPATCH_OVERRIDE_*
 # Globals (write): TK_DISPATCH_ORDER (only if unset)
@@ -33,6 +33,8 @@
 [[ -z "${YELLOW:-}" ]] && YELLOW='\033[1;33m'
 # shellcheck disable=SC2034
 [[ -z "${BLUE:-}"   ]] && BLUE='\033[0;34m'
+# shellcheck disable=SC2034
+[[ -z "${CYAN:-}"   ]] && CYAN='\033[0;36m'
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
@@ -277,7 +279,12 @@ dispatch_security() {
     local pass_args=()
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --force)   force=1   ; pass_args+=("--force") ;;
+            # Audit 2026-05-18 (v6.48.1): setup-security.sh fails-closed on unknown
+            # flags (M3/M4). It accepts ONLY --yes today. --force must NOT be
+            # passed through or the security install dies with "unknown flag:
+            # --force" → exit 1. --force is still consumed at the dispatcher
+            # level for parity with other dispatchers and dry-run rendering.
+            --force)   force=1   ;;
             --dry-run) dry_run=1 ;;
             --yes)     yes=1     ; pass_args+=("--yes") ;;
             *) pass_args+=("$1") ;;
@@ -419,21 +426,26 @@ dispatch_statusline() {
 
 # dispatch_council — setup-council.sh.
 # Audit M1 parity: --dry-run is honoured at the dispatcher level (prints
-# "would run …" and returns 0). NOT passed through because setup-council.sh
-# does not yet recognize it (fail-closed on unknown flags).
+# "would run …" and returns 0). Not passed through.
+# Audit 2026-05-18 (v6.48.1): setup-council.sh has NO argument-parsing
+# block (it never reads $@). Unknown flags are silently dropped, not
+# fail-closed. Strip --force and --yes from pass_args so the dispatcher
+# doesn't misrepresent target capability. The 7 interactive prompts in
+# setup-council.sh are not currently bypassable — adding argparse +
+# --yes wiring is deferred (council install rare in install.sh flow).
 dispatch_council() {
     local force=0 dry_run=0 yes=0
     local pass_args=()
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            --force)   force=1   ; pass_args+=("--force") ;;
+            --force)   force=1   ;;
             --dry-run) dry_run=1 ;;
-            --yes)     yes=1     ; pass_args+=("--yes") ;;
+            --yes)     yes=1     ;;
             *) pass_args+=("$1") ;;
         esac
         shift
     done
-    : "$force"
+    : "$force" "$yes"
 
     # Audit H6: TK_TEST=1 gate (test seam, not a runtime override).
     if [[ -n "${TK_DISPATCH_OVERRIDE_COUNCIL:-}" && "${TK_TEST:-0}" == "1" ]]; then
