@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.1] - 2026-05-18
+
+Dependency refresh for `memo-skill` mirror. Dependabot surfaced two
+upstream patch bumps; both folded into one toolkit release so the
+manifest `sha256` round-trip happens in a single commit.
+
+### Changed
+
+- **`templates/skills-marketplace/memo-skill/requirements.txt`**
+  - `sentence-transformers >= 5.4.1` → `>= 5.5.0` (Dependabot #176)
+  - `numpy >= 2.4.4` → `>= 2.4.5` (Dependabot #177)
+
+- **`manifest.json:skills_pins.memo-skill.sha256`** recomputed via
+  `scripts/lib/skill-checksum.sh` after the requirements bump.
+  `validate-manifest.py` Check 9 (mirror sha256 ↔ manifest) passes
+  with the new value.
+
+### Context
+
+`memo-skill` is the toolkit's no-upstream-found pin (mirror is the
+only canonical copy). Dependabot keeps its `requirements.txt` fresh;
+each bump must round-trip through the manifest sha256 or Check 9
+fails CI.
+
 ## [6.47.0] - 2026-05-18
 
 Hardening release for the v6.46.0 closed-loop sync surface. Logic audit

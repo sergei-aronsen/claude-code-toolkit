@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.47.0",
+  "version": "6.47.1",
   "updated": "2026-05-18",
   "build_date": "2026-05-18",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -145,7 +145,7 @@
       "pinned_at": null,
       "_status": "no-upstream-found",
       "_note": "Exhaustive gh code search 2026-05-18 found no canonical upstream. Possibly toolkit-original or upstream deleted. README placeholder says 'your-user/memo.git'.",
-      "sha256": "c397fc27acb241a0a41943e13b864ca990d77cc970d15dfff8c4d7abdea581fc"
+      "sha256": "eb5704acd4a1218169e10b2122c8859e3323156f06e27b64eec04f8e724b6717"
     },
     "next-best-practices": {
       "repo": "https://github.com/Jackiexiao/jackie-skills-cn-top50",
