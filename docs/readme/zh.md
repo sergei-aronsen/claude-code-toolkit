@@ -2,7 +2,7 @@
 
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-6.4.0-blue.svg)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/sergei-aronsen/claude-code-toolkit?label=version&color=blue)](../../CHANGELOG.md)
 
 **[English](../../README.md)** | **[Русский](ru.md)** | **[Español](es.md)** | **[Deutsch](de.md)** | **[Français](fr.md)** | **中文** | **[日本語](ja.md)** | **[Português](pt.md)** | **[한국어](ko.md)**
 

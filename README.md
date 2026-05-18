@@ -2,7 +2,7 @@
 
 [![Quality Check](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml/badge.svg)](https://github.com/sergei-aronsen/claude-code-toolkit/actions/workflows/quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-6.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/github/v/release/sergei-aronsen/claude-code-toolkit?label=version&color=blue)](CHANGELOG.md)
 
 **English** | **[Русский](docs/readme/ru.md)** | **[Español](docs/readme/es.md)** | **[Deutsch](docs/readme/de.md)** | **[Français](docs/readme/fr.md)** | **[中文](docs/readme/zh.md)** | **[日本語](docs/readme/ja.md)** | **[Português](docs/readme/pt.md)** | **[한국어](docs/readme/ko.md)**
 
@@ -74,7 +74,7 @@ Full command list: [docs/features.md](docs/features.md).
 
 ## Architecture
 
-Toolkit v6.2 is a **thin overlay** organized in three layers:
+The toolkit is a **thin overlay** organized in three layers:
 
 - **Layer 1** — toolkit content (templates, slash commands, components, skills, agents)
 - **Layer 2** — free base plugins (Superpowers, Get Shit Done, ru-text)
