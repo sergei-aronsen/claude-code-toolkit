@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "version": "6.43.0",
+  "version": "6.44.0",
   "updated": "2026-05-17",
-  "build_date": "2026-05-17",
+  "build_date": "2026-05-18",
   "description": "Claude Code Toolkit manifest for smart updates",
   "vendor_pins_note": "Pinned commits/tags of external vendors as of the toolkit release. Used by /vendor-changelog to diff vendor HEAD against these pins and surface BREAKING/ADOPT/IGNORE/DEPRECATE classifications. Updated manually by the maintainer post-release via scripts/vendor/pin-vendors.sh.",
   "vendor_pins": {
@@ -57,6 +57,38 @@
   },
   "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. v6.35.0 scaffold shipped 2 standalone-repo pins (huashu-design, resend). v6.37.0 added `path` field for monorepo-path-scoped probes via the GitHub API plus 3 anthropics/skills monorepo pins (docx, pdf, webapp-testing) after content equivalence verification. v6.41.0 adds 4 more confirmed-upstream pins: vercel-composition-patterns + vercel-react-best-practices (vercel-labs/agent-skills monorepo), find-skills (vercel-labs/skills monorepo), firecrawl (firecrawl/cli monorepo subpath). 14 catalog skills remain upstream-unknown — see .planning/research/skills-pin-research-2026-05-17.md for the truly-unknown list with plausibility hints. Add new entries one at a time as upstream URLs are confirmed; do not invent.",
   "skills_pins": {
+    "ai-models": {
+      "repo": "https://github.com/artofrawr/claude-control",
+      "path": "plugins/learning/skills/ai-models",
+      "tag": null,
+      "commit": "5e8f37f650efa223150c2643991b409d3af324ea",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "analytics-tracking": {
+      "repo": "https://github.com/mysticaltech/marketingskills",
+      "path": "skills/analytics-tracking",
+      "tag": null,
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "chrome-extension-development": {
+      "repo": "https://github.com/Mindrally/skills",
+      "path": "chrome-extension-development",
+      "tag": null,
+      "commit": "47f47c12e62f62b5e171bd5af61d0fc24b329701",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "copywriting": {
+      "repo": "https://github.com/mysticaltech/marketingskills",
+      "path": "skills/copywriting",
+      "tag": null,
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
     "docx": {
       "repo": "https://github.com/anthropics/skills",
       "path": "skills/docx",
@@ -88,6 +120,39 @@
       "pinned_at": "2026-05-17",
       "_status": "active"
     },
+    "i18n-localization": {
+      "repo": "https://github.com/sickn33/antigravity-awesome-skills",
+      "path": "skills/i18n-localization",
+      "tag": null,
+      "commit": "2138ff8fd03e70a03e116098923de0bdab3d2748",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "memo-skill": {
+      "repo": null,
+      "path": null,
+      "tag": null,
+      "commit": null,
+      "pinned_at": null,
+      "_status": "no-upstream-found",
+      "_note": "Exhaustive gh code search 2026-05-18 found no canonical upstream. Possibly toolkit-original or upstream deleted. README placeholder says 'your-user/memo.git'."
+    },
+    "next-best-practices": {
+      "repo": "https://github.com/Jackiexiao/jackie-skills-cn-top50",
+      "path": "skills/next-best-practices",
+      "tag": null,
+      "commit": "9b494627f8b1a77bfe2540a971396ca48183de80",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "notebooklm": {
+      "repo": "https://github.com/PleasePrompto/notebooklm-skill",
+      "path": null,
+      "tag": null,
+      "commit": "eea5cb28ba79ab8b078a1eaa44ce9ec44f75dbf8",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
     "pdf": {
       "repo": "https://github.com/anthropics/skills",
       "path": "skills/pdf",
@@ -103,12 +168,52 @@
       "pinned_at": "2026-05-17",
       "_status": "active"
     },
+    "seo-audit": {
+      "repo": "https://github.com/mysticaltech/marketingskills",
+      "path": "skills/seo-audit",
+      "tag": null,
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
     "shadcn": {
       "repo": "https://github.com/shadcn-ui/ui",
       "path": "skills/shadcn",
       "tag": null,
       "commit": "ea6086cbcc33b359bb876651374e26f643ea85b1",
       "pinned_at": "2026-05-17",
+      "_status": "active"
+    },
+    "stripe-best-practices": {
+      "repo": "https://github.com/stripe/ai",
+      "path": "skills/stripe-best-practices",
+      "tag": null,
+      "commit": "ec93d4c4b9ffdbc994ac45ce692d4ec1cdb755f0",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "tailwind-design-system": {
+      "repo": "https://github.com/wshobson/agents",
+      "path": "plugins/frontend-mobile-development/skills/tailwind-design-system",
+      "tag": null,
+      "commit": "db33dbc434c68a0c0abf81bfeb7c737c5f930542",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "typescript-advanced-types": {
+      "repo": "https://github.com/wshobson/agents",
+      "path": "plugins/javascript-typescript/skills/typescript-advanced-types",
+      "tag": null,
+      "commit": "47a5dbc3f9c2661c6afb13638f80d4a4d4449040",
+      "pinned_at": "2026-05-18",
+      "_status": "active"
+    },
+    "ui-ux-pro-max": {
+      "repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "path": ".claude/skills/ui-ux-pro-max",
+      "tag": null,
+      "commit": "87c6c3e0e1a8891d79795d3e3061f10b650de51b",
+      "pinned_at": "2026-05-18",
       "_status": "active"
     },
     "vercel-composition-patterns": {
