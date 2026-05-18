@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.9] - 2026-05-18
+
+`docs/RELEASE-CHECKLIST.md` version-anchor refresh.
+
+### Changed
+
+- Title: "Release Checklist — v4.0.0" → "Release Checklist".
+- Preamble: "human sign-off surface for the v4.0.0 release" → "for
+  every toolkit release", with a clarifying line noting the
+  4-mode × 3-scenario matrix shape was fixed in v4.0 and continues
+  to apply.
+- 4 "v3.x TK from pre-4.0 commit" rows → "pre-v4 commit" (matches
+  the post-v4 naming convention).
+- Translation-Sync note: "Content correctness is owned by Phase 7.1"
+  → "owned by the translation-content workflow" (drop the
+  internal-milestone marker).
+- Tagging section: "## Tagging (manual — outside Phase 7)" →
+  "## Tagging (manual)"; `git tag -a v4.0.0 …` example → `vX.Y.Z`
+  with a note to substitute from `manifest.json:.version`.
+
+### Why
+
+The checklist is the human sign-off surface for every release, but
+the title and tag-example were anchored to v4.0.0 — confusing on
+first read for anyone tagging v6.47.x. Functional contract (13
+cells × validate-release.sh assertions) unchanged.
+
 ## [6.47.8] - 2026-05-18
 
 `docs/INSTALL.md` + `docs/BRIDGES.md` historical-anchor refresh.

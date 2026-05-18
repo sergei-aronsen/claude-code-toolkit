@@ -1,8 +1,12 @@
-# Release Checklist — v4.0.0
+# Release Checklist
 
-This document is the human sign-off surface for the v4.0.0 release. Each cell maps
-1:1 to a cell in `docs/INSTALL.md` and to an assertion function in
-`scripts/validate-release.sh`. Run the runner, then tick each checkbox.
+This document is the human sign-off surface for every toolkit release.
+Each cell maps 1:1 to a cell in `docs/INSTALL.md` and to an assertion
+function in `scripts/validate-release.sh`. Run the runner, then tick
+each checkbox.
+
+The matrix shape (4 modes × 3 scenarios + 1 translation-sync) was
+fixed in v4.0 and continues to apply.
 
 **How to run:**
 
@@ -29,7 +33,7 @@ No base plugins detected. All 54 TK files install.
 | Scenario | Precondition | Command | Expected output | Auto-checked | Human sign-off |
 |----------|-------------|---------|-----------------|--------------|----------------|
 | **Fresh install** | No SP, no GSD; no prior TK. | `bash scripts/validate-release.sh --cell standalone-fresh` | `PASS: standalone-fresh` | `validate-release.sh` | `[ ]` |
-| **Upgrade from v3.x** | v3.x TK from pre-4.0 commit; no state file; no SP/GSD. | `bash scripts/validate-release.sh --cell standalone-upgrade` | `PASS: standalone-upgrade` | `validate-release.sh` | `[ ]` |
+| **Upgrade from v3.x** | v3.x TK from pre-v4 commit; no state file; no SP/GSD. | `bash scripts/validate-release.sh --cell standalone-upgrade` | `PASS: standalone-upgrade` | `validate-release.sh` | `[ ]` |
 | **Re-run / idempotent** | TK installed; re-run init-local.sh with same mode. | `bash scripts/validate-release.sh --cell standalone-rerun` | `PASS: standalone-rerun` | `validate-release.sh` | `[ ]` |
 
 ---
@@ -41,7 +45,7 @@ No base plugins detected. All 54 TK files install.
 | Scenario | Precondition | Command | Expected output | Auto-checked | Human sign-off |
 |----------|-------------|---------|-----------------|--------------|----------------|
 | **Fresh install** | SP staged in `$HOME/.claude/plugins/cache/.../superpowers/5.0.7/`. | `bash scripts/validate-release.sh --cell complement-sp-fresh` | `PASS: complement-sp-fresh` | `validate-release.sh` (includes agent-collision check) | `[ ]` |
-| **Upgrade from v3.x** | v3.x TK from pre-4.0 commit; SP staged. | `bash scripts/validate-release.sh --cell complement-sp-upgrade` | `PASS: complement-sp-upgrade` | `validate-release.sh` | `[ ]` |
+| **Upgrade from v3.x** | v3.x TK from pre-v4 commit; SP staged. | `bash scripts/validate-release.sh --cell complement-sp-upgrade` | `PASS: complement-sp-upgrade` | `validate-release.sh` | `[ ]` |
 | **Re-run / idempotent** | `complement-sp` state on disk; re-run install. | `bash scripts/validate-release.sh --cell complement-sp-rerun` | `PASS: complement-sp-rerun` | `validate-release.sh` (includes agent-collision check) | `[ ]` |
 
 ---
@@ -53,7 +57,7 @@ No base plugins detected. All 54 TK files install.
 | Scenario | Precondition | Command | Expected output | Auto-checked | Human sign-off |
 |----------|-------------|---------|-----------------|--------------|----------------|
 | **Fresh install** | GSD staged at `$HOME/.claude/get-shit-done/bin/gsd-tools.cjs`. | `bash scripts/validate-release.sh --cell complement-gsd-fresh` | `PASS: complement-gsd-fresh` | `validate-release.sh` | `[ ]` |
-| **Upgrade from v3.x** | v3.x TK from pre-4.0 commit; GSD staged. | `bash scripts/validate-release.sh --cell complement-gsd-upgrade` | `PASS: complement-gsd-upgrade` | `validate-release.sh` | `[ ]` |
+| **Upgrade from v3.x** | v3.x TK from pre-v4 commit; GSD staged. | `bash scripts/validate-release.sh --cell complement-gsd-upgrade` | `PASS: complement-gsd-upgrade` | `validate-release.sh` | `[ ]` |
 | **Re-run / idempotent** | `complement-gsd` state on disk; re-run install. | `bash scripts/validate-release.sh --cell complement-gsd-rerun` | `PASS: complement-gsd-rerun` | `validate-release.sh` | `[ ]` |
 
 ---
@@ -65,16 +69,17 @@ Both SP and GSD detected. 47 files install (SP conflicts skipped; no GSD conflic
 | Scenario | Precondition | Command | Expected output | Auto-checked | Human sign-off |
 |----------|-------------|---------|-----------------|--------------|----------------|
 | **Fresh install** | SP and GSD both staged. | `bash scripts/validate-release.sh --cell complement-full-fresh` | `PASS: complement-full-fresh` | `validate-release.sh` (includes agent-collision check) | `[ ]` |
-| **Upgrade from v3.x** | v3.x TK from pre-4.0 commit; SP and GSD both staged. | `bash scripts/validate-release.sh --cell complement-full-upgrade` | `PASS: complement-full-upgrade` | `validate-release.sh` | `[ ]` |
+| **Upgrade from v3.x** | v3.x TK from pre-v4 commit; SP and GSD both staged. | `bash scripts/validate-release.sh --cell complement-full-upgrade` | `PASS: complement-full-upgrade` | `validate-release.sh` | `[ ]` |
 | **Re-run / idempotent** | `complement-full` state on disk; re-run install. | `bash scripts/validate-release.sh --cell complement-full-rerun` | `PASS: complement-full-rerun` | `validate-release.sh` (includes agent-collision check) | `[ ]` |
 
 ---
 
 ## Translation Sync
 
-Structural sync check (line-count within ±20% of README.md). Content correctness
-is owned by Phase 7.1; this cell only verifies the translations exist and have
-not drifted structurally.
+Structural sync check (line-count within ±20% of README.md). Content
+correctness is owned by the translation-content workflow; this cell
+only verifies the translations exist and have not drifted
+structurally.
 
 | Check | Command | Expected | Auto-checked | Human sign-off |
 |-------|---------|----------|--------------|----------------|
@@ -100,15 +105,18 @@ Sign off here once `make check` passes clean: `[ ]`
 
 ---
 
-## Tagging (manual — outside Phase 7)
+## Tagging (manual)
 
-Phase 7 ends with the repo at **ready-to-tag**. The release cut itself is a
-manual human action per `CLAUDE.md` "never push directly to main" invariant:
+Once `make check` is clean and every cell above is ticked, the
+release cut itself is a manual human action per `CLAUDE.md` "never
+push directly to main" invariant:
 
 ```bash
-git tag -a v4.0.0 -m "Release 4.0.0"
+git tag -a vX.Y.Z -m "Release X.Y.Z"
 git push --tags
 ```
+
+Substitute the real version (read from `manifest.json:.version`).
 
 Sign off here once the tag is pushed: `[ ]`
 
