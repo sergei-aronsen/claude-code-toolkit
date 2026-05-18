@@ -28,6 +28,13 @@ Thank you for your interest in contributing! This document provides guidelines a
 5. Commit with a descriptive message
 6. Push and create a Pull Request
 
+## Adding a new script
+
+Before adding any new file under `scripts/`, read `docs/SCRIPTS_TAXONOMY.md`
+to pick the right prefix (`install-*`, `setup-*`, `init-*`, action-verb, or
+internal `lib/*`). The taxonomy is fixed in place — no renames — so a wrong
+prefix means rework before merge.
+
 ## Development Setup
 
 ```bash

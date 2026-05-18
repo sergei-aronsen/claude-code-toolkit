@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "generated_from": "manifest.json:skills_pins",
+  "generated_at": "2026-05-18",
+  "toolkit_version": "6.46.0",
+  "skills_count": 22,
+  "skills": [
+    {
+      "name": "ai-models",
+      "upstream": "https://github.com/artofrawr/claude-control",
+      "commit": "5e8f37f650efa223150c2643991b409d3af324ea",
+      "path": "plugins/learning/skills/ai-models",
+      "sha256": "ce4b7854d7d552b2ef5d8928532d321197277e6f15b2c224fc31f463225f442e",
+      "install_cmd": "claude-skills install --from-github https://github.com/artofrawr/claude-control --commit 5e8f37f650efa223150c2643991b409d3af324ea --path plugins/learning/skills/ai-models"
+    },
+    {
+      "name": "analytics-tracking",
+      "upstream": "https://github.com/mysticaltech/marketingskills",
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "path": "skills/analytics-tracking",
+      "sha256": "1b401662f84f2ee72ea41dafa3f38a0de1be502c6043f815ac804551200592e6",
+      "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/analytics-tracking"
+    },
+    {
+      "name": "chrome-extension-development",
+      "upstream": "https://github.com/Mindrally/skills",
+      "commit": "47f47c12e62f62b5e171bd5af61d0fc24b329701",
+      "path": "chrome-extension-development",
+      "sha256": "488dd06fc70ccdb3559a0ec6b42f0741a6f51ebfb02184152caa97f21ee385d3",
+      "install_cmd": "claude-skills install --from-github https://github.com/Mindrally/skills --commit 47f47c12e62f62b5e171bd5af61d0fc24b329701 --path chrome-extension-development"
+    },
+    {
+      "name": "copywriting",
+      "upstream": "https://github.com/mysticaltech/marketingskills",
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "path": "skills/copywriting",
+      "sha256": "71f3560cdeb63fc3459e8f5f753ad83495d12edea4a9127ff45bedab407d102c",
+      "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/copywriting"
+    },
+    {
+      "name": "docx",
+      "upstream": "https://github.com/anthropics/skills",
+      "commit": "3d59511518591fa82e6cfcf0438d68dd5dad3e76",
+      "path": "skills/docx",
+      "sha256": "950befc5c3ed716f839a362429debea9edbda31c15563281498d36dafbcbd4c5",
+      "install_cmd": "claude-skills install --from-github https://github.com/anthropics/skills --commit 3d59511518591fa82e6cfcf0438d68dd5dad3e76 --path skills/docx"
+    },
+    {
+      "name": "find-skills",
+      "upstream": "https://github.com/vercel-labs/skills",
+      "commit": "0b8fb22aaa7f82447d4befe1b6a95d30a5b279b8",
+      "path": "skills/find-skills",
+      "sha256": "6051449c88f79d9ca97e8d1c93c4d2fd22cc26082cc57e945e1629996a520266",
+      "install_cmd": "claude-skills install --from-github https://github.com/vercel-labs/skills --commit 0b8fb22aaa7f82447d4befe1b6a95d30a5b279b8 --path skills/find-skills"
+    },
+    {
+      "name": "firecrawl",
+      "upstream": "https://github.com/firecrawl/cli",
+      "commit": "f873e5bfd2ee090aefc4c5c304570334666f6b2a",
+      "path": "skills/firecrawl-cli",
+      "sha256": "22ba67a196d80ea7995ddd61813f5731541ff5c1284c2d45f50696c24ef2c145",
+      "install_cmd": "claude-skills install --from-github https://github.com/firecrawl/cli --commit f873e5bfd2ee090aefc4c5c304570334666f6b2a --path skills/firecrawl-cli"
+    },
+    {
+      "name": "huashu-design",
+      "upstream": "https://github.com/alchaincyf/huashu-design",
+      "commit": "8e25b23709747a747b80bf4d3820def8f8054a4e",
+      "sha256": "6167ed595dde2a2aaef9736b49abcadfa4fc4e83fcb81bd28c45775697aee9f0",
+      "install_cmd": "claude-skills install --from-github https://github.com/alchaincyf/huashu-design --commit 8e25b23709747a747b80bf4d3820def8f8054a4e"
+    },
+    {
+      "name": "i18n-localization",
+      "upstream": "https://github.com/sickn33/antigravity-awesome-skills",
+      "commit": "2138ff8fd03e70a03e116098923de0bdab3d2748",
+      "path": "skills/i18n-localization",
+      "sha256": "94f314e313012c4890691dba715d5329ec43c924ea2a181bde41c4b572fdf555",
+      "install_cmd": "claude-skills install --from-github https://github.com/sickn33/antigravity-awesome-skills --commit 2138ff8fd03e70a03e116098923de0bdab3d2748 --path skills/i18n-localization"
+    },
+    {
+      "name": "next-best-practices",
+      "upstream": "https://github.com/Jackiexiao/jackie-skills-cn-top50",
+      "commit": "9b494627f8b1a77bfe2540a971396ca48183de80",
+      "path": "skills/next-best-practices",
+      "sha256": "4fcbafa4055241551917ad92f45b758ee3feccb47bc8677ca11d5370f8efddc0",
+      "install_cmd": "claude-skills install --from-github https://github.com/Jackiexiao/jackie-skills-cn-top50 --commit 9b494627f8b1a77bfe2540a971396ca48183de80 --path skills/next-best-practices"
+    },
+    {
+      "name": "notebooklm",
+      "upstream": "https://github.com/PleasePrompto/notebooklm-skill",
+      "commit": "eea5cb28ba79ab8b078a1eaa44ce9ec44f75dbf8",
+      "sha256": "7f8c056fe1af124cb881d92b246496f521e1c7901d8b4a6bb804185727bd9c19",
+      "install_cmd": "claude-skills install --from-github https://github.com/PleasePrompto/notebooklm-skill --commit eea5cb28ba79ab8b078a1eaa44ce9ec44f75dbf8"
+    },
+    {
+      "name": "pdf",
+      "upstream": "https://github.com/anthropics/skills",
+      "commit": "1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563",
+      "path": "skills/pdf",
+      "sha256": "840f21cf5c10cf8d854517028640840d267f0731fd38d901a3bd66ebef64024e",
+      "install_cmd": "claude-skills install --from-github https://github.com/anthropics/skills --commit 1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563 --path skills/pdf"
+    },
+    {
+      "name": "resend",
+      "upstream": "https://github.com/resend/resend-skills",
+      "commit": "78469829399beec62b8f815f109ebfcfa3b0680b",
+      "sha256": "213e2e0f6544fd395b18c2f7f3b17f99c324745b1dd4a5435455e0b006180b41",
+      "install_cmd": "claude-skills install --from-github https://github.com/resend/resend-skills --commit 78469829399beec62b8f815f109ebfcfa3b0680b"
+    },
+    {
+      "name": "seo-audit",
+      "upstream": "https://github.com/mysticaltech/marketingskills",
+      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "path": "skills/seo-audit",
+      "sha256": "9358974cf6c35647c5dc732fcf3c70f37d701d6bf7f1a5ae5affef17915a956c",
+      "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/seo-audit"
+    },
+    {
+      "name": "shadcn",
+      "upstream": "https://github.com/shadcn-ui/ui",
+      "commit": "ea6086cbcc33b359bb876651374e26f643ea85b1",
+      "path": "skills/shadcn",
+      "sha256": "4b80e50c1c367cd968eff79cacd5d17a57d8893ef9a7b25e2c7f69be64dc640a",
+      "install_cmd": "claude-skills install --from-github https://github.com/shadcn-ui/ui --commit ea6086cbcc33b359bb876651374e26f643ea85b1 --path skills/shadcn"
+    },
+    {
+      "name": "stripe-best-practices",
+      "upstream": "https://github.com/stripe/ai",
+      "commit": "ec93d4c4b9ffdbc994ac45ce692d4ec1cdb755f0",
+      "path": "skills/stripe-best-practices",
+      "sha256": "41aa0c89cf083c60e6471efff20c41343e8a4ef2b457e235aec2535901292fe1",
+      "install_cmd": "claude-skills install --from-github https://github.com/stripe/ai --commit ec93d4c4b9ffdbc994ac45ce692d4ec1cdb755f0 --path skills/stripe-best-practices"
+    },
+    {
+      "name": "tailwind-design-system",
+      "upstream": "https://github.com/wshobson/agents",
+      "commit": "db33dbc434c68a0c0abf81bfeb7c737c5f930542",
+      "path": "plugins/frontend-mobile-development/skills/tailwind-design-system",
+      "sha256": "bd3cafd0504f8057b3a668000761eede672f681f625c1366a2d1f4a4141ff232",
+      "install_cmd": "claude-skills install --from-github https://github.com/wshobson/agents --commit db33dbc434c68a0c0abf81bfeb7c737c5f930542 --path plugins/frontend-mobile-development/skills/tailwind-design-system"
+    },
+    {
+      "name": "typescript-advanced-types",
+      "upstream": "https://github.com/wshobson/agents",
+      "commit": "47a5dbc3f9c2661c6afb13638f80d4a4d4449040",
+      "path": "plugins/javascript-typescript/skills/typescript-advanced-types",
+      "sha256": "36ae6ef7eaaa34c216ded92b5b8141a1369d59ad99dc12e49e7498e1c02493dc",
+      "install_cmd": "claude-skills install --from-github https://github.com/wshobson/agents --commit 47a5dbc3f9c2661c6afb13638f80d4a4d4449040 --path plugins/javascript-typescript/skills/typescript-advanced-types"
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "upstream": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "87c6c3e0e1a8891d79795d3e3061f10b650de51b",
+      "path": ".claude/skills/ui-ux-pro-max",
+      "sha256": "f92aa5fe091397074ad2d77563eab148a641bbab9afd3bd0e0da88684ce0e4c1",
+      "install_cmd": "claude-skills install --from-github https://github.com/nextlevelbuilder/ui-ux-pro-max-skill --commit 87c6c3e0e1a8891d79795d3e3061f10b650de51b --path .claude/skills/ui-ux-pro-max"
+    },
+    {
+      "name": "vercel-composition-patterns",
+      "upstream": "https://github.com/vercel-labs/agent-skills",
+      "commit": "a5343bd997c4cc4d8bf2ca61021bdc74b4d6c9d5",
+      "path": "skills/composition-patterns",
+      "sha256": "55f43d6f81f9f0ffa69852751106a9a4757b5fc0a7fef392d2ba1e010100b4a9",
+      "install_cmd": "claude-skills install --from-github https://github.com/vercel-labs/agent-skills --commit a5343bd997c4cc4d8bf2ca61021bdc74b4d6c9d5 --path skills/composition-patterns"
+    },
+    {
+      "name": "vercel-react-best-practices",
+      "upstream": "https://github.com/vercel-labs/agent-skills",
+      "commit": "dc8367e6f91c022d83361f03c3313fa05e848ee5",
+      "path": "skills/react-best-practices",
+      "sha256": "58e1f8a6a3f11113d2e55e485e4ad7892a0c9c69fd80b21386de311c131a8211",
+      "install_cmd": "claude-skills install --from-github https://github.com/vercel-labs/agent-skills --commit dc8367e6f91c022d83361f03c3313fa05e848ee5 --path skills/react-best-practices"
+    },
+    {
+      "name": "webapp-testing",
+      "upstream": "https://github.com/anthropics/skills",
+      "commit": "b9e19e6f44773509fbdd7001d77ff41a49a486c1",
+      "path": "skills/webapp-testing",
+      "sha256": "04413be02de7478156f6728b5cd70b0edc95d57358ffb06a833416bca507bf9c",
+      "install_cmd": "claude-skills install --from-github https://github.com/anthropics/skills --commit b9e19e6f44773509fbdd7001d77ff41a49a486c1 --path skills/webapp-testing"
+    }
+  ],
+  "_note": "Auto-generated by scripts/generate-skills-catalog.sh. Do not edit by hand. Source of truth is manifest.json:skills_pins. This catalog is a compact declarative view for catalog-mode consumers; the toolkit's primary distribution remains the mirror under templates/skills-marketplace/. no-upstream-found pins (e.g., memo-skill) are intentionally omitted."
+}

@@ -1,4 +1,4 @@
-.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets test-catalog-serena test-install-hooks test-cost-routing test-migrate-v5-to-v6 test-init-skip-flags test-uninstall-remove-flags test-hook-replay test-verify-install-v6
+.PHONY: help check check-full lint shellcheck mdlint test validate validate-base-plugins version-align translation-drift agent-collision-static validate-commands validate-catalog validate-mdlint-config-sync test-matrix-bats cell-parity clean install test-update-libs test-uninstall-keep-state test-install-tui test-mcp-selector test-install-skills test-integrations-foundation test-integrations-catalog test-cli-installer test-integrations-tui test-catalog-scope-fallback sync-skills-mirror validate-skills-desktop validate-marketplace test-project-secrets test-catalog-serena test-install-hooks test-cost-routing test-migrate-v5-to-v6 test-init-skip-flags test-skills-mirror-checksum test-uninstall-remove-flags test-hook-replay test-verify-install-v6
 
 # Default target
 help:
@@ -251,6 +251,9 @@ test:
 	@echo "Test 57: verify-install.sh sections 7 + 8 (advisory hooks + cost routing) (v6.1 / F-15)"
 	@bash scripts/tests/test-verify-install-v6.sh
 	@echo ""
+	@echo "Test 58: skills mirror checksum + catalog regen + validator drift (v6.46.0 / P5+P10)"
+	@bash scripts/tests/test-skills-mirror-checksum.sh
+	@echo ""
 	@echo "All tests passed!"
 
 # Test 29 — smart-update coverage for scripts/lib/*.sh (LIB-01..02), invokable standalone
@@ -312,6 +315,10 @@ test-cost-routing:
 # Test 53 — v6.1 migrate-v5-to-v6.sh dry-run (F-15), invokable standalone
 test-migrate-v5-to-v6:
 	@bash scripts/tests/test-migrate-v5-to-v6.sh
+
+# Test 58 — v6.46.0 skills mirror checksum + catalog drift (P5+P10), invokable standalone
+test-skills-mirror-checksum:
+	@bash scripts/tests/test-skills-mirror-checksum.sh
 
 # Test 54 — v6.1 init-claude.sh skip-flag plumbing (F-3), invokable standalone
 test-init-skip-flags:
