@@ -12,6 +12,8 @@
 #   7. generate-skills-catalog.sh writes valid JSON matching manifest skills_pins
 #   8. validate-manifest.py catches sha256 drift
 #   9. validate-manifest.py catches catalog drift
+#  10. --normalize: trailing whitespace + CRLF + extra blank lines → same hash
+#  11. --normalize: real content change still produces different hash
 
 set -euo pipefail
 
@@ -161,6 +163,36 @@ else
     pass "validate-manifest caught catalog drift"
 fi
 printf '%s' "$cat_backup" > "$CATALOG"
+
+# ─────────────────────────────────────────────────
+# 10. --normalize collapses markdownlint-style cosmetic differences
+# ─────────────────────────────────────────────────
+mkdir -p "$SANDBOX/norm-a" "$SANDBOX/norm-b"
+printf 'hello world\n\nsecond paragraph\n' > "$SANDBOX/norm-a/doc.md"
+# Same logical content but with: CRLF line endings, trailing spaces,
+# extra blank lines, leading/trailing blank lines.
+printf '\nhello world   \r\n\n\n\nsecond paragraph\t\r\n\n\n' > "$SANDBOX/norm-b/doc.md"
+sha_a_raw=$(bash "$CHECKSUM" "$SANDBOX/norm-a")
+sha_b_raw=$(bash "$CHECKSUM" "$SANDBOX/norm-b")
+sha_a_norm=$(bash "$CHECKSUM" --normalize "$SANDBOX/norm-a")
+sha_b_norm=$(bash "$CHECKSUM" --normalize "$SANDBOX/norm-b")
+if [[ "$sha_a_raw" != "$sha_b_raw" ]] && [[ "$sha_a_norm" == "$sha_b_norm" ]]; then
+    pass "--normalize collapses whitespace-only diff (raw differs, normalized equal)"
+else
+    fail "--normalize behaviour: raw a=$sha_a_raw b=$sha_b_raw / norm a=$sha_a_norm b=$sha_b_norm"
+fi
+
+# ─────────────────────────────────────────────────
+# 11. --normalize does NOT mask real content change
+# ─────────────────────────────────────────────────
+mkdir -p "$SANDBOX/norm-c"
+printf 'hello world\n\nDIFFERENT paragraph\n' > "$SANDBOX/norm-c/doc.md"
+sha_c_norm=$(bash "$CHECKSUM" --normalize "$SANDBOX/norm-c")
+if [[ "$sha_a_norm" != "$sha_c_norm" ]]; then
+    pass "--normalize preserves real content differences"
+else
+    fail "--normalize collapsed real content change: $sha_a_norm == $sha_c_norm"
+fi
 
 # ─────────────────────────────────────────────────
 # Summary

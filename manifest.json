@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.46.0",
+  "version": "6.47.0",
   "updated": "2026-05-18",
   "build_date": "2026-05-18",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -55,7 +55,7 @@
       "pinned_at": "2026-05-12"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.46.0, 2026-05-18): 22 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.46.0, 2026-05-18): 22 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection) \u2192 v6.47.0 (hardened sync: tab/newline-safe checksum, atomic mirror swap, post-checkout SHA verification, 3-way CLEAN/SOFT/DRIFT classification via --normalize so markdownlint-style cosmetic diffs do not trip --strict CI gate). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
   "skills_pins": {
     "ai-models": {
       "repo": "https://github.com/artofrawr/claude-control",

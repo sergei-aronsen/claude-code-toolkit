@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_from": "manifest.json:skills_pins",
   "generated_at": "2026-05-18",
-  "toolkit_version": "6.46.0",
+  "toolkit_version": "6.47.0",
   "skills_count": 22,
   "skills": [
     {

@@ -307,13 +307,24 @@ def main():
                 errors += 1
                 continue
             try:
-                actual = subprocess.check_output(
+                # AUDIT v6.47.0: capture stderr instead of dropping it.
+                # The earlier "checksum script failed" message gave the
+                # operator no clue what went wrong (missing tool? bad
+                # permissions? broken mirror dir?). Surface the actual
+                # error.
+                result = subprocess.run(
                     ["bash", checksum_script, mdir],
+                    capture_output=True,
                     text=True,
-                    stderr=subprocess.DEVNULL,
-                ).strip()
-            except subprocess.CalledProcessError:
-                fail("skills_pins[" + name + "].sha256: checksum script failed for " + mdir)
+                    check=True,
+                )
+                actual = result.stdout.strip()
+            except subprocess.CalledProcessError as exc:
+                err_tail = (exc.stderr or "").strip().splitlines()[-1:] or ["<no stderr>"]
+                fail(
+                    "skills_pins[" + name + "].sha256: checksum script failed for "
+                    + mdir + " — " + err_tail[0]
+                )
                 errors += 1
                 continue
             if actual != declared:
@@ -340,7 +351,17 @@ def main():
             catalog = None
         if catalog is not None:
             cat_count = catalog.get("skills_count", -1)
-            cat_skills = {s["name"]: s for s in catalog.get("skills", []) if "name" in s}
+            # AUDIT v6.47.0: silently skipping entries without "name"
+            # hides catalog corruption. Validate explicitly.
+            raw_skills = catalog.get("skills", [])
+            for idx, s in enumerate(raw_skills):
+                if "name" not in s:
+                    fail(
+                        "skills-catalog.json:.skills["
+                        + str(idx) + "] missing required 'name' field"
+                    )
+                    errors += 1
+            cat_skills = {s["name"]: s for s in raw_skills if "name" in s}
             sp = manifest.get("skills_pins", {})
             expected_active = {
                 name: p for name, p in sp.items()
