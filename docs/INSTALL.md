@@ -4,6 +4,14 @@ This document lists the 13 cells of the v4.0 install matrix (12 mode×scenario c
 columns = 3 scenarios (fresh install, upgrade from v3.x, re-run / idempotent behavior).
 See the [README install section](../README.md#install-modes) for the entry-point overview.
 
+> **Entry-point note.** For interactive first-time install, `README.md`
+> recommends `scripts/install.sh` (TUI orchestrator). The matrix cells below
+> reference `scripts/init-claude.sh` directly because that is the worker
+> `install.sh` dispatches to and the script the `validate-release.sh --cell …`
+> harness invokes for per-mode contract validation. Both URLs are supported
+> entry points — `install.sh` for guided installs, `init-claude.sh` for
+> headless / CI / cell-validation use.
+
 ---
 
 ## Modes Overview

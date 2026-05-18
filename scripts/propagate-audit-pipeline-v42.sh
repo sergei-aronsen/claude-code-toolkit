@@ -30,17 +30,79 @@ set -euo pipefail
 # ─────────────────────────────────────────────────
 DRY_RUN=0
 FORCE=0
+CHECK_ONLY=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
         --force)   FORCE=1;   shift ;;
+        --check)   CHECK_ONLY=1; shift ;;
         -h|--help)
             sed -n '2,15p' "$0" | sed 's/^# \?//'
+            cat <<'EOF'
+
+Flags:
+  --dry-run   Report what would change without writing
+  --force     Strip existing sentinels and re-splice
+  --check     Verify-only: every target file has exactly 6 sentinels,
+              byte-exact em-dash slot, no CRLF. Exit 1 on any drift.
+              Suitable for pre-commit hook / CI gate.
+EOF
             exit 0
             ;;
         *) echo "ERROR: unknown flag: $1" >&2; exit 1 ;;
     esac
 done
+
+# AUDIT-P8 (logic audit 2026-05-18): --check is a verify-only fast path that
+# enumerates every audit prompt and confirms (a) sentinel count == 6,
+# (b) byte-exact em-dash slot `_pending — run /council audit-review_`,
+# (c) no CRLF. Runs without SOT extraction or write attempts so it is safe
+# in pre-commit / CI gates. Exits 1 on any drift with a per-file diagnostic.
+if [ "$CHECK_ONLY" -eq 1 ]; then
+    REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    TEMPLATES_ROOT="${SPLICE_TEMPLATES_DIR:-$REPO_ROOT/templates}"
+    [ -d "$TEMPLATES_ROOT" ] || { echo "ERROR: templates dir missing: $TEMPLATES_ROOT" >&2; exit 1; }
+
+    # Byte-exact em-dash slot — U+2014 (E2 80 94). Phase 15 of /audit
+    # navigates by this byte sequence; replacing the em-dash with a hyphen
+    # or wrapping in backticks/bold silently breaks the council handoff.
+    EXPECTED_EM_DASH=$'_pending \xe2\x80\x94 run /council audit-review_'
+
+    drift_count=0
+    checked=0
+    while IFS= read -r f; do
+        checked=$((checked + 1))
+        rel="${f#"$REPO_ROOT/"}"
+
+        sentinels=$(grep -cF '<!-- v42-splice:' "$f" 2>/dev/null || true)
+        if [ "$sentinels" -ne 6 ]; then
+            echo "DRIFT: $rel — sentinel count $sentinels/6" >&2
+            drift_count=$((drift_count + 1))
+        fi
+
+        if ! grep -qF "$EXPECTED_EM_DASH" "$f" 2>/dev/null; then
+            echo "DRIFT: $rel — em-dash slot missing or corrupted (expected byte-exact U+2014)" >&2
+            drift_count=$((drift_count + 1))
+        fi
+
+        if grep -qU $'\r' "$f" 2>/dev/null; then
+            echo "DRIFT: $rel — CRLF line endings detected" >&2
+            drift_count=$((drift_count + 1))
+        fi
+    done < <(find "$TEMPLATES_ROOT" -path '*/prompts/*.md' \
+        \( -name 'SECURITY_AUDIT.md' -o -name 'CODE_REVIEW.md' -o \
+           -name 'PERFORMANCE_AUDIT.md' -o -name 'MYSQL_PERFORMANCE_AUDIT.md' -o \
+           -name 'POSTGRES_PERFORMANCE_AUDIT.md' -o \
+           -name 'DESIGN_REVIEW.md' \) | sort)
+
+    if [ "$drift_count" -eq 0 ]; then
+        printf 'splice check OK: %d file(s) verified, 0 drift\n' "$checked"
+        exit 0
+    fi
+    printf 'splice check FAILED: %d drift(s) across %d file(s)\n' "$drift_count" "$checked" >&2
+    echo "Run: bash scripts/propagate-audit-pipeline-v42.sh --force  # to re-splice" >&2
+    exit 1
+fi
 
 # ─────────────────────────────────────────────────
 # Path resolution

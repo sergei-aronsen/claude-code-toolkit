@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.45.0] - 2026-05-18
+
+### Fixed
+
+- **Hooks ownership regression (critical).** `scripts/lib/install.sh`'s
+  PreToolUse partition dropped every `_tk_owned: true` entry on each
+  re-run of `setup-security.sh`, including the 4 advisory hooks placed
+  by `install-hooks.sh` (`pre-gsd-plan-council`, `post-gsd-phase-audit`,
+  `cost-warning`, `pre-ship-reality-check`). Sequence:
+  `init-claude.sh` → 4 advisory + 1 cc-safety-net combined hook; second
+  `setup-security.sh` → 0 advisory + 1 combined. Fix: partition now
+  preserves TK entries that carry `_tk_hook_id` (granular install-hooks
+  ownership) and only replaces the legacy combined entry (TK-owned
+  without `_tk_hook_id`). Verified with unit-test simulation,
+  `test-install-hooks.sh` (14/14), `test-hook-replay.sh` (22/22).
+
+- **`install.sh` / `init-claude.sh` overwrite of CLAUDE.md customizations
+  on re-run.** Both installers now detect `.claude/.toolkit-version` and
+  exit 2 with a redirect to `update-claude.sh` (which carries smart-merge
+  logic). Bypass via `--force` (install.sh) or `TK_FORCE_REINSTALL=1`.
+  Existing test cells use `.toolkit-install.json` not `.toolkit-version`
+  so test-install-tui.sh + test-init-skip-flags.sh unaffected.
+
+- **`manifest.json:skills_pins_note` stale across releases.** Note claimed
+  "14 catalog skills remain upstream-unknown" while v6.44.0 data had 1
+  unknown. Rewritten for current state (22 active + 1 no-upstream-found,
+  trajectory line). `validate-manifest.py` Check 8 added: any "N active"
+  or "N no-upstream-found" claim must match live `skills_pins` counts.
+  Drift fails CI.
+
+### Added
+
+- **`scripts/propagate-audit-pipeline-v42.sh --check`.** Verify-only mode:
+  walks the 6 base audit prompts, confirms exactly 6
+  `<!-- v42-splice: -->` sentinels per file, byte-exact em-dash slot
+  `_pending — run /council audit-review_` (U+2014), zero CRLF
+  contamination. Exits 1 on drift with per-file diagnostics. No SOT
+  extraction, no writes — safe in pre-commit / CI gates.
+
+- **`/prompt-audit` → `/prompt-engineer` handoff.** Output now points
+  users at `pe <path> --context …` for grades below 5.0 with reminder
+  of the mandatory two-stage pipeline in `CLAUDE.md`.
+
+- **`docs/INSTALL.md` entry-point note.** Clarifies that `install.sh` is
+  the recommended interactive entry point while `init-claude.sh` is the
+  worker dispatched by `install.sh` and the URL the per-cell
+  `validate-release.sh --cell` harness invokes. Both supported.
+
+### Context
+
+Logic audit 2026-05-18 (see `MEMORY.md`). Investigated 11 findings,
+3 turned out to be false positives or overstated after manual
+verification — re-confirms the "Investigator FP rate ~60-70% on HIGH
+claims" lesson logged 2026-05-17.
+
 ## [6.44.0] - 2026-05-18
 
 ### Added

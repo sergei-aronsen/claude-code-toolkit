@@ -186,9 +186,17 @@ if os.path.exists(settings_path):
 else:
     config = {}
 
-# Partition existing PreToolUse entries by _tk_owned marker (D-38)
+# Partition existing PreToolUse entries by _tk_owned marker (D-38).
+# AUDIT-P2 (logic audit 2026-05-18): keep TK entries that carry _tk_hook_id —
+# those are owned by install-hooks.sh (advisory hooks with granular per-id
+# replacement). Without this carve-out, re-running setup-security.sh wipes
+# the 4 advisory hooks installed by install-hooks.sh, because the legacy
+# partition treated every _tk_owned entry as "ours to drop". Only entries
+# with _tk_owned AND no _tk_hook_id (the legacy combined safety-net hook
+# this script owns) get replaced.
 existing = config.get('hooks', {}).get('PreToolUse', [])
 foreign_entries = [e for e in existing if not e.get('_tk_owned')]
+granular_tk_entries = [e for e in existing if e.get('_tk_owned') and e.get('_tk_hook_id')]
 
 # Build the new TK entry; marker invisible to Claude Code hook execution (RESEARCH Option A)
 new_tk_entry = {
@@ -197,8 +205,9 @@ new_tk_entry = {
     'hooks': [{'type': 'command', 'command': hook_command}],
 }
 
-# Append-both policy (D-39): foreign entries first (fire first in array order), TK last
-config.setdefault('hooks', {})['PreToolUse'] = foreign_entries + [new_tk_entry]
+# Append-both policy (D-39): foreign entries first (fire first in array order),
+# then preserved granular TK entries (install-hooks.sh), then our legacy entry.
+config.setdefault('hooks', {})['PreToolUse'] = foreign_entries + granular_tk_entries + [new_tk_entry]
 
 # Atomic write (D-37): mkstemp on same filesystem as target -> rename(2) is atomic on POSIX
 out_dir = os.path.dirname(os.path.abspath(settings_path)) or '.'
