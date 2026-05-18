@@ -63,9 +63,9 @@ Mandatory in `/audit` Phase 5. Prompt template:
 brain --mode retro --commit <sha>
 ```
 
-Phase 24 SP8. Reads the commit's diff plus the Council report saved
-before the commit, then asks the Pragmatist whether the implementation
-matches what was approved. Output: `ALIGNED / DRIFT / UNCLEAR`.
+Reads the commit's diff plus the Council report saved before the
+commit, then asks the Pragmatist whether the implementation matches
+what was approved. Output: `ALIGNED / DRIFT / UNCLEAR`.
 
 ---
 

@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.2] - 2026-05-18
+
+Documentation hygiene. Removes vestigial development-phase numbering
+(Phase 13 / 14 / 15 / 24 references) that referred to a milestone
+plan superseded by the published 6-Phase audit workflow (Phases 0-5).
+Also drops a broken cross-reference to a `/rollback-update` command
+that never existed.
+
+### Changed
+
+- **`commands/audit.md`** — six Phase 13 / Phase 15 references
+  scrubbed:
+  - Phase 5 body no longer claims "full wiring lands in Phase 15"
+  - `## Council Handoff (Phase 15)` heading → `## Council Handoff`
+  - `(Phase 13 EXC-01 contract)` → `(EXC-01 contract)`
+  - `(Phase 13 EXC-02 contract)` → `(EXC-02 contract)`
+  - "Modes section (added in Phase 15)" → "Modes section"
+  - "Phase 15 mandatory Council pass" → "mandatory Council pass
+    (Phase 5)"
+
+- **`commands/audit-restore.md`** — three Phase 15 refs scrubbed.
+
+- **`commands/audit-skip.md`** — five Phase 14 / Phase 15 refs
+  scrubbed.
+
+- **`commands/council.md`** — Phase 24 SP8 reference dropped from
+  the `retro` mode body (was a stale milestone tag, not a public
+  contract).
+
+- **`commands/council-stats.md`** + **`commands/council-clear-cache.md`**
+  — dangling `- Phase 24 Sub-Phase N.` bullet removed from each
+  Notes section.
+
+- **`commands/update-toolkit.md`** — broken xref `commands/rollback-update.md`
+  removed from the recovery snippet annotation. The snippet itself
+  is correct; only the dangling pointer was misleading.
+
+### Why
+
+Audit pass on `commands/` (20 files, 3425 lines) surfaced 7 vestigial
+references to an internal phase-numbering plan (Phases 0-24) that
+never made it into the public workflow. The published audit pipeline
+is 6 phases (0-5); referring to Phase 13/15 in user-facing docs
+makes the command-set look incomplete or mid-migration. Zero
+behavioral impact — pure documentation cleanup.
+
 ## [6.47.1] - 2026-05-18
 
 Dependency refresh for `memo-skill` mirror. Dependabot surfaced two

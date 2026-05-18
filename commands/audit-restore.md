@@ -4,7 +4,7 @@
 
 Remove an entry from `.claude/rules/audit-exceptions.md` when an exception turns out to be a
 real bug — for example, after a refactor changes the threat model or the Council
-(`/council audit-review` — Phase 15) marks a previously-suppressed finding `disputed`.
+pass (`/council audit-review`) marks a previously-suppressed finding `disputed`.
 
 Removal is guarded by an interactive `[y/N]` prompt that defaults to NO. The full entry block
 is displayed before the prompt so the user sees exactly what will be deleted.
@@ -27,7 +27,7 @@ is displayed before the prompt so the user sees exactly what will be deleted.
 ## When to Use
 
 - After a refactor changes the data flow that justified the original exception.
-- After a Council `audit-review` pass (Phase 15) returns `disputed` for a previously-suppressed entry.
+- After a Council `audit-review` pass returns `disputed` for a previously-suppressed entry.
 - When the rule itself is removed from the auditor's rule set (the entry is now meaningless).
 - DO NOT use to "shut up" a stale exception you don't understand — read the original Reason
   field first; if the Reason no longer applies, that's a sign you genuinely want to restore.
@@ -258,6 +258,6 @@ printf 'Note: changes are NOT staged. Run `git add %s` and commit when ready.\n'
 ## Related Commands
 
 - `/audit-skip <file:line> <rule> <reason...>` — add an exception. Inverse of this command.
-- `/audit` — runs the audit pipeline that consults `audit-exceptions.md` (Phase 14).
+- `/audit` — runs the audit pipeline that consults `audit-exceptions.md`.
 - `/council audit-review` — confirms or rejects findings; can flag a stale exception as
-  `disputed` (Phase 15).
+  `disputed`.

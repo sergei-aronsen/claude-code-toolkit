@@ -168,7 +168,7 @@ Inspect the audit's actual scope against the patterns in `## Cross-Audit Recomme
 
 ### Phase 5 — Council Pass (Mandatory)
 
-Implements **COUNCIL-01** handoff (full wiring lands in Phase 15).
+Implements the **COUNCIL-01** handoff contract.
 
 After writing the report, invoke `/council audit-review --report <path-to-report>`. The audit is reported as incomplete until the Council returns a per-finding verdict table (REAL / FALSE_POSITIVE / NEEDS_MORE_CONTEXT) and a "Missed findings" section. Council fills the `## Council verdict` slot in place by replacing the placeholder `_pending — run /council audit-review_`. There is no `--no-council` flag in v4.2 — Council is mandatory.
 
@@ -228,7 +228,7 @@ Automatically detect framework and use appropriate template:
 
 ---
 
-## Council Handoff (Phase 15)
+## Council Handoff
 
 Phase 5 of the workflow invokes `/council audit-review --report <path>`. Council is mandatory: the audit run is reported as incomplete until the Council pass returns. Council confirms or rejects each finding using the embedded verbatim code block in the report — see `components/audit-output-format.md` for the report schema Council reads. Council MUST NOT reclassify severity (COUNCIL-02); it confirms REAL vs FALSE_POSITIVE only.
 
@@ -241,7 +241,7 @@ Council confirmed F-NNN as FALSE_POSITIVE.
 To persist: /audit-skip <path>:<line> <rule> "<reason>"
 ```
 
-`/audit` NEVER writes to `.claude/rules/audit-exceptions.md` directly. The `/audit-skip` command (Phase 13 EXC-01 contract) is the only writer. The user MUST run `/audit-skip` themselves — `/audit` only nudges. This preserves the EXC-04 validation guard chain (file existence, line count, duplicate check) that `/audit-skip` enforces before appending an entry.
+`/audit` NEVER writes to `.claude/rules/audit-exceptions.md` directly. The `/audit-skip` command (EXC-01 contract) is the only writer. The user MUST run `/audit-skip` themselves — `/audit` only nudges. This preserves the EXC-04 validation guard chain (file existence, line count, duplicate check) that `/audit-skip` enforces before appending an entry.
 
 ### Disputed Resolution (D-13)
 
@@ -257,11 +257,11 @@ Choose: (R)eal — keep as a finding
         (N)eeds more context — leave open in next audit
 ```
 
-No default. The user MUST choose before the audit run is considered complete. The single-character prompt mirrors the `[y/N]` style of `/audit-restore` (Phase 13 EXC-02 contract) — explicit, fail-loud, no implicit acceptance.
+No default. The user MUST choose before the audit run is considered complete. The single-character prompt mirrors the `[y/N]` style of `/audit-restore` (EXC-02 contract) — explicit, fail-loud, no implicit acceptance.
 
 ### Orchestrator Reference
 
-The Council orchestrator that implements both behaviors above is `scripts/council/brain.py --mode audit-review --report <path>`. See `commands/council.md` `## Modes` section (added in Phase 15) for invocation syntax and the prompt template at `scripts/council/prompts/audit-review.md` for the contract Council enforces against backends.
+The Council orchestrator that implements both behaviors above is `scripts/council/brain.py --mode audit-review --report <path>`. See `commands/council.md` `## Modes` section for invocation syntax and the prompt template at `scripts/council/prompts/audit-review.md` for the contract Council enforces against backends.
 
 ---
 
@@ -273,4 +273,4 @@ The Council orchestrator that implements both behaviors above is `scripts/counci
 - `/deploy` — pre-deploy safety checks
 - `/audit-skip <file:line> <rule> <reason>` — append a confirmed false positive to `.claude/rules/audit-exceptions.md`
 - `/audit-restore <file:line> <rule>` — remove an allowlist entry that turned out to be a real bug
-- `/council audit-review --report <path>` — Phase 15 mandatory Council pass
+- `/council audit-review --report <path>` — mandatory Council pass (Phase 5)

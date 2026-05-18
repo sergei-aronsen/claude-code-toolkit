@@ -102,7 +102,7 @@ mv .claude-backup-YYYYMMDD-HHMMSS .claude
 
 > Audit L13: previously this snippet used `rm -rf .claude && mv …` — a copy-paste
 > from the wrong directory deletes an unrelated `.claude/`. The two-step `mv`
-> form mirrors `commands/rollback-update.md` and keeps the original recoverable.
+> form keeps the original `.claude/` directory recoverable.
 
 ## Example Output
 
