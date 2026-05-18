@@ -63,9 +63,10 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
     TEMPLATES_ROOT="${SPLICE_TEMPLATES_DIR:-$REPO_ROOT/templates}"
     [ -d "$TEMPLATES_ROOT" ] || { echo "ERROR: templates dir missing: $TEMPLATES_ROOT" >&2; exit 1; }
 
-    # Byte-exact em-dash slot — U+2014 (E2 80 94). Phase 15 of /audit
-    # navigates by this byte sequence; replacing the em-dash with a hyphen
-    # or wrapping in backticks/bold silently breaks the council handoff.
+    # Byte-exact em-dash slot — U+2014 (E2 80 94). The Council pass in
+    # /audit navigates by this byte sequence; replacing the em-dash with
+    # a hyphen or wrapping in backticks/bold silently breaks the council
+    # handoff.
     EXPECTED_EM_DASH=$'_pending \xe2\x80\x94 run /council audit-review_'
 
     drift_count=0
@@ -677,10 +678,10 @@ insert_blocks() {
             of_num=$((sc_num + 1))
         fi
         sc_heading="## ${sc_num}. SELF-CHECK (FP Recheck — 6-Step Procedure)"
-        of_heading="## ${of_num}. OUTPUT FORMAT (Structured Report Schema — Phase 14)"
+        of_heading="## ${of_num}. OUTPUT FORMAT (Structured Report Schema)"
     else
         sc_heading="## SELF-CHECK (FP Recheck — 6-Step Procedure)"
-        of_heading="## OUTPUT FORMAT (Structured Report Schema — Phase 14)"
+        of_heading="## OUTPUT FORMAT (Structured Report Schema)"
     fi
 
     write_spliced_file "$f" "$tmp" "$sc_heading" "$of_heading"

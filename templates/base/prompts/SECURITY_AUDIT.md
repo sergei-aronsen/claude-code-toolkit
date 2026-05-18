@@ -1435,7 +1435,7 @@ Findings dropped at any step are listed in the report's `## Skipped (FP recheck)
 
 ### When a Finding Survives All Six Steps
 
-Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from in Phase 15.
+Promote it to `## Findings` using the entry schema documented in `components/audit-output-format.md` (ID, Severity, Rule, Location, Claim, Code, Data flow, Why it is real, Suggested fix). The `Why it is real` field MUST cite concrete tokens visible in the verbatim code block — that is the artifact the Council reasons from during `/council audit-review`.
 
 ---
 
@@ -1449,7 +1449,7 @@ These behaviors break the recheck and MUST NOT appear in any audit report:
 - Emitting the internal recheck trace into the report (a `## SELF-CHECK` block per finding inside `## Findings`, a "step 1: …, step 2: …" walkthrough next to each finding, etc.) — the recheck is internal-only. Report ONLY the outcome: a row in `## Skipped (FP recheck)` if dropped, an entry in `## Findings` if survived.
 - Skipping Step 4 because `audit-exceptions.md` is absent — when the file is missing, Step 4 is a no-op internally (a `cross-ref skipped: no allowlist file present` acknowledgement) but the step itself MUST be performed.
 
-## OUTPUT FORMAT (Structured Report Schema — Phase 14)
+## OUTPUT FORMAT (Structured Report Schema)
 <!-- v42-splice: output-format-section -->
 
 ### Report Path
@@ -1503,7 +1503,7 @@ council_pass: pending
 - `total_findings` — integer count of entries in the `## Findings` section.
 - `skipped_allowlist` — integer count of rows in the `## Skipped (allowlist)` table.
 - `skipped_fp_recheck` — integer count of rows in the `## Skipped (FP recheck)` table.
-- `council_pass` — starts at `pending`. Phase 15's `/council audit-review` mutates this to `passed`, `failed`, or `disputed` after collating per-finding verdicts.
+- `council_pass` — starts at `pending`. The `/council audit-review` pass mutates this to `passed`, `failed`, or `disputed` after collating per-finding verdicts.
 
 ---
 
@@ -1519,7 +1519,7 @@ After the YAML frontmatter, the report MUST contain these five H2 sections in th
 
 Plus the report's title H1 (`# <Type Title> Audit — <project name>`) immediately after the closing `---` of the frontmatter and before `## Summary`.
 
-Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty section as the literal placeholder `_None_` — the allowlist case uses a longer placeholder shown verbatim in the Skipped (allowlist) section below. Phase 15 navigates by these literal H2 headings.
+Do NOT reorder. Do NOT introduce intermediate H2 sections. Render an empty section as the literal placeholder `_None_` — the allowlist case uses a longer placeholder shown verbatim in the Skipped (allowlist) section below. The Council pass navigates by these literal H2 headings.
 
 ---
 
@@ -1549,7 +1549,7 @@ The fields appear in this exact order:
 7. **Claim** — one-sentence statement of the alleged issue, ≤ 160 chars.
 8. **Code** — verbatim ±10 lines around the flagged line, fenced with the language matching the source extension (see Verbatim Code Block section).
 9. **Data flow** — markdown bullet list tracing input from origin to the flagged sink, ≤ 6 hops.
-10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from in Phase 15.
+10. **Why it is real** — 2-4 sentences citing concrete tokens visible in the Code block. This field is what the Council reasons from during `/council audit-review`.
 11. **Suggested fix** — diff-style hunk or replacement snippet showing the corrected pattern.
 
 Field omission rules (the omission key is **Severity**, never Confidence):
@@ -1562,7 +1562,7 @@ Note: omission rules apply per **Severity**. A LOW-severity finding with HIGH co
 
 See the Full Report Skeleton below for the verbatim entry template (a SQL-INJECTION example demonstrating all required fields).
 
-The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — Phase 15's Council parser navigates the entry by them.
+The bullet labels (`**Severity:**`, `**Confidence:**`, `**Category:**`, `**Rule:**`, `**Location:**`, `**Claim:**`) and section labels (`**Code:**`, `**Data flow:**`, `**Why it is real:**`, `**Suggested fix:**`) are byte-exact — the Council parser navigates the entry by them.
 
 ---
 
@@ -1616,7 +1616,7 @@ The skeleton uses square-bracketed placeholders such as `[fenced code block here
 - Replace `[fenced code block here — replacement using parameterized query]` (and similar `Suggested fix` placeholders) with the actual fenced replacement snippet.
 - Omit `[optional clamp note]` entirely when the ±10 window does not hit file bounds; emit the `<!-- Range clamped to file bounds (start-end) -->` line verbatim when it does.
 
-A report that ships literal `[fenced code block here ...]` text is malformed; Phase 15 will treat it as a broken finding.
+A report that ships literal `[fenced code block here ...]` text is malformed; the Council pass will treat it as a broken finding.
 
 ---
 
@@ -1636,9 +1636,9 @@ Columns: `path:line | rule | dropped_at_step | one_line_reason`. Empty-state pla
 
 ---
 
-### Council Verdict Slot (handoff to Phase 15)
+### Council Verdict Slot (Council Handoff)
 
-The audit writes this section as a literal placeholder. Phase 15's `/council audit-review` mutates it in place after collating Gemini + ChatGPT verdicts.
+The audit writes this section as a literal placeholder. The `/council audit-review` pass mutates it in place after collating Gemini + ChatGPT verdicts.
 
 ```markdown
 ## Council verdict
@@ -1646,7 +1646,7 @@ The audit writes this section as a literal placeholder. Phase 15's `/council aud
 _pending — run /council audit-review_
 ```
 
-Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-dash); single-underscore italic (`_..._`), no asterisks; no backticks, no bold, no code fence, no trailing whitespace. DO NOT REFORMAT — Phase 15 greps for this exact byte sequence to locate the slot before rewriting it.
+Byte-exact constraints: U+2014 em-dash (literal `—`, not hyphen-minus, not en-dash); single-underscore italic (`_..._`), no asterisks; no backticks, no bold, no code fence, no trailing whitespace. DO NOT REFORMAT — the Council pass greps for this exact byte sequence to locate the slot before rewriting it.
 
 ---
 
