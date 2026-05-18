@@ -541,6 +541,18 @@ probe_skill_firecrawl()                  { probe_skill_pin "firecrawl"; }
 probe_skill_shadcn()                     { probe_skill_pin "shadcn"; }
 probe_skill_vercel_composition_patterns(){ probe_skill_pin "vercel-composition-patterns"; }
 probe_skill_vercel_react_best_practices(){ probe_skill_pin "vercel-react-best-practices"; }
+probe_skill_ai_models()                  { probe_skill_pin "ai-models"; }
+probe_skill_analytics_tracking()         { probe_skill_pin "analytics-tracking"; }
+probe_skill_chrome_extension_development(){ probe_skill_pin "chrome-extension-development"; }
+probe_skill_copywriting()                { probe_skill_pin "copywriting"; }
+probe_skill_i18n_localization()          { probe_skill_pin "i18n-localization"; }
+probe_skill_next_best_practices()        { probe_skill_pin "next-best-practices"; }
+probe_skill_notebooklm()                 { probe_skill_pin "notebooklm"; }
+probe_skill_seo_audit()                  { probe_skill_pin "seo-audit"; }
+probe_skill_stripe_best_practices()      { probe_skill_pin "stripe-best-practices"; }
+probe_skill_tailwind_design_system()     { probe_skill_pin "tailwind-design-system"; }
+probe_skill_typescript_advanced_types()  { probe_skill_pin "typescript-advanced-types"; }
+probe_skill_ui_ux_pro_max()              { probe_skill_pin "ui-ux-pro-max"; }
 
 # Upgrade helpers for skill pins are deliberately stubs in v6.35.0: pin
 # refresh is a maintainer-only operation — run `git ls-remote <repo> HEAD` (or
@@ -590,6 +602,54 @@ upgrade_skill_vercel_react_best_practices() {
     echo "Manual: refresh manifest.skills_pins.vercel-react-best-practices.{commit,pinned_at} (path-scoped, see vercel-labs/agent-skills/skills/react-best-practices) then bash scripts/sync-skills-mirror.sh vercel-react-best-practices" >&2
     return 1
 }
+upgrade_skill_ai_models() {
+    echo "Manual: refresh manifest.skills_pins.ai-models.{commit,pinned_at} (path-scoped, see artofrawr/claude-control/plugins/learning/skills/ai-models) then bash scripts/sync-skills-mirror.sh ai-models" >&2
+    return 1
+}
+upgrade_skill_analytics_tracking() {
+    echo "Manual: refresh manifest.skills_pins.analytics-tracking.{commit,pinned_at} (path-scoped, see mysticaltech/marketingskills/skills/analytics-tracking) then bash scripts/sync-skills-mirror.sh analytics-tracking" >&2
+    return 1
+}
+upgrade_skill_chrome_extension_development() {
+    echo "Manual: refresh manifest.skills_pins.chrome-extension-development.{commit,pinned_at} (path-scoped, see Mindrally/skills/chrome-extension-development) then bash scripts/sync-skills-mirror.sh chrome-extension-development" >&2
+    return 1
+}
+upgrade_skill_copywriting() {
+    echo "Manual: refresh manifest.skills_pins.copywriting.{commit,pinned_at} (path-scoped, see mysticaltech/marketingskills/skills/copywriting) then bash scripts/sync-skills-mirror.sh copywriting" >&2
+    return 1
+}
+upgrade_skill_i18n_localization() {
+    echo "Manual: refresh manifest.skills_pins.i18n-localization.{commit,pinned_at} (path-scoped, see sickn33/antigravity-awesome-skills/skills/i18n-localization) then bash scripts/sync-skills-mirror.sh i18n-localization" >&2
+    return 1
+}
+upgrade_skill_next_best_practices() {
+    echo "Manual: refresh manifest.skills_pins.next-best-practices.{commit,pinned_at} (path-scoped, see Jackiexiao/jackie-skills-cn-top50/skills/next-best-practices) then bash scripts/sync-skills-mirror.sh next-best-practices" >&2
+    return 1
+}
+upgrade_skill_notebooklm() {
+    echo "Manual: refresh manifest.skills_pins.notebooklm.{commit,pinned_at} (root, see PleasePrompto/notebooklm-skill) then bash scripts/sync-skills-mirror.sh notebooklm" >&2
+    return 1
+}
+upgrade_skill_seo_audit() {
+    echo "Manual: refresh manifest.skills_pins.seo-audit.{commit,pinned_at} (path-scoped, see mysticaltech/marketingskills/skills/seo-audit) then bash scripts/sync-skills-mirror.sh seo-audit" >&2
+    return 1
+}
+upgrade_skill_stripe_best_practices() {
+    echo "Manual: refresh manifest.skills_pins.stripe-best-practices.{commit,pinned_at} (path-scoped, see stripe/ai/skills/stripe-best-practices — OFFICIAL stripe org) then bash scripts/sync-skills-mirror.sh stripe-best-practices" >&2
+    return 1
+}
+upgrade_skill_tailwind_design_system() {
+    echo "Manual: refresh manifest.skills_pins.tailwind-design-system.{commit,pinned_at} (path-scoped, see wshobson/agents/plugins/frontend-mobile-development/skills/tailwind-design-system) then bash scripts/sync-skills-mirror.sh tailwind-design-system" >&2
+    return 1
+}
+upgrade_skill_typescript_advanced_types() {
+    echo "Manual: refresh manifest.skills_pins.typescript-advanced-types.{commit,pinned_at} (path-scoped, see wshobson/agents/plugins/javascript-typescript/skills/typescript-advanced-types) then bash scripts/sync-skills-mirror.sh typescript-advanced-types" >&2
+    return 1
+}
+upgrade_skill_ui_ux_pro_max() {
+    echo "Manual: refresh manifest.skills_pins.ui-ux-pro-max.{commit,pinned_at} (path-scoped, see nextlevelbuilder/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max) then bash scripts/sync-skills-mirror.sh ui-ux-pro-max" >&2
+    return 1
+}
 
 # ───────── register all deps ─────────
 # Note: the 4 anthropic-shipped plugins (code-review, commit-commands,
@@ -622,6 +682,18 @@ register_dep "firecrawl"        "Skill"     probe_skill_firecrawl  upgrade_skill
 register_dep "shadcn"           "Skill"     probe_skill_shadcn     upgrade_skill_shadcn     "Mirrored from shadcn-ui/ui/skills/shadcn (path-scoped pin via GH API). Pin refresh = manual"
 register_dep "vercel-composition-patterns" "Skill" probe_skill_vercel_composition_patterns upgrade_skill_vercel_composition_patterns "Mirrored from vercel-labs/agent-skills/skills/composition-patterns. Pin refresh = manual"
 register_dep "vercel-react-best-practices" "Skill" probe_skill_vercel_react_best_practices upgrade_skill_vercel_react_best_practices "Mirrored from vercel-labs/agent-skills/skills/react-best-practices. Pin refresh = manual"
+register_dep "ai-models"        "Skill"     probe_skill_ai_models  upgrade_skill_ai_models  "Mirrored from artofrawr/claude-control/plugins/learning/skills/ai-models. Pin refresh = manual"
+register_dep "analytics-tracking" "Skill"   probe_skill_analytics_tracking upgrade_skill_analytics_tracking "Mirrored from mysticaltech/marketingskills/skills/analytics-tracking. Pin refresh = manual"
+register_dep "chrome-extension-development" "Skill" probe_skill_chrome_extension_development upgrade_skill_chrome_extension_development "Mirrored from Mindrally/skills/chrome-extension-development. Pin refresh = manual"
+register_dep "copywriting"      "Skill"     probe_skill_copywriting upgrade_skill_copywriting "Mirrored from mysticaltech/marketingskills/skills/copywriting. Pin refresh = manual"
+register_dep "i18n-localization" "Skill"    probe_skill_i18n_localization upgrade_skill_i18n_localization "Mirrored from sickn33/antigravity-awesome-skills/skills/i18n-localization. Pin refresh = manual"
+register_dep "next-best-practices" "Skill"  probe_skill_next_best_practices upgrade_skill_next_best_practices "Mirrored from Jackiexiao/jackie-skills-cn-top50/skills/next-best-practices. Pin refresh = manual"
+register_dep "notebooklm"       "Skill"     probe_skill_notebooklm upgrade_skill_notebooklm "Mirrored from PleasePrompto/notebooklm-skill (root). Pin refresh = manual"
+register_dep "seo-audit"        "Skill"     probe_skill_seo_audit  upgrade_skill_seo_audit  "Mirrored from mysticaltech/marketingskills/skills/seo-audit. Pin refresh = manual"
+register_dep "stripe-best-practices" "Skill" probe_skill_stripe_best_practices upgrade_skill_stripe_best_practices "Mirrored from stripe/ai/skills/stripe-best-practices (OFFICIAL Stripe org). Pin refresh = manual"
+register_dep "tailwind-design-system" "Skill" probe_skill_tailwind_design_system upgrade_skill_tailwind_design_system "Mirrored from wshobson/agents/plugins/frontend-mobile-development/skills/tailwind-design-system. Pin refresh = manual"
+register_dep "typescript-advanced-types" "Skill" probe_skill_typescript_advanced_types upgrade_skill_typescript_advanced_types "Mirrored from wshobson/agents/plugins/javascript-typescript/skills/typescript-advanced-types. Pin refresh = manual"
+register_dep "ui-ux-pro-max"    "Skill"     probe_skill_ui_ux_pro_max upgrade_skill_ui_ux_pro_max "Mirrored from nextlevelbuilder/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max. Pin refresh = manual"
 
 # ───────── --check single-dep ─────────
 

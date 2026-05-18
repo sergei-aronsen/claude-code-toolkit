@@ -82,13 +82,22 @@ while IFS='|' read -r name repo pinned_commit pinned_tag pinned_at; do
         continue
     fi
 
-    # Verify pinned commit exists in current clone
+    # Verify pinned commit exists in current clone. If missing, try a
+    # targeted fetch by SHA — handles the release-branch case where the
+    # pin lives on a tag/branch not in `main` history (common when vendors
+    # tag releases off a release branch). Only after that fails do we
+    # report force-push/shallow as the suspected cause.
     if ! (cd "$dir" && git cat-file -e "${pinned_commit}^{commit}" 2>/dev/null); then
-        {
-            echo "- **Status:** ⚠ pinned commit \`$pinned_commit\` not in clone (depth too shallow or commit force-pushed). Re-clone with VENDOR_CLONE_DEPTH=1000."
-            echo ""
-        } >> "$OUT"
-        continue
+        if (cd "$dir" && git fetch --quiet origin "$pinned_commit" 2>/dev/null) \
+           && (cd "$dir" && git cat-file -e "${pinned_commit}^{commit}" 2>/dev/null); then
+            : # fetched successfully — pin was on a non-main branch
+        else
+            {
+                echo "- **Status:** ⚠ pinned commit \`$pinned_commit\` not reachable even after \`git fetch origin <sha>\` (force-pushed, deleted, or repo-renamed). Re-clone with VENDOR_CLONE_DEPTH=1000 to rule out depth, then inspect upstream."
+                echo ""
+            } >> "$OUT"
+            continue
+        fi
     fi
 
     commits_count=$(cd "$dir" && git rev-list "$pinned_commit"..HEAD --count 2>/dev/null || echo "0")

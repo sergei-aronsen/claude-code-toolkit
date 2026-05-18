@@ -7,6 +7,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.44.0] - 2026-05-18
+
+### Added
+
+- **skills_pins coverage extended 10 → 22 active pins + 1 no-upstream-found**
+  (v6.44.0 scope; closes Deferred Backlog Item 2 for 12 more skills, leaving
+  `memo-skill` as the sole unpinned entry). 13 new entries in
+  `manifest.json:skills_pins`, all probed via `gh search code` +
+  `majiayu000/claude-skill-registry` cross-reference + byte-equivalence diff
+  against local mirror. Per v6.37.0 research protocol every new pin was
+  verified by GH Contents API on the declared `path`.
+
+  New monorepo pins (path field set):
+  - `ai-models` → `artofrawr/claude-control@5e8f37f6` path
+    `plugins/learning/skills/ai-models`. Toolkit mirror lags upstream
+    significantly (local 2.6 KB, upstream 16.9 KB — the skill has been
+    heavily expanded since toolkit snapshotted it).
+  - `analytics-tracking` → `mysticaltech/marketingskills@2bbd1b6a` path
+    `skills/analytics-tracking`. Local has older `metadata.version: 1.1.0`
+    plus tighter `description` (upstream Feb 2026 removed version field
+    and expanded description).
+  - `chrome-extension-development` → `Mindrally/skills@47f47c12` path
+    `chrome-extension-development`. Byte-exact match local vs upstream.
+  - `copywriting` → `mysticaltech/marketingskills@2bbd1b6a` path
+    `skills/copywriting`. Same fork-pattern as `analytics-tracking`.
+  - `i18n-localization` → `sickn33/antigravity-awesome-skills@2138ff8f`
+    path `skills/i18n-localization`. 2-line diff (markdownlint
+    auto-fix blanks). Note: this is an antigravity-marketplace mirror,
+    not the original author — the prior registry pointer
+    `Nguyenthang2292/Sovereign-IQ` 404s.
+  - `next-best-practices` → `Jackiexiao/jackie-skills-cn-top50@9b494627`
+    path `skills/next-best-practices`. Local stripped the upstream
+    Chinese prefix; rest byte-exact.
+  - `seo-audit` → `mysticaltech/marketingskills@2bbd1b6a` path
+    `skills/seo-audit`. Same fork-pattern as `analytics-tracking`.
+  - `stripe-best-practices` → `stripe/ai@ec93d4c4` path
+    `skills/stripe-best-practices`. **Canonical = OFFICIAL Stripe org**.
+    Local pinned API version `2026-03-25.dahlia`; upstream now
+    `2026-04-22.dahlia` (one Stripe API rev behind).
+  - `tailwind-design-system` → `wshobson/agents@db33dbc4` path
+    `plugins/frontend-mobile-development/skills/tailwind-design-system`.
+    Byte-exact match.
+  - `typescript-advanced-types` → `wshobson/agents@47a5dbc3` path
+    `plugins/javascript-typescript/skills/typescript-advanced-types`.
+  - `ui-ux-pro-max` → `nextlevelbuilder/ui-ux-pro-max-skill@87c6c3e0`
+    path `.claude/skills/ui-ux-pro-max`. 3-line markdownlint diff.
+
+  New standalone pins (no path field):
+  - `notebooklm` → `PleasePrompto/notebooklm-skill@eea5cb28` (root). 3-line
+    markdownlint blank-line diff.
+
+  No-upstream-found entry (introduces `_status: "no-upstream-found"` value):
+  - `memo-skill` (Obsidian-vault-integrated engineering memory skill).
+    Exhaustive `gh search code` 2026-05-18 against unique strings
+    (`"Persistent engineering knowledge vault"`, `auto_memo.py`,
+    `memo_engine.py`, Russian triggers) returned no canonical
+    SKILL.md match outside the toolkit itself. Either toolkit-original
+    or upstream was deleted/private. Marked `_status: "no-upstream-found"`
+    so `update-deps.sh` can skip it.
+
+  Probe / upgrade integration:
+  - 12 new `probe_skill_*` functions registered in
+    `scripts/update-deps.sh` (delegating to existing `probe_skill_pin`
+    helper from v6.37.0). No new probe machinery; same path-aware
+    GH API pattern.
+  - 12 new `upgrade_skill_*` stubs print manual-refresh instructions
+    (skill mirrors are hand-vendored snapshots, not live `git clone`).
+  - 12 new `register_dep "<name>" "Skill"` lines surface the pins in
+    the `update-deps.sh` dashboard.
+
+  Test coverage:
+  - `scripts/tests/test-update-deps-skills-pins.sh` updated 10 → 22
+    active pin baseline. 53 → 115 assertions; full suite passes.
+  - Added `V644_MONOREPO_PATH` map for v6.44.0 path conventions
+    (`plugins/*/skills/*`, `chrome-extension-development`,
+    `.claude/skills/ui-ux-pro-max`) — the original `MONOREPO_PATH`
+    array's `skills/<name>` convention only fits 8 of the v6.43.0
+    pins. New `ACTIVE_PIN_NAMES` + `NO_UPSTREAM_PIN_NAMES` arrays
+    let S4/S5 skip the unpinnable `memo-skill` entry.
+
+### Fixed
+
+- **`scripts/vendor/diff-summary.sh` release-branch pin false alarm.**
+  When a vendor's pinned commit lives on a release branch (not on
+  the cloned `main` HEAD), `git cat-file -e <sha>^{commit}` returns
+  non-zero because the commit object is not yet in the local clone
+  — even with `VENDOR_CLONE_DEPTH=1000`. Previously the script
+  printed `pinned commit not in clone (depth too shallow or
+  commit force-pushed)` and skipped diff generation entirely. This
+  surfaced for `serena@ad7cf51e` (v1.3.0 tagged off a release
+  branch above `main` HEAD) during the 2026-05-18
+  `/vendor-changelog` run.
+
+  The script now retries with `git fetch --quiet origin <sha>` (which
+  GitHub supports for any reachable commit, including those off the
+  default branch) before declaring force-push/shallow as the cause.
+  Verified: `serena` previously reported 0 commits-since-pin
+  (because `main` HEAD was older than the tagged pin); after
+  re-clone + fetch-by-SHA, drift is correctly reported as 24
+  commits.
+
+  The error message in the genuine force-push/deleted case now also
+  names `git fetch origin <sha>` as the diagnostic to run before
+  blaming clone depth.
+
+### Notes
+
+- Vendor changelog 2026-05-18 (8 pinned vendors): 0 BREAKING /
+  0 ADOPT / 8 IGNORE. Only `repomix` drifted (137 commits) and
+  every changed area is outside the toolkit integration surface
+  (bundled-skill rename `agent-memory` to `agent-carnet` — toolkit
+  references neither; Node 20 to 26 — toolkit is doc-only; Dart
+  tree-sitter query expansion + file pre-screen perf — internal
+  to repomix CLI). No PRs drafted. Full report at
+  `.planning/audits/vendor-changelog-2026-05-18.md`.
+
 ## [6.43.0] - 2026-05-17
 
 ### Added
