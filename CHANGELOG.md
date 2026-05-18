@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.47.6] - 2026-05-18
+
+`docs/SCRIPTS_TAXONOMY.md` accuracy fix — taxonomy doc created in
+v6.46.0 contained drift vs the actual filesystem state.
+
+### Changed
+
+- **Added** `scripts/generate-skills-catalog.sh` to Category 6
+  (maintainer-only). Missing from the original taxonomy even though
+  it shipped in the same release.
+
+- **Rewrote** Category 7 (Internal libraries). Old listing was an
+  ASCII tree with fictional entries (`lib/dro.sh`, `lib/integrations`,
+  `lib/manifest.sh`, `lib/catalog/`) that never existed on disk.
+  Replaced with a verified table of all 19 real `scripts/lib/`
+  entries (18 `.sh` + 1 `.json` data file), each with a one-line
+  purpose.
+
+- **Added** Category 8 (Sub-tool subdirectories) — documents
+  `scripts/council/`, `scripts/prompt-engineer/`, `scripts/vendor/`,
+  `scripts/tests/` which the previous taxonomy ignored. Each ships
+  as a self-contained unit with its own README.
+
+- **Tightened** preamble: "18+ shell scripts" → "~30 shell + Python
+  files" with explicit prefix + verb + subdirectory enumeration.
+
+### Why
+
+The v6.46.0 taxonomy doc was the first attempt at fixing
+scripts/-prefix sprawl. Spot-check now reveals it was both
+incomplete (missed `generate-skills-catalog.sh`,
+`scripts/council/`, `scripts/prompt-engineer/`, `scripts/vendor/`,
+`scripts/tests/`) and inaccurate (Cat 7 listed phantom files). The
+doc is now accurate to filesystem reality at v6.47.6.
+
 ## [6.47.5] - 2026-05-18
 
 `components/` audit fixes — 2 real findings from caveman-investigator
