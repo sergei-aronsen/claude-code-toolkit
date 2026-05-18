@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.48.1] - 2026-05-18
+
+`scripts/lib/dispatch.sh` hotfix triplet: CYAN unbound-variable crash on the
+rtk dispatcher path, plus latent flag-passthrough mismatches between
+dispatchers and the underlying setup scripts.
+
+### Fixed
+
+- **`CYAN` undefined under `set -u`.** `_dispatch_log_info` (line 115)
+  referenced `${CYAN}` without a default and without a guard initializer
+  at the top of the file. `RED`/`GREEN`/`YELLOW`/`BLUE`/`NC` all had
+  guards; `CYAN` was the only one missing. Callers (install.sh,
+  init-claude.sh, update-claude.sh) all run with `set -euo pipefail`, so
+  any rtk install that reached line 361's
+  `_dispatch_log_info "rtk installed: ${rtk_version:-unknown}"` would
+  exit 1 on "CYAN: unbound variable". Added the matching guard:
+  `[[ -z "${CYAN:-}" ]] && CYAN='\033[0;36m'`.
+- **`dispatch_security` was passing `--force` to setup-security.sh.**
+  setup-security.sh accepts ONLY `--yes` and exits 1 on any unknown flag
+  (M3/M4 fail-closed contract). The dispatcher's `pass_args+=("--force")`
+  meant that `install.sh --force` died at the security step. Dropped the
+  passthrough; `--force` is now consumed at the dispatcher level for
+  parity with other dispatchers and dry-run rendering, but never crosses
+  the script boundary.
+- **`dispatch_council` was passing `--force` and `--yes` to setup-council.sh.**
+  setup-council.sh has no argument-parsing block at all (it never reads
+  `$@`); the flags were silently dropped, not fail-closed as the
+  inline comment claimed. The dispatcher's pass-through misrepresented
+  target capability. Stripped both from `pass_args`. The 7 interactive
+  prompts in setup-council.sh remain not-bypassable; adding argparse +
+  proper `--yes` wiring is deferred to a future release because council
+  install is rare in the install.sh flow.
+
+### Changed
+
+- Header comment in `scripts/lib/dispatch.sh` updated to match reality:
+  - `dispatch_security` — was `[--yes] [--force]` → now `[--yes]`.
+  - `dispatch_council` — was `[--yes] [--force]` → now
+    `(no flags wired today)`.
+
+### Context
+
+Found by the `scripts/lib/` audit pass on dispatch.sh
+(see `project_scripts_lib_audit_2026_05_18.md` in memory). The CYAN bug
+is a real crash (HIGH); the two flag-passthrough mismatches are latent
+(only triggered by `install.sh --force` for security, and silently
+inert for council).
+
 ## [6.48.0] - 2026-05-18
 
 `scripts/lib/bridges.sh` null-defense hardening for `toolkit-install.json :: bridges[]`.
