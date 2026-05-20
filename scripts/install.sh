@@ -40,7 +40,7 @@ export TK_TOOLKIT_REF TK_USER_AGENT
 # Config
 # Audit H5: TK_TOOLKIT_REF pins to a tag/SHA (default `main`); TK_REPO_URL
 # remains the highest-priority override (full URL with ref baked in).
-TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.51.0}"
+TK_TOOLKIT_REF="${TK_TOOLKIT_REF:-v6.51.1}"
 # Audit INF-MED-2 (2026-04-30 deep): allowlist guard — TK_TOOLKIT_REF flows
 # raw into curl URLs. Reject anything outside the tag/SHA charset, plus any
 # `..` traversal sequence. Tags / branches / SHAs do not contain `..`.
@@ -1279,7 +1279,7 @@ fi
 # Mirror of the --mcps branch above; reuses TUI_* globals + print_install_status.
 # ─────────────────────────────────────────────────
 if [[ "$SKILLS" -eq 1 ]]; then
-    # Populate TUI_INSTALLED[] from the 24-skill catalog.
+    # Populate TUI_INSTALLED[] from SKILLS_CATALOG (sourced from scripts/lib/skills.sh).
     skills_status_array
 
     # Build TUI globals from SKILLS_CATALOG.
