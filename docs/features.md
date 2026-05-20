@@ -298,7 +298,7 @@ LOW (1)
 
 ---
 
-## Slash Commands (30 total)
+## Slash Commands (31 total)
 
 | Command | Description |
 |---------|-------------|
@@ -332,6 +332,7 @@ LOW (1)
 | `/deps` | Dependency audit: security, licenses, outdated |
 | `/council` | Multi-AI pre-implementation review (Gemini + ChatGPT) |
 | `/helpme` | Quick reference cheatsheet (9 languages) |
+| `/design-md [brand]` | Drop a brand-inspired `DESIGN.md` (71 brands from voltagent/awesome-design-md) at the project root for UI agents |
 
 ---
 
