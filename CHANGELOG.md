@@ -7,6 +7,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.51.0] - 2026-05-20
+
+Bulk skills-marketplace expansion: 40 marketing skills from the canonical
+`coreyhaines31/marketingskills` repo (29.6k★ upstream, MIT). Active
+`skills_pins` count jumps `23 → 61` — the largest single skills shipment
+since `v6.44.0`.
+
+### Added
+
+- **38 new marketing skills** mirrored from
+  [`coreyhaines31/marketingskills`](https://github.com/coreyhaines31/marketingskills)
+  at upstream commit `114587831efbe7ac5c0a86afcb69e9cca6f728ce`:
+  `ab-testing`, `ad-creative`, `ads`, `ai-seo`, `analytics`, `aso`,
+  `churn-prevention`, `co-marketing`, `cold-email`, `community-marketing`,
+  `competitor-profiling`, `competitors`, `content-strategy`, `copy-editing`,
+  `cro`, `customer-research`, `directory-submissions`, `emails`,
+  `free-tools`, `image`, `launch`, `lead-magnets`, `marketing-ideas`,
+  `marketing-psychology`, `onboarding`, `paywalls`, `popups`, `pricing`,
+  `product-marketing`, `programmatic-seo`, `referrals`, `revops`,
+  `sales-enablement`, `schema`, `signup`, `site-architecture`, `social`,
+  `video`.
+- Each skill mirror includes its full `references/*.md` + `evals/evals.json`
+  layout (not just `SKILL.md`).
+- 38 new entries in `manifest.json:skills_pins` (sha256-pinned with
+  reproducible `scripts/lib/skill-checksum.sh` hashing).
+- 38 new entries in `files.skills_marketplace` so the skills install via
+  `init-claude.sh` / `update-claude.sh`.
+
+### Migrated
+
+- **`copywriting` skill** — upstream source migrated from the
+  `mysticaltech/marketingskills` downstream fork (246★) to the canonical
+  `coreyhaines31/marketingskills` upstream (29.6k★). Mirror content
+  refreshed; sha256 updated.
+- **`seo-audit` skill** — same migration as above. The two repos diverged
+  in content over time; this release re-anchors on the canonical source.
+
+The existing `ab-test-setup` and `analytics-tracking` pins keep their
+`mysticaltech/marketingskills` source — the corresponding `coreyhaines31`
+skills are pinned under different names (`ab-testing`, `analytics`)
+because mysticaltech renamed them during its fork. Both variants coexist
+intentionally.
+
+### Why
+
+- `coreyhaines31/marketingskills` is the canonical upstream (29.6k★, MIT,
+  active development). The `mysticaltech` fork was used during v6.44.0
+  because its README advertised "pre-built `.skill` files for easy
+  installation"; subsequent inspection showed that no `.skill` packaging
+  benefit applies inside the toolkit's mirror model (we ship the raw
+  `SKILL.md` + `references/*` tree). Re-anchoring on the upstream gives:
+  - direct drift tracking against the source of truth
+  - access to upstream's full skill catalog (40 vs mysticaltech's 25)
+  - first-class compatibility with future `references/` schema changes
+- The 38 new skills fill major gaps in the toolkit's solo-developer
+  marketing surface: CRO (popups, paywalls, signup, onboarding), content
+  (content-strategy, programmatic-seo, ai-seo, schema), acquisition
+  (ads, cold-email, directory-submissions, free-tools), monetization
+  (pricing, paywalls), retention (churn-prevention, emails, referrals),
+  research (customer-research, competitor-profiling, competitors,
+  marketing-psychology).
+
+### Files changed
+
+- New: 38 mirror dirs under `templates/skills-marketplace/<skill>/` plus
+  refreshed `copywriting/` and `seo-audit/` (157 total files across the
+  40 skill dirs).
+- Updated: `manifest.json` — version `6.50.0` → `6.51.0`, 38 new
+  `skills_pins` entries, 2 migrated `skills_pins` entries
+  (`copywriting`, `seo-audit`), 40 new `files.skills_marketplace`
+  entries, `skills_pins_note` count `22 → 61 active`.
+- Updated: 9 installer scripts — `TK_TOOLKIT_REF` bumped to `v6.51.0`.
+- Regenerated: `templates/skills-catalog.json` (`23 → 61` entries).
+
+### Upgrade path
+
+- End users: `/update-toolkit` pulls all 38 new skill mirrors + the
+  refreshed `copywriting` + `seo-audit` content. Skills appear in
+  Claude's skills discovery surface immediately.
+- The mirror size grows by ~5 MB (skills-marketplace was ~1.5 MB, now
+  ~6.7 MB). Update time may be ~2x longer than usual on slow networks.
+
+### Compatibility
+
+- **No breaking changes** on the manifest schema or the
+  `skills_marketplace` install path.
+- **Soft breaking on content** for users who depended on the exact
+  prior `copywriting` or `seo-audit` text — the canonical-upstream
+  content differs from the mysticaltech version. Behavior remains
+  semantically equivalent (both fork lineages share the same
+  `coreyhaines31` ancestor).
+
 ## [6.50.0] - 2026-05-20
 
 Two small additions: `humanizer` skill from `blader/humanizer` (Wikipedia

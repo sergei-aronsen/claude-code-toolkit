@@ -2,9 +2,33 @@
   "schema_version": 1,
   "generated_from": "manifest.json:skills_pins",
   "generated_at": "2026-05-20",
-  "toolkit_version": "6.50.0",
-  "skills_count": 23,
+  "toolkit_version": "6.51.0",
+  "skills_count": 61,
   "skills": [
+    {
+      "name": "ab-testing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/ab-testing",
+      "sha256": "9009bb5ce5b03267013a8f7b08d51cbf1ed5ba71218f10e0a553fc7c6e12d82b",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/ab-testing"
+    },
+    {
+      "name": "ad-creative",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/ad-creative",
+      "sha256": "dcc14221a2b93f8ebb5333f46066a84bd664d1982070ed42f17dd39abe291384",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/ad-creative"
+    },
+    {
+      "name": "ads",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/ads",
+      "sha256": "7025b6a6d5743742a0a251f3a78c0c47a64a79e60a81f4c98cf6c9d36268ad4f",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/ads"
+    },
     {
       "name": "ai-models",
       "upstream": "https://github.com/artofrawr/claude-control",
@@ -12,6 +36,22 @@
       "path": "plugins/learning/skills/ai-models",
       "sha256": "ce4b7854d7d552b2ef5d8928532d321197277e6f15b2c224fc31f463225f442e",
       "install_cmd": "claude-skills install --from-github https://github.com/artofrawr/claude-control --commit 5e8f37f650efa223150c2643991b409d3af324ea --path plugins/learning/skills/ai-models"
+    },
+    {
+      "name": "ai-seo",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/ai-seo",
+      "sha256": "23f1727540159172e1864cd2d98e4d7555aef2a4cf1ddc9dd6ad7290e8746cc7",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/ai-seo"
+    },
+    {
+      "name": "analytics",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/analytics",
+      "sha256": "0795c6546402694ab2a294fd00f03fd0f5092f5ae1d2b6832561916843b4414e",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/analytics"
     },
     {
       "name": "analytics-tracking",
@@ -22,6 +62,14 @@
       "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/analytics-tracking"
     },
     {
+      "name": "aso",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/aso",
+      "sha256": "1c6d894e9cd0b9a96fb2b9e5c065ccbe326c40ac95db86bf5dc75a005c3803bc",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/aso"
+    },
+    {
       "name": "chrome-extension-development",
       "upstream": "https://github.com/Mindrally/skills",
       "commit": "47f47c12e62f62b5e171bd5af61d0fc24b329701",
@@ -30,12 +78,100 @@
       "install_cmd": "claude-skills install --from-github https://github.com/Mindrally/skills --commit 47f47c12e62f62b5e171bd5af61d0fc24b329701 --path chrome-extension-development"
     },
     {
+      "name": "churn-prevention",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/churn-prevention",
+      "sha256": "29dfca240fdacf7d184190252fe89a1062624231ec1b119fecfae38ccce87a35",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/churn-prevention"
+    },
+    {
+      "name": "co-marketing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/co-marketing",
+      "sha256": "53ff5ea9bd86300efbc470bb3278dcc289dc73e7fa4ab3bfa73748cde35c0bbb",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/co-marketing"
+    },
+    {
+      "name": "cold-email",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/cold-email",
+      "sha256": "ffe3414375aaaba93859cc3f3b9bd37994236f5b48b5fb06f493b4ec3c8d8396",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/cold-email"
+    },
+    {
+      "name": "community-marketing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/community-marketing",
+      "sha256": "1023e3b8e880e705ab90b478a1b58d7ce24b3c5eecd9c86ad2ee8f686cde7f96",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/community-marketing"
+    },
+    {
+      "name": "competitor-profiling",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/competitor-profiling",
+      "sha256": "f67069814787cc1957771202ded70e84e5735287f1db2ff7c34c64b0694a3097",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/competitor-profiling"
+    },
+    {
+      "name": "competitors",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/competitors",
+      "sha256": "4cb0a8c4f13254f8589a8b2d336e192e031360932d88f87627f934042abbd3d6",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/competitors"
+    },
+    {
+      "name": "content-strategy",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/content-strategy",
+      "sha256": "3d446d4c8ed04d75e2d49bf0f1cb2a8133c25c13fe04c9841589ae423766eeca",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/content-strategy"
+    },
+    {
+      "name": "copy-editing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/copy-editing",
+      "sha256": "13b741dee5e784bed9e147a1508d4194916a80234bc3c2abb2dd394a771620dc",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/copy-editing"
+    },
+    {
       "name": "copywriting",
-      "upstream": "https://github.com/mysticaltech/marketingskills",
-      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
       "path": "skills/copywriting",
-      "sha256": "71f3560cdeb63fc3459e8f5f753ad83495d12edea4a9127ff45bedab407d102c",
-      "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/copywriting"
+      "sha256": "8478f37d5bcec0193dd60335c611f590a3e33ac253c59e8b83912d2bb6385acb",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/copywriting"
+    },
+    {
+      "name": "cro",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/cro",
+      "sha256": "e42ee2dc680fd189be9d6e2f925d5eaf133c655ff72bdbe57a83c741e80879ce",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/cro"
+    },
+    {
+      "name": "customer-research",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/customer-research",
+      "sha256": "5a36513965767de8571da89858f9dd4b250b55c84eeab3690087aae44714f577",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/customer-research"
+    },
+    {
+      "name": "directory-submissions",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/directory-submissions",
+      "sha256": "0852d65fdafe26a9e675bb7ff495367807132a59c693dbbfdb9a420593c19e9b",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/directory-submissions"
     },
     {
       "name": "docx",
@@ -44,6 +180,14 @@
       "path": "skills/docx",
       "sha256": "950befc5c3ed716f839a362429debea9edbda31c15563281498d36dafbcbd4c5",
       "install_cmd": "claude-skills install --from-github https://github.com/anthropics/skills --commit 3d59511518591fa82e6cfcf0438d68dd5dad3e76 --path skills/docx"
+    },
+    {
+      "name": "emails",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/emails",
+      "sha256": "24c90c52cef336d879894d224e4fc53cbfd94b1a4e5be68b05337d8d3ba8c942",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/emails"
     },
     {
       "name": "find-skills",
@@ -60,6 +204,14 @@
       "path": "skills/firecrawl-cli",
       "sha256": "22ba67a196d80ea7995ddd61813f5731541ff5c1284c2d45f50696c24ef2c145",
       "install_cmd": "claude-skills install --from-github https://github.com/firecrawl/cli --commit f873e5bfd2ee090aefc4c5c304570334666f6b2a --path skills/firecrawl-cli"
+    },
+    {
+      "name": "free-tools",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/free-tools",
+      "sha256": "dc4c7c5579df6913e5ae5b642050912679877e4ecfab30b61475db054c586ff4",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/free-tools"
     },
     {
       "name": "huashu-design",
@@ -84,6 +236,46 @@
       "install_cmd": "claude-skills install --from-github https://github.com/sickn33/antigravity-awesome-skills --commit 2138ff8fd03e70a03e116098923de0bdab3d2748 --path skills/i18n-localization"
     },
     {
+      "name": "image",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/image",
+      "sha256": "42a893607914277914911e63b4b1b022884178cd2001b875890b086336b667fd",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/image"
+    },
+    {
+      "name": "launch",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/launch",
+      "sha256": "1d164df86f70835a581e636f053674654acb9c29821f8bd636bd76a2be245b33",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/launch"
+    },
+    {
+      "name": "lead-magnets",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/lead-magnets",
+      "sha256": "ae0e160a0737925c8c7ac6c462cf6f4537c974c996f41170f632dbf7ea2e3769",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/lead-magnets"
+    },
+    {
+      "name": "marketing-ideas",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/marketing-ideas",
+      "sha256": "cd727687848e584e567591a1b6a541cbb31c89b1080c4838f087b45f35849b78",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/marketing-ideas"
+    },
+    {
+      "name": "marketing-psychology",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/marketing-psychology",
+      "sha256": "2f68a8835df49c02625039fd261bff53dcdac7ecdfddb3c3266cd6793a9e4d7e",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/marketing-psychology"
+    },
+    {
       "name": "next-best-practices",
       "upstream": "https://github.com/Jackiexiao/jackie-skills-cn-top50",
       "commit": "9b494627f8b1a77bfe2540a971396ca48183de80",
@@ -99,12 +291,68 @@
       "install_cmd": "claude-skills install --from-github https://github.com/PleasePrompto/notebooklm-skill --commit eea5cb28ba79ab8b078a1eaa44ce9ec44f75dbf8"
     },
     {
+      "name": "onboarding",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/onboarding",
+      "sha256": "da8da1e826f491fb1d695eb0a3e39464635de7fce229853f5a787ecde0b810de",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/onboarding"
+    },
+    {
+      "name": "paywalls",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/paywalls",
+      "sha256": "87b2848f12c56d45e856736b0e48280dcd196112bc3a3d887fc74328c3535d86",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/paywalls"
+    },
+    {
       "name": "pdf",
       "upstream": "https://github.com/anthropics/skills",
       "commit": "1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563",
       "path": "skills/pdf",
       "sha256": "840f21cf5c10cf8d854517028640840d267f0731fd38d901a3bd66ebef64024e",
       "install_cmd": "claude-skills install --from-github https://github.com/anthropics/skills --commit 1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563 --path skills/pdf"
+    },
+    {
+      "name": "popups",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/popups",
+      "sha256": "2bdd26873cdc84b40a769de50c1f434caa31c2ce47b75c1670a5bed01d151b65",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/popups"
+    },
+    {
+      "name": "pricing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/pricing",
+      "sha256": "7dfda3055e70c16dbae746c165077e7870a5f6dda786ab765e5d0e284f1da2a7",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/pricing"
+    },
+    {
+      "name": "product-marketing",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/product-marketing",
+      "sha256": "5cf2f74031f37e20bf383e22f41537e52b3aeb320dc1f00528e79df4f4fccbfa",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/product-marketing"
+    },
+    {
+      "name": "programmatic-seo",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/programmatic-seo",
+      "sha256": "b2085fc199b2edec28ededb47b93ab2a7651ef870225f15a91a8165a823aecd4",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/programmatic-seo"
+    },
+    {
+      "name": "referrals",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/referrals",
+      "sha256": "37a78417289c99b1a66e7aeed84c473ec167d12df07407a1f3f49a2e906bbb61",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/referrals"
     },
     {
       "name": "resend",
@@ -114,12 +362,36 @@
       "install_cmd": "claude-skills install --from-github https://github.com/resend/resend-skills --commit 78469829399beec62b8f815f109ebfcfa3b0680b"
     },
     {
+      "name": "revops",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/revops",
+      "sha256": "5998b4927e228aa5574c4053adf692512ef582868d73527d896ceb70e93d362b",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/revops"
+    },
+    {
+      "name": "sales-enablement",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/sales-enablement",
+      "sha256": "75b94cc50e7250936fd30ce8da7a32b83a21c19b6abcff71780cb9cb9fee8b59",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/sales-enablement"
+    },
+    {
+      "name": "schema",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/schema",
+      "sha256": "180e4e02902d851442357692d7f01aeb617f79f1d558c84e9212d7980a360937",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/schema"
+    },
+    {
       "name": "seo-audit",
-      "upstream": "https://github.com/mysticaltech/marketingskills",
-      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
       "path": "skills/seo-audit",
-      "sha256": "9358974cf6c35647c5dc732fcf3c70f37d701d6bf7f1a5ae5affef17915a956c",
-      "install_cmd": "claude-skills install --from-github https://github.com/mysticaltech/marketingskills --commit 2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96 --path skills/seo-audit"
+      "sha256": "f9228a5eb52764638260c4dd796b04389ca6a3a58ebd2fdc092b4e8c86e2dbeb",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/seo-audit"
     },
     {
       "name": "shadcn",
@@ -128,6 +400,30 @@
       "path": "skills/shadcn",
       "sha256": "4b80e50c1c367cd968eff79cacd5d17a57d8893ef9a7b25e2c7f69be64dc640a",
       "install_cmd": "claude-skills install --from-github https://github.com/shadcn-ui/ui --commit ea6086cbcc33b359bb876651374e26f643ea85b1 --path skills/shadcn"
+    },
+    {
+      "name": "signup",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/signup",
+      "sha256": "87b28adbc35debc5dc6ba43b8c14569f68d5bf71920212aa77d0ce9c25f19bdc",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/signup"
+    },
+    {
+      "name": "site-architecture",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/site-architecture",
+      "sha256": "5f63cafad2f677ea44db6be461eb11ef3719009af6c7cafb0ee7f59878ddfddc",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/site-architecture"
+    },
+    {
+      "name": "social",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/social",
+      "sha256": "be9341844d79a4379c4d5f8b736c4ffdac261aa9fcd717e7dce91da72cd361b3",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/social"
     },
     {
       "name": "stripe-best-practices",
@@ -176,6 +472,14 @@
       "path": "skills/react-best-practices",
       "sha256": "58e1f8a6a3f11113d2e55e485e4ad7892a0c9c69fd80b21386de311c131a8211",
       "install_cmd": "claude-skills install --from-github https://github.com/vercel-labs/agent-skills --commit dc8367e6f91c022d83361f03c3313fa05e848ee5 --path skills/react-best-practices"
+    },
+    {
+      "name": "video",
+      "upstream": "https://github.com/coreyhaines31/marketingskills",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "path": "skills/video",
+      "sha256": "811dacf66382f2c5f527fd552920636f4b91c5f0ffa142e46316e9a77264e7f9",
+      "install_cmd": "claude-skills install --from-github https://github.com/coreyhaines31/marketingskills --commit 114587831efbe7ac5c0a86afcb69e9cca6f728ce --path skills/video"
     },
     {
       "name": "webapp-testing",
