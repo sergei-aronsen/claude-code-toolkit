@@ -24,6 +24,7 @@
     "AUDIT-REPORT.md",
     "scripts/tests/fixtures/**",
     "templates/skills-marketplace/**",
+    "templates/design-md/**",
     "plugins/**",
     "docs/research/**"
   ]

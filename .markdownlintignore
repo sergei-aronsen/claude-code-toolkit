@@ -21,6 +21,15 @@ AUDIT-REPORT.md
 # remains fully linted. Exclusion approved as part of Phase 26 Plan 03.
 templates/skills-marketplace/
 
+# templates/design-md/ mirrors voltagent/awesome-design-md verbatim — 71 brand
+# DESIGN.md files pinned via manifest.json:vendor_pins.awesome-design-md. Each
+# file is authored upstream and carries upstream's own markdown style
+# (MD022/MD032 around section headers, MD012 double-blank around dividers).
+# Same precedent as templates/skills-marketplace/ above: vendored content
+# stays as upstream wrote it; the toolkit's own authored markdown remains
+# fully linted.
+templates/design-md/
+
 # plugins/ sub-plugin trees use symlinks to canonical repo content. Exclude
 # the symlinked paths from lint to avoid double-processing content already
 # covered above (plugins/ are distribution artifacts, not authored markdown).

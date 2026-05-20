@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.49.0] - 2026-05-20
+
+New integration: `awesome-design-md` brand catalog mirrored into the toolkit
+and surfaced through a new `/design-md` slash command. Solves the problem of
+coding agents generating generic-looking UI by giving them a structured,
+brand-inspired design system to follow.
+
+### Added
+
+- **71-brand `DESIGN.md` mirror** under `templates/design-md/<brand>/DESIGN.md`.
+  Sourced from [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md)
+  at upstream commit `3883984baf05226208a5dae15730a3593548b808`. Brands cover
+  developer platforms (Vercel, Stripe, Supabase, Resend, Sentry), consumer
+  brands (Airbnb, Apple, Nike, Spotify, Notion), automotive (BMW, Tesla,
+  Ferrari, Lamborghini), AI labs (Claude, Cohere, ElevenLabs, Mistral, x.ai),
+  and 50+ more. Each file is a single self-contained Markdown document with
+  YAML-frontmatter tokens (colors, typography, spacing, radii, motion). Total
+  mirror size: 2.1 MB.
+- **`templates/design-md/INDEX.json`** — single source of truth for the brand
+  list, upstream commit pin, and mirror date. The `/design-md` picker reads
+  this file rather than hard-coding 71 names.
+- **`commands/design-md.md`** — `/design-md [brand]` slash command. Picks a
+  brand (interactively or by argument), resolves the file from a local
+  toolkit clone if available else curls from the toolkit-pinned mirror, and
+  writes to `<project-root>/DESIGN.md`. Refuses to silently overwrite an
+  existing DESIGN.md.
+- **`components/design-md-guide.md`** — humans-facing explainer covering when
+  to use `/design-md` vs the existing Open Design integration
+  (`components/open-design.md`), how to pair DESIGN.md with CLAUDE.md, and
+  what drift detection looks like.
+- **`manifest.json:vendor_pins.awesome-design-md`** — drift-tracking pin.
+  `/vendor-changelog` will diff this against upstream `main` and classify
+  brand additions as `ADOPT` and token-schema breakage as `BREAKING`.
+
+### Why
+
+Coding agents default to bland aesthetics — generic gradients, default
+shadcn/ui colors, system fonts. A `DESIGN.md` at the project root with
+explicit tokens fixes this with zero infrastructure: it is one Markdown file
+the agent reads alongside its other prompt context. The companion Open Design
+integration (`components/open-design.md`, 149 brands) solves a heavier
+artifact-generation problem; this lighter integration solves the
+file-in-the-repo problem.
+
+### Files changed
+
+- New: `templates/design-md/<71 brands>/DESIGN.md`
+- New: `templates/design-md/INDEX.json`
+- New: `commands/design-md.md`
+- New: `components/design-md-guide.md`
+- Updated: `manifest.json` — version `6.48.1` → `6.49.0`,
+  `vendor_pins.awesome-design-md` added, `files.commands` adds
+  `commands/design-md.md`.
+
+### Upgrade path
+
+End users: `/update-toolkit` pulls the new mirror, the new command, and the
+new component doc. After upgrade, run `/design-md` inside any project to pick
+a brand. Existing projects with their own `DESIGN.md` are untouched —
+`/design-md` refuses to overwrite without explicit confirmation.
+
 ## [6.48.1] - 2026-05-18
 
 `scripts/lib/dispatch.sh` hotfix triplet: CYAN unbound-variable crash on the
