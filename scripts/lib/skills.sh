@@ -3,12 +3,12 @@
 # Claude Code Toolkit — Skills Catalog Loader + Detection + Install Helper (v4.5+)
 # Source this file. Do NOT execute it directly.
 # Exposes:
-#   skills_catalog_names           — prints 24 skill names one-per-line (alpha sorted)
+#   skills_catalog_names           — prints all catalog skill names one-per-line (alpha sorted)
 #   is_skill_installed <name>      — returns 0 (installed) / 1 (not installed)
 #   skills_status_array            — populates TUI_INSTALLED[] for install.sh --skills branch
 #   skills_install <name> [--force] — copies skill from mirror to target via cp -R
 # Globals (write):
-#   SKILLS_CATALOG[]   — 24 curated skill names (alpha order); populated at source time
+#   SKILLS_CATALOG[]   — curated skill names (alpha order); populated at source time
 #   TUI_INSTALLED[]    — populated by skills_status_array (parallel to SKILLS_CATALOG)
 # Test seams:
 #   TK_SKILLS_HOME                    — override $HOME/.claude/skills/ probe path (used by is_skill_installed)
@@ -31,33 +31,75 @@
 # shellcheck disable=SC2034
 [[ -z "${NC:-}"     ]] && NC='\033[0m'
 
-# Curated 24-skill catalog — SKILL-01 source of truth.
-# Alphabetical order. Do NOT add or remove without updating REQUIREMENTS.md SKILL-01.
+# Curated skills catalog — must stay in sync with manifest.json:files.skills_marketplace.
+# Alphabetical order. impeccable is an npm-installed skill (special-cased in
+# _skills_description below) — not vendored under templates/skills-marketplace/.
+# All other names map to a templates/skills-marketplace/<name>/ mirror dir.
+# Total: 63 (62 mirrored skills + impeccable).
 # shellcheck disable=SC2034
 SKILLS_CATALOG=(
+  ab-testing
+  ad-creative
+  ads
   ai-models
+  ai-seo
+  analytics
   analytics-tracking
+  aso
   chrome-extension-development
+  churn-prevention
+  co-marketing
+  cold-email
+  community-marketing
+  competitor-profiling
+  competitors
+  content-strategy
+  copy-editing
   copywriting
+  cro
+  customer-research
+  directory-submissions
   docx
+  emails
   find-skills
   firecrawl
+  free-tools
   huashu-design
+  humanizer
   i18n-localization
+  image
   impeccable
+  launch
+  lead-magnets
+  marketing-ideas
+  marketing-psychology
   memo-skill
   next-best-practices
   notebooklm
+  onboarding
+  paywalls
   pdf
+  popups
+  pricing
+  product-marketing
+  programmatic-seo
+  referrals
   resend
+  revops
+  sales-enablement
+  schema
   seo-audit
   shadcn
+  signup
+  site-architecture
+  social
   stripe-best-practices
   tailwind-design-system
   typescript-advanced-types
   ui-ux-pro-max
   vercel-composition-patterns
   vercel-react-best-practices
+  video
   webapp-testing
 )
 
@@ -74,7 +116,7 @@ _skills_default_mirror_path() {
     echo "${TK_SKILLS_MIRROR_PATH:-${d}/../../templates/skills-marketplace}"
 }
 
-# skills_catalog_names — print all 24 skill names from SKILLS_CATALOG, one per line.
+# skills_catalog_names — print all skill names from SKILLS_CATALOG, one per line.
 skills_catalog_names() {
     printf '%s\n' "${SKILLS_CATALOG[@]}"
 }

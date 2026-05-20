@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.51.1] - 2026-05-20
+
+Hotfix: the install-time skills picker hardcoded a 24-skill list in
+`scripts/lib/skills.sh:SKILLS_CATALOG`, so the 38 marketing skills added
+in v6.51.0 + the humanizer skill added in v6.50.0 were INVISIBLE to the
+TUI even though they were correctly mirrored under
+`templates/skills-marketplace/` and registered in
+`manifest.json:skills_pins` + `templates/skills-catalog.json`.
+
+User-reported regression — the install picker on a fresh project showed
+only the legacy 24 skills, missing all 39 net-new skills from the past
+two ships.
+
+### Fixed
+
+- **`scripts/lib/skills.sh:SKILLS_CATALOG`** — expanded from 24 names to
+  63 (62 mirrored skills + `impeccable` npm-installed special case). The
+  array now matches `manifest.json:files.skills_marketplace` 1:1, plus
+  the `impeccable` entry that lives outside the mirror by design.
+- Updated SKILLS_CATALOG header comment from "24-skill catalog —
+  SKILL-01 source of truth" to a description of the actual contract
+  (mirror dirs + impeccable npm special-case). The vestigial
+  `REQUIREMENTS.md SKILL-01` reference was already dead (no such file).
+- Updated docstring on `skills_catalog_names()` and the variable docs at
+  the top of the file — no more "24" hardcoded references.
+
+### Why this slipped
+
+The previous 3 ships (v6.49.0, v6.50.0, v6.51.0) updated:
+
+- `manifest.json:skills_pins` (62 entries)
+- `manifest.json:files.skills_marketplace` (62 entries)
+- `templates/skills-catalog.json` (61 + memo-skill = 62)
+- mirror dirs under `templates/skills-marketplace/`
+
+… but did NOT update `SKILLS_CATALOG` in `scripts/lib/skills.sh`. That
+array is what `scripts/install.sh` reads when building the TUI checklist
+— it is the single source of truth for picker visibility, separate from
+the manifest/catalog files. The drift was silent because `make check`
+does not enforce SKILLS_CATALOG ↔ manifest consistency.
+
+### Memory correction
+
+The v6.51.0 CHANGELOG + topic file claimed `ab-test-setup` was retained
+from the mysticaltech fork "under a distinct name." Re-audit of
+`manifest.json:skills_pins` shows `ab-test-setup` was never pinned —
+only `analytics-tracking` was kept from mysticaltech. The
+`ab-test-setup` claim was a documentation hallucination. The
+SKILLS_CATALOG fix in this release does NOT add `ab-test-setup`
+because no mirror dir exists for it.
+
+### Follow-up
+
+A future release should add a `make check` gate that compares
+`SKILLS_CATALOG` against `manifest.json:files.skills_marketplace` to
+prevent recurrence. Tracked as deferred work.
+
 ## [6.51.0] - 2026-05-20
 
 Bulk skills-marketplace expansion: 40 marketing skills from the canonical
