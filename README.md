@@ -33,6 +33,8 @@ A thin overlay on top of [**Superpowers**](https://github.com/obra/superpowers) 
 | **Dependency dashboard (v6.2)**      | `/update-deps` — interactive TUI listing every tracked dependency (Layer 1/2/3) with installed-vs-latest. You pick what to update.                |
 | **Post-install setup guide (v6.3)**  | Generates a local HTML page (`/.claude/setup-guide.html`) with per-MCP API-key walkthroughs and per-component config — only sections for what you actually installed. |
 | **Vendor functional changelog (v6.3)** | `/vendor-changelog` — pins external vendors (Superpowers, GSD, Serena, RTK, …) at every release; diffs HEAD vs pin; classifies changes BREAKING/ADOPT/IGNORE/DEPRECATE. Auto-pin on release via `.github/workflows/auto-pin-vendors-on-release.yml`. |
+| **Brand-inspired UI tokens (v6.49)** | `/design-md` — drop one of 71 brand-inspired `DESIGN.md` files (Vercel, Stripe, Airbnb, Apple, Tesla, …) into the project root so coding agents generate UI that matches a chosen visual language. Mirror pinned from [voltagent/awesome-design-md](https://github.com/voltagent/awesome-design-md). |
+| **Marketing skills (v6.51)**         | 40 marketing skills mirrored from canonical [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills): CRO, copywriting, SEO, pricing, paywalls, cold-email, churn-prevention, customer-research, programmatic-seo. Active `skills_pins` count `61`. |
 
 The headline value is curation. Everything is opt-in via TUI checkboxes — nothing is forced.
 
@@ -69,6 +71,7 @@ Use these from inside Claude Code after `/plugin marketplace add`:
 | `/audit`           | Run one of the 7 framework-aware audits (security, performance, etc.).        |
 | `/debug`           | 4-phase systematic debugger: root-cause → pattern → hypothesis → fix.         |
 | `/setup-guide`     | Regenerate the local HTML setup walkthrough for installed MCPs/components.    |
+| `/design-md`       | Pick a brand-inspired `DESIGN.md` (71 brands) and drop it at the project root for UI agents. |
 
 Full command list: [docs/features.md](docs/features.md).
 
