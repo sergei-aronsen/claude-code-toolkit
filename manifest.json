@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "6.50.0",
+  "version": "6.51.0",
   "updated": "2026-05-20",
   "build_date": "2026-05-20",
   "description": "Claude Code Toolkit manifest for smart updates",
@@ -63,8 +63,35 @@
       "mirror_subset": "design-md/<brand>/DESIGN.md (71 brands; README.md per brand intentionally not mirrored)"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.50.0, 2026-05-20): 23 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection) \u2192 v6.47.0 (hardened sync: tab/newline-safe checksum, atomic mirror swap, post-checkout SHA verification, 3-way CLEAN/SOFT/DRIFT classification via --normalize so markdownlint-style cosmetic diffs do not trip --strict CI gate). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.51.0, 2026-05-20): 61 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection) \u2192 v6.47.0 (hardened sync: tab/newline-safe checksum, atomic mirror swap, post-checkout SHA verification, 3-way CLEAN/SOFT/DRIFT classification via --normalize so markdownlint-style cosmetic diffs do not trip --strict CI gate). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
   "skills_pins": {
+    "ab-testing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/ab-testing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "9009bb5ce5b03267013a8f7b08d51cbf1ed5ba71218f10e0a553fc7c6e12d82b"
+    },
+    "ad-creative": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/ad-creative",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "dcc14221a2b93f8ebb5333f46066a84bd664d1982070ed42f17dd39abe291384"
+    },
+    "ads": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/ads",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "7025b6a6d5743742a0a251f3a78c0c47a64a79e60a81f4c98cf6c9d36268ad4f"
+    },
     "ai-models": {
       "repo": "https://github.com/artofrawr/claude-control",
       "path": "plugins/learning/skills/ai-models",
@@ -73,6 +100,24 @@
       "pinned_at": "2026-05-18",
       "_status": "active",
       "sha256": "ce4b7854d7d552b2ef5d8928532d321197277e6f15b2c224fc31f463225f442e"
+    },
+    "ai-seo": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/ai-seo",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "23f1727540159172e1864cd2d98e4d7555aef2a4cf1ddc9dd6ad7290e8746cc7"
+    },
+    "analytics": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/analytics",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "0795c6546402694ab2a294fd00f03fd0f5092f5ae1d2b6832561916843b4414e"
     },
     "analytics-tracking": {
       "repo": "https://github.com/mysticaltech/marketingskills",
@@ -83,6 +128,15 @@
       "_status": "active",
       "sha256": "1b401662f84f2ee72ea41dafa3f38a0de1be502c6043f815ac804551200592e6"
     },
+    "aso": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/aso",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "1c6d894e9cd0b9a96fb2b9e5c065ccbe326c40ac95db86bf5dc75a005c3803bc"
+    },
     "chrome-extension-development": {
       "repo": "https://github.com/Mindrally/skills",
       "path": "chrome-extension-development",
@@ -92,14 +146,113 @@
       "_status": "active",
       "sha256": "488dd06fc70ccdb3559a0ec6b42f0741a6f51ebfb02184152caa97f21ee385d3"
     },
+    "churn-prevention": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/churn-prevention",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "29dfca240fdacf7d184190252fe89a1062624231ec1b119fecfae38ccce87a35"
+    },
+    "co-marketing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/co-marketing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "53ff5ea9bd86300efbc470bb3278dcc289dc73e7fa4ab3bfa73748cde35c0bbb"
+    },
+    "cold-email": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/cold-email",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "ffe3414375aaaba93859cc3f3b9bd37994236f5b48b5fb06f493b4ec3c8d8396"
+    },
+    "community-marketing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/community-marketing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "1023e3b8e880e705ab90b478a1b58d7ce24b3c5eecd9c86ad2ee8f686cde7f96"
+    },
+    "competitor-profiling": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/competitor-profiling",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "f67069814787cc1957771202ded70e84e5735287f1db2ff7c34c64b0694a3097"
+    },
+    "competitors": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/competitors",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "4cb0a8c4f13254f8589a8b2d336e192e031360932d88f87627f934042abbd3d6"
+    },
+    "content-strategy": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/content-strategy",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "3d446d4c8ed04d75e2d49bf0f1cb2a8133c25c13fe04c9841589ae423766eeca"
+    },
+    "copy-editing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/copy-editing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "13b741dee5e784bed9e147a1508d4194916a80234bc3c2abb2dd394a771620dc"
+    },
     "copywriting": {
-      "repo": "https://github.com/mysticaltech/marketingskills",
+      "repo": "https://github.com/coreyhaines31/marketingskills",
       "path": "skills/copywriting",
       "tag": null,
-      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
-      "pinned_at": "2026-05-18",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
       "_status": "active",
-      "sha256": "71f3560cdeb63fc3459e8f5f753ad83495d12edea4a9127ff45bedab407d102c"
+      "sha256": "8478f37d5bcec0193dd60335c611f590a3e33ac253c59e8b83912d2bb6385acb"
+    },
+    "cro": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/cro",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "e42ee2dc680fd189be9d6e2f925d5eaf133c655ff72bdbe57a83c741e80879ce"
+    },
+    "customer-research": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/customer-research",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "5a36513965767de8571da89858f9dd4b250b55c84eeab3690087aae44714f577"
+    },
+    "directory-submissions": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/directory-submissions",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "0852d65fdafe26a9e675bb7ff495367807132a59c693dbbfdb9a420593c19e9b"
     },
     "docx": {
       "repo": "https://github.com/anthropics/skills",
@@ -109,6 +262,15 @@
       "pinned_at": "2026-05-17",
       "_status": "active",
       "sha256": "950befc5c3ed716f839a362429debea9edbda31c15563281498d36dafbcbd4c5"
+    },
+    "emails": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/emails",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "24c90c52cef336d879894d224e4fc53cbfd94b1a4e5be68b05337d8d3ba8c942"
     },
     "find-skills": {
       "repo": "https://github.com/vercel-labs/skills",
@@ -127,6 +289,15 @@
       "pinned_at": "2026-05-17",
       "_status": "active",
       "sha256": "22ba67a196d80ea7995ddd61813f5731541ff5c1284c2d45f50696c24ef2c145"
+    },
+    "free-tools": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/free-tools",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "dc4c7c5579df6913e5ae5b642050912679877e4ecfab30b61475db054c586ff4"
     },
     "huashu-design": {
       "repo": "https://github.com/alchaincyf/huashu-design",
@@ -152,6 +323,51 @@
       "pinned_at": "2026-05-18",
       "_status": "active",
       "sha256": "94f314e313012c4890691dba715d5329ec43c924ea2a181bde41c4b572fdf555"
+    },
+    "image": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/image",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "42a893607914277914911e63b4b1b022884178cd2001b875890b086336b667fd"
+    },
+    "launch": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/launch",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "1d164df86f70835a581e636f053674654acb9c29821f8bd636bd76a2be245b33"
+    },
+    "lead-magnets": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/lead-magnets",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "ae0e160a0737925c8c7ac6c462cf6f4537c974c996f41170f632dbf7ea2e3769"
+    },
+    "marketing-ideas": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/marketing-ideas",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "cd727687848e584e567591a1b6a541cbb31c89b1080c4838f087b45f35849b78"
+    },
+    "marketing-psychology": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/marketing-psychology",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "2f68a8835df49c02625039fd261bff53dcdac7ecdfddb3c3266cd6793a9e4d7e"
     },
     "memo-skill": {
       "repo": null,
@@ -181,6 +397,24 @@
       "_status": "active",
       "sha256": "7f8c056fe1af124cb881d92b246496f521e1c7901d8b4a6bb804185727bd9c19"
     },
+    "onboarding": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/onboarding",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "da8da1e826f491fb1d695eb0a3e39464635de7fce229853f5a787ecde0b810de"
+    },
+    "paywalls": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/paywalls",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "87b2848f12c56d45e856736b0e48280dcd196112bc3a3d887fc74328c3535d86"
+    },
     "pdf": {
       "repo": "https://github.com/anthropics/skills",
       "path": "skills/pdf",
@@ -190,6 +424,51 @@
       "_status": "active",
       "sha256": "840f21cf5c10cf8d854517028640840d267f0731fd38d901a3bd66ebef64024e"
     },
+    "popups": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/popups",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "2bdd26873cdc84b40a769de50c1f434caa31c2ce47b75c1670a5bed01d151b65"
+    },
+    "pricing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/pricing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "7dfda3055e70c16dbae746c165077e7870a5f6dda786ab765e5d0e284f1da2a7"
+    },
+    "product-marketing": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/product-marketing",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "5cf2f74031f37e20bf383e22f41537e52b3aeb320dc1f00528e79df4f4fccbfa"
+    },
+    "programmatic-seo": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/programmatic-seo",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "b2085fc199b2edec28ededb47b93ab2a7651ef870225f15a91a8165a823aecd4"
+    },
+    "referrals": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/referrals",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "37a78417289c99b1a66e7aeed84c473ec167d12df07407a1f3f49a2e906bbb61"
+    },
     "resend": {
       "repo": "https://github.com/resend/resend-skills",
       "tag": null,
@@ -198,14 +477,41 @@
       "_status": "active",
       "sha256": "213e2e0f6544fd395b18c2f7f3b17f99c324745b1dd4a5435455e0b006180b41"
     },
+    "revops": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/revops",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "5998b4927e228aa5574c4053adf692512ef582868d73527d896ceb70e93d362b"
+    },
+    "sales-enablement": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/sales-enablement",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "75b94cc50e7250936fd30ce8da7a32b83a21c19b6abcff71780cb9cb9fee8b59"
+    },
+    "schema": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/schema",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "180e4e02902d851442357692d7f01aeb617f79f1d558c84e9212d7980a360937"
+    },
     "seo-audit": {
-      "repo": "https://github.com/mysticaltech/marketingskills",
+      "repo": "https://github.com/coreyhaines31/marketingskills",
       "path": "skills/seo-audit",
       "tag": null,
-      "commit": "2bbd1b6af3eb658dce42ddb6538abe60ab4e0d96",
-      "pinned_at": "2026-05-18",
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
       "_status": "active",
-      "sha256": "9358974cf6c35647c5dc732fcf3c70f37d701d6bf7f1a5ae5affef17915a956c"
+      "sha256": "f9228a5eb52764638260c4dd796b04389ca6a3a58ebd2fdc092b4e8c86e2dbeb"
     },
     "shadcn": {
       "repo": "https://github.com/shadcn-ui/ui",
@@ -215,6 +521,33 @@
       "pinned_at": "2026-05-17",
       "_status": "active",
       "sha256": "4b80e50c1c367cd968eff79cacd5d17a57d8893ef9a7b25e2c7f69be64dc640a"
+    },
+    "signup": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/signup",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "87b28adbc35debc5dc6ba43b8c14569f68d5bf71920212aa77d0ce9c25f19bdc"
+    },
+    "site-architecture": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/site-architecture",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "5f63cafad2f677ea44db6be461eb11ef3719009af6c7cafb0ee7f59878ddfddc"
+    },
+    "social": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/social",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "be9341844d79a4379c4d5f8b736c4ffdac261aa9fcd717e7dce91da72cd361b3"
     },
     "stripe-best-practices": {
       "repo": "https://github.com/stripe/ai",
@@ -269,6 +602,15 @@
       "pinned_at": "2026-05-17",
       "_status": "active",
       "sha256": "58e1f8a6a3f11113d2e55e485e4ad7892a0c9c69fd80b21386de311c131a8211"
+    },
+    "video": {
+      "repo": "https://github.com/coreyhaines31/marketingskills",
+      "path": "skills/video",
+      "tag": null,
+      "commit": "114587831efbe7ac5c0a86afcb69e9cca6f728ce",
+      "pinned_at": "2026-05-20",
+      "_status": "active",
+      "sha256": "811dacf66382f2c5f527fd552920636f4b91c5f0ffa142e46316e9a77264e7f9"
     },
     "webapp-testing": {
       "repo": "https://github.com/anthropics/skills",
@@ -618,25 +960,82 @@
     ],
     "skills_marketplace": [
       {
+        "path": "templates/skills-marketplace/ab-testing"
+      },
+      {
+        "path": "templates/skills-marketplace/ad-creative"
+      },
+      {
+        "path": "templates/skills-marketplace/ads"
+      },
+      {
         "path": "templates/skills-marketplace/ai-models"
+      },
+      {
+        "path": "templates/skills-marketplace/ai-seo"
+      },
+      {
+        "path": "templates/skills-marketplace/analytics"
       },
       {
         "path": "templates/skills-marketplace/analytics-tracking"
       },
       {
+        "path": "templates/skills-marketplace/aso"
+      },
+      {
         "path": "templates/skills-marketplace/chrome-extension-development"
+      },
+      {
+        "path": "templates/skills-marketplace/churn-prevention"
+      },
+      {
+        "path": "templates/skills-marketplace/co-marketing"
+      },
+      {
+        "path": "templates/skills-marketplace/cold-email"
+      },
+      {
+        "path": "templates/skills-marketplace/community-marketing"
+      },
+      {
+        "path": "templates/skills-marketplace/competitor-profiling"
+      },
+      {
+        "path": "templates/skills-marketplace/competitors"
+      },
+      {
+        "path": "templates/skills-marketplace/content-strategy"
+      },
+      {
+        "path": "templates/skills-marketplace/copy-editing"
       },
       {
         "path": "templates/skills-marketplace/copywriting"
       },
       {
+        "path": "templates/skills-marketplace/cro"
+      },
+      {
+        "path": "templates/skills-marketplace/customer-research"
+      },
+      {
+        "path": "templates/skills-marketplace/directory-submissions"
+      },
+      {
         "path": "templates/skills-marketplace/docx"
+      },
+      {
+        "path": "templates/skills-marketplace/emails"
       },
       {
         "path": "templates/skills-marketplace/find-skills"
       },
       {
         "path": "templates/skills-marketplace/firecrawl"
+      },
+      {
+        "path": "templates/skills-marketplace/free-tools"
       },
       {
         "path": "templates/skills-marketplace/huashu-design"
@@ -648,6 +1047,21 @@
         "path": "templates/skills-marketplace/i18n-localization"
       },
       {
+        "path": "templates/skills-marketplace/image"
+      },
+      {
+        "path": "templates/skills-marketplace/launch"
+      },
+      {
+        "path": "templates/skills-marketplace/lead-magnets"
+      },
+      {
+        "path": "templates/skills-marketplace/marketing-ideas"
+      },
+      {
+        "path": "templates/skills-marketplace/marketing-psychology"
+      },
+      {
         "path": "templates/skills-marketplace/memo-skill"
       },
       {
@@ -657,16 +1071,55 @@
         "path": "templates/skills-marketplace/notebooklm"
       },
       {
+        "path": "templates/skills-marketplace/onboarding"
+      },
+      {
+        "path": "templates/skills-marketplace/paywalls"
+      },
+      {
         "path": "templates/skills-marketplace/pdf"
       },
       {
+        "path": "templates/skills-marketplace/popups"
+      },
+      {
+        "path": "templates/skills-marketplace/pricing"
+      },
+      {
+        "path": "templates/skills-marketplace/product-marketing"
+      },
+      {
+        "path": "templates/skills-marketplace/programmatic-seo"
+      },
+      {
+        "path": "templates/skills-marketplace/referrals"
+      },
+      {
         "path": "templates/skills-marketplace/resend"
+      },
+      {
+        "path": "templates/skills-marketplace/revops"
+      },
+      {
+        "path": "templates/skills-marketplace/sales-enablement"
+      },
+      {
+        "path": "templates/skills-marketplace/schema"
       },
       {
         "path": "templates/skills-marketplace/seo-audit"
       },
       {
         "path": "templates/skills-marketplace/shadcn"
+      },
+      {
+        "path": "templates/skills-marketplace/signup"
+      },
+      {
+        "path": "templates/skills-marketplace/site-architecture"
+      },
+      {
+        "path": "templates/skills-marketplace/social"
       },
       {
         "path": "templates/skills-marketplace/stripe-best-practices"
@@ -685,6 +1138,9 @@
       },
       {
         "path": "templates/skills-marketplace/vercel-react-best-practices"
+      },
+      {
+        "path": "templates/skills-marketplace/video"
       },
       {
         "path": "templates/skills-marketplace/webapp-testing"
