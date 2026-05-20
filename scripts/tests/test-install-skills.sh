@@ -2,16 +2,16 @@
 # test-install-skills.sh — Phase 26 hermetic integration test.
 #
 # Scenarios (target ≥12 assertions across 6 scenarios):
-#   S1_catalog_correctness   — SKILLS_CATALOG has 24 entries; alphabetical order
+#   S1_catalog_correctness   — SKILLS_CATALOG has 63 entries; alphabetical order
 #   S2_detection_two_state   — is_skill_installed returns 0 (installed) / 1 (not installed)
 #   S3_skills_install_basic  — skills_install copies one skill from mirror to TK_SKILLS_HOME via cp -R
 #   S4_idempotency_no_force  — re-running skills_install on installed skill returns rc=2 (refused, no overwrite)
 #   S5_force_overwrite       — skills_install --force on installed skill returns rc=0 (overwritten)
-#   S6_install_sh_dry_run    — install.sh --skills --yes --dry-run produces 24 would-install rows; zero filesystem mutations
+#   S6_install_sh_dry_run    — install.sh --skills --yes --dry-run produces 63 would-install rows; zero filesystem mutations
 #
 # Test seam env vars: TK_SKILLS_HOME, TK_SKILLS_MIRROR_PATH, TK_TUI_TTY_SRC
 #
-# Sample skills used in scenarios (3 of 24, per CONTEXT.md test strategy):
+# Sample skills used in scenarios (3 of 63, per CONTEXT.md test strategy):
 #   ai-models, pdf, tailwind-design-system
 #
 # Usage: bash scripts/tests/test-install-skills.sh
@@ -59,17 +59,17 @@ echo "test-install-skills.sh: SKILL-03..05 hermetic suite"
 echo ""
 
 # ─────────────────────────────────────────────────
-# S1_catalog_correctness — SKILLS_CATALOG has 24 entries; alphabetical order
+# S1_catalog_correctness — SKILLS_CATALOG has 63 entries; alphabetical order
 # SKILL-01
 # ─────────────────────────────────────────────────
 run_s1_catalog_correctness() {
-    echo "  -- S1_catalog_correctness: 24 entries, alphabetical order, last is webapp-testing --"
+    echo "  -- S1_catalog_correctness: 63 entries, alphabetical order, first ab-testing, last webapp-testing --"
     SKILLS_CATALOG=()
     # shellcheck source=/dev/null
     source "${REPO_ROOT}/scripts/lib/skills.sh"
-    assert_eq "24" "${#SKILLS_CATALOG[@]}" "S1: catalog contains 24 entries"
-    assert_eq "ai-models" "${SKILLS_CATALOG[0]}" "S1: alphabetical first entry is ai-models"
-    assert_eq "webapp-testing" "${SKILLS_CATALOG[23]}" "S1: alphabetical last entry is webapp-testing"
+    assert_eq "63" "${#SKILLS_CATALOG[@]}" "S1: catalog contains 63 entries"
+    assert_eq "ab-testing" "${SKILLS_CATALOG[0]}" "S1: alphabetical first entry is ab-testing"
+    assert_eq "webapp-testing" "${SKILLS_CATALOG[62]}" "S1: alphabetical last entry is webapp-testing"
 }
 
 # ─────────────────────────────────────────────────
@@ -289,7 +289,7 @@ run_s5_force_overwrite() {
 }
 
 # ─────────────────────────────────────────────────
-# S6_install_sh_dry_run — --skills --yes --dry-run: 24 would-install rows, zero mutations (SKILL-05)
+# S6_install_sh_dry_run — --skills --yes --dry-run: 63 would-install rows, zero mutations (SKILL-05)
 # ─────────────────────────────────────────────────
 run_s6_install_sh_dry_run() {
     local SANDBOX
@@ -313,7 +313,7 @@ run_s6_install_sh_dry_run() {
 
     local would_count
     would_count=$(printf '%s\n' "$output" | grep -c "would-install" || true)
-    assert_eq "24" "$would_count" "S6: dry-run prints 24 would-install rows"
+    assert_eq "63" "$would_count" "S6: dry-run prints 63 would-install rows"
 
     # Zero filesystem mutations: SKILLS_HOME should still be empty.
     local file_count
