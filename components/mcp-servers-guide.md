@@ -515,6 +515,6 @@ rtk discover          # Analyze Claude Code history for missed opportunities
 
 ## Useful Resources
 
-- [MCP Specification](https://modelcontextprotocol.io/)
-- [Claude Code MCP Docs](https://docs.anthropic.com/en/docs/claude-code/mcp)
-- [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers)
+- [MCP Specification](https://modelcontextprotocol.io/) — canonical protocol spec.
+- [Claude Code MCP Docs](https://docs.anthropic.com/en/docs/claude-code/mcp) — Claude Code's own MCP integration guide.
+- [`punkpeye/awesome-mcp-servers`](https://github.com/punkpeye/awesome-mcp-servers) — community-curated index of public MCP servers across categories (databases, browser automation, finance, dev tooling, knowledge bases, communication). Use it as a discovery surface when the toolkit's `Recommended Servers` section above does not cover your need. The list is NOT vendored into the toolkit (the awesome-list is large, ~24 MB, and updates daily); follow links upstream, then `claude mcp add -s user <name> -- <command>` once you pick a server.

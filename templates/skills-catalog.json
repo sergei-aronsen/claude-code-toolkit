@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": "manifest.json:skills_pins",
-  "generated_at": "2026-05-18",
-  "toolkit_version": "6.47.0",
-  "skills_count": 22,
+  "generated_at": "2026-05-20",
+  "toolkit_version": "6.50.0",
+  "skills_count": 23,
   "skills": [
     {
       "name": "ai-models",
@@ -67,6 +67,13 @@
       "commit": "8e25b23709747a747b80bf4d3820def8f8054a4e",
       "sha256": "6167ed595dde2a2aaef9736b49abcadfa4fc4e83fcb81bd28c45775697aee9f0",
       "install_cmd": "claude-skills install --from-github https://github.com/alchaincyf/huashu-design --commit 8e25b23709747a747b80bf4d3820def8f8054a4e"
+    },
+    {
+      "name": "humanizer",
+      "upstream": "https://github.com/blader/humanizer",
+      "commit": "8b3a17889fbf12bedae20974a3c9f9de746ed754",
+      "sha256": "6e2bb628772b87750849d74e1176736c405f399ab4ebbf3f08e1ce26ed69852c",
+      "install_cmd": "claude-skills install --from-github https://github.com/blader/humanizer --commit 8b3a17889fbf12bedae20974a3c9f9de746ed754"
     },
     {
       "name": "i18n-localization",
