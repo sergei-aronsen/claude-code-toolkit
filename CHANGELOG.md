@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.50.0] - 2026-05-20
+
+Two small additions: `humanizer` skill from `blader/humanizer` (Wikipedia
+"Signs of AI writing" cleanup, 20k★ upstream) joins the skills marketplace
+mirror; `components/mcp-servers-guide.md` upgrades its bare
+`awesome-mcp-servers` reference into a proper discovery-surface explanation.
+
+### Added
+
+- **`templates/skills-marketplace/humanizer/SKILL.md`** — mirror of
+  [blader/humanizer](https://github.com/blader/humanizer) at upstream commit
+  `8b3a17889fbf12bedae20974a3c9f9de746ed754`. v2.5.1 skill that detects and
+  removes AI-writing patterns (inflated symbolism, promotional language,
+  superficial -ing analyses, vague attributions, em-dash overuse, rule of
+  three, AI vocabulary words, passive voice, negative parallelisms, filler
+  phrases). Based on Wikipedia's WikiProject AI Cleanup guide. MIT license.
+- **`manifest.json:skills_pins.humanizer`** — drift-tracking pin with
+  sha256 `6e2bb628772b87750849d74e1176736c405f399ab4ebbf3f08e1ce26ed69852c`.
+  Total active pins: 23 (was 22) + 1 no-upstream-found.
+- **`files.skills_marketplace`** registration so the skill installs via
+  `init-claude.sh` / `update-claude.sh`.
+
+### Changed
+
+- **`components/mcp-servers-guide.md`** — the trailing
+  `awesome-mcp-servers` link was a bare URL. Replaced with a one-sentence
+  explanation of what the upstream index covers (databases, browser
+  automation, finance, dev tooling, knowledge bases, communication), why
+  the toolkit does NOT vendor the 24 MB index, and the install line to use
+  once a server is picked. No link target change.
+
+### Why
+
+- `humanizer` covers a gap the existing `ru-text` / `copy-editing` skills
+  don't: detection of AI-pattern English prose by structural heuristics
+  rather than language-specific style. Useful on AI-drafted READMEs, copy,
+  and commit prose where a human reviewer wants the "did an LLM write
+  this?" signal compressed into actionable edits.
+- `awesome-mcp-servers` is the canonical community discovery index. The
+  toolkit's `Recommended Servers` section is curated for the toolkit's
+  typical workloads; the awesome-list covers the rest. The bare URL hid
+  this from readers who didn't know the upstream existed.
+
+### Files changed
+
+- New: `templates/skills-marketplace/humanizer/SKILL.md`
+- Updated: `manifest.json` — version `6.49.0` → `6.50.0`, new
+  `skills_pins.humanizer`, `files.skills_marketplace` adds humanizer,
+  `skills_pins_note` count `22 → 23 active`.
+- Updated: 9 installer scripts — `TK_TOOLKIT_REF` default bumped.
+- Updated: `components/mcp-servers-guide.md` — awesome-mcp-servers
+  reference expanded from bare URL into a discovery-surface explanation.
+
+### Upgrade path
+
+- End users: `/update-toolkit` pulls the humanizer skill + the refreshed
+  mcp-servers guide. The skill installs under
+  `~/.claude/skills/humanizer/SKILL.md` and registers in the skills
+  discovery surface. Invoke it as a skill on any text the user wants
+  cleaned of AI patterns.
+
 ## [6.49.0] - 2026-05-20
 
 New integration: `awesome-design-md` brand catalog mirrored into the toolkit
