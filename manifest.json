@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "version": "6.51.1",
-  "updated": "2026-05-20",
-  "build_date": "2026-05-20",
+  "version": "6.52.0",
+  "updated": "2026-05-21",
+  "build_date": "2026-05-21",
   "description": "Claude Code Toolkit manifest for smart updates",
   "vendor_pins_note": "Pinned commits/tags of external vendors as of the toolkit release. Used by /vendor-changelog to diff vendor HEAD against these pins and surface BREAKING/ADOPT/IGNORE/DEPRECATE classifications. Updated manually by the maintainer post-release via scripts/vendor/pin-vendors.sh.",
   "vendor_pins": {
@@ -63,7 +63,7 @@
       "mirror_subset": "design-md/<brand>/DESIGN.md (71 brands; README.md per brand intentionally not mirrored)"
     }
   },
-  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.51.0, 2026-05-20): 61 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream \u2014 possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status \u2208 {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) \u2192 v6.37.0 (+path field, +3 anthropics monorepo) \u2192 v6.41.0 (+4 vercel/firecrawl) \u2192 v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) \u2192 v6.46.0 (+sha256 field, closed-loop sync, mirror\u2194manifest drift detection) \u2192 v6.47.0 (hardened sync: tab/newline-safe checksum, atomic mirror swap, post-checkout SHA verification, 3-way CLEAN/SOFT/DRIFT classification via --normalize so markdownlint-style cosmetic diffs do not trip --strict CI gate). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note\u2194data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
+  "skills_pins_note": "Pinned upstream HEAD of mirrored marketplace skills. Used by scripts/update-deps.sh probe_skill_pin to detect drift between this mirror and the canonical upstream repo. Current state (v6.51.0, 2026-05-20): 61 active pins + 1 no-upstream-found (memo-skill, exhaustive gh search yielded no canonical upstream — possibly toolkit-original or upstream deleted). Schema fields: repo, path (optional, for monorepo subpath probes via GitHub API), tag, commit, pinned_at, sha256 (mirror content checksum, reproducible across BSD/GNU via scripts/lib/skill-checksum.sh), _status ∈ {active, no-upstream-found}. Trajectory: v6.35.0 (2 pins) → v6.37.0 (+path field, +3 anthropics monorepo) → v6.41.0 (+4 vercel/firecrawl) → v6.44.0 (+12 confirmed via gh code search + majiayu000/claude-skill-registry cross-reference) → v6.46.0 (+sha256 field, closed-loop sync, mirror↔manifest drift detection) → v6.47.0 (hardened sync: tab/newline-safe checksum, atomic mirror swap, post-checkout SHA verification, 3-way CLEAN/SOFT/DRIFT classification via --normalize so markdownlint-style cosmetic diffs do not trip --strict CI gate). Add new entries one at a time as upstream URLs are confirmed; do not invent. validate-manifest.py enforces note↔data consistency: any count referenced here must match the live skills_pins map AND every mirror sha256 must match the manifest-declared sha256.",
   "skills_pins": {
     "ab-testing": {
       "repo": "https://github.com/coreyhaines31/marketingskills",
@@ -622,8 +622,8 @@
       "sha256": "04413be02de7478156f6728b5cd70b0edc95d57358ffb06a833416bca507bf9c"
     }
   },
-  "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers \u2014 see .planning/v6.0-REQUIREMENTS.md.",
-  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates \u2014 those files now hard-deleted from repo. v6.1 audit (docs/research/v6-post-ship-audit-2026-05-06.md, F-2) found that the surviving agents/code-reviewer.md annotation was broken against Superpowers 5.1.0+ (SP dropped agents/ directory; equivalent is now skills/requesting-code-review). TK's code-reviewer is also materially different from SP's \u2014 annotation removed in v6.1. v6.1 audit F-1 found that the only true duplication remaining is skills/gsd-mode-selector/SKILL.md against GSD's gsd-help skill \u2014 annotated.",
+  "sp_equivalent_note": "sp_equivalent is the SP plugin-cache relative path (under <superpowers>/<ver>/) used by migrate-to-complement.sh for 3-way diff. Absent entries use same-basename fallback. v6.0 redesign (in progress) drops files duplicated by GSD/Superpowers — see .planning/v6.0-REQUIREMENTS.md.",
+  "mode_notes": "Modes consumed by lib/install.sh::compute_skip_set. v6 trim (PR 1) removed conflicts_with: [\"superpowers\"] entries that were marked as duplicates — those files now hard-deleted from repo. v6.1 audit (docs/research/v6-post-ship-audit-2026-05-06.md, F-2) found that the surviving agents/code-reviewer.md annotation was broken against Superpowers 5.1.0+ (SP dropped agents/ directory; equivalent is now skills/requesting-code-review). TK's code-reviewer is also materially different from SP's — annotation removed in v6.1. v6.1 audit F-1 found that the only true duplication remaining is skills/gsd-mode-selector/SKILL.md against GSD's gsd-help skill — annotated.",
   "files": {
     "agents": [
       {
@@ -1151,78 +1151,78 @@
     "components": [
       {
         "path": "components/skill-frontmatter-discipline.md",
-        "description": "Authoring discipline for SKILL.md / commands / agents frontmatter \u2014 action-verb descriptions, third person, what+when triggers, naming conventions; distilled from Anthropic + Warp update-skill"
+        "description": "Authoring discipline for SKILL.md / commands / agents frontmatter — action-verb descriptions, third person, what+when triggers, naming conventions; distilled from Anthropic + Warp update-skill"
       },
       {
         "path": "components/cost-discipline.md",
-        "description": "v6.0 \u2014 Mode selection per task size (gsd-fast/quick/plan-phase), trigger keywords, budget caps, subagent model routing via better-model"
+        "description": "v6.0 — Mode selection per task size (gsd-fast/quick/plan-phase), trigger keywords, budget caps, subagent model routing via better-model"
       },
       {
         "path": "components/domain-expert-simulation.md",
-        "description": "v6.0 \u2014 Pre-ship domain expert review for non-programmer profile; killer questions per domain (auth/payments/db/infra/privacy/UX)"
+        "description": "v6.0 — Pre-ship domain expert review for non-programmer profile; killer questions per domain (auth/payments/db/infra/privacy/UX)"
       },
       {
         "path": "components/external-tools-recommended.md",
-        "description": "v6.1 \u2014 Install matrix for Serena + better-model + claude-context; install order, decision matrix per project size, exit plans (Morph removed)"
+        "description": "v6.1 — Install matrix for Serena + better-model + claude-context; install order, decision matrix per project size, exit plans (Morph removed)"
       },
       {
         "path": "components/large-codebase-search.md",
-        "description": "v6.1 \u2014 Serena (symbolic) + ripgrep (textual) + claude-context (semantic vector) decision matrix; self-hosted Milvus setup; Voyage AI / Ollama embeddings for sensitive code"
+        "description": "v6.1 — Serena (symbolic) + ripgrep (textual) + claude-context (semantic vector) decision matrix; self-hosted Milvus setup; Voyage AI / Ollama embeddings for sensitive code"
       },
       {
         "path": "components/production-observability.md",
-        "description": "v6.0 \u2014 Sentry/Posthog/Playwright integration; closes GSD plan-vs-spec blind spot with product-vs-reality monitoring"
+        "description": "v6.0 — Sentry/Posthog/Playwright integration; closes GSD plan-vs-spec blind spot with product-vs-reality monitoring"
       },
       {
         "path": "components/vendor-risk.md",
-        "description": "v6.0 \u2014 Quarterly external dependency review methodology; signals for maintainer drift, breaking change cadence, marketing pivots"
+        "description": "v6.0 — Quarterly external dependency review methodology; signals for maintainer drift, breaking change cadence, marketing pivots"
       },
       {
         "path": "components/product-thinking-flow.md",
-        "description": "v6.3 \u2014 Product validation gate flow; decision tree for validated/needs-experiment/rejected/risk-accepted; integration with /gsd-discuss-phase, /gsd-plan-phase, /product-review"
+        "description": "v6.3 — Product validation gate flow; decision tree for validated/needs-experiment/rejected/risk-accepted; integration with /gsd-discuss-phase, /gsd-plan-phase, /product-review"
       },
       {
         "path": "components/vendor-pinning.md",
-        "description": "v6.3 \u2014 Vendor pinning architecture: manifest.json:vendor_pins schema, scripts/vendor/{clone-pinned,diff-summary,pin-vendors}.sh, /vendor-changelog command. Manual pin post-release via the script (auto-pin workflow removed in v6.14.0)."
+        "description": "v6.3 — Vendor pinning architecture: manifest.json:vendor_pins schema, scripts/vendor/{clone-pinned,diff-summary,pin-vendors}.sh, /vendor-changelog command. Manual pin post-release via the script (auto-pin workflow removed in v6.14.0)."
       },
       {
         "path": "components/comet-research.md",
-        "description": "v6.6 \u2014 Threat model and isolation requirements for the comet-bridge MCP (Perplexity Pro research backend); dedicated profile, CDP localhost-only, OTP login, kill switch; backs /research /lookup /factcheck slash commands"
+        "description": "v6.6 — Threat model and isolation requirements for the comet-bridge MCP (Perplexity Pro research backend); dedicated profile, CDP localhost-only, OTP login, kill switch; backs /research /lookup /factcheck slash commands"
       },
       {
         "path": "components/system-prompt-architecture.md",
-        "description": "v6.6 \u2014 7-block reusable system prompt template (IDENTITY, CAPABILITIES, PRIORITY, BEHAVIOR, TOOLS, SAFETY, OUTPUT) + drop-in Reusable Blocks A-E (anti-injection, citation, refusal, output discipline, skill registry); distilled from leaked production prompts; backs /prompt-audit slash command"
+        "description": "v6.6 — 7-block reusable system prompt template (IDENTITY, CAPABILITIES, PRIORITY, BEHAVIOR, TOOLS, SAFETY, OUTPUT) + drop-in Reusable Blocks A-E (anti-injection, citation, refusal, output discipline, skill registry); distilled from leaked production prompts; backs /prompt-audit slash command"
       }
     ]
   },
   "claude_md_sections": {
     "system": [
-      "\ud83d\udccc Compact Instructions",
+      "📌 Compact Instructions",
       "WORKFLOW RULES",
       "Plan Mode",
       "Structured Workflow",
       "Git Workflow",
       "Git Worktree Workflow",
       "Security Rules",
-      "\ud83d\udee1\ufe0f Production Safety",
+      "🛡️ Production Safety",
       "Visual Self-Testing",
-      "\ud83c\udfd7\ufe0f Architecture Guidelines",
-      "\ud83d\udcbb Coding Style",
-      "\ud83c\udfa8 Code Style",
-      "\ud83e\udd16 Available Agents",
-      "\u26a1 Quick Commands",
-      "\ud83d\udccb Available Audits",
-      "\ud83c\udf93 Available Skills",
+      "🏗️ Architecture Guidelines",
+      "💻 Coding Style",
+      "🎨 Code Style",
+      "🤖 Available Agents",
+      "⚡ Quick Commands",
+      "📋 Available Audits",
+      "🎓 Available Skills",
       "Scratchpad",
       "Knowledge Persistence",
       "Skill Accumulation",
       "Supreme Council"
     ],
     "user": [
-      "\ud83c\udfaf Project Overview",
-      "\ud83d\udcc1 Project Structure",
-      "\u26a1 Essential Commands",
-      "\u26a0\ufe0f Project-Specific Notes",
+      "🎯 Project Overview",
+      "📁 Project Structure",
+      "⚡ Essential Commands",
+      "⚠️ Project-Specific Notes",
       "Known Gotchas",
       "Public Endpoints"
     ]
