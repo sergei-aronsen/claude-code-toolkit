@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.52.0] - 2026-05-21
+
+Skills picker UX: every row in the install-time TUI now shows the upstream
+GitHub URL after its description, sourced from
+`manifest.json:skills_pins[*].repo + .commit + .path`. In iTerm2 / Kitty /
+WezTerm the URL is OSC-8 hyperlink-detected; in plain terminals it's a
+visible reference so the user can eyeball "where this skill comes from"
+before installing.
+
+User-reported gap — the picker listed 63 skill names with no source
+attribution; for unfamiliar marketing-/SEO-related skills there was no
+way to tell at a glance who authored them or what the canonical upstream
+was. Provenance is in `manifest.json:skills_pins` but never surfaced to
+the picker.
+
+### Added
+
+- **`scripts/lib/skills.sh:_skills_default_manifest_path`** — internal
+  helper resolving `manifest.json` location, honoring `TK_MANIFEST_PATH`
+  test seam. Defaults to two levels up from the mirror dir
+  (`templates/skills-marketplace/../../manifest.json`).
+- **`scripts/lib/skills.sh:_skills_upstream_url <name>`** — returns the
+  upstream GitHub URL for a skill from `skills_pins`. Constructs
+  `${repo}/tree/${commit}/${path}` when both commit + path present,
+  `${repo}/tree/${commit}` when only commit, `${repo}` when only repo.
+  Returns empty when:
+  - `manifest.json` absent or `jq` unavailable
+  - skill name absent from `skills_pins` (e.g. `impeccable`)
+  - skill marked `_status: "no-upstream-found"` (e.g. `memo-skill`)
+  - `repo` field missing
+  Uses `jq` line-per-field output rather than `@tsv` to sidestep the Bash
+  IFS-whitespace tab-collapse trap (consecutive `\t` collapse + leading
+  `\t` skipped because `\t` is in default-IFS-whitespace, so `@tsv` loses
+  empty leading fields).
+- **`scripts/install.sh` (skills branch)** — populates parallel array
+  `TUI_URLS[]` alongside `TUI_LABELS[]` / `TUI_DESCS[]` /
+  `TUI_INSTALLED[]`, calling `_skills_upstream_url` once per row.
+
+### Changed
+
+- **`scripts/lib/tui.sh:tui_checklist`** — render loop now reads
+  `TUI_URLS[$i]` when the `TUI_URLS[*]+x` array is set, appending
+  `·  ${url}` after the description. Guarded by the `+x` existence
+  check so MCP / TK / SP / GSD pickers (which never set `TUI_URLS[]`)
+  are byte-identical to v6.51.1 output.
+
+### Verified
+
+- `bash scripts/tests/test-install-skills.sh` — 27 PASS
+- `bash scripts/tests/test-install-tui.sh` — 60 PASS
+- `make check` — manifest + commands + integrations + shellcheck +
+  markdownlint all PASS
+
+### Migration
+
+None. Users who re-run `bash install.sh --skills` on v6.52.0 see the new
+URL column automatically. Pre-v6.52.0 picker output (no URL column)
+remains compatible — the change is purely additive to the row format.
+
 ## [6.51.1] - 2026-05-20
 
 Hotfix: the install-time skills picker hardcoded a 24-skill list in
