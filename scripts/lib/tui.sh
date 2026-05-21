@@ -191,6 +191,16 @@ _tui_render() {
         local required="${TUI_REQUIRED[$i]:-0}"
         local checked="${TUI_RESULTS[$i]:-0}"
         local desc="${TUI_DESCS[$i]:-}"
+        # Optional parallel array TUI_URLS[]; callers (skills picker) populate
+        # an upstream GitHub URL string per row. Empty when caller omits the
+        # array entirely (MCP / TK pickers) or per-row when no upstream is
+        # known (e.g. memo-skill in skills picker). Rendered after desc as
+        # ` · ${url}` when non-empty; tui itself adds no truncation — caller
+        # owns width policy.
+        local url=""
+        if [[ -n "${TUI_URLS[*]+x}" ]]; then
+            url="${TUI_URLS[$i]:-}"
+        fi
         local row_num=$((i + 1))
 
         # Section header on group change — extra blank line above for clearer separation.
@@ -267,6 +277,9 @@ _tui_render() {
         local _label_render="${row_num}. ${box} ${label}"
         if [[ -n "$desc" ]]; then
             _label_render+=" — ${desc}"
+        fi
+        if [[ -n "$url" ]]; then
+            _label_render+=" · ${url}"
         fi
         # Immutable rows (installed/required) render dim so they read as
         # "disabled" — user knows space won't toggle them. Exception:

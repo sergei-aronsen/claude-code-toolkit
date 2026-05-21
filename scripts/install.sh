@@ -1289,10 +1289,13 @@ if [[ "$SKILLS" -eq 1 ]]; then
     TUI_GROUPS=()
     # shellcheck disable=SC2034
     TUI_DESCS=()
+    # shellcheck disable=SC2034  # consumed by tui_checklist for inline GitHub URL render
+    TUI_URLS=()
     local_total=${#SKILLS_CATALOG[@]}
     for ((i=0; i<local_total; i++)); do
         TUI_GROUPS+=("Skills")
         TUI_DESCS+=("$(_skills_description "${SKILLS_CATALOG[$i]}")")
+        TUI_URLS+=("$(_skills_upstream_url "${SKILLS_CATALOG[$i]}")")
     done
 
     # Selection precedence (UX-FLOW-01 mirror of the MCP branch above):

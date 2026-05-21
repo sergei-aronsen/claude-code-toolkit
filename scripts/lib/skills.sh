@@ -116,6 +116,62 @@ _skills_default_mirror_path() {
     echo "${TK_SKILLS_MIRROR_PATH:-${d}/../../templates/skills-marketplace}"
 }
 
+# Internal helper — resolves manifest.json path honoring TK_MANIFEST_PATH seam.
+# Manifest lives at repo root, two levels above the mirror dir
+# (templates/skills-marketplace/).
+_skills_default_manifest_path() {
+    local mirror
+    mirror="$(_skills_default_mirror_path)"
+    echo "${TK_MANIFEST_PATH:-${mirror}/../../manifest.json}"
+}
+
+# _skills_upstream_url <name> — return GitHub URL for a skill from manifest skills_pins.
+# Construction: ${repo}/tree/${commit}/${path} when both commit + path present,
+# ${repo}/tree/${commit} when only commit present, ${repo} when only repo present.
+# Returns empty (no stdout) when:
+#   - manifest.json absent or unreadable
+#   - jq absent
+#   - skill name absent from skills_pins
+#   - skill marked _status: "no-upstream-found" (e.g. memo-skill)
+#   - repo field missing/empty
+# Caller uses to render an inline GitHub link in the skills picker TUI.
+_skills_upstream_url() {
+    local name="${1:-}"
+    [[ -z "$name" ]] && return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    local manifest
+    manifest="$(_skills_default_manifest_path)"
+    [[ -f "$manifest" ]] || return 0
+
+    # Bash treats \t as IFS-whitespace — consecutive tabs collapse and leading
+    # tabs are skipped, so @tsv loses empty leading fields. Emit each field on
+    # its own line and read 4 lines instead. Also keeps URLs (which may contain
+    # `:` `/`) untouched.
+    local lines
+    lines=$(jq -r --arg n "$name" '
+        .skills_pins[$n] // empty
+        | (.repo // ""), (.commit // ""), (.path // ""), (._status // "")
+    ' "$manifest" 2>/dev/null) || return 0
+    [[ -z "$lines" ]] && return 0
+
+    local repo commit path status
+    { IFS= read -r repo
+      IFS= read -r commit
+      IFS= read -r path
+      IFS= read -r status
+    } <<<"$lines"
+    [[ "$status" == "no-upstream-found" ]] && return 0
+    [[ -z "$repo" ]] && return 0
+
+    if [[ -n "$commit" && -n "$path" ]]; then
+        echo "${repo}/tree/${commit}/${path}"
+    elif [[ -n "$commit" ]]; then
+        echo "${repo}/tree/${commit}"
+    else
+        echo "$repo"
+    fi
+}
+
 # skills_catalog_names — print all skill names from SKILLS_CATALOG, one per line.
 skills_catalog_names() {
     printf '%s\n' "${SKILLS_CATALOG[@]}"
