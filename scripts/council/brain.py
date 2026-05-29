@@ -530,8 +530,14 @@ def extract_verdict(text):
     # Audit L-Council: skip the full text.upper() — for 100K+ char reviewer
     # outputs that doubled the working set unnecessarily. Use re.IGNORECASE
     # over the original string and uppercase only the matched group.
+    # Tolerate markdown emphasis around the verdict word, e.g. a reviewer that
+    # leads with "**Verdict:** SIMPLIFY" instead of a trailing "VERDICT: X"
+    # line. The old pattern required the keyword immediately after the colon,
+    # so "Verdict:** SIMPLIFY" failed to match and fell through to the
+    # last-500-chars priority scan — which latched onto a stray "SKIP" in the
+    # concern prose and mis-recorded a SIMPLIFY reviewer as SKIP.
     match = re.search(
-        r"VERDICT:\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)",
+        r"VERDICT\s*:\s*\**\s*(PROCEED|SIMPLIFY|RETHINK|SKIP)",
         text,
         re.IGNORECASE,
     )
@@ -2804,6 +2810,9 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
                 "ts": _utc_iso(),
                 "plan_hash": plan_hash,
                 "git_head": git_head,
+                "plan": plan,
+                "skeptic_prompt": skeptic_prompt,
+                "pragmatist_prompt": pragmatist_prompt,
                 "skeptic_verdict": gemini_verdict,
                 "pragmatist_verdict": gpt_verdict,
                 "skeptic_decision": skeptic_decision,
@@ -2921,6 +2930,9 @@ End with exactly one of: VERDICT: PROCEED / SIMPLIFY / RETHINK / SKIP
             "ts": _utc_iso(),
             "plan_hash": plan_hash,
             "git_head": git_head,
+            "plan": plan,
+            "skeptic_prompt": skeptic_prompt,
+            "pragmatist_prompt": pragmatist_prompt,
             "skeptic_verdict": gemini_verdict,
             "pragmatist_verdict": gpt_verdict,
             "skeptic_decision": skeptic_decision,
