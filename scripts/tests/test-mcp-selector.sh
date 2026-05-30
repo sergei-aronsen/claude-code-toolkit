@@ -82,7 +82,7 @@ run_s1_catalog_correctness() {
     # v6.6 added comet-bridge (Pplx Pro research backend, +1 = 28).
     # v6.23 added repomix (full-repo pack for AI context, +1 = 29).
     # v6.24 added github (official remote MCP, +1 = 30).
-    assert_eq "30" "${#MCP_NAMES[@]}" "S1: catalog contains 30 entries"
+    assert_eq "31" "${#MCP_NAMES[@]}" "S1: catalog contains 31 entries"
     assert_eq "aws-cloudwatch-logs" "${MCP_NAMES[0]}" "S1: alphabetical first entry is aws-cloudwatch-logs"
 
     # Find notion index and verify requires_oauth = 1

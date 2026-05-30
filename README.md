@@ -28,7 +28,7 @@ A thin overlay on top of [**Superpowers**](https://github.com/obra/superpowers) 
 | **Cost routing**                     | `better-model` routes simple tasks to cheaper models. Auto-installed and integrated into the install lifecycle.                                   |
 | **Symbol-aware code search**         | [Serena](https://github.com/oraios/serena) (LSP, MIT, local) + ripgrep + claude-context (semantic vector). Default Layer-3 search stack.          |
 | **Multi-CLI bridges**                | Auto-sync `CLAUDE.md` to `GEMINI.md` (Gemini CLI) and `AGENTS.md` (OpenAI Codex). Drift-detection at every install.                                |
-| **Integrations catalog**             | TUI installer for 24 MCP servers + 8 companion CLIs across 10 categories (Backend / Payments / Workspace / Project Management / …). Per-row scope. |
+| **Integrations catalog**             | TUI installer for 31 MCP servers + 10 companion CLIs across 10 categories (Backend / Payments / Workspace / Project Management / …). Per-row scope. |
 | **Limit visibility (Pro/Max)**       | Statusline shows session/weekly usage — you can see when you're about to hit the wall.                                                              |
 | **Dependency dashboard (v6.2)**      | `/update-deps` — interactive TUI listing every tracked dependency (Layer 1/2/3) with installed-vs-latest. You pick what to update.                |
 | **Post-install setup guide (v6.3)**  | Generates a local HTML page (`/.claude/setup-guide.html`) with per-MCP API-key walkthroughs and per-component config — only sections for what you actually installed. |
@@ -88,7 +88,7 @@ For solo founders / non-developer product builders: [docs/non-programmer-mode.md
 
 ## MCP server catalog
 
-The `--integrations` flag (or `/integrations` after the first install) opens a TUI checklist with 27 servers across 10 categories. Pick only what your project needs — the rest stays untouched.
+The `--integrations` flag (or `/integrations` after the first install) opens a TUI checklist with 31 servers across 10 categories. Pick only what your project needs — the rest stays untouched.
 
 | Category               | Servers                                                                                |
 |------------------------|----------------------------------------------------------------------------------------|

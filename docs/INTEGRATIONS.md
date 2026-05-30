@@ -1,6 +1,6 @@
 # Integrations Catalog
 
-The toolkit ships a curated catalog of **21 MCP servers** + **8 companion CLIs** across **10 categories**, installable via a single TUI page.
+The toolkit ships a curated catalog of **31 MCP servers** + **10 companion CLIs** across **10 categories**, installable via a single TUI page.
 
 This page is the reference for what's in the catalog, how install works, what `unofficial` means, where the toolkit's responsibilities end, and where to file your own SDKs.
 
@@ -22,6 +22,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | Context7 | `@upstash/context7-mcp` | — | `CONTEXT7_API_KEY` | — |
 | Firecrawl | `firecrawl-mcp` | `firecrawl` | `FIRECRAWL_API_KEY` | — |
 | NotebookLM | `notebooklm-mcp` | — | OAuth (browser) | unofficial |
+| Comet Research Bridge | `github:sergei-aronsen/Perplexity-Comet-MCP` | — | Perplexity Pro session | research via Perplexity Pro (no API cost); needs Comet browser — run `scripts/setup-comet.sh` first |
 
 ### Backend
 
@@ -31,6 +32,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | AWS Cost Explorer | `awslabs.cost-explorer-mcp-server@latest` | `aws` | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | shares `aws` CLI with CloudWatch Logs |
 | Cloudflare | `@cloudflare/mcp-server-cloudflare` | `wrangler` | `CLOUDFLARE_API_TOKEN` | — |
 | Supabase | `@supabase/mcp-server-supabase` | `supabase` | `SUPABASE_ACCESS_TOKEN` | — |
+| DBHub | `@bytebase/dbhub` | — | `DSN` | multi-DB — Postgres, MySQL, MariaDB, MSSQL, SQLite (read-only) |
 
 ### Payments
 
@@ -43,6 +45,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | Entry | MCP package | Companion CLI | Auth | Notes |
 | ----- | ----------- | ------------- | ---- | ----- |
 | Resend | `@resend/mcp-send-email` | — | `RESEND_API_KEY` | — |
+| Mailgun | `@mailgun/mcp-server` | — | `MAILGUN_API_KEY`, `MAILGUN_API_REGION` | send, validate, stats, suppressions |
 
 ### Workspace
 
@@ -71,6 +74,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | Entry | MCP package | Companion CLI | Auth | Notes |
 | ----- | ----------- | ------------- | ---- | ----- |
 | Figma | `figma-developer-mcp` | — | `FIGMA_API_KEY` | — |
+| Higgsfield | HTTP `https://mcp.higgsfield.ai/mcp` | `higgsfield` | OAuth (browser) | official; image + video gen; user scope |
 
 ### Dev Tools
 
@@ -79,12 +83,18 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | Magic | `@21st-dev/magic` | — | `MAGIC_API_KEY` | — |
 | OpenRouter | `openrouter-mcp` | — | `OPENROUTER_API_KEY` | — |
 | Playwright | `@playwright/mcp` | `playwright` | — | — |
+| GitHub | HTTP `https://api.githubcopilot.com/mcp/` | `gh` | OAuth or PAT | official remote — repos, PRs, issues, Actions, code search |
+| Serena | `serena start-mcp-server` (uv tool) | — | — | LSP-driven symbol-aware code search/edit; needs `uv` |
+| Claude Context | `@zilliz/claude-context-mcp@latest` | — | `MILVUS_TOKEN`, `OPENAI_API_KEY` | vector-DB semantic code search; for 100k+ LOC codebases |
+| Repomix | `repomix@1.14.0` | — | — | pack local + remote repos into AI-friendly context |
 
 ### Monitoring
 
 | Entry | MCP package | Companion CLI | Auth | Notes |
 | ----- | ----------- | ------------- | ---- | ----- |
 | Sentry | `@sentry/mcp-server` | `sentry-cli` | `SENTRY_AUTH_TOKEN` | — |
+| Datadog | HTTP `https://app.datadoghq.com/api/v2/mcp/sse` | — | OAuth (browser) | official remote — APM, infra metrics, logs, dashboards, incidents |
+| PostHog | `mcp-remote → https://mcp.posthog.com/sse` | — | `POSTHOG_AUTH_HEADER` | product analytics, error tracking, feature flags, A/B |
 
 ## Installing integrations
 

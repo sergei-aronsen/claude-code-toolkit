@@ -8,7 +8,7 @@
 #     20 baseline + 1 = 21. Phase 33 math note: 21 - 1 (DROP-01
 #     sequential-thinking) + 0 = 20; Phase 40 INT-13 +1 = 21.
 #     v6.1: morph-fast-tools replaced by serena 1-for-1 — count stays 23.)
-#   - components.cli has 9 entries
+#   - components.cli has 10 entries
 #   - every MCP entry has the required keys
 #   - every entry's category is in the top-level categories[] enum
 #   - every CLI entry has detect_cmd + install.darwin + install.linux + post_install_hint
@@ -113,7 +113,7 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A5 — components.mcp has 30 entries
+# A5 — components.mcp has 31 entries
 # (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21;
 #  v6.0 INT-15 added morph-fast-tools + claude-context = 23;
 #  v6.1: morph-fast-tools replaced by serena 1-for-1, count unchanged at 23.
@@ -122,12 +122,12 @@ else:
 #  v6.23 added repomix (full-repo pack for AI context, +1 = 29).
 #  v6.24 added github (official remote MCP, +1 = 30).)
 # ─────────────────────────────────────────────────
-_pyq "A5: components.mcp has exactly 30 entries" '
+_pyq "A5: components.mcp has exactly 31 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
-if isinstance(mcp, dict) and len(mcp) == 30:
+if isinstance(mcp, dict) and len(mcp) == 31:
     print("OK")
 else:
-    print("components.mcp count is " + str(len(mcp)) + ", expected 30")
+    print("components.mcp count is " + str(len(mcp)) + ", expected 31")
 '
 
 # ─────────────────────────────────────────────────
@@ -162,17 +162,17 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A8 — components.cli has 9 entries (Phase 33 D-04 final composition: 5
+# A8 — components.cli has 10 entries (Phase 33 D-04 final composition: 5
 # survivors with CLI value (firecrawl, playwright, sentry) + 5 added INT
 # CLIs (supabase, cloudflare, stripe, aws-cloudwatch-logs, aws-cost-explorer);
 # v6.24.0 added github = 9)
 # ─────────────────────────────────────────────────
-_pyq "A8: components.cli has exactly 9 entries" '
+_pyq "A8: components.cli has exactly 10 entries" '
 cli = catalog.get("components", {}).get("cli", {})
-if isinstance(cli, dict) and len(cli) == 9:
+if isinstance(cli, dict) and len(cli) == 10:
     print("OK")
 else:
-    print("components.cli count is " + str(len(cli)) + ", expected 9")
+    print("components.cli count is " + str(len(cli)) + ", expected 10")
 '
 
 # ─────────────────────────────────────────────────

@@ -174,6 +174,21 @@
         "requires_oauth": false,
         "default_scope": "user"
       },
+      "higgsfield": {
+        "name": "higgsfield",
+        "display_name": "Higgsfield",
+        "category": "design",
+        "env_var_keys": [],
+        "install_args": [
+          "--transport",
+          "http",
+          "higgsfield",
+          "https://mcp.higgsfield.ai/mcp"
+        ],
+        "description": "AI image + video generation — 30+ models (Nano Banana, FLUX.2, Veo, Kling). Hosted remote MCP, OAuth via Higgsfield account (no API key).",
+        "requires_oauth": true,
+        "default_scope": "user"
+      },
       "firecrawl": {
         "name": "firecrawl",
         "display_name": "Firecrawl",
@@ -587,6 +602,14 @@
           "linux": "npm install -g firecrawl-cli"
         },
         "post_install_hint": "firecrawl --version  # set FIRECRAWL_API_KEY env"
+      },
+      "higgsfield": {
+        "detect_cmd": "higgsfield",
+        "install": {
+          "darwin": "brew install higgsfield-ai/tap/higgsfield",
+          "linux": "npm install -g @higgsfield/cli@latest"
+        },
+        "post_install_hint": "higgsfield auth login  # device-code OAuth"
       },
       "github": {
         "detect_cmd": "gh",

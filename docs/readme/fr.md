@@ -27,7 +27,7 @@ Une couche fine au-dessus de [**Superpowers**](https://github.com/obra/superpowe
 | **Cost routing**                      | `better-model` route les tâches simples vers les modèles moins chers. Auto-installé et intégré dans le cycle de vie de l'install.                |
 | **Recherche de code par symbole**     | [Serena](https://github.com/oraios/serena) (LSP, MIT, local) + ripgrep + claude-context (vecteur sémantique). Stack Layer-3 par défaut.          |
 | **Multi-CLI bridges**                 | Auto-sync de `CLAUDE.md` vers `GEMINI.md` (Gemini CLI) et `AGENTS.md` (OpenAI Codex). Détection de drift à chaque install.                       |
-| **Catalogue d'intégrations**          | Installeur TUI pour 24 serveurs MCP + 8 CLIs compagnons en 10 catégories (Backend / Payments / Workspace / Project Management / …). Scope par ligne. |
+| **Catalogue d'intégrations**          | Installeur TUI pour 31 serveurs MCP + 10 CLIs compagnons en 10 catégories (Backend / Payments / Workspace / Project Management / …). Scope par ligne. |
 | **Visibilité des limites (Pro/Max)**  | La statusline affiche l'usage session/hebdo — tu vois quand tu vas taper le mur.                                                                  |
 | **Dashboard de dépendances (v6.2)**   | `/update-deps` — TUI interactif listant chaque dépendance suivie (Layer 1/2/3) avec installed-vs-latest. Tu choisis quoi mettre à jour.          |
 | **Guide post-install (v6.3)**         | Génère une page HTML locale (`.claude/setup-guide.html`) avec walkthrough par MCP (clé API) et par composant — uniquement pour ce qui est installé. |
@@ -79,7 +79,7 @@ Pour les founders solos / non-développeurs : [docs/non-programmer-mode.md](../n
 
 ## Catalogue de serveurs MCP
 
-Le flag `--integrations` (ou `/integrations` après la première install) ouvre une checklist TUI avec 24 serveurs en 10 catégories. Tu prends seulement ce dont ton projet a besoin.
+Le flag `--integrations` (ou `/integrations` après la première install) ouvre une checklist TUI avec 31 serveurs en 10 catégories. Tu prends seulement ce dont ton projet a besoin.
 
 | Catégorie              | Serveurs                                                                               |
 |------------------------|----------------------------------------------------------------------------------------|

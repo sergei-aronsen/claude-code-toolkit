@@ -27,7 +27,7 @@
 | **成本路由**                      | `better-model` 把简单任务路由到更便宜的模型。自动安装并集成进安装生命周期。                                                                       |
 | **基于符号的代码搜索**            | [Serena](https://github.com/oraios/serena)（LSP，MIT，本地）+ ripgrep + claude-context（语义向量）。默认 Layer-3 检索栈。                       |
 | **多 CLI 桥接**                   | 自动同步 `CLAUDE.md` 到 `GEMINI.md`（Gemini CLI）和 `AGENTS.md`（OpenAI Codex）。每次安装做漂移检测。                                            |
-| **集成目录**                      | TUI 安装器，覆盖 24 个 MCP 服务器 + 8 个配套 CLI，分 10 个类别（Backend / Payments / Workspace / Project Management / …）。每行可选 scope。       |
+| **集成目录**                      | TUI 安装器，覆盖 31 个 MCP 服务器 + 10 个配套 CLI，分 10 个类别（Backend / Payments / Workspace / Project Management / …）。每行可选 scope。       |
 | **额度可见性（Pro/Max）**         | Statusline 显示会话/周用量 —— 你能看到什么时候要撞墙。                                                                                          |
 | **依赖看板（v6.2）**              | `/update-deps` —— 交互式 TUI 列出所有被追踪的依赖（Layer 1/2/3）和 installed-vs-latest。你挑选要更新的项。                                       |
 | **安装后引导（v6.3）**            | 生成本地 HTML 页面 (`.claude/setup-guide.html`)，包含每个 MCP 的 API key 上手和组件配置 —— 只列你实际安装了的部分。                              |
@@ -79,7 +79,7 @@ Toolkit v6.2 是一个**薄层覆盖**，分三层：
 
 ## MCP 服务器目录
 
-`--integrations` flag（或首次安装后用 `/integrations`）打开一个 TUI 检查列表，含 24 个服务器，分 10 类。你只挑项目需要的。
+`--integrations` flag（或首次安装后用 `/integrations`）打开一个 TUI 检查列表，含 31 个服务器，分 10 类。你只挑项目需要的。
 
 | 类别                   | 服务器                                                                                 |
 |------------------------|----------------------------------------------------------------------------------------|

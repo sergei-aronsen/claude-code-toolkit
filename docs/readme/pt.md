@@ -27,7 +27,7 @@ Uma camada fina sobre [**Superpowers**](https://github.com/obra/superpowers) (br
 | **Cost routing**                      | `better-model` roteia tarefas simples para modelos mais baratos. Auto-instalado e integrado no ciclo de vida da instalação.                       |
 | **Busca de código por símbolos**      | [Serena](https://github.com/oraios/serena) (LSP, MIT, local) + ripgrep + claude-context (vetor semântico). Stack Layer-3 padrão.                  |
 | **Multi-CLI bridges**                 | Auto-sync de `CLAUDE.md` para `GEMINI.md` (Gemini CLI) e `AGENTS.md` (OpenAI Codex). Detecção de drift em cada instalação.                        |
-| **Catálogo de integrações**           | Instalador TUI para 24 servidores MCP + 8 CLIs companion em 10 categorias (Backend / Payments / Workspace / Project Management / …). Scope por linha. |
+| **Catálogo de integrações**           | Instalador TUI para 31 servidores MCP + 10 CLIs companion em 10 categorias (Backend / Payments / Workspace / Project Management / …). Scope por linha. |
 | **Visibilidade de limites (Pro/Max)** | A statusline mostra uso por sessão/semana — você vê quando vai bater no muro.                                                                     |
 | **Dashboard de dependências (v6.2)**  | `/update-deps` — TUI interativo listando cada dependência rastreada (Layer 1/2/3) com installed-vs-latest. Você escolhe o que atualizar.         |
 | **Guia pós-instalação (v6.3)**        | Gera uma página HTML local (`.claude/setup-guide.html`) com walkthrough por MCP (chave API) e por componente — só seções para o que está instalado. |
@@ -79,7 +79,7 @@ Para founders solos / não-desenvolvedores: [docs/non-programmer-mode.md](../non
 
 ## Catálogo de servidores MCP
 
-O flag `--integrations` (ou `/integrations` depois da primeira instalação) abre um checklist TUI com 24 servidores em 10 categorias. Você pega só o que o projeto precisa.
+O flag `--integrations` (ou `/integrations` depois da primeira instalação) abre um checklist TUI com 31 servidores em 10 categorias. Você pega só o que o projeto precisa.
 
 | Categoria              | Servidores                                                                             |
 |------------------------|----------------------------------------------------------------------------------------|

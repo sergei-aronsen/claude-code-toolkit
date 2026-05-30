@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.53.0] - 2026-05-30
+
+Higgsfield AI joins the integrations catalog as a Design-category entry —
+both the official hosted MCP server and its companion CLI. Higgsfield is an
+AI image + video generation platform (30+ models: Nano Banana, FLUX.2, Veo,
+Kling, etc.). The MCP is a hosted remote endpoint authenticated by browser
+OAuth against a Higgsfield account — no API key, no env vars.
+
+This release also reconciles the integrations-count drift that had
+accumulated across the docs: `INTEGRATIONS.md`, the English `README.md`, and
+all 9 translated READMEs each carried a different stale figure (21 / 23 / 24
+/ 27). The catalog now ships **31 MCP servers + 10 companion CLIs across 10
+categories**, and every doc reflects that number.
+
+### Added
+
+- **`scripts/lib/integrations-catalog.json` — `higgsfield` MCP entry**
+  (Design category). Hosted remote transport:
+  `--transport http higgsfield https://mcp.higgsfield.ai/mcp`,
+  `requires_oauth: true`, `default_scope: user`, no `env_var_keys`.
+- **`scripts/lib/integrations-catalog.json` — `higgsfield` companion CLI**
+  (`@higgsfield/cli`). `detect_cmd: higgsfield`; install darwin
+  `brew install higgsfield-ai/tap/higgsfield`, linux
+  `npm install -g @higgsfield/cli@latest`; post-install hint
+  `higgsfield auth login`. CLI key matches the MCP name, so `MCP_HAS_CLI`
+  auto-links it for `--cli-only` / `--mcp-only` selection.
+- **`docs/INTEGRATIONS.md`** — Higgsfield row in the Design table, plus the
+  9 catalog entries previously missing from the reference tables
+  (comet-bridge, dbhub, datadog, github, mailgun, posthog, serena,
+  claude-context, repomix).
+
+### Changed
+
+- **Integrations counts reconciled to 31 MCP + 10 CLI across 10 categories**
+  in `docs/INTEGRATIONS.md`, `README.md`, and
+  `docs/readme/{de,es,fr,ja,ko,pt,ru,zh}.md`.
+- **`scripts/tests/test-integrations-tui.sh`** — A3 row-count assertions
+  bumped 30 → 31.
+
 ## [6.52.0] - 2026-05-21
 
 Skills picker UX: every row in the install-time TUI now shows the upstream

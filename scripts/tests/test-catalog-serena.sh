@@ -80,8 +80,8 @@ fi
 
 # 8. Total mcp entry count unchanged (1-for-1 swap; was 23 in v6.0)
 total_mcps=$(jq '[.. | objects | select(has("name"))] | length' "$CATALOG")
-if [ "$total_mcps" -ge 20 ] && [ "$total_mcps" -le 30 ]; then
-    report_pass "total mcp count sane: $total_mcps (expected 20–30)"
+if [ "$total_mcps" -ge 20 ] && [ "$total_mcps" -le 40 ]; then
+    report_pass "total mcp count sane: $total_mcps (expected 20–40)"
 else
     report_fail "total mcp count out of band: $total_mcps"
 fi

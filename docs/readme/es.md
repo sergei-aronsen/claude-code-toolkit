@@ -27,7 +27,7 @@ Una capa fina sobre [**Superpowers**](https://github.com/obra/superpowers) (brai
 | **Cost routing**                     | `better-model` enruta tareas simples a modelos más baratos. Auto-instalado e integrado en el ciclo de vida de la instalación.                      |
 | **Búsqueda de código por símbolos**  | [Serena](https://github.com/oraios/serena) (LSP, MIT, local) + ripgrep + claude-context (vector semántico). Stack Layer-3 por defecto.             |
 | **Multi-CLI bridges**                | Auto-sincroniza `CLAUDE.md` con `GEMINI.md` (Gemini CLI) y `AGENTS.md` (OpenAI Codex). Detección de drift en cada instalación.                     |
-| **Catálogo de integraciones**        | Instalador TUI para 24 servidores MCP + 8 CLIs complementarios en 10 categorías (Backend / Pagos / Workspace / Project Management / …). Scope por fila. |
+| **Catálogo de integraciones**        | Instalador TUI para 31 servidores MCP + 10 CLIs complementarios en 10 categorías (Backend / Pagos / Workspace / Project Management / …). Scope por fila. |
 | **Visibilidad de límites (Pro/Max)** | La statusline muestra el uso por sesión/semanal — ves cuándo te vas a chocar contra el muro.                                                       |
 | **Dashboard de dependencias (v6.2)** | `/update-deps` — TUI interactivo que lista cada dependencia rastreada (Layer 1/2/3) con installed-vs-latest. Eliges qué actualizar.                |
 | **Guía post-install (v6.3)**         | Genera una página HTML local (`.claude/setup-guide.html`) con tutorial por MCP (API-key) y por componente — solo secciones para lo que instalaste. |
@@ -79,7 +79,7 @@ Para fundadores en solitario / no-desarrolladores: [docs/non-programmer-mode.md]
 
 ## Catálogo de servidores MCP
 
-El flag `--integrations` (o `/integrations` después de la primera instalación) abre una checklist TUI con 24 servidores en 10 categorías. Eliges solo lo que tu proyecto necesita.
+El flag `--integrations` (o `/integrations` después de la primera instalación) abre una checklist TUI con 31 servidores en 10 categorías. Eliges solo lo que tu proyecto necesita.
 
 | Categoría              | Servidores                                                                             |
 |------------------------|----------------------------------------------------------------------------------------|
