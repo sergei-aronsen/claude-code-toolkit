@@ -27,7 +27,7 @@ Eine dünne Overlay-Schicht über [**Superpowers**](https://github.com/obra/supe
 | **Cost Routing**                     | `better-model` routet einfache Aufgaben an günstigere Modelle. Wird automatisch installiert und in den Install-Lifecycle integriert.               |
 | **Symbol-aware Code-Suche**          | [Serena](https://github.com/oraios/serena) (LSP, MIT, lokal) + ripgrep + claude-context (semantischer Vektor). Standard-Layer-3-Stack.            |
 | **Multi-CLI-Bridges**                | Auto-Sync von `CLAUDE.md` zu `GEMINI.md` (Gemini CLI) und `AGENTS.md` (OpenAI Codex). Drift-Detection bei jeder Installation.                     |
-| **Integrations-Katalog**             | TUI-Installer für 24 MCP-Server + 8 Companion-CLIs in 10 Kategorien (Backend / Payments / Workspace / Project Management / …). Per-Row-Scope.    |
+| **Integrations-Katalog**             | TUI-Installer für 31 MCP-Server + 10 Companion-CLIs in 10 Kategorien (Backend / Payments / Workspace / Project Management / …). Per-Row-Scope.    |
 | **Limit-Sichtbarkeit (Pro/Max)**     | Statusline zeigt Session/Weekly Usage — du siehst, wann du gegen die Wand läufst.                                                                  |
 | **Dependency-Dashboard (v6.2)**      | `/update-deps` — interaktives TUI mit allen getrackten Abhängigkeiten (Layer 1/2/3) plus installed-vs-latest. Du wählst, was aktualisiert wird.    |
 | **Post-Install-Setup-Guide (v6.3)**  | Erzeugt eine lokale HTML-Seite (`.claude/setup-guide.html`) mit MCP-API-Key-Walkthroughs und Komponenten-Konfiguration — nur für tatsächlich Installiertes. |
@@ -79,7 +79,7 @@ Für Solo-Gründer / Nicht-Entwickler: [docs/non-programmer-mode.md](../non-prog
 
 ## MCP-Server-Katalog
 
-Das Flag `--integrations` (oder `/integrations` nach der ersten Installation) öffnet eine TUI-Checkliste mit 24 Servern in 10 Kategorien. Du wählst nur, was dein Projekt braucht.
+Das Flag `--integrations` (oder `/integrations` nach der ersten Installation) öffnet eine TUI-Checkliste mit 31 Servern in 10 Kategorien. Du wählst nur, was dein Projekt braucht.
 
 | Kategorie              | Server                                                                                 |
 |------------------------|----------------------------------------------------------------------------------------|

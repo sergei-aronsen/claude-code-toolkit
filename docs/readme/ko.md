@@ -27,7 +27,7 @@
 | **Cost routing**                      | `better-model`이 단순 작업을 더 싼 모델로 라우팅. 자동 설치되며 인스톨 라이프사이클에 통합.                                                       |
 | **심볼 인식 코드 검색**               | [Serena](https://github.com/oraios/serena)(LSP, MIT, 로컬) + ripgrep + claude-context(시맨틱 벡터). 기본 Layer-3 검색 스택.                       |
 | **Multi-CLI 브릿지**                  | `CLAUDE.md`를 `GEMINI.md`(Gemini CLI)와 `AGENTS.md`(OpenAI Codex)에 자동 동기화. 매 설치마다 드리프트 감지.                                       |
-| **통합 카탈로그**                     | TUI 인스톨러가 24개 MCP 서버 + 8개 동반 CLI를 10개 카테고리(Backend / Payments / Workspace / Project Management / …)에서 제공. 행마다 scope 선택. |
+| **통합 카탈로그**                     | TUI 인스톨러가 31개 MCP 서버 + 10개 동반 CLI를 10개 카테고리(Backend / Payments / Workspace / Project Management / …)에서 제공. 행마다 scope 선택. |
 | **한도 가시성(Pro/Max)**              | 스테이터스라인이 세션/주간 사용량을 보여줌 —— 벽에 부딪히기 전에 보임.                                                                          |
 | **의존성 대시보드(v6.2)**             | `/update-deps` —— 추적 중인 모든 의존성(Layer 1/2/3)을 installed-vs-latest와 함께 늘어놓는 대화형 TUI. 무엇을 업데이트할지 직접 선택.            |
 | **설치 후 가이드(v6.3)**              | 로컬 HTML 페이지(`.claude/setup-guide.html`) 생성 —— 설치된 MCP의 API 키 워크스루와 컴포넌트 설정만 표시.                                        |
@@ -79,7 +79,7 @@ Toolkit v6.2는 **얇은 오버레이**이며 3층으로 구성됩니다:
 
 ## MCP 서버 카탈로그
 
-`--integrations` 플래그(또는 첫 설치 후 `/integrations`)가 24개 서버를 10개 카테고리로 보여주는 TUI 체크리스트를 엽니다. 프로젝트에 필요한 것만 고르면 됩니다.
+`--integrations` 플래그(또는 첫 설치 후 `/integrations`)가 31개 서버를 10개 카테고리로 보여주는 TUI 체크리스트를 엽니다. 프로젝트에 필요한 것만 고르면 됩니다.
 
 | 카테고리                | 서버                                                                                  |
 |-------------------------|---------------------------------------------------------------------------------------|

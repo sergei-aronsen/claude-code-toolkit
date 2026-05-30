@@ -146,9 +146,9 @@ counts_out=$(TK_MCP_CLAUDE_BIN="$MOCK_CLAUDE" \
     mcp_status_array
     echo \"labels=\${#TUI_LABELS[@]} groups=\${#TUI_GROUPS[@]} mcp=\${#MCP_NAMES[@]}\"
 " 2>&1)
-assert_contains "labels=30" "$counts_out" "A3: TUI_LABELS has 30 rows"
-assert_contains "groups=30" "$counts_out" "A3: TUI_GROUPS parallel-array has 30 rows"
-assert_contains "mcp=30" "$counts_out" "A3: MCP_NAMES has 30 rows"
+assert_contains "labels=31" "$counts_out" "A3: TUI_LABELS has 31 rows"
+assert_contains "groups=31" "$counts_out" "A3: TUI_GROUPS parallel-array has 31 rows"
+assert_contains "mcp=31" "$counts_out" "A3: MCP_NAMES has 31 rows"
 
 # ─────────────────────────────────────────────────
 # A4 — When mock claude reports `supabase`, MCP_STATUS[supabase]=installed and
