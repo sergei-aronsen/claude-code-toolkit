@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.54.0] - 2026-06-02
+
+Mobbin joins the integrations catalog as a Design-category MCP entry. Mobbin
+is the largest design pattern library — 621,500 real app screens and 142,200
+user flows from production apps. The MCP is an official hosted remote endpoint
+authenticated by browser OAuth against a Mobbin account — no API key, no env
+vars. The catalog now ships **32 MCP servers + 10 companion CLIs across 10
+categories**.
+
+### Added
+
+- **`scripts/lib/integrations-catalog.json` — `mobbin` MCP entry**
+  (Design category). Hosted remote transport:
+  `--transport http mobbin https://api.mobbin.com/mcp`,
+  `requires_oauth: true`, `default_scope: user`, no `env_var_keys`.
+  No companion CLI (MCP-only).
+
+### Changed
+
+- Integrations count bumped 31 → 32 MCP servers across `INTEGRATIONS.md`,
+  `README.md`, and all 9 translated READMEs.
+- Catalog count assertions bumped 31 → 32 in `test-mcp-selector.sh`,
+  `test-mcp-catalog-load.sh`, `test-integrations-catalog.sh`, and
+  `test-integrations-tui.sh`.
+
 ## [6.53.0] - 2026-05-30
 
 Higgsfield AI joins the integrations catalog as a Design-category entry —

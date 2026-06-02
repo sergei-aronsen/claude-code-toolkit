@@ -189,6 +189,21 @@
         "requires_oauth": true,
         "default_scope": "user"
       },
+      "mobbin": {
+        "name": "mobbin",
+        "display_name": "Mobbin",
+        "category": "design",
+        "env_var_keys": [],
+        "install_args": [
+          "--transport",
+          "http",
+          "mobbin",
+          "https://api.mobbin.com/mcp"
+        ],
+        "description": "Design pattern library — 621,500 real app screens + 142,200 user flows. Hosted remote MCP, OAuth via Mobbin account (no API key).",
+        "requires_oauth": true,
+        "default_scope": "user"
+      },
       "firecrawl": {
         "name": "firecrawl",
         "display_name": "Firecrawl",

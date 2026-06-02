@@ -113,7 +113,7 @@ else:
 '
 
 # ─────────────────────────────────────────────────
-# A5 — components.mcp has 31 entries
+# A5 — components.mcp has 32 entries
 # (Phase 33 baseline: 21 - 1 DROP-01 = 20; Phase 40 INT-13 added Calendly = 21;
 #  v6.0 INT-15 added morph-fast-tools + claude-context = 23;
 #  v6.1: morph-fast-tools replaced by serena 1-for-1, count unchanged at 23.
@@ -122,12 +122,12 @@ else:
 #  v6.23 added repomix (full-repo pack for AI context, +1 = 29).
 #  v6.24 added github (official remote MCP, +1 = 30).)
 # ─────────────────────────────────────────────────
-_pyq "A5: components.mcp has exactly 31 entries" '
+_pyq "A5: components.mcp has exactly 32 entries" '
 mcp = catalog.get("components", {}).get("mcp", {})
-if isinstance(mcp, dict) and len(mcp) == 31:
+if isinstance(mcp, dict) and len(mcp) == 32:
     print("OK")
 else:
-    print("components.mcp count is " + str(len(mcp)) + ", expected 31")
+    print("components.mcp count is " + str(len(mcp)) + ", expected 32")
 '
 
 # ─────────────────────────────────────────────────
