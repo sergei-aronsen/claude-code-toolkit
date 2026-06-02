@@ -1,6 +1,6 @@
 # Integrations Catalog
 
-The toolkit ships a curated catalog of **31 MCP servers** + **10 companion CLIs** across **10 categories**, installable via a single TUI page.
+The toolkit ships a curated catalog of **32 MCP servers** + **10 companion CLIs** across **10 categories**, installable via a single TUI page.
 
 This page is the reference for what's in the catalog, how install works, what `unofficial` means, where the toolkit's responsibilities end, and where to file your own SDKs.
 
@@ -75,6 +75,7 @@ Each row is one MCP entry. Some entries also ship a companion CLI (the official 
 | ----- | ----------- | ------------- | ---- | ----- |
 | Figma | `figma-developer-mcp` | — | `FIGMA_API_KEY` | — |
 | Higgsfield | HTTP `https://mcp.higgsfield.ai/mcp` | `higgsfield` | OAuth (browser) | official; image + video gen; user scope |
+| Mobbin | HTTP `https://api.mobbin.com/mcp` | — | OAuth (browser) | official; 621,500 app screens + 142,200 user flows; user scope |
 
 ### Dev Tools
 

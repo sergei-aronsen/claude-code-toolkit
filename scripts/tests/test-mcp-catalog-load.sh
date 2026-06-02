@@ -3,9 +3,9 @@
 #
 # Validates that scripts/lib/mcp.sh:mcp_catalog_load:
 #   1. Forks jq at most twice (was ~301 forks pre-fix; should be 1)
-#   2. Returns exactly 31 entries from integrations-catalog.json
+#   2. Returns exactly 32 entries from integrations-catalog.json
 #   3. Sorts MCP_NAMES alphabetically
-#   4. Keeps all 10 parallel arrays at length 31
+#   4. Keeps all 10 parallel arrays at length 32
 #   5. Correctly handles entries with EMPTY env_var_keys (calendly — the
 #      regression vector that broke the earlier @tsv attempt: tab+tab
 #      collapsed under whitespace IFS and shifted columns by one)
@@ -82,11 +82,11 @@ rm -rf "$WRAPPER_DIR"
 source "$SCRIPT_DIR/scripts/lib/mcp.sh"
 mcp_catalog_load
 
-# ----- T2: 31 entries ----------------------------------------------------
-if [[ "${#MCP_NAMES[@]}" -eq 31 ]]; then
-    _pass "T2 MCP_NAMES length = 31"
+# ----- T2: 32 entries ----------------------------------------------------
+if [[ "${#MCP_NAMES[@]}" -eq 32 ]]; then
+    _pass "T2 MCP_NAMES length = 32"
 else
-    _fail "T2 MCP_NAMES length = ${#MCP_NAMES[@]}, expected 31"
+    _fail "T2 MCP_NAMES length = ${#MCP_NAMES[@]}, expected 32"
 fi
 
 # ----- T3: alphabetical order --------------------------------------------
@@ -99,15 +99,15 @@ else
     diff <(echo "$EXPECTED_ORDER") <(echo "$ACTUAL_ORDER") >&2 || true
 fi
 
-# ----- T4: every parallel array has length 31 ----------------------------
+# ----- T4: every parallel array has length 32 ----------------------------
 len=0
 for arr in MCP_DISPLAY MCP_ENV_KEYS MCP_INSTALL_ARGS MCP_DESCS MCP_OAUTH \
            MCP_CATEGORY MCP_HAS_CLI MCP_CLI_DETECT MCP_UNOFFICIAL MCP_DEFAULT_SCOPE; do
     eval "len=\${#${arr}[@]}"
-    if [[ "$len" -eq 31 ]]; then
-        _pass "T4 $arr length = 31"
+    if [[ "$len" -eq 32 ]]; then
+        _pass "T4 $arr length = 32"
     else
-        _fail "T4 $arr length = $len, expected 31"
+        _fail "T4 $arr length = $len, expected 32"
     fi
 done
 
