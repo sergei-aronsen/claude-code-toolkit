@@ -20,7 +20,7 @@ jobs:
     name: ShellCheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run ShellCheck (scripts/)
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # v2.0.0
@@ -41,7 +41,7 @@ jobs:
     name: Markdown Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run markdownlint
         uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd # v23.2.0
@@ -59,7 +59,7 @@ jobs:
     name: Validate Templates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check required sections in audit files
         run: |
@@ -159,7 +159,7 @@ jobs:
     name: Test Install Lifecycle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Tests 21-32 — uninstall family + banner + bootstrap + update libs + bridges foundation/sync (UN-01..UN-08, BOOTSTRAP-01..04, LIB-01..02, BANNER-01, KEEP-01..02, BRIDGE-FOUNDATION, BRIDGE-SYNC)
         run: |
@@ -182,7 +182,7 @@ jobs:
     name: Test Install Features
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Tests 33-40 — TUI orchestrator + MCP selector + Skills selector + integrations foundation + v4.9 schema/cli/tui (TUI-01..09, MCP-01..05, MCP-SEC-01..02, SKILL-03..05, CAT-01..04, CLI-01..04, TEST-01..03)
         run: |
@@ -203,7 +203,7 @@ jobs:
     name: Test Bridges Install-UX
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Test 41 — bridges install-UX (S1..S13) — slowest single test on CI
         run: bash scripts/tests/test-bridges-install-ux.sh
@@ -214,7 +214,7 @@ jobs:
     name: Test Orphan Triage + Secrets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Tests 35-49 — orphan triage + Phase 37 project secrets library (audit INF-MED-1, SEC-01..06, TEST-01)
         run: |
@@ -239,7 +239,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Test Laravel detection
         run: |
@@ -262,7 +262,7 @@ jobs:
     name: Test Matrix (bats)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Upgrade cells run `git worktree add` at PRE_40_COMMIT
           # (scripts/tests/matrix/lib/helpers.bash:18). Shallow checkout
